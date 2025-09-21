@@ -148,17 +148,17 @@ namespace RenderingEngine.Engine
                 bool rightConnects = current.X2 == next.X1 && current.Y2 == next.Y1 ||
                     current.X2 == next.X2 && current.Y2 == next.Y2;
 
+                if (b + 1 == rotatedWalls.Length)
+                {
+                    bunches[bunchCount] = subsetStart..rotatedWalls.Length;
+                    bunchCount++;
+                }
                 // New Bunch = Not Connected to Previous Wall
-                if (!leftConnects && !rightConnects)
+                else if (!leftConnects && !rightConnects)
                 {
                     bunches[bunchCount] = subsetStart..b;
                     bunchCount++;
                     subsetStart = b;
-                }
-                else if (b + 1 == rotatedWalls.Length)
-                {
-                    bunches[bunchCount] = subsetStart..rotatedWalls.Length;
-                    bunchCount++;
                 }
             }
 
