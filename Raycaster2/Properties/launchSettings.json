@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "Raycaster2": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_EnableDiagnostics": "1",
+        "DOTNET_JitPrintInlinedMethods": "1"
+      }
+    }
+  }
+}

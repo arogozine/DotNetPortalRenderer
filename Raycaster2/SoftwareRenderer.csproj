@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TargetFramework>net9.0</TargetFramework>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <PublishTrimmed>true</PublishTrimmed>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Silk.NET.Input" Version="2.22.0" />
+    <PackageReference Include="Silk.NET.OpenGL" Version="2.22.0" />
+    <PackageReference Include="Silk.NET.Windowing" Version="2.22.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Engine\RenderingEngine.csproj" />
+  </ItemGroup>
+
+</Project>
