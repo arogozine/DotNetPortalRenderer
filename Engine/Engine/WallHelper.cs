@@ -38,7 +38,7 @@ namespace RenderingEngine.Engine
 
             Span<Wall> result = CullHiddenWallsAndCombineBunches(bunches, rotatedWalls, portalWallsToOcclude);
 
-            result.Sort(WallComparer.Instance);
+            result.Sort(new WallComparer(width));
 
             return result;
         }
@@ -242,6 +242,16 @@ namespace RenderingEngine.Engine
                     }
 
                     if (wall.CY1 <= 0f || wall.CY2 <= 0f)
+                    {
+                        continue;
+                    }
+
+                    if (wall.YLeftFloor < wall.YLeftCeil)
+                    {
+                        continue;
+                    }
+
+                    if (wall.YLeftFloor < 0 || wall.YRightFloor < 0)
                     {
                         continue;
                     }

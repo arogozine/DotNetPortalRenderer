@@ -5,122 +5,168 @@ namespace RenderingEngine.Engine
 {
     internal sealed class WallComparer : IComparer<Wall>
     {
-        private WallComparer() { }
+        private readonly float cameraWidthIncr;
 
-        public static readonly WallComparer Instance = new();
+        public WallComparer(int width) {
+            this.cameraWidthIncr = 2.0f / width;
+        }
 
         public int Compare(Wall? x, Wall? y)
         {
             ArgumentNullException.ThrowIfNull(x);
             ArgumentNullException.ThrowIfNull(y);
 
-            // Debug.WriteLine($"X {x.YLeftFloor} {x.YRightFloor}");
-            // Debug.WriteLine($"Y {y.YLeftFloor} {y.YRightFloor}");
-
-
-            /*
-            int a = Compare2(x, y);
-            int b = Compare2(y, x);
-            int c = Compare2(x, x);
-            int d = Compare2(y, y);
-
-            return a;
-            */
-
-            return Compare2(x, y);
+            return Compare3(x, y);
         }
 
-
-        public static int Compare2(Wall x, Wall y)
+        private int Compare3(Wall x, Wall y)
         {
-            int aLeftFloor = x.YLeftFloor;
-            int aRightFloor = x.YRightFloor;
-            int bLeftFloor = y.YLeftFloor;
-            int bRightFloor = y.YRightFloor;
-
-            if (
-                (aLeftFloor == bLeftFloor && aRightFloor == bRightFloor) ||
-                (aRightFloor == bLeftFloor && aLeftFloor == bRightFloor)
-                )
+            // x = y are the same
+            if (x.X1 == y.X1 && x.X2 == y.X2 && x.Y2 == y.Y2)
             {
                 return 0;
             }
 
-            // check left or right point is in front
-            bool leftInFront = aLeftFloor >= bLeftFloor && aLeftFloor >= bRightFloor;
-            bool rightInFront = aRightFloor >= bLeftFloor && aRightFloor >= bRightFloor;
+            float xCX1 = x.CX1;
+            float xCX2 = x.CX2;
+            float xCY1 = x.CY1;
+            float xCY2 = x.CY2;
 
-            if (leftInFront && rightInFront)
-            {
-                // both points of wall a are in front of b
-                return -1;
-            }
+            float yCX1 = y.CX1;
+            float yCX2 = y.CX2;
+            float yCY1 = y.CY1;
+            float yCY2 = y.CY2;
 
-            if (!leftInFront && !rightInFront)
-            {
-                // both points of wall b are in front a
-                return 1;
-            }
-
-            // calculate distance from floor for the x values where walls interesect
             if (Within(x.XLeft, y.XLeft, y.XRight))
             {
-                float floorDistIncr = (bRightFloor - (float)bLeftFloor) / (y.XRight - y.XLeft);
-                bLeftFloor += (int)((x.XLeft - y.XLeft) * floorDistIncr);
+                // y left
+                TryGetIntersection(x.XLeft, y.X1, y.Y1, y.X2, y.Y2, ref yCX1, ref yCY1);
             }
 
             if (Within(x.XRight, y.XLeft, y.XRight))
             {
-                float floorDistIncr = (bRightFloor - (float)bLeftFloor) / (y.XRight - y.XLeft);
-                bRightFloor -= (int)((y.XRight - x.XRight) * floorDistIncr);
+                // y right
+                TryGetIntersection(x.XRight, y.X1, y.Y1, y.X2, y.Y2, ref yCX2, ref yCY2);
             }
 
             if (Within(y.XLeft, x.XLeft, x.XRight))
             {
-                float floorDistIncr = (aRightFloor - (float)aLeftFloor) / (x.XRight - x.XLeft);
-                aLeftFloor += (int)((y.XLeft - x.XLeft) * floorDistIncr);
+                // x left
+                TryGetIntersection(y.XLeft, x.X1, x.Y1, x.X2, x.Y2, ref xCX1, ref xCY1);
             }
 
-            // is it supposed to be 3rd arg - first arg
             if (Within(y.XRight, x.XLeft, x.XRight))
             {
-                float floorDistIncr = (aRightFloor - (float)aLeftFloor) / (x.XRight - x.XLeft);
-                aRightFloor -= (int)((x.XRight - y.XRight) * floorDistIncr);
+                // x right
+                TryGetIntersection(y.XRight, x.X1, x.Y1, x.X2, x.Y2, ref xCX2, ref xCY2);
             }
 
-            leftInFront = aLeftFloor >= bLeftFloor && aLeftFloor >= bRightFloor;
-            rightInFront = aRightFloor >= bLeftFloor && aRightFloor >= bRightFloor;
+            // for connected walls, only compare the un-connected vertex
+            bool connected1 = x.X1 == y.X1 && x.Y1 == y.Y1;
+            bool connected2 = x.X2 == y.X2 && x.Y2 == y.Y2;
+            bool connected3 = x.X1 == y.X2 && x.Y1 == y.Y2;
+            bool connected4 = x.X2 == y.X1 && x.Y2 == y.Y1;
 
-            if (leftInFront && rightInFront)
+            if (connected1)
             {
-                // both points of wall a are in front of b
+                return Compare(xCX2, xCY2, yCX2, yCY2);
+            }
+            else if (connected2)
+            {
+                return Compare(xCX1, xCY1, yCX1, yCY1);
+
+            }
+            else if (connected3)
+            {
+                return Compare(xCX2, xCY2, yCX1, yCY1);
+            }
+            else if (connected4)
+            {
+                return Compare(xCX1, xCY1, yCX2, yCY2);
+            }
+
+            float xD1 = xCX1 * xCX1 + xCY1 * xCY1;
+            float xD2 = xCX2 * xCX2 + xCY2 * xCY2;
+            float yD1 = yCX1 * yCX1 + yCY1 * yCY1;
+            float yD2 = yCX2 * yCX2 + yCY2 * yCY2;
+            bool yd1Further = yD1 > xD1 && yD1 > xD2;
+            bool yd2Further = yD2 > xD1 && yD2 > xD2;
+
+            if (yd1Further && yd2Further)
+            {
                 return -1;
             }
-
-            if (!leftInFront && !rightInFront)
+            else if (!yd1Further && !yd2Further)
             {
-                // both points of wall b are in front a
                 return 1;
             }
 
-            // heuristic that works for connected walls
-            int aFloor = Math.Max(aLeftFloor, aRightFloor);
-            int bFloor = Math.Max(bLeftFloor, bRightFloor);
+            float xd3 = xD1 + xD2;
+            float yd3 = yD1 + yD2;
 
-            if (aFloor == bFloor)
+            if (yd3 == xd3)
             {
-                aFloor = aLeftFloor + aRightFloor;
-                bFloor = bLeftFloor + bRightFloor;
+                return 0;
             }
 
-            return aFloor == bFloor ? 0 :
-                   aFloor > bFloor ? -1 : 1;
+            return yd3 > xd3 ? -1 : 1;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static bool Within(int value, int from, int to)
             {
                 return value > from && value < to;
             }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static int Compare(float xcx, float xcy, float ycx, float ycy)
+            {
+                float xd = xcx * xcx + xcy * xcy;
+                float yd = ycx * ycx + ycy * ycy;
+
+                if (xd == yd)
+                {
+                    return 0;
+                }
+
+                return xd < yd ? -1 : 1;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void TryGetIntersection(
+            int x,
+            float rx1, float ry1,
+            float rx2, float ry2,
+            ref float cx,
+            ref float cy)
+        {
+            float rayDirX = EngineConstants.CameraPlaneX * ((cameraWidthIncr * x) - 1f);
+            float d2x = rx2 - rx1;
+            float d2y = ry2 - ry1;
+
+            float denominator = rayDirX * d2y - d2x;
+
+            if (MathF.Abs(denominator) < float.Epsilon)
+            {
+                return;
+            }
+
+            float u = (rx1 - ry1 * rayDirX) / denominator;
+
+            if (u < 0f || u > 1f)
+            {
+                return;
+            }
+
+            float t = (rx1 * d2y - ry1 * d2x) / denominator;
+
+            if (t < 0f)
+            {
+                return;
+            }
+
+            cy = t;
+            cx = t * rayDirX;
         }
     }
 }
