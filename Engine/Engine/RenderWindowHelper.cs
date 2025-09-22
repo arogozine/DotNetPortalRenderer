@@ -45,7 +45,7 @@ namespace RenderingEngine.Engine
         public void NewSector(NeighborsToRender sectorInfo)
         {
             sectorPortalWindow.AsSpan().CopyTo(sectorPortalWindowOld);
-            (sectorFromX, sectorToX) = sectorInfo.GetXCoordinates();
+            (sectorFromX, sectorToX) = (sectorInfo.Wall?.XLeft ?? 0, sectorInfo.Wall?.XRight ?? width);
             renderedArea.AsSpan().Clear();
         }
 

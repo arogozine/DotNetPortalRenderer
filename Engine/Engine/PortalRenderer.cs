@@ -1,5 +1,7 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.TextureManagement;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -91,12 +93,12 @@ namespace RenderingEngine.Engine
             RenderWindowHelper.NewRender();
             Span<(int top, int bottom)> portalTopBottom = RenderWindowHelper.Portal;
 
+            var comparer = new WallComparer(PixelWidth);
+
             Queue<NeighborsToRender> sectorRenderQueue = [];
             sectorRenderQueue.Enqueue(new NeighborsToRender
             {
-                SectorId = player.Sector,
-                FromX = 0,
-                ToX = PixelWidth
+                SectorId = player.Sector
             });
 
             List<Wall> wallsRendered = [];
@@ -110,22 +112,28 @@ namespace RenderingEngine.Engine
                 float yceil = sector.Ceil - pz;
                 float yfloor = sector.Floor - pz;
 
+                if (sectorInfo.Wall is not null)
+                {
+                    wallsRendered.Add(sectorInfo.Wall);
+                }
+
                 Span<Wall> walls = WallHelper.DetermineWallsToRender(sector,
                     wallsRendered,
                     pSin, pCos, px, py, yceil, yfloor, yaw);
 
-                Dictionary<int, NeighborsToRender>.ValueCollection neighbors = RenderSector(player, sector, sectors, sectorInfo, walls, screen, wallTexture, portalTopBottom);
+                List<Wall> neighbors = RenderSector(player, sector, sectors, sectorInfo, walls, screen, wallTexture, portalTopBottom);
 
-                foreach (NeighborsToRender neighbor in neighbors)
+                foreach (Wall neighbor in neighbors)
                 {
-                    wallsRendered.AddRange(neighbor.Walls.Select(x => x.Wall));
-                    sectorRenderQueue.Enqueue(neighbor);
+                    sectorRenderQueue.Enqueue(new NeighborsToRender {
+                        SectorId = neighbor.Neighbor, Wall = neighbor
+                    });
                 }
             }
             while (sectorRenderQueue.Count > 0);
         }
 
-        private Dictionary<int, NeighborsToRender>.ValueCollection RenderSector(
+        private List<Wall> RenderSector(
             PortalPlayerSnapshot player,
             Sector sector,
             ReadOnlySpan<Sector> sectors,
@@ -137,7 +145,7 @@ namespace RenderingEngine.Engine
         {
             GenerateDistanceCache(player, sector);
 
-            Dictionary<int, NeighborsToRender> neightbors = [];
+            List<Wall> neightbors = [];
 
             RenderWindowHelper.NewSector(sectorInfo);
 
@@ -151,13 +159,10 @@ namespace RenderingEngine.Engine
 
                 if (wallDrawn && wall.Neighbor != EngineConstants.NullSector)
                 {
-                    if (!neightbors.TryGetValue(wall.Neighbor, out NeighborsToRender? neighborsToRender))
-                    {
-                        neighborsToRender = new NeighborsToRender { SectorId = wall.Neighbor };
-                        neightbors.Add(wall.Neighbor, neighborsToRender);
-                    }
-
-                    neighborsToRender.Walls.Add(new WallToRender { Wall = wall, FromX = wallFromX, ToX = wallToX });
+                    wall.XLeft = wallFromX;
+                    wall.XRight = wallToX;
+                    neightbors.Add(wall);
+                    //neightbors.Add(new WallAlreadyRendered { Wall = wall, FromX = wallFromX, ToX = wallToX });
                 }
             }
 
@@ -175,7 +180,7 @@ namespace RenderingEngine.Engine
                 RenderCeiling(player, sector, screen, ceilingTexture);
             }
 
-            return neightbors.Values;
+            return neightbors;
         }
 
         private void DebugStuffs(
@@ -286,6 +291,11 @@ namespace RenderingEngine.Engine
             float sectorHeight = 1f / (sector.Ceil - sector.Floor);
             float floorOffset = neighborSector.Floor - sector.Floor;
             float ceilOffset = neighborSector.Ceil - sector.Ceil;
+
+            if (floorOffset == 0 && ceilOffset == 0)
+            {
+                return (true, default, default);
+            }
 
             ref BGRA wallTexturePtr = ref wallTexture.Texture;
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
