@@ -126,7 +126,8 @@ namespace RenderingEngine.Engine
             // a bunch is a set of connected walls
             // we figure out the range of each bunch here
 
-            Span<Range> bunches = new Range[rotatedWalls.Length];
+            int bunchLength = rotatedWalls.Length > 0 ? rotatedWalls.Length : 1;
+            Span <Range> bunches = new Range[bunchLength];
 
             int bunchCount = 0;
             int subsetStart = 0;

@@ -97,7 +97,7 @@ namespace RenderingEngine.MapGen
             int sector3 = generator.AddSector(10, 24);
             int sector4 = generator.AddSector(1, 20);
             int sector5 = generator.AddSector(2, 16);
-            //int sector6 = generator.AddSector(4, 14);
+            int sector6 = generator.AddSector(4, 14);
             
             int a1 = generator.AddWall(sector1, (0, 0), (10, 0));
             int b1 = generator.AddWall(sector1, (10, 0), (10, 10), sector2);
@@ -120,37 +120,42 @@ namespace RenderingEngine.MapGen
             int d3 = generator.AddWall(sector3, (20, 10), (20, 0), sector2);
 
             int? sector4Pillar = null;
-            int e4 = generator.AddWall(sector4, (4, 14), (6, 14), sector4Pillar);
-            int f4 = generator.AddWall(sector4, (6, 14), (6, 16), sector4Pillar);
-            int g4 = generator.AddWall(sector4, (6, 16), (4, 16), sector4Pillar);
-            int h4 = generator.AddWall(sector4, (4, 16), (4, 14), sector4Pillar);
-            // y + 10
+            int e4 = generator.AddWall(sector4, (4, 14), (6, 14), sector7);
+            int f4 = generator.AddWall(sector4, (6, 14), (6, 16), sector7);
+            int g4 = generator.AddWall(sector4, (6, 16), (4, 16), sector7);
+            int h4 = generator.AddWall(sector4, (4, 16), (4, 14), sector7);
+
+            generator.AddWall(sector7, (4, 14), (6, 14), sector4);
+            generator.AddWall(sector7, (6, 14), (6, 16), sector4);
+            generator.AddWall(sector7, (6, 16), (4, 16), sector4);
+            generator.AddWall(sector7, (4, 16), (4, 14), sector4);
+
             int a4 = generator.AddWall(sector4, (0, 10), (0, 20));
             int b4 = generator.AddWall(sector4, (0, 20), (10, 20), sector5);
             int c4 = generator.AddWall(sector4, (10, 20), (10, 10));
             int d4 = generator.AddWall(sector4, (10, 10), (0, 10), sector1);
 
-            // 10,20 10,30
-            //  0,20  0,30
-
-            // y + 20
             int a5 = generator.AddWall(sector5, (0, 20), (0, 30));
-            int b5 = generator.AddWall(sector5, (0, 30), (10, 30));//, sector6);
+            int b5 = generator.AddWall(sector5, (0, 30), (10, 30));
             int c5 = generator.AddWall(sector5, (10, 30), (10, 20));
             int d5 = generator.AddWall(sector5, (10, 20), (0, 20), sector4);
 
-            int e5 = generator.AddWall(sector5, (1, 22), (1, 24));
-            int f5 = generator.AddWall(sector5, (1, 24), (7, 23));
-            int g5 = generator.AddWall(sector5, (7, 23), (1, 22));
-            
+            // triangle pillar
+            int e5 = generator.AddWall(sector5, (1, 22), (1, 24), sector6);
+            int f5 = generator.AddWall(sector5, (1, 24), (7, 23), sector6);
+            int g5 = generator.AddWall(sector5, (7, 23), (1, 22), sector6);
+
+            int a6 = generator.AddWall(sector6, (1, 22), (1, 24), sector5);
+            int b6 = generator.AddWall(sector6, (1, 24), (7, 23), sector5);
+            int c6 = generator.AddWall(sector6, (7, 23), (1, 22), sector5);
+
 
             return generator.GetMap();
         }
 
         internal static (Player player, Sector[] sectors) LoadData()
         {
-            // var map = GenerateMap();
-            var map = LoadMap("C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\test.json")!;
+            var map = GenerateMap();
 
             StripInvalidNeighbors(map);
 
@@ -176,7 +181,6 @@ namespace RenderingEngine.MapGen
         {
             Wall[] vertex = new Wall[x.Walls.Count];
 
-
             for (int i = 0; i < x.Walls.Count; i++)
             {
                 Line v = x.Walls[i];
@@ -192,7 +196,6 @@ namespace RenderingEngine.MapGen
 
                 Ceil = x.Ceiling,
                 Floor = x.Floor,
-                //Neighbors = neighbors,
                 Walls = vertex
             };
 

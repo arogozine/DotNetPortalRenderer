@@ -111,6 +111,7 @@ namespace RenderingEngine.Engine
             renderTopBottom.From = clamptedFromY;
             renderTopBottom.To = clamptedToY;
 
+            /*
             // calculate new portal
             if (wallStartY > portalFromY)
             {
@@ -121,6 +122,7 @@ namespace RenderingEngine.Engine
                 sectorPortalWindow[x] = (wallEndY, portalToY);
             }
             else
+            */
             {
                 // wall blocks entire portal
                 sectorPortalWindow[x] = (0, 0);

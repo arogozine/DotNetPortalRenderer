@@ -86,14 +86,12 @@ namespace RenderingEngine.Engine
 
             (float pSin, float pCos) = MathF.SinCos(player.Angle);
             (float px, float py, float pz) = player.Where;
-            screen.Fill(BGRA.Green);
+            screen.Fill(BGRA.Black);
 
             ReadOnlySpan<Sector> sectors = Sectors;
 
             RenderWindowHelper.NewRender();
             Span<(int top, int bottom)> portalTopBottom = RenderWindowHelper.Portal;
-
-            var comparer = new WallComparer(PixelWidth);
 
             Queue<NeighborsToRender> sectorRenderQueue = [];
             sectorRenderQueue.Enqueue(new NeighborsToRender
@@ -159,10 +157,7 @@ namespace RenderingEngine.Engine
 
                 if (wallDrawn && wall.Neighbor != EngineConstants.NullSector)
                 {
-                    wall.XLeft = wallFromX;
-                    wall.XRight = wallToX;
                     neightbors.Add(wall);
-                    //neightbors.Add(new WallAlreadyRendered { Wall = wall, FromX = wallFromX, ToX = wallToX });
                 }
             }
 
