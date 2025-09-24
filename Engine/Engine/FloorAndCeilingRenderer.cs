@@ -270,7 +270,6 @@ namespace RenderingEngine.Engine
                 int portalFrom = info.PortalFromY;
                 int portalTo = info.PortalToY;
 
-                int floorFromY = renderedTo;
                 int floorToY = height;
 
                 if (portalTo != EngineConstants.Unset)
@@ -280,20 +279,20 @@ namespace RenderingEngine.Engine
 
                 if (portalFrom != EngineConstants.Unset)
                 {
-                    floorFromY = Math.Max(floorFromY, portalFrom);
+                    renderedTo = Math.Max(renderedTo, portalFrom);
                 }
 
-                if (floorFromY == floorToY)
+                if (renderedTo == floorToY)
                 {
                     continue;
                 }
 
-                int screenIndex = floorFromY * width + x;
+                int screenIndex = renderedTo * width + x;
                 float xMapPosMultiplier = (width / 2 - x) * idkWhatThisIs;
-                int increment = halfHeightInt - floorFromY;
+                int increment = halfHeightInt - renderedTo;
 
                 // from start of wall (buttom) to screen buttom
-                for (int i = floorFromY; i < floorToY; i++, screenIndex += width)
+                for (int i = renderedTo; i < floorToY; i++, screenIndex += width)
                 {
                     float yMapPosR = yfloor / (increment * oneOvervFov + yaw);
                     float xMapPosR = yMapPosR * xMapPosMultiplier;

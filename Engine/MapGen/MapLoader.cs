@@ -98,6 +98,7 @@ namespace RenderingEngine.MapGen
             int sector4 = generator.AddSector(1, 20);
             int sector5 = generator.AddSector(2, 16);
             int sector6 = generator.AddSector(4, 14);
+            int sector7 = generator.AddSector(4, 14);
             
             int a1 = generator.AddWall(sector1, (0, 0), (10, 0));
             int b1 = generator.AddWall(sector1, (10, 0), (10, 10), sector2);

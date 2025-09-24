@@ -151,7 +151,7 @@ namespace RenderingEngine.Engine
             {
                 Wall wall = walls[s];
 
-                (bool wallDrawn, int wallFromX, int wallToX) = wall.Neighbor == EngineConstants.NullSector ?
+                bool wallDrawn = wall.Neighbor == EngineConstants.NullSector ?
                     DrawBasicWall(screen, wallTexture, wall) :
                     DrawPortalWall(sector, sectors, screen, wallTexture, portalTopBottom, wall);
 
@@ -243,7 +243,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private (bool WallDrawn, int WallFromX, int WallToX) DrawPortalWall(
+        private bool DrawPortalWall(
             Sector sector,
             ReadOnlySpan<Sector> sectors,
             Span<BGRA> screen,
@@ -253,7 +253,7 @@ namespace RenderingEngine.Engine
         {
             if (!RenderWindowHelper.SetWallToRender(wall))
             {
-                return (false, default, default);
+                return false;
             }
 
             bool wallDrawn = false;
@@ -289,7 +289,7 @@ namespace RenderingEngine.Engine
 
             if (floorOffset == 0 && ceilOffset == 0)
             {
-                return (true, default, default);
+                return false;
             }
 
             ref BGRA wallTexturePtr = ref wallTexture.Texture;
@@ -395,17 +395,17 @@ namespace RenderingEngine.Engine
                 wallDrawn = true;
             }
 
-            return (wallDrawn, wallFromX, wallToX);
+            return wallDrawn;
         }
 
-        private (bool WallDrawn, int WallFromX, int WallToX) DrawBasicWall(
+        private bool DrawBasicWall(
             Span<BGRA> screen,
             TextureInfo wallTexture,
             Wall wall)
         {
             if (!RenderWindowHelper.SetWallToRender(wall))
             {
-                return (false, default, default);
+                return false;
             }
 
             (int wallFromXOffset, int wallFromX, int wallToX) = RenderWindowHelper.GetWallRenderWindowX();
@@ -447,8 +447,6 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int portalFromY = result.PortalFromY;
-                int portalToY = result.PortalToY;
                 int clamptedFromY = result.ClampedFromY;
                 int clamptedToY = result.ClampedToY;
 
@@ -491,7 +489,7 @@ namespace RenderingEngine.Engine
                 wallEndY += floorDistIncr;
             }
 
-            return (true, wallFromX, wallToX);
+            return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
