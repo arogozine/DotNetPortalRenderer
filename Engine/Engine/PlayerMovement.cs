@@ -21,6 +21,7 @@ namespace RenderingEngine.Engine
             if (oldSectorId == sector.Value)
             {
                 player.Where = (x + dx, y + dy, z);
+                SnapPlayerZ(player, sectors[player.Sector]);
             }
             else
             {
@@ -30,6 +31,16 @@ namespace RenderingEngine.Engine
                 z += newSector.Floor - oldSector.Floor;
 
                 player.Where = (x + dx, y + dy, z);
+            }
+        }
+
+        private static void SnapPlayerZ(Player player, Sector sector)
+        {
+            (float x, float y, float z) = player.Where;
+
+            if (z < sector.Floor)
+            {
+                player.Where = (x, y, sector.Floor + 6);
             }
         }
 
