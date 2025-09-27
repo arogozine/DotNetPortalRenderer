@@ -99,7 +99,7 @@ namespace RenderingEngine.MapGen
             int sector5 = generator.AddSector(2, 16);
             int sector6 = generator.AddSector(4, 14);
             int sector7 = generator.AddSector(4, 14);
-            
+
             int a1 = generator.AddWall(sector1, (0, 0), (10, 0));
             int b1 = generator.AddWall(sector1, (10, 0), (10, 10), sector2);
             int c1 = generator.AddWall(sector1, (10, 10), (0, 10), sector4);
@@ -156,7 +156,9 @@ namespace RenderingEngine.MapGen
 
         internal static (Player player, Sector[] sectors) LoadData()
         {
-            var map = GenerateMap();
+            // var map = GenerateMap();
+            var map = LoadMap("C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\test.json")!;
+
 
             StripInvalidNeighbors(map);
 
@@ -169,8 +171,9 @@ namespace RenderingEngine.MapGen
             Player player = new Player
             {
                 Angle = map.Player.Angle,
-                Sector = 0,
-                Where = (1, 1, map.Player.ZPosition)
+                Sector = 4,
+                Where = (8.251516f, 26.0253067f, 8f)
+                // (1, 1, map.Player.ZPosition)
             };
 
             var sectors = map.Sectors.Select(ParseMapSector).ToArray();

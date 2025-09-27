@@ -1,22 +1,9 @@
 ﻿using RenderingEngine.Models;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace RenderingEngine.Engine
 {
-    internal struct RenderWindow
-    {
-        public bool Calculated;
-        public int CeilingStart;
-        public int WallStart;
-        public int WallEnd;
-        public int FloorEnd;
-
-        public override readonly string ToString()
-        {
-            return $"{Calculated}: {CeilingStart} {WallStart} {WallEnd} {FloorEnd}";
-        }
-
-    }
 
     internal sealed class RenderWindowHelper
     {
@@ -33,9 +20,7 @@ namespace RenderingEngine.Engine
 
         public int SectorFrom => sectorFromX;
         public int SectorTo => sectorToX;
-
         public Span<RenderWindow> RenderWindow => renderWindow;
-
 
         public RenderWindowHelper(int width, int height)
         {
@@ -103,7 +88,7 @@ namespace RenderingEngine.Engine
         }
 
         [MemberNotNull(nameof(wall))]
-        public bool SetWallToRender3(Wall wall)
+        public bool SetWallToCalculate(Wall wall)
         {
             this.wall = wall;
             this.wallFromX = wall.XLeft;
@@ -113,7 +98,7 @@ namespace RenderingEngine.Engine
             wallFromX = Math.Max(sectorFromX, wall.XLeft);
             wallToX = Math.Min(sectorToX, wall.XRight);
 
-            // find where rendering didn't take place
+            // skip calculated areas
             for (; wallFromX <= wallToX; wallFromX++)
             {
                 ref RenderWindow window = ref renderWindow[wallFromX];
@@ -134,9 +119,11 @@ namespace RenderingEngine.Engine
                 }
             }
 
+            // wall has been rendered over for this sector
             return wallFromX < wallToX;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public (int offset, int WallFromX, int WallToX) GetWallRenderWindowX()
         {
             ArgumentNullException.ThrowIfNull(wall);
@@ -146,8 +133,8 @@ namespace RenderingEngine.Engine
             return (wallFromXOffset, wallFromX, wallToX);
         }
 
-
-        public RenderWindow TryGetRenderableDimensionsForX2(int x, int wallStartY, int wallEndY)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public RenderWindow TryGetRenderableDimensionsForX2(int x)
         {
             if (sectorFromX > x || x > sectorToX)
                 return default;
@@ -160,6 +147,7 @@ namespace RenderingEngine.Engine
             return window;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public RenderWindow GetFloorCeilDimensions2(int x)
         {
             if (sectorFromX > x || x > sectorToX)

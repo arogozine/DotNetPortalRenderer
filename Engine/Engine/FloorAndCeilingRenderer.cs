@@ -76,10 +76,13 @@ namespace RenderingEngine.Engine
 
                     ii--;
                 }
+
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                renderWindow.CeilingStart = renderWindow.WallStart;
             }
         }
 
-        private void RenderCeilingVector2(
+        private void RenderCeilingVector(
             PortalPlayerSnapshot player,
             Sector sector,
             Span<BGRA> screen,
@@ -203,9 +206,8 @@ namespace RenderingEngine.Engine
                     ii -= oneOvervFov; // --;
                 }
 
-                ref var meh = ref RenderWindowHelper.RenderWindow[x];
-                meh.CeilingStart = meh.WallStart;
-
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                renderWindow.CeilingStart = renderWindow.WallStart;
             }
         }
 
@@ -273,10 +275,13 @@ namespace RenderingEngine.Engine
 
                     increment -= 1;
                 }
+
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                renderWindow.FloorEnd = renderWindow.WallEnd;
             }
         }
 
-        public void RenderFloorVector2(
+        public void RenderFloorVector(
             PortalPlayerSnapshot player,
             Sector sector,
             Span<BGRA> screen,
@@ -339,11 +344,9 @@ namespace RenderingEngine.Engine
                 ref uint fromScalePtr = ref Unsafe.Add(ref scalePtr, floorFromY);
                 ref uint toScalePtr = ref Unsafe.Add(ref scalePtr, floorToY);
 
-                int fuck = 0;
                 // from start of wall (buttom) to screen buttom
                 while (!Unsafe.AreSame(ref fromScalePtr, ref toScalePtr))
                 {
-                    fuck++;
                     Vector<float> yMapPosR = yfloorV /
                         (incramentVector + yawV);
                     Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
@@ -402,8 +405,8 @@ namespace RenderingEngine.Engine
                     increment -= 1;
                 }
 
-                ref var meh = ref RenderWindowHelper.RenderWindow[x];
-                meh.FloorEnd = meh.WallEnd;
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                renderWindow.FloorEnd = renderWindow.WallEnd;
             }
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

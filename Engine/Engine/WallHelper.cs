@@ -23,7 +23,7 @@ namespace RenderingEngine.Engine
         }
 
         public Span<Wall> DetermineWallsToRender(Sector sector,
-            List<Wall> portalWallsToOcclude,
+            Span<Wall> portalWallsToOcclude,
             float pSin, float pCos, float px, float py, float yCeil, float yFloor, float yaw)
         {
             Span<Wall> rotatedWalls = RotateSectorWallsRelativeToPlayer(sector, pSin, pCos, px, py);
@@ -324,7 +324,7 @@ namespace RenderingEngine.Engine
         }
 
         public Span<Wall> CullHiddenWallsAndCombineBunches(
-            Span<Range> bunches, Span<Wall> rotatedWalls, List<Wall> parentPortalWallsToOcclude)
+            Span<Range> bunches, Span<Wall> rotatedWalls, Span<Wall> parentPortalWallsToOcclude)
         {
             Span<Wall> finalWalls = new Wall[rotatedWalls.Length];
 
@@ -344,7 +344,7 @@ namespace RenderingEngine.Engine
             return finalWalls[..i];
         }
 
-        public void CullWallsFromBunch(ref Span<Wall> walls, List<Wall> parentPortalWallsToOcclude)
+        public void CullWallsFromBunch(ref Span<Wall> walls, Span<Wall> parentPortalWallsToOcclude)
         {
             foreach (Wall parentSectorWall in parentPortalWallsToOcclude)
             {
