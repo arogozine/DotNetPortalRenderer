@@ -80,8 +80,6 @@ namespace RenderingEngine.Engine
             }
         }
 
-        int depth = 1;
-
         public void DrawScreen(Span<BGRA> screen, PortalPlayerSnapshot player)
         {
             TextureInfo wallTexture = TextureLoader.GetTexture(TextureName.Rock, true);
@@ -101,6 +99,8 @@ namespace RenderingEngine.Engine
                 SectorId = player.Sector
             });
 
+            int renderDepth = 0;
+
             do
             {
                 NeighborsToRender sectorInfo = sectorRenderQueue.Dequeue();
@@ -109,8 +109,6 @@ namespace RenderingEngine.Engine
 
                 float yceil = sector.Ceil - pz;
                 float yfloor = sector.Floor - pz;
-
-                // DebugPortal(screen, RenderWindowHelper.RenderWindow);
 
                 Span<Wall> walls = WallHelper.DetermineWallsToRender(sector,
                     sectorInfo.ParentWalls, pSin, pCos, px, py, yceil, yfloor, yaw);
@@ -131,18 +129,8 @@ namespace RenderingEngine.Engine
 
                     sectorRenderQueue.Enqueue(fsdf);
                 }
-
-                if (depth++ == 30)
-                {
-                    break;
-                }
-
             }
-            while (sectorRenderQueue.Count > 0);
-
-
-            depth = 0;
-
+            while (sectorRenderQueue.Count > 0 || ++renderDepth >= EngineConstants.MaxPortalsRendered);
         }
 
         private List<RenderableWall> RenderSector(
@@ -258,7 +246,7 @@ namespace RenderingEngine.Engine
             int renderableFromX = wallFromX;
             int renderableToX = wallToX;
 
-            for (int x = wallFromX; x < wallToX; x++)
+            for (int x = wallFromX; x <= wallToX; x++)
             {
                 int wallStartYInt = (int)wallStartY;
                 int wallEndYInt = (int)wallEndY;
@@ -356,7 +344,7 @@ namespace RenderingEngine.Engine
 
             if (floorOffset == 0 && ceilOffset == 0)
             {
-                return false;
+                return true;
             }
 
             ref BGRA wallTexturePtr = ref wallTexture.Texture;
