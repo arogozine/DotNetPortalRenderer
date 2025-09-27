@@ -142,7 +142,7 @@ namespace RenderingEngine.Engine
 
                 for (int j = 0; j < Vector<int>.Count; j++)
                 {
-                    Unsafe.Add(ref incramentVectorPtr, j) = (halfHeightInt - floorFromY - j) * oneOvervFov;
+                    Unsafe.Add(ref incramentVectorPtr, j) = (halfHeightInt - floorFromY - j) * oneOvervFov + yaw;
                 }
 
                 int rem = (floorToY - floorFromY) % Vector<int>.Count;
@@ -153,8 +153,7 @@ namespace RenderingEngine.Engine
 
                 while (!Unsafe.AreSame(ref fromScalePtr, ref toScalePtr))
                 {
-                    Vector<float> yMapPosR = yCeilV /
-                        (incramentVector + yawV);
+                    Vector<float> yMapPosR = yCeilV / incramentVector;
                     Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                     (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
@@ -335,7 +334,7 @@ namespace RenderingEngine.Engine
 
                 for (int j = 0; j < Vector<int>.Count; j++)
                 {
-                    Unsafe.Add(ref incramentVectorPtr, j) = (halfHeightInt - floorFromY - j) * oneOvervFov;
+                    Unsafe.Add(ref incramentVectorPtr, j) = (halfHeightInt - floorFromY - j) * oneOvervFov + yaw;
                 }
 
                 int rem = (floorToY - floorFromY) % Vector<int>.Count;
@@ -347,8 +346,7 @@ namespace RenderingEngine.Engine
                 // from start of wall (buttom) to screen buttom
                 while (!Unsafe.AreSame(ref fromScalePtr, ref toScalePtr))
                 {
-                    Vector<float> yMapPosR = yfloorV /
-                        (incramentVector + yawV);
+                    Vector<float> yMapPosR = yfloorV / incramentVector;
                     Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                     (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
