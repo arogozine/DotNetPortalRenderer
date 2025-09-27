@@ -3,6 +3,7 @@ using RenderingEngine.TextureManagement;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -79,6 +80,8 @@ namespace RenderingEngine.Engine
             }
         }
 
+        int depth = 1;
+
         public void DrawScreen(Span<BGRA> screen, PortalPlayerSnapshot player)
         {
             TextureInfo wallTexture = TextureLoader.GetTexture(TextureName.Rock, true);
@@ -91,15 +94,12 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors = Sectors;
 
             RenderWindowHelper.NewRender();
-            Span<(int top, int bottom)> portalTopBottom = RenderWindowHelper.Portal;
 
             Queue<NeighborsToRender> sectorRenderQueue = [];
             sectorRenderQueue.Enqueue(new NeighborsToRender
             {
                 SectorId = player.Sector
             });
-
-            List<Wall> wallsRendered = [];
 
             do
             {
@@ -110,156 +110,223 @@ namespace RenderingEngine.Engine
                 float yceil = sector.Ceil - pz;
                 float yfloor = sector.Floor - pz;
 
-                if (sectorInfo.Wall is not null)
-                {
-                    wallsRendered.Add(sectorInfo.Wall);
-                }
+                // DebugPortal(screen, RenderWindowHelper.RenderWindow);
 
                 Span<Wall> walls = WallHelper.DetermineWallsToRender(sector,
-                    wallsRendered,
-                    pSin, pCos, px, py, yceil, yfloor, yaw);
+                    sectorInfo.ParentWalls, pSin, pCos, px, py, yceil, yfloor, yaw);
 
-                List<Wall> neighbors = RenderSector(player, sector, sectors, sectorInfo, walls, screen, wallTexture, portalTopBottom);
+                List<RenderableWall> neighbors = RenderSector(player, sector, sectors, sectorInfo, walls, screen, wallTexture);
 
-                foreach (Wall neighbor in neighbors)
+                foreach (RenderableWall renderableWall in neighbors)
                 {
-                    sectorRenderQueue.Enqueue(new NeighborsToRender {
-                        SectorId = neighbor.Neighbor, Wall = neighbor
-                    });
+                    Wall neighbor = renderableWall.Wall;
+
+                    var fsdf = new NeighborsToRender
+                    {
+                        SectorId = neighbor.Neighbor,
+                        RenderableWall = renderableWall,
+                        ParentWalls =  { neighbor }
+                    };
+                    fsdf.ParentWalls.AddRange(sectorInfo.ParentWalls);
+
+                    sectorRenderQueue.Enqueue(fsdf);
                 }
+
+                if (depth++ == 30)
+                {
+                    break;
+                }
+
             }
             while (sectorRenderQueue.Count > 0);
+
+
+            depth = 0;
+
         }
 
-        private List<Wall> RenderSector(
+        private List<RenderableWall> RenderSector(
             PortalPlayerSnapshot player,
             Sector sector,
             ReadOnlySpan<Sector> sectors,
             NeighborsToRender sectorInfo,
             Span<Wall> walls,
             Span<BGRA> screen,
-            TextureInfo wallTexture,
-            Span<(int top, int bottom)> portalTopBottom)
+            TextureInfo wallTexture)
         {
             GenerateDistanceCache(player, sector);
-
-            List<Wall> neightbors = [];
-
             RenderWindowHelper.NewSector(sectorInfo);
+
+            List<RenderableWall> neightbors = [];
+
+            TextureInfo groundTexture = TextureLoader.GetTexture(TextureName.CaveGround, false);
+            TextureInfo ceilingTexture = TextureLoader.GetTexture(TextureName.CeilingOffice, false);
+
+            List<RenderableWall> renderableWalls = [];
 
             for (int s = 0; s < walls.Length; s++)
             {
                 Wall wall = walls[s];
 
-                bool wallDrawn = wall.Neighbor == EngineConstants.NullSector ?
-                    DrawBasicWall(screen, wallTexture, wall) :
-                    DrawPortalWall(sector, sectors, screen, wallTexture, portalTopBottom, wall);
-
-                if (wallDrawn && wall.Neighbor != EngineConstants.NullSector)
-                {
-                    neightbors.Add(wall);
-                }
+                CalculateRenderWindow(wall, renderableWalls);
             }
-
-            TextureInfo groundTexture = TextureLoader.GetTexture(TextureName.CaveGround, false);
-            TextureInfo ceilingTexture = TextureLoader.GetTexture(TextureName.CeilingOffice, false);
 
             if (Vector.IsHardwareAccelerated)
             {
-                RenderFloorVector(player, sector, screen, groundTexture);
-                RenderCeilingVector(player, sector, screen, ceilingTexture);
+                RenderFloorVector2(player, sector, screen, groundTexture);
+                RenderCeilingVector2(player, sector, screen, ceilingTexture);
             }
-            else
+
+            for (int s = 0; s < renderableWalls.Count; s++)
             {
-                RenderFloor(player, sector, screen, groundTexture);
-                RenderCeiling(player, sector, screen, ceilingTexture);
+                RenderableWall renderableWall = renderableWalls[s];
+                Wall wall = renderableWall.Wall;
+
+                bool wallDrawn = wall.Neighbor == EngineConstants.NullSector ?
+                    DrawBasicWall(screen, wallTexture, renderableWall) :
+                    DrawPortalWall(sector, sectors, screen, wallTexture, renderableWall);
+
+                if (wallDrawn && wall.Neighbor != EngineConstants.NullSector)
+                {
+                    neightbors.Add(renderableWall);
+                }
             }
 
             return neightbors;
         }
 
-        private void DebugStuffs(
+        private void DebugPortal(
             Span<BGRA> screen,
-            Span<(int top, int bottom)> renderedArea)
+            Span<RenderWindow> renderedArea)
         {
             int height = PixelWidth;
 
             for (int x = 0; x < PixelWidth; x++)
             {
-                (int renderedFrom, int renderedTo) = renderedArea[x];
+                ref RenderWindow rendered = ref renderedArea[x];
 
-                if (renderedFrom != -1)
-                {
-                    screen[renderedFrom * height + x] = BGRA.Red;
+                /*
+                if (!rendered.Calculated)
+                    continue;
+                */
+                Render(screen, rendered.CeilingStart, x, BGRA.Red);
+                Render(screen, rendered.FloorEnd, x, BGRA.Blue);
+                Render(screen, rendered.WallStart, x, BGRA.Green);
+                Render(screen, rendered.WallEnd, x, BGRA.Yellow);
 
-                    if (renderedFrom != PixelHeight - 1)
-                    {
-                        screen[(renderedFrom + 1) * height + x] = BGRA.Red;
-                    }
-                }
-
-                if (renderedTo != -1)
-                {
-                    screen[renderedTo * height + x] = BGRA.Blue;
-
-                    if (renderedTo != 0)
-                    {
-                        screen[(renderedTo - 1) * height + x] = BGRA.Blue;
-                    }
-                }
             }
-        }
 
-        private void DebugStuffs2(
-            Span<BGRA> screen,
-            Span<(int top, int bottom)> renderedArea)
-        {
-            int height = PixelWidth;
-
-            for (int x = 0; x < PixelWidth; x++)
+            void Render(Span<BGRA> screen, int y, int x, BGRA color)
             {
-                (int renderedFrom, int renderedTo) = renderedArea[x];
-
-                if (renderedFrom != -1)
+                if (y != PixelHeight - 1)
                 {
-                    screen[renderedFrom * height + x] = BGRA.Black;
+                    screen[(y + 1) * height + x] = color;
 
-
-                    if (renderedFrom != PixelHeight - 1)
-                    {
-                        screen[(renderedFrom + 1) * height + x] = BGRA.Black;
-                    }
                 }
 
-                if (renderedTo != -1)
-                {
-                    screen[renderedTo * height + x] = BGRA.White;
+                screen[y * height + x] = color;
 
-                    if (renderedTo != 0)
-                    {
-                        screen[(renderedTo - 1) * height + x] = BGRA.White;
-                    }
+                if (y != 0)
+                {
+                    screen[(y - 1) * height + x] = color;
                 }
             }
         }
+
+        private void CalculateRenderWindow(Wall wall, List<RenderableWall> renderableWalls)
+        {
+            Span<RenderWindow> renderedArea = RenderWindowHelper.RenderWindow;
+
+            if (!RenderWindowHelper.SetWallToRender3(wall))
+            {
+                return;
+            }
+
+            (int offset, int wallFromX, int wallToX) = RenderWindowHelper.GetWallRenderWindowX();
+
+            WallYPlaneInfo yPlaneInfo = WallHelper.CalculateLeftWallYPlaneInfo(wall, offset);
+            float wallStartY = yPlaneInfo.WallStartY;
+            float ceilDistIncr = yPlaneInfo.CeilDistIncr;
+            float wallEndY = yPlaneInfo.WallEndY;
+            float floorDistIncr = yPlaneInfo.FloorDistIncr;
+
+            if (wallToX <= wallFromX)
+            {
+                return;
+            }
+
+            int renderableFromX = wallFromX;
+            int renderableToX = wallToX;
+
+            for (int x = wallFromX; x < wallToX; x++)
+            {
+                int wallStartYInt = (int)wallStartY;
+                int wallEndYInt = (int)wallEndY;
+
+                ref RenderWindow renderedAreaX = ref renderedArea[x];
+
+                if (renderedAreaX.Calculated || wallStartY >= wallEndY || renderedAreaX.CeilingStart >= renderedAreaX.FloorEnd)
+                {
+
+                    if (x - 1 > renderableFromX)
+                    {
+                        offset = wallFromX > wall.XLeft ? wallFromX - wall.XLeft : 0;
+
+                        renderableWalls.Add(new RenderableWall
+                        {
+                            Wall = wall,
+                            XLeft = renderableFromX,
+                            XRight = x,
+                            Offset = offset
+                        });
+
+                        renderableFromX = x;
+                    }
+
+                    wallStartY += ceilDistIncr;
+                    wallEndY += floorDistIncr;
+                    continue;
+                }
+
+                renderedAreaX.Calculated = true;
+                renderedAreaX.WallStart = Math.Clamp(wallStartYInt, renderedAreaX.CeilingStart, renderedAreaX.FloorEnd);
+                renderedAreaX.WallEnd = Math.Clamp(wallEndYInt, renderedAreaX.CeilingStart, renderedAreaX.FloorEnd);
+
+                wallStartY += ceilDistIncr;
+                wallEndY += floorDistIncr;
+            }
+
+            if (renderableToX > renderableFromX)
+            {
+                offset = renderableFromX > wall.XLeft ? renderableFromX - wall.XLeft : 0;
+
+                renderableWalls.Add(new RenderableWall {
+                    Wall = wall,
+                    XLeft = renderableFromX,
+                    XRight = renderableToX,
+                    Offset = offset
+                });
+            }
+        }
+
 
         private bool DrawPortalWall(
             Sector sector,
             ReadOnlySpan<Sector> sectors,
             Span<BGRA> screen,
             TextureInfo wallTexture,
-            Span<(int top, int bottom)> portalTopBottom,
-            Wall wall)
+            RenderableWall renderableWall)
         {
-            if (!RenderWindowHelper.SetWallToRender(wall))
-            {
-                return false;
-            }
+            int wallFromXOffset = renderableWall.Offset;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+
+            var wall = renderableWall.Wall;
+
+            WallYPlaneInfo yPlaneInfo = WallHelper.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
 
             bool wallDrawn = false;
 
-            (int wallFromXOffset, int wallFromX, int wallToX) = RenderWindowHelper.GetWallRenderWindowX();
-            WallYPlaneInfo yPlaneInfo = WallHelper.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
 
             // wall plane
             float wallStartY = yPlaneInfo.WallStartY;
@@ -300,19 +367,19 @@ namespace RenderingEngine.Engine
                 int wallStartYInt = (int)wallStartY;
                 int wallEndYInt = (int)wallEndY;
 
-                var result = RenderWindowHelper.TryGetRenderableDimensionsForX(x, wallStartYInt, wallEndYInt);
+                var result = RenderWindowHelper.TryGetRenderableDimensionsForX2(x, wallStartYInt, wallEndYInt);
 
-                if (!result.CanRender)
+                if (!result.Calculated)
                 {
                     wallStartY += ceilDistIncr;
                     wallEndY += floorDistIncr;
                     continue;
                 }
 
-                int portalFromY = result.PortalFromY;
-                int portalToY = result.PortalToY;
-                int clamptedFromY = result.ClampedFromY;
-                int clamptedToY = result.ClampedToY;
+                int portalFromY = result.CeilingStart; // wallStartYInt; // result.WallStart;
+                int portalToY = result.FloorEnd;// wallEndYInt; //result.WallEnd;
+                int clamptedFromY = Math.Max(result.WallStart, wallStartYInt);
+                int clamptedToY = Math.Min(result.WallEnd, wallEndYInt);
 
                 float denominator = cameraRay * d2y - d2x;
                 float fromToYDist = t1 / denominator;
@@ -348,7 +415,7 @@ namespace RenderingEngine.Engine
                     uint shaded = default;
                     int textureXPosIOld = -1;
 
-                    for (int y = clamptedFromY; y <= portalFromY; ++y)
+                    for (int y = clamptedFromY; y < portalFromY; ++y)
                     {
                         int textureXPosI = (int)textureXPos;
 
@@ -370,7 +437,7 @@ namespace RenderingEngine.Engine
                     shaded = default;
                     textureXPosIOld = -1;
 
-                    for (int y = portalToY; y <= clamptedToY; ++y)
+                    for (int y = portalToY; y < clamptedToY; ++y)
                     {
                         int textureXPosI = (int)textureXPos;
 
@@ -387,13 +454,24 @@ namespace RenderingEngine.Engine
                     }
                 }
 
-                // portal is between wall and ceiling
-                portalTopBottom[x] = (portalFromY, portalToY);
+                    ref var meh = ref RenderWindowHelper.RenderWindow[x];
+
+                wallDrawn = true;// meh.CeilingStart != portalFromY || meh.FloorEnd != portalToY || meh.WallStart != portalFromY || meh.WallEnd != portalToY;
+
+                meh.Calculated = false;
+                meh.CeilingStart = portalFromY;
+                meh.FloorEnd = portalToY;
+                meh.WallStart = portalFromY;
+                meh.WallEnd = portalToY;
 
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;
-                wallDrawn = true;
             }
+
+            renderableWall.XLeft = wallFromX;
+            renderableWall.XRight = wallToX;
+            // wall.XLeft = wallFromX;
+            // wall.XRight = wallToX;
 
             return wallDrawn;
         }
@@ -401,15 +479,17 @@ namespace RenderingEngine.Engine
         private bool DrawBasicWall(
             Span<BGRA> screen,
             TextureInfo wallTexture,
-            Wall wall)
+            RenderableWall renderableWall)
         {
-            if (!RenderWindowHelper.SetWallToRender(wall))
-            {
-                return false;
-            }
+            int wallFromXOffset = renderableWall.Offset;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
 
-            (int wallFromXOffset, int wallFromX, int wallToX) = RenderWindowHelper.GetWallRenderWindowX();
-            WallYPlaneInfo yPlaneInfo = WallHelper.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
+
+
+            WallYPlaneInfo yPlaneInfo = WallHelper.CalculateLeftWallYPlaneInfo(renderableWall.Wall, wallFromXOffset);
+
+            var wall = renderableWall.Wall;
 
             float wallStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
@@ -438,17 +518,17 @@ namespace RenderingEngine.Engine
                 int wallStartYInt = (int)wallStartY;
                 int wallEndYInt = (int)wallEndY;
 
-                var result = RenderWindowHelper.TryGetRenderableDimensionsForX(x, wallStartYInt, wallEndYInt);
+                var result = RenderWindowHelper.TryGetRenderableDimensionsForX2(x, wallStartYInt, wallEndYInt);
 
-                if (!result.CanRender)
+                if (!result.Calculated)
                 {
                     wallStartY += ceilDistIncr;
                     wallEndY += floorDistIncr;
                     continue;
                 }
 
-                int clamptedFromY = result.ClampedFromY;
-                int clamptedToY = result.ClampedToY;
+                int clamptedFromY = result.WallStart;
+                int clamptedToY = result.WallEnd;
 
                 float denominator = cameraRay * d2y - d2x;
                 float fromToYDist = t1 / denominator;
@@ -485,9 +565,20 @@ namespace RenderingEngine.Engine
                     textureXPos += textureXIncr;
                 }
 
+                ref var meh = ref RenderWindowHelper.RenderWindow[x];
+                meh.WallEnd = meh.WallStart;
+                meh.FloorEnd = meh.WallStart;
+                meh.Calculated = false;
+
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;
             }
+
+
+            renderableWall.XLeft = wallFromX;
+            renderableWall.XRight = wallToX;
+            // wall.XLeft = wallFromX;
+            // wall.XRight = wallToX;
 
             return true;
         }

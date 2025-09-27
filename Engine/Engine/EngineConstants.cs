@@ -9,7 +9,7 @@
 
         public const int MaxSectorRenderQueue = 32;
         public const float CameraPlaneX = 0.66f;
-        public const float LightFallOffDistance = 256f;
+        public const float LightFallOffDistance = 32f;
         public const float OneOverLightFallOffDistance = 1f / LightFallOffDistance;
     }
 }

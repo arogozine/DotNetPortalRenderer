@@ -35,6 +35,7 @@ namespace RenderingEngine
                 .ContinueWith((Task t) =>
                 {
                     Debug.WriteLine(t.Exception);
+                    Debugger.Break();
                 }, TaskContinuationOptions.OnlyOnFaulted);
 
             void TaskBody() 

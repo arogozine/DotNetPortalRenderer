@@ -39,33 +39,15 @@ namespace RenderingEngine.Engine
 
             for (int x = 0; x < PixelWidth; x++)
             {
-                var info = RenderWindowHelper.GetFloorCeilDimensions(x);
+                var info = RenderWindowHelper.GetFloorCeilDimensions2(x);
 
-                if (!info.CanRender)
+                if (!info.Calculated || info.CeilingStart >= info.WallStart)
                 {
                     continue;
                 }
 
-                int renderedFrom = info.RenderedFromY;
-                int portalFrom = info.PortalFromY;
-                int portalTo = info.PortalToY;
-
-                int floorFromY = 0, floorToY = renderedFrom;
-
-                if (portalTo != -1)
-                {
-                    floorToY = Math.Min(portalTo, floorToY);
-                }
-
-                if (portalFrom != -1)
-                {
-                    floorFromY = Math.Max(floorFromY, portalFrom);
-                }
-                
-                if (floorFromY == floorToY)
-                {
-                    continue;
-                }
+                int floorFromY = info.CeilingStart;
+                int floorToY = info.WallStart;
 
                 int screenIndex = floorFromY * width + x;
 
@@ -97,7 +79,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private void RenderCeilingVector(
+        private void RenderCeilingVector2(
             PortalPlayerSnapshot player,
             Sector sector,
             Span<BGRA> screen,
@@ -138,23 +120,15 @@ namespace RenderingEngine.Engine
 
             for (int x = 0; x < PixelWidth; x++)
             {
-                var info = RenderWindowHelper.GetFloorCeilDimensions(x);
+                var info = RenderWindowHelper.GetFloorCeilDimensions2(x);
 
-                if (!info.CanRender)
+                if (!info.Calculated || info.CeilingStart >= info.WallStart)
                 {
                     continue;
                 }
 
-                int portalFrom = info.PortalFromY;
-                int renderedFrom = info.RenderedFromY;
-
-                int floorFromY = Math.Max(0, portalFrom);
-                int floorToY = Math.Min(Math.Min(widthDiv2, renderedFrom), halfHeightInt);
-
-                if (floorFromY >= floorToY)
-                {
-                    continue;
-                }
+                int floorFromY = info.CeilingStart;
+                int floorToY = info.WallStart;
 
                 int screenIndex = floorFromY * width + x;
 
@@ -228,8 +202,13 @@ namespace RenderingEngine.Engine
 
                     ii -= oneOvervFov; // --;
                 }
+
+                ref var meh = ref RenderWindowHelper.RenderWindow[x];
+                meh.CeilingStart = meh.WallStart;
+
             }
         }
+
 
         public void RenderFloor(
             PortalPlayerSnapshot player,
@@ -259,40 +238,22 @@ namespace RenderingEngine.Engine
 
             for (int x = 0; x < PixelWidth; x++)
             {
-                var info = RenderWindowHelper.GetFloorCeilDimensions(x);
+                var info = RenderWindowHelper.GetFloorCeilDimensions2(x);
 
-                if (!info.CanRender)
+                if (!info.Calculated || info.CeilingStart >= info.FloorEnd || info.WallEnd >= info.FloorEnd)
                 {
                     continue;
                 }
 
-                int renderedTo = info.RenderedToY;
-                int portalFrom = info.PortalFromY;
-                int portalTo = info.PortalToY;
+                int floorFromY = info.WallEnd;
+                int floorToY = info.FloorEnd;
 
-                int floorToY = height;
-
-                if (portalTo != EngineConstants.Unset)
-                {
-                    floorToY = Math.Min(portalTo, floorToY);
-                }
-
-                if (portalFrom != EngineConstants.Unset)
-                {
-                    renderedTo = Math.Max(renderedTo, portalFrom);
-                }
-
-                if (renderedTo == floorToY)
-                {
-                    continue;
-                }
-
-                int screenIndex = renderedTo * width + x;
+                int screenIndex = floorFromY * width + x;
                 float xMapPosMultiplier = (width / 2 - x) * idkWhatThisIs;
-                int increment = halfHeightInt - renderedTo;
+                int increment = halfHeightInt - floorFromY;
 
                 // from start of wall (buttom) to screen buttom
-                for (int i = renderedTo; i < floorToY; i++, screenIndex += width)
+                for (int i = floorFromY; i < floorToY; i++, screenIndex += width)
                 {
                     float yMapPosR = yfloor / (increment * oneOvervFov + yaw);
                     float xMapPosR = yMapPosR * xMapPosMultiplier;
@@ -315,7 +276,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public void RenderFloorVector(
+        public void RenderFloorVector2(
             PortalPlayerSnapshot player,
             Sector sector,
             Span<BGRA> screen,
@@ -353,24 +314,15 @@ namespace RenderingEngine.Engine
 
             for (int x = 0; x < PixelWidth; x++)
             {
-                var info = RenderWindowHelper.GetFloorCeilDimensions(x);
+                var info = RenderWindowHelper.GetFloorCeilDimensions2(x);
 
-                if (!info.CanRender)
+                if (!info.Calculated || info.CeilingStart >= info.FloorEnd || info.WallEnd >= info.FloorEnd)
                 {
                     continue;
                 }
 
-                int renderedTo = info.RenderedToY;
-                int portalFrom = info.PortalFromY;
-                int portalTo = info.PortalToY;
-
-                int floorFromY = Math.Max(renderedTo, portalFrom);
-                int floorToY = Math.Min(portalTo, height);
-
-                if (floorFromY >= floorToY)
-                {
-                    continue;
-                }
+                int floorFromY = info.WallEnd;
+                int floorToY = info.FloorEnd;
 
                 int screenIndex = floorFromY * width + x;
                 float xMapPosMultiplier = (width / 2 - x) * idkWhatThisIs;
@@ -449,9 +401,11 @@ namespace RenderingEngine.Engine
 
                     increment -= 1;
                 }
+
+                ref var meh = ref RenderWindowHelper.RenderWindow[x];
+                meh.FloorEnd = meh.WallEnd;
             }
         }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static (Vector<float> rx1, Vector<float> ry1) RotateVertexBack(
             Vector<float> x, Vector<float> y,

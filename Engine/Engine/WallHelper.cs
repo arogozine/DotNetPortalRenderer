@@ -351,7 +351,7 @@ namespace RenderingEngine.Engine
                 FilterParentPortalWall(ref walls, parentSectorWall);
             }
 
-            if (walls.IsEmpty)
+            if (walls.Length <= 1)
             {
                 return;
             }
