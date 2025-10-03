@@ -1,16 +1,18 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.TextureManagement;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        private static readonly Vector<float> sixtyFourF = Vector.Create(64f);
+        private static readonly Vector<int> sixtyThree = Vector.Create(
+            0b111111 // 63
+        );
         private static readonly Vector<int> sixtyFour = Vector.Create(64);
 
+        [SkipLocalsInit]
         private void RenderCeiling(
             PortalPlayerSnapshot player,
             Sector sector,
@@ -37,9 +39,11 @@ namespace RenderingEngine.Engine
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
             ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
-            for (int x = 0; x < PixelWidth; x++)
+            (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
+            for (int x = sectroFromX; x < sectorToX; x++)
             {
-                var info = RenderWindowHelper.GetFloorCeilDimensions2(x);
+                var info = RenderWindowHelper.GetCeilingDimensions(x);
 
                 if (!info.Calculated || info.CeilingStart >= info.WallStart)
                 {
@@ -82,6 +86,7 @@ namespace RenderingEngine.Engine
             }
         }
 
+        [SkipLocalsInit]
         private void RenderCeilingVector(
             PortalPlayerSnapshot player,
             Sector sector,
@@ -121,9 +126,11 @@ namespace RenderingEngine.Engine
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
             ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
-            for (int x = 0; x < PixelWidth; x++)
+            (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
+            for (int x = sectroFromX; x <= sectorToX; x++)
             {
-                var info = RenderWindowHelper.GetFloorCeilDimensions2(x);
+                var info = RenderWindowHelper.GetCeilingDimensions(x);
 
                 if (!info.Calculated || info.CeilingStart >= info.WallStart)
                 {
@@ -158,12 +165,9 @@ namespace RenderingEngine.Engine
 
                     (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
-                    Vector<float> xf = Vector.Abs(xMapPos - Vector.Truncate(xMapPos));
-                    Vector<float> yf = Vector.Abs(yMapPos - Vector.Truncate(yMapPos));
-
-                    Vector<int> _y1 = Vector.ConvertToInt32Native(yf * sixtyFourF);
-                    Vector<int> _x1 = Vector.ConvertToInt32Native(xf * sixtyFourF);
-                    Vector<int> textureIndex = _y1 * sixtyFour + _x1; // Vector.ShiftLeft(_y1, 6) + _x1;
+                    Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos) & sixtyThree;
+                    Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos) & sixtyThree;
+                    Vector<int> textureIndex = _y1 * sixtyFour + _x1;
 
                     ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
 
@@ -191,11 +195,8 @@ namespace RenderingEngine.Engine
 
                     (float xMapPos, float yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
 
-                    float xf = MathF.Abs(xMapPos - MathF.Truncate(xMapPos));
-                    float yf = MathF.Abs(yMapPos - MathF.Truncate(yMapPos));
-
-                    int _y1 = (int)(yf * 64f);
-                    int _x1 = (int)(xf * 64f);
+                    int _y1 = (int)(yMapPos) & 63;
+                    int _x1 = (int)(xMapPos) & 63;
                     int textureIndex = (_y1 << 6) + _x1;
 
                     ref BGRA tex = ref Unsafe.Add(ref ceilingTexturePtr, textureIndex);
@@ -210,7 +211,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-
+        [SkipLocalsInit]
         public void RenderFloor(
             PortalPlayerSnapshot player,
             Sector sector,
@@ -237,7 +238,9 @@ namespace RenderingEngine.Engine
 
             const float sixtyFourF = 64f;
 
-            for (int x = 0; x < PixelWidth; x++)
+            (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
+            for (int x = sectroFromX; x < sectorToX; x++)
             {
                 var info = RenderWindowHelper.GetFloorCeilDimensions2(x);
 
@@ -275,11 +278,12 @@ namespace RenderingEngine.Engine
                     increment -= 1;
                 }
 
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
-                renderWindow.FloorEnd = renderWindow.WallEnd;
+                            ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+            renderWindow.FloorEnd = renderWindow.WallEnd;
             }
         }
 
+        [SkipLocalsInit]
         public void RenderFloorVector(
             PortalPlayerSnapshot player,
             Sector sector,
@@ -316,7 +320,9 @@ namespace RenderingEngine.Engine
             Vector<float> incramentVector = default;
             ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
-            for (int x = 0; x < PixelWidth; x++)
+            (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
+            for (int x = sectroFromX; x <= sectorToX; x++)
             {
                 var info = RenderWindowHelper.GetFloorCeilDimensions2(x);
 
@@ -351,12 +357,9 @@ namespace RenderingEngine.Engine
 
                     (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
-                    Vector<float> xf = Vector.Abs(xMapPos - Vector.Truncate(xMapPos));
-                    Vector<float> yf = Vector.Abs(yMapPos - Vector.Truncate(yMapPos));
-
-                    Vector<int> _y1 = Vector.ConvertToInt32Native(yf * sixtyFourF);
-                    Vector<int> _x1 = Vector.ConvertToInt32Native(xf * sixtyFourF);
-                    Vector<int> textureIndex = _y1 * sixtyFour + _x1; // Vector.ShiftLeft(_y1, 6) + _x1;
+                    Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos) & sixtyThree;
+                    Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos) & sixtyThree;
+                    Vector<int> textureIndex = _y1 * sixtyFour + _x1;
 
                     ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
 
@@ -389,11 +392,8 @@ namespace RenderingEngine.Engine
 
                     (float xMapPos, float yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
 
-                    float xf = MathF.Abs(xMapPos - MathF.Truncate(xMapPos));
-                    float yf = MathF.Abs(yMapPos - MathF.Truncate(yMapPos));
-
-                    int _y1 = (int)(yf * 64f);
-                    int _x1 = (int)(xf * 64f);
+                    int _y1 = (int)(yMapPos) & 63;
+                    int _x1 = (int)(xMapPos) & 63;
                     int textureIndex = (_y1 << 6) + _x1;
 
                     ref BGRA tex = ref Unsafe.Add(ref floorTexturePtr, textureIndex);
@@ -407,6 +407,7 @@ namespace RenderingEngine.Engine
                 renderWindow.FloorEnd = renderWindow.WallEnd;
             }
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static (Vector<float> rx1, Vector<float> ry1) RotateVertexBack(
             Vector<float> x, Vector<float> y,

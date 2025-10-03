@@ -69,7 +69,7 @@ namespace RenderingEngine.Engine
 
             for (int i = 0; i < walls.Length; i++)
             {
-                ref Wall wall = ref walls[i];
+                Wall wall = walls[i];
 
                 float pointA_X = wall.X1;
                 float pointA_Y = wall.Y1;

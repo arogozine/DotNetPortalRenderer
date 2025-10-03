@@ -1,7 +1,9 @@
 ﻿namespace RenderingEngine.Models
 {
+    using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
 
+    [SkipLocalsInit]
     [StructLayout(LayoutKind.Explicit)]
     public readonly struct BGRA
     {

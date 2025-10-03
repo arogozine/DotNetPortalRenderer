@@ -46,8 +46,8 @@ namespace RenderingEngine
 
         private void OnKey(Key key)
         {
-            const float moveSpeed = 0.05f;
-            const float rotSpeed = 0.04f;
+            const float moveSpeed = 0.5f;
+            const float rotSpeed = 0.08f;
 
             switch (key)
             {

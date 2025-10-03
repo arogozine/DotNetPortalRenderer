@@ -1,9 +1,6 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.TextureManagement;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -26,6 +23,7 @@ namespace RenderingEngine.Engine
         private readonly float[] distanceCache;
         private readonly uint[] distanceMult;
         private readonly BGRA[] buffer;
+        private int? lastSectorDistanceCache = null;
 
         public PortalRenderer(int width, int height)
         {
@@ -33,16 +31,25 @@ namespace RenderingEngine.Engine
             PixelHeight = height;
             VFov = .3f * height;
             WallHelper = new WallHelper(width, height, EngineConstants.CameraPlaneX, VFov);
-            buffer = new BGRA[width * height];
+            buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             distanceCache = new float[height];
             distanceMult = new uint[height];
 
             RenderWindowHelper = new RenderWindowHelper(width, height);
         }
 
-        private void GenerateDistanceCache(PortalPlayerSnapshot player, Sector sector)
+        private void GenerateDistanceCache(PortalPlayerSnapshot player,
+                        NeighborsToRender sectorInfo,
+                        Sector sector)
         {
-            var distanceArray = distanceCache;
+            if (lastSectorDistanceCache == sectorInfo.SectorId)
+            {
+                return;
+            }
+
+            lastSectorDistanceCache = sectorInfo.SectorId;
+
+            float[] distanceArray = distanceCache;
 
             int height = PixelHeight;
             float vFov = VFov;
@@ -55,11 +62,11 @@ namespace RenderingEngine.Engine
             float yfloor = sector.Floor - pz;
             float yCeil = sector.Ceil - pz;
 
-            for (int i = halfHeightInt + 1; i < height; i++)
+            for (int i = 0; i < halfHeightInt; i++)
             {
                 int j = halfHeightInt - i;
 
-                float yMopPosR = yfloor / (j * oneOvervFov + yaw);
+                float yMopPosR = yCeil / (j * oneOvervFov + yaw);
                 float distance = yMopPosR + 1;
                 distanceArray[i] = distance;
 
@@ -67,11 +74,11 @@ namespace RenderingEngine.Engine
                 distanceMult[i] = (uint)(brightness * 255f);
             }
 
-            for (int i = 0; i < halfHeightInt; i++)
+            for (int i = halfHeightInt + 1; i < height; i++)
             {
                 int j = halfHeightInt - i;
 
-                float yMopPosR = yCeil / (j * oneOvervFov + yaw);
+                float yMopPosR = yfloor / (j * oneOvervFov + yaw);
                 float distance = yMopPosR + 1;
                 distanceArray[i] = distance;
 
@@ -127,7 +134,7 @@ namespace RenderingEngine.Engine
                     sectorRenderQueue.Enqueue(neighborToRender);
                 }
             }
-            while (sectorRenderQueue.Count > 0 || ++renderDepth >= EngineConstants.MaxPortalsRendered);
+            while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxPortalsRendered);
         }
 
         private List<RenderableWall> RenderSector(
@@ -138,10 +145,15 @@ namespace RenderingEngine.Engine
             Span<Wall> walls,
             Span<BGRA> screen)
         {
-            GenerateDistanceCache(player, sector);
-            RenderWindowHelper.NewSector(sectorInfo);
-
             List<RenderableWall> neightbors = [];
+
+            if (sector.Floor == sector.Ceil)
+            {
+                return neightbors;
+            }
+
+            GenerateDistanceCache(player, sectorInfo, sector);
+            RenderWindowHelper.NewSector(sectorInfo);
 
             TextureInfo wallTexture = TextureLoader.GetTexture(TextureName.Rock, true);
             TextureInfo groundTexture = TextureLoader.GetTexture(TextureName.CaveGround, false);
@@ -206,19 +218,23 @@ namespace RenderingEngine.Engine
 
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void Render(Span<BGRA> screen, int y, int x, BGRA color)
             {
-                if (y != PixelHeight - 1)
-                {
-                    screen[(y + 1) * height + x] = color;
-
-                }
-
-                screen[y * height + x] = color;
+                int index = (y - 1) * height + x;
 
                 if (y != 0)
                 {
-                    screen[(y - 1) * height + x] = color;
+                    screen[index] = color;
+                }
+
+                index += height;
+                screen[index] = color;
+                index += height;
+
+                if (y != PixelHeight - 1)
+                {
+                    screen[index] = color;
                 }
             }
         }
@@ -273,6 +289,7 @@ namespace RenderingEngine.Engine
                         renderableFromX = x;
                     }
 
+                    renderableFromX = x;
                     wallStartY += ceilDistIncr;
                     wallEndY += floorDistIncr;
                     continue;
@@ -298,7 +315,6 @@ namespace RenderingEngine.Engine
                 });
             }
         }
-
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ShadeByPrecalc(ref BGRA inColor, ref BGRA outColor, ref uint scale)

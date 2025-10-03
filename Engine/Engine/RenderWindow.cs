@@ -10,7 +10,7 @@
 
         public override readonly string ToString()
         {
-            return $"{Calculated}: {CeilingStart} {WallStart} {WallEnd} {FloorEnd}";
+            return $"C: {Calculated}, Ceil: {CeilingStart}, WallStart: {WallStart} WallEnd: {WallEnd}, FloorEnd: {FloorEnd}";
         }
 
     }

@@ -19,6 +19,7 @@ namespace RenderingEngine.Engine
             return Compare3(x, y);
         }
 
+        [SkipLocalsInit]
         private int Compare3(Wall x, Wall y)
         {
             // x = y are the same

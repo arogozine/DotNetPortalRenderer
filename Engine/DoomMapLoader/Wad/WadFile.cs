@@ -1,0 +1,25 @@
+﻿namespace RenderingEngine.DoomMapLoader.Wad
+{
+    internal sealed class WadFile
+    {
+        public WadType Type { get; set; }
+
+        public List<WadLump> Lumps { get; } = [];
+
+        public WadLump? this[string wadName]
+        {
+            get
+            {
+                foreach (WadLump wadLump in Lumps)
+                {
+                    if (wadLump.Name == wadName)
+                    {
+                        return wadLump;
+                    }
+                }
+
+                return default;
+            }
+        }
+    }
+}

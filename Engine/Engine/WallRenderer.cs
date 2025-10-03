@@ -1,6 +1,5 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.TextureManagement;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace RenderingEngine.Engine
@@ -21,8 +20,6 @@ namespace RenderingEngine.Engine
             var wall = renderableWall.Wall;
 
             WallYPlaneInfo yPlaneInfo = WallHelper.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
-
-            bool wallDrawn = false;
 
             // wall plane
             float wallStartY = yPlaneInfo.WallStartY;
@@ -60,9 +57,6 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                int wallStartYInt = (int)wallStartY;
-                int wallEndYInt = (int)wallEndY;
-
                 RenderWindow result = RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
 
                 if (!result.Calculated)
@@ -72,8 +66,10 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int portalFromY = result.CeilingStart; // wallStartYInt; // result.WallStart;
-                int portalToY = result.FloorEnd;// wallEndYInt; //result.WallEnd;
+                int wallStartYInt = (int)wallStartY;
+                int wallEndYInt = (int)wallEndY;
+                int portalFromY = result.CeilingStart;
+                int portalToY = result.FloorEnd;
                 int clamptedFromY = Math.Max(result.WallStart, wallStartYInt);
                 int clamptedToY = Math.Min(result.WallEnd, wallEndYInt);
 
@@ -102,7 +98,7 @@ namespace RenderingEngine.Engine
                     portalToY = Math.Min(toYN, clamptedToY);
 
                     float textureXIncr = 64f / (wallEndYInt - wallStartYInt);
-                    int textureYPos = (int)(distance * 64f) % 64;
+                    int textureYPos = (int)(distance) % 64;
 
                     ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * PixelWidth + x);
                     float textureXPos = textureXIncr * Math.Abs(wallStartYInt - clamptedFromY);
@@ -151,7 +147,6 @@ namespace RenderingEngine.Engine
                 }
 
                 ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
-                wallDrawn = true;// meh.CeilingStart != portalFromY || meh.FloorEnd != portalToY || meh.WallStart != portalFromY || meh.WallEnd != portalToY;
                 renderWindow.Calculated = false;
                 renderWindow.CeilingStart = portalFromY;
                 renderWindow.FloorEnd = portalToY;
@@ -162,12 +157,7 @@ namespace RenderingEngine.Engine
                 wallEndY += floorDistIncr;
             }
 
-            renderableWall.XLeft = wallFromX;
-            renderableWall.XRight = wallToX;
-            // wall.XLeft = wallFromX;
-            // wall.XRight = wallToX;
-
-            return wallDrawn;
+            return true;
         }
 
         private bool DrawBasicWall(
@@ -207,9 +197,6 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                int wallStartYInt = (int)wallStartY;
-                int wallEndYInt = (int)wallEndY;
-
                 RenderWindow result = RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
 
                 if (!result.Calculated)
@@ -218,6 +205,9 @@ namespace RenderingEngine.Engine
                     wallEndY += floorDistIncr;
                     continue;
                 }
+
+                int wallStartYInt = (int)wallStartY;
+                int wallEndYInt = (int)wallEndY;
 
                 int clamptedFromY = result.WallStart;
                 int clamptedToY = result.WallEnd;
@@ -233,7 +223,7 @@ namespace RenderingEngine.Engine
                 float brightness = 1f - EngineConstants.OneOverLightFallOffDistance * fromToYDist;
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * PixelWidth + x);
-                int textureYPos = (int)(distance * 64f) % 64;
+                int textureYPos = (int)(distance) % 64;
                 float textureXIncr = 64f / (wallEndYInt - wallStartYInt);
                 float textureXPos = textureXIncr * Math.Abs(wallStartYInt - clamptedFromY);
                 int textureYPosI = textureYPos << 6;
@@ -265,12 +255,6 @@ namespace RenderingEngine.Engine
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;
             }
-
-
-            renderableWall.XLeft = wallFromX;
-            renderableWall.XRight = wallToX;
-            // wall.XLeft = wallFromX;
-            // wall.XRight = wallToX;
 
             return true;
         }

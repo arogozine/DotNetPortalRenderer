@@ -1,6 +1,4 @@
 ﻿using RenderingEngine.Models;
-using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 
 namespace RenderingEngine.Engine
 {
@@ -44,12 +42,26 @@ namespace RenderingEngine.Engine
 
         public void NewSector(NeighborsToRender sectorInfo)
         {
-            (sectorFromX, sectorToX) = (sectorInfo.RenderableWall?.XLeft ?? 0, sectorInfo.RenderableWall?.XRight ?? width);
-
-            for (int i = sectorFromX; i < sectorToX; i++)
+            if (sectorInfo.RenderableWall is RenderableWall renderableWall)
             {
-                renderWindow[i].Calculated = false;
+                (sectorFromX, sectorToX) = (renderableWall.XLeft, renderableWall.XRight);
             }
+            else
+            {
+                (sectorFromX, sectorToX) = (0, width - 1);
+            }
+
+            for (int i = sectorFromX; i <= sectorToX; i++)
+            {
+                ref RenderWindow render = ref renderWindow[i];
+                render.Calculated = render.CeilingStart == render.FloorEnd;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public (int SectroFromX, int SectorToX) GetSectorX()
+        {
+            return (sectorFromX, sectorToX);
         }
 
         [MemberNotNull(nameof(wall))]
@@ -123,6 +135,7 @@ namespace RenderingEngine.Engine
             return wallFromX < wallToX;
         }
 
+        [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public (int offset, int WallFromX, int WallToX) GetWallRenderWindowX()
         {
@@ -133,32 +146,50 @@ namespace RenderingEngine.Engine
             return (wallFromXOffset, wallFromX, wallToX);
         }
 
+        private static readonly RenderWindow Default = default;
+
+        [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public RenderWindow TryGetRenderableDimensionsForX2(int x)
         {
             if (sectorFromX > x || x > sectorToX)
-                return default;
+                return Default;
 
             ref RenderWindow window = ref this.renderWindow[x];
 
             if (!window.Calculated || window.WallStart >= window.WallEnd)
-                return default;
+                return Default;
+
+            return window;
+        }
+
+        [SkipLocalsInit]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public RenderWindow GetFloorCeilDimensions2(int x)
+        {
+            if (sectorFromX > x || x > sectorToX)
+                return Default;
+
+            ref RenderWindow window = ref this.renderWindow[x];
+
+            if (!window.Calculated || window.WallStart >= window.WallEnd)
+                return Default;
 
             return window;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public RenderWindow GetFloorCeilDimensions2(int x)
+        public RenderWindow GetCeilingDimensions(int x)
         {
             if (sectorFromX > x || x > sectorToX)
-                return default;
+                return Default;
 
             ref RenderWindow window = ref this.renderWindow[x];
 
-            if (!window.Calculated)
-                return default;
+            if (!window.Calculated || window.CeilingStart >= window.WallEnd)
+                return Default;
 
-            return this.renderWindow[x];
+            return window;
         }
     }
 }

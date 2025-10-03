@@ -1,4 +1,5 @@
-﻿using RenderingEngine.Models;
+﻿using RenderingEngine.DoomMapLoader;
+using RenderingEngine.Models;
 using RenderingEngine.Models.Json;
 using System.Text.Json;
 
@@ -13,12 +14,13 @@ namespace RenderingEngine.MapGen
             return map;
         }
 
-        public static Map? LoadMap(string filePath, CancellationToken cancellationToken = default)
+        public static Map? LoadMap(string filePath)
         {
             using FileStream fileStream = File.OpenRead(filePath);
             Map? map = JsonSerializer.Deserialize(fileStream, MapJsonContext.Default.Map);
             return map;
         }
+
         private static void StripInvalidNeighbors(Map map)
         {
             int sectorCount = map.Sectors.Count;
@@ -156,9 +158,11 @@ namespace RenderingEngine.MapGen
 
         internal static (Player player, Sector[] sectors) LoadData()
         {
-            // var map = GenerateMap();
-            var map = LoadMap("C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\test.json")!;
+            var map = WadReader.ExtractDoomMap();
 
+            // var map = GenerateMap();
+            // var map = LoadMap("C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\test3.json")!;
+            // map.Sectors = map.Sectors.Where(x => x.SectorId == 0).ToList(); // || x.SectorId == 21 || x.SectorId == 25).ToList();
 
             StripInvalidNeighbors(map);
 
@@ -171,8 +175,9 @@ namespace RenderingEngine.MapGen
             Player player = new Player
             {
                 Angle = map.Player.Angle,
-                Sector = 4,
-                Where = (8.251516f, 26.0253067f, 8f)
+                Sector = 0, //10,
+                Where = (map.Player.XPosition, map.Player.YPosition, 4) //  (744/8f, -1013/8f, 8f)
+                //Where = (8.251516f, 26.0253067f, 8f)
                 // (1, 1, map.Player.ZPosition)
             };
 

@@ -1,0 +1,52 @@
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace RenderingEngine.DoomMapLoader.Udmf
+{
+    internal abstract class UdmfObject
+    {
+        public const string COMMENT = "comment";
+
+        private readonly Dictionary<string, string> properties = [];
+
+        [DisallowNull]
+        public string? this[string key] {
+            get {
+                properties.TryGetValue(key, out string? value);
+                return value;
+            }
+            set => properties[key] = value;
+        }
+
+        public string? Comment => this[COMMENT];
+
+        public ICollection<string> Keys => properties.Keys;
+
+        public ICollection<string> Values => properties.Values;
+
+        public void Add(string key, string value)
+        {
+            properties.Add(key, value);
+        }
+
+        public bool ContainsKey(string key) => properties.ContainsKey(key);
+
+        public string GetValue(string key) => properties[key];
+
+        public T? GetValue<T>(string key)
+            where T : struct, IParsable<T>
+        {
+            if (properties.TryGetValue(key, out string? strValue))
+            {
+                return T.Parse(strValue, null);
+            }
+
+            return default;
+        }
+
+        public T GetRequiredValue<T>(string key)
+            where T : struct, IParsable<T>
+        {
+            return T.Parse(properties[key], null);
+        }
+    }
+}

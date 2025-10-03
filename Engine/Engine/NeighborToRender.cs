@@ -14,6 +14,6 @@ namespace RenderingEngine.Engine
 
         public required int SectorId { get; init; }
         public RenderableWall? RenderableWall { get; init; }
-        public List<Wall> ParentWalls { get; set; } = [];
+        public List<Wall> ParentWalls { get; } = [];
     }
 }

@@ -10,6 +10,8 @@ namespace RenderingEngine.Engine
         private readonly int height;
         private readonly float cameraPlaneX;
         private readonly float vFov;
+        private readonly bool[] visibility;
+        private readonly WallComparer wallComparer;
 
         public WallHelper(
             int width,
@@ -20,6 +22,8 @@ namespace RenderingEngine.Engine
             this.height = height;
             this.cameraPlaneX = cameraPlaneX;
             this.vFov = vFov;
+            this.visibility = new bool[width];
+            wallComparer = new WallComparer(width);
         }
 
         public Span<Wall> DetermineWallsToRender(Sector sector,
@@ -38,7 +42,7 @@ namespace RenderingEngine.Engine
 
             Span<Wall> result = CullHiddenWallsAndCombineBunches(bunches, rotatedWalls, portalWallsToOcclude);
 
-            result.Sort(new WallComparer(width));
+            result.Sort(wallComparer);
 
             return result;
         }
@@ -346,9 +350,9 @@ namespace RenderingEngine.Engine
 
         public void CullWallsFromBunch(ref Span<Wall> walls, Span<Wall> parentPortalWallsToOcclude)
         {
-            foreach (Wall parentSectorWall in parentPortalWallsToOcclude)
+            for (int i = 0; i < parentPortalWallsToOcclude.Length; i++)
             {
-                FilterParentPortalWall(ref walls, parentSectorWall);
+                FilterParentPortalWall(ref walls, parentPortalWallsToOcclude[i]);
             }
 
             if (walls.Length <= 1)
@@ -356,7 +360,7 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            bool[] visibility = new bool[this.width];
+            bool[] visibility = this.visibility;
             visibility.AsSpan().Fill(true);
 
             int j = 0;

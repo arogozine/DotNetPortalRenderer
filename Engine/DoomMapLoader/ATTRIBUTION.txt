@@ -1,0 +1,12 @@
+THE UNOFFICIAL DOOM SPECS
+By Matthew S Fell
+https://www.gamers.org/dhs/helpdocs/dmsp1666.html
+
+Tools of Doom (GNU General Public License v3.0)
+By Ambroise Garel
+https://github.com/akaAgar/tools-of-doom/tree/master
+https://github.com/akaAgar/tools-of-doom/blob/master/LICENSE
+
+DoomStruct
+https://github.com/MTrop/DoomStruct
+https://github.com/MTrop/DoomStruct/blob/master/LICENSE.txt
