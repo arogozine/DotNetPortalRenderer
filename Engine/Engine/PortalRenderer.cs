@@ -29,7 +29,7 @@ namespace RenderingEngine.Engine
         {
             PixelWidth = width;
             PixelHeight = height;
-            VFov = .3f * height;
+            VFov = .7f * height;
             WallHelper = new WallHelper(width, height, EngineConstants.CameraPlaneX, VFov);
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             distanceCache = new float[height];

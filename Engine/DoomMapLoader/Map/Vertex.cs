@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-
-namespace RenderingEngine.DoomMapLoader.Map
+﻿namespace RenderingEngine.DoomMapLoader.Map
 {
     /// <summary>
     /// These are the beginning and end points for LINEDEFS and SEGS.

@@ -10,3 +10,6 @@ https://github.com/akaAgar/tools-of-doom/blob/master/LICENSE
 DoomStruct
 https://github.com/MTrop/DoomStruct
 https://github.com/MTrop/DoomStruct/blob/master/LICENSE.txt
+
+TextMap Specification
+https://github.com/rheit/zdoom/blob/master/specs/udmf.txt

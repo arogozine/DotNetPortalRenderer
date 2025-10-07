@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-
-namespace RenderingEngine.DoomMapLoader.Map
+﻿namespace RenderingEngine.DoomMapLoader.Map
 {
     [StructLayout(LayoutKind.Sequential)]
     public readonly struct Thing
@@ -11,7 +9,7 @@ namespace RenderingEngine.DoomMapLoader.Map
 
         public readonly short Angle;
 
-        public readonly short Type;
+        public readonly ThingType Type;
 
         public readonly ThingOptions Options;
 
@@ -20,7 +18,7 @@ namespace RenderingEngine.DoomMapLoader.Map
             X = x;
             Y = y;
             Angle = angle;
-            Type = type;
+            Type = (ThingType)type;
             Options = options;
         }
     }

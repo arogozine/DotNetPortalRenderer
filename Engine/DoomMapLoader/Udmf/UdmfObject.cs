@@ -1,6 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-
-namespace RenderingEngine.DoomMapLoader.Udmf
+﻿namespace RenderingEngine.DoomMapLoader.Udmf
 {
     internal abstract class UdmfObject
     {
@@ -17,20 +15,10 @@ namespace RenderingEngine.DoomMapLoader.Udmf
             set => properties[key] = value;
         }
 
-        public string? Comment => this[COMMENT];
-
-        public ICollection<string> Keys => properties.Keys;
-
-        public ICollection<string> Values => properties.Values;
-
         public void Add(string key, string value)
         {
             properties.Add(key, value);
         }
-
-        public bool ContainsKey(string key) => properties.ContainsKey(key);
-
-        public string GetValue(string key) => properties[key];
 
         public T? GetValue<T>(string key)
             where T : struct, IParsable<T>

@@ -1,9 +1,12 @@
 ﻿using RenderingEngine.DoomMapLoader.Map;
+using RenderingEngine.DoomMapLoader.Texture;
 using RenderingEngine.DoomMapLoader.Udmf;
 using RenderingEngine.DoomMapLoader.Wad;
+using RenderingEngine.Models;
 using RenderingEngine.Models.Json;
-using System.Runtime.InteropServices;
+using SkiaSharp;
 using System.Text;
+using Sector = RenderingEngine.DoomMapLoader.Map.Sector;
 
 namespace RenderingEngine.DoomMapLoader
 {
@@ -12,8 +15,9 @@ namespace RenderingEngine.DoomMapLoader
         public static Models.Json.Map ExtractDoomMap()
         {
             WadFile test = WadReader.LoadWad(
-
-                "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\testmap.wad"
+                "C:\\Users\\Alexa\\Downloads\\New folder\\doom2.wad"
+            //     "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\EISBERG.wad"
+            // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\testmap.wad"
             // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\doommap.wad"
             );
             var textMap = test["TEXTMAP"];
@@ -22,24 +26,117 @@ namespace RenderingEngine.DoomMapLoader
             {
                 return ExtractDoomMap(textMap);
             }
+            else
+            {
+                return ExtractDoomMap(test);
+            }
+        }
 
-            var vertexes = test["VERTEXES"];
+        public static unsafe Dictionary<string, BGRA[]> ExtractTextures(WadFile wad)
+        {
+            Dictionary<string, BGRA[]> textures = [];
+            Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
 
-            Span<Vertex> verticies = WadReader.ReadVertexes(vertexes);
-            Span<Sidedef> sideDefs = WadReader.ReadSideDefs(test["SIDEDEFS"]);
-            Span<Linedef> lineDefs = WadReader.ReadLineDefs(test["LINEDEFS"]);
-            Span<Sector> sectorDefs = WadReader.ReadSectors(test["SECTORS"]);
-            Span<Thing> things = WadReader.ReadThings(test["THINGS"]);
+            const int normalPalette = 0;
+            RGB[] palette = playPal[normalPalette];
+
+            for (int i = 0; i < wad.Lumps.Count; i++)
+            {
+                WadLump wadLump = wad.Lumps[i];
+
+                if (!wadLump.IsPatch || wadLump.Bytes.Length == 0)
+                {
+                    continue;
+                }
+
+                (PatchHeader header, Post[] posts) = WadLumpParser.ReadPatch(wadLump);
+                BGRA[] texture = new BGRA[header.Width * header.Height];
+
+                for (int x = header.LeftOffset; x < header.Width; x++)
+                {
+                    ref Post post = ref posts[x];
+
+                    int index = post.TopDelta * header.Width + x;
+
+                    for (int y = 0; y < post.Length; y++)
+                    {
+                        byte paletteIndex = post.Data[y];
+
+                        RGB color = palette[paletteIndex];
+                        texture[index] = new BGRA(color.B, color.G, color.R);
+
+                        index += header.Width;
+                    }
+                }
+
+                textures[wadLump.Name] = texture;
+            }
+
+            return textures;
+        }
+
+        public static unsafe Dictionary<string, BGRA[]> ExtractFloorTextures(WadFile wad)
+        {
+            Dictionary<int, byte[]> colorMaps = WadLumpParser.ReadColorMap(wad[LumpType.ColorMap]);
+            Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
+
+            const int brightestColormap = 0;
+            const int normalPalette = 0;
+            RGB[] palette = playPal[normalPalette];
+            byte[] colorMap = colorMaps[brightestColormap];
+
+            Dictionary<string, BGRA[]> flats = [];
+
+            // pallette 0 is used in most situations
+            // byte 0 will have the number of the palette color
+
+            for (int i = 0; i < wad.Lumps.Count; i++) {
+                WadLump wadLump = wad.Lumps[i];
+
+                if (!wadLump.IsFlat || wadLump.Bytes.Length == 0)
+                {
+                    continue;
+                }
+
+                ReadOnlySpan<byte> bytes = wadLump.Bytes;
+                BGRA[] texture = new BGRA[bytes.Length];
+
+                for (int c = 0; c < bytes.Length; c++)
+                {
+                    int colorMapIndex = bytes[c];
+                    int paletteIndex = colorMap[colorMapIndex];
+                    RGB color = palette[paletteIndex];
+                    texture[c] = new BGRA(color.B, color.G, color.R);
+                }
+
+                flats[wadLump.Name] = texture;
+            }
+
+            return flats;
+        }
+
+        public static Models.Json.Map ExtractDoomMap(WadFile wad)
+        {
+            Span<Vertex> verticies = WadLumpParser.ReadVertexes(wad[LumpType.Vertexes]);
+            Span<Sidedef> sideDefs = WadLumpParser.ReadSideDefs(wad[LumpType.SideDefs]);
+            Span<Linedef> lineDefs = WadLumpParser.ReadLineDefs(wad[LumpType.LineDefs]);
+            Span<Sector> sectorDefs = WadLumpParser.ReadSectors(wad[LumpType.Sectors]);
+            Span<Thing> things = WadLumpParser.ReadThings(wad[LumpType.Things]);
 
             Thing? player1Start = null;
             for (int i = 0; i < things.Length; i++)
             {
                 Thing thing = things[i];
 
-                if (thing.Type == (short)1)
+                if (thing.Type == ThingType.Player1Start)
                 {
                     player1Start = thing;
                 }
+            }
+
+            if (!player1Start.HasValue)
+            {
+                throw new ArgumentException("No Player 1 Start", nameof(wad));
             }
 
             var sectorToLinedefs = WadReader.GetSectorToLineDefs(lineDefs, sideDefs);
@@ -50,7 +147,7 @@ namespace RenderingEngine.DoomMapLoader
             {
                 Sector sector = sectorDefs[i];
 
-                if (!sectorToLinedefs.TryGetValue(i, out List <(int LineDefId, int ParentSectorId)>? lines))
+                if (!sectorToLinedefs.TryGetValue(i, out List<(int LineDefId, int ParentSectorId)>? lines))
                 {
                     continue;
                 }
@@ -94,10 +191,9 @@ namespace RenderingEngine.DoomMapLoader
             };
         }
 
-
         public static Models.Json.Map ExtractDoomMap(WadLump textLump)
         {
-            var map = ReadTextMap(textLump);
+            var map = WadLumpParser.ReadTextMap(textLump);
 
             ReadOnlySpan<UdmfSector> sectorDefs = CollectionsMarshal.AsSpan(map.Sectors);
             ReadOnlySpan<UdmfLinedef> lineDefs = CollectionsMarshal.AsSpan(map.Linedefs);
@@ -109,14 +205,18 @@ namespace RenderingEngine.DoomMapLoader
             {
                 UdmfThing thing = things[i];
 
-                if (thing.Type == (short)1)
+                if (thing.Type == (int)ThingType.Player1Start)
                 {
                     player1Start = thing;
                 }
             }
 
+            if (player1Start == null)
+            {
+                throw new ArgumentException("No Player 1 Start", nameof(textLump));
+            }
 
-            var sectorToLinedefs = GetSectorToLineDefs(map);
+            Dictionary<int, List<(int LineDefId, int ParentSectorId)>> sectorToLinedefs = GetSectorToLineDefs(map);
 
             var sectors = new List<MapSector>();
 
@@ -148,7 +248,6 @@ namespace RenderingEngine.DoomMapLoader
                         SectorTo = parentSectorId
                     };
 
-                    // Debug.WriteLine($"line: {lineId}, {linedef.Vertex1} {linedef.Vertex2} {parentSectorId}");
                     mapSector.Walls.Add(line);
                 }
 
@@ -207,7 +306,7 @@ namespace RenderingEngine.DoomMapLoader
 
             // Bytes 4-7 (int): lump count
             fs.ReadExactly(buffer4, 0, 4);
-            uint lumpCount = BitConverter.ToUInt32(buffer4);
+            int lumpCount = BitConverter.ToInt32(buffer4);
             if (lumpCount <= 0)
             {
                 throw new ArgumentException("Invalid Format", nameof(filePath));
@@ -220,6 +319,9 @@ namespace RenderingEngine.DoomMapLoader
             {
                 throw new ArgumentException("Invalid Format", nameof(filePath));
             }
+
+            bool isFlats = false;
+            bool isPatches = false;
 
             for (i = 0; i < lumpCount; i++)
             {
@@ -237,148 +339,36 @@ namespace RenderingEngine.DoomMapLoader
                 fs.ReadExactly(buffer8, 0, 8);
                 string lumpName = GetStringFromBytes(buffer8);
 
-                byte[] lumpbytes = new byte[lumpSize];
-                fs.Seek(lumpOffset, SeekOrigin.Begin);
-                fs.ReadExactly(lumpbytes, 0, (int)lumpSize);
+                switch (lumpName)
+                {
+                    case LumpType.PStart:
+                        isPatches = true;
+                        break;
+                    case LumpType.PEnd:
+                        isPatches = false;
+                        break;
+                    case LumpType.FStart:
+                        isFlats = true;
+                        break;
+                    case LumpType.FEnd:
+                        isFlats = false;
+                        break;
+                }
 
-                wadFile.Lumps.Add(new WadLump(lumpName, lumpbytes));
+                Debug.WriteLine(lumpName + " " + lumpSize + " " + lumpOffset + " " + (directoryOffset + 16 * i));
+
+                byte[] lumpbytes = new byte[lumpSize];
+
+                if (lumpSize != 0)
+                {
+                    fs.Seek(lumpOffset, SeekOrigin.Begin);
+                    fs.ReadExactly(lumpbytes, 0, (int)lumpSize);
+                }
+
+                wadFile.Lumps.Add(new WadLump(lumpName, lumpbytes, isFlats, isPatches));
             }
 
             return wadFile;
-        }
-
-        public static unsafe Span<Vertex> ReadVertexes(WadLump vertexLump)
-        {
-            if (vertexLump.Name != "VERTEXES")
-            {
-                throw new ArgumentException("Not a Vertex Lump", nameof(vertexLump));
-            }
-
-            Span<byte> bytes = vertexLump.Bytes;
-
-            if (bytes.Length % sizeof(Vertex) != 0)
-            {
-                throw new ArgumentException("Can't deserialize", nameof(vertexLump));
-            }
-
-            return MemoryMarshal.Cast<byte, Vertex>(bytes);
-        }
-
-        public static UdmfMapData ReadTextMap(WadLump textLump)
-        {
-            if (textLump.Name != "TEXTMAP")
-            {
-                throw new ArgumentException("Not a Text Map Lump", nameof(textLump));
-            }
-
-            string text = Encoding.ASCII.GetString(textLump.Bytes);
-
-            return UdmfParser.Parse(text);
-        }
-
-        public static unsafe Span<Sidedef> ReadSideDefs(WadLump vertexLump)
-        {
-            const int sideDefSize = 30;
-
-            if (vertexLump.Name != "SIDEDEFS")
-            {
-                throw new ArgumentException("Not a SideDef Lump", nameof(vertexLump));
-            }
-
-            Span<byte> bytes = vertexLump.Bytes;
-
-            if (bytes.Length % sideDefSize != 0)
-            {
-                throw new ArgumentException("Can't deserialize", nameof(vertexLump));
-            }
-
-            Span<Sidedef> sideDefs = new Sidedef[bytes.Length / sideDefSize];
-
-            for (int i = 0, s = 0; i < bytes.Length; i += sideDefSize, s++)
-            {
-                Span<byte> sideDefBytes = bytes.Slice(i, sideDefSize);
-
-                ushort xOffSet = MemoryMarshal.Read<ushort>(sideDefBytes[..2]);
-                ushort yOffSet = MemoryMarshal.Read<ushort>(sideDefBytes[2..4]);
-                string upper = GetStringFromBytes(sideDefBytes[4..12]);
-                string lower = GetStringFromBytes(sideDefBytes[12..20]);
-                string middle = GetStringFromBytes(sideDefBytes[20..28]);
-                ushort sector = MemoryMarshal.Read<ushort>(sideDefBytes[28..]);
-
-                sideDefs[s] = new Sidedef(xOffSet, yOffSet, upper, lower, middle, sector);
-            }
-
-            return sideDefs;
-        }
-
-        public static unsafe Span<Linedef> ReadLineDefs(WadLump lineDefLump)
-        {
-            if (lineDefLump.Name != "LINEDEFS")
-            {
-                throw new ArgumentException("Not a Vertex Lump", nameof(lineDefLump));
-            }
-
-            Span<byte> bytes = lineDefLump.Bytes;
-
-            if (bytes.Length % sizeof(Linedef) != 0)
-            {
-                throw new ArgumentException("Can't deserialize", nameof(lineDefLump));
-            }
-
-            return MemoryMarshal.Cast<byte, Linedef>(bytes);
-        }
-
-        public static Span<Sector> ReadSectors(WadLump sectorLump)
-        {
-            const int sectorSize = 26;
-
-            if (sectorLump.Name != "SECTORS")
-            {
-                throw new ArgumentException("Not a Vertex Lump", nameof(sectorLump));
-            }
-
-            Span<byte> bytes = sectorLump.Bytes;
-
-            if (bytes.Length % sectorSize != 0)
-            {
-                throw new ArgumentException("Can't deserialize", nameof(sectorLump));
-            }
-
-            Span<Sector> sideDefs = new Sector[bytes.Length / sectorSize];
-
-            for (int i = 0, s = 0; i < bytes.Length; i += sectorSize, s++)
-            {
-                Span<byte> sideDefBytes = bytes.Slice(i, sectorSize);
-
-                short floorHeight = MemoryMarshal.Read<short>(sideDefBytes[..2]);
-                short ceilingHeight = MemoryMarshal.Read<short>(sideDefBytes[2..4]);
-                string floorTexture = GetStringFromBytes(sideDefBytes[4..12]);
-                string ceilingTexture = GetStringFromBytes(sideDefBytes[12..20]);
-                short lightLevel = MemoryMarshal.Read<short>(sideDefBytes[20..22]);
-                short special = MemoryMarshal.Read<short>(sideDefBytes[22..24]);
-                short tag = MemoryMarshal.Read<short>(sideDefBytes[24..26]);
-
-                sideDefs[s] = new Sector(floorHeight, ceilingHeight, floorTexture, ceilingTexture, lightLevel, special, tag);
-            }
-
-            return sideDefs;
-        }
-
-        public unsafe static Span<Thing> ReadThings(WadLump thingsLump)
-        {
-            if (thingsLump.Name != "THINGS")
-            {
-                throw new ArgumentException("Not a Things Lump", nameof(thingsLump));
-            }
-
-            Span<byte> bytes = thingsLump.Bytes;
-
-            if (bytes.Length % sizeof(Thing) != 0)
-            {
-                throw new ArgumentException("Can't deserialize", nameof(thingsLump));
-            }
-
-            return MemoryMarshal.Cast<byte, Thing>(bytes);
         }
 
         public static Dictionary<int, List<(int LineDefId, int ParentSectorId)>> GetSectorToLineDefs(UdmfMapData textMap)
@@ -493,6 +483,29 @@ namespace RenderingEngine.DoomMapLoader
             }
 
             return Encoding.ASCII.GetString(asciiBytes);
+        }
+
+        private unsafe static void DebugTexture(int width, int height, Span<BGRA> texture, string textureName)
+        {
+            var info = new SKImageInfo(width, height)
+            {
+                AlphaType = SKAlphaType.Premul,
+                ColorType = SKColorType.Bgra8888,
+            };
+
+            fixed (BGRA* bgraPtr = &texture[0])
+            {
+                var image = SKImage.FromPixels(info, (nint)bgraPtr, info.RowBytes);
+
+                using var data = image.Encode(SKEncodedImageFormat.Png, 100); // 100 = max quality
+                string outputPath = Path.Combine(Directory.GetCurrentDirectory(), $"C:\\Users\\Alexa\\Downloads\\New folder\\{textureName}.PNG");
+                using (var stream = File.OpenWrite(outputPath))
+                {
+                    data.SaveTo(stream);
+                }
+
+                Console.WriteLine($"Image saved to {outputPath}");
+            }
         }
     }
 }
