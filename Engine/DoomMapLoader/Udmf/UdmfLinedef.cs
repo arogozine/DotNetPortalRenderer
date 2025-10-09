@@ -18,6 +18,8 @@
         public const string SIDEDEF_FRONT = "sidefront";
         public const string SIDEDEF_BACK = "sideback";
 
+        public int? Id => GetValue<int>(ID);
+
         public int V1 => GetRequiredValue<int>(VERTEX_START);
         public int V2 => GetRequiredValue<int>(VERTEX_END);
 

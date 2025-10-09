@@ -156,8 +156,8 @@ namespace RenderingEngine.Engine
             RenderWindowHelper.NewSector(sectorInfo);
 
             TextureInfo wallTexture = TextureLoader.GetTexture(TextureName.Rock, true);
-            TextureInfo groundTexture = TextureLoader.GetTexture(TextureName.CaveGround, false);
-            TextureInfo ceilingTexture = TextureLoader.GetTexture(TextureName.CeilingOffice, false);
+            // TextureInfo groundTexture = TextureLoader.GetTexture(TextureName.CaveGround, false);
+            // TextureInfo ceilingTexture = TextureLoader.GetTexture(TextureName.CeilingOffice, false);
 
             List<RenderableWall> renderableWalls = [];
 
@@ -167,6 +167,9 @@ namespace RenderingEngine.Engine
 
                 CalculateRenderWindow(wall, renderableWalls);
             }
+
+            TextureInfo groundTexture = TextureCache.GetTexture(sector.FloorTexture, false);
+            TextureInfo ceilingTexture = TextureCache.GetTexture(sector.FloorTexture, false);
 
             if (Vector.IsHardwareAccelerated)
             {

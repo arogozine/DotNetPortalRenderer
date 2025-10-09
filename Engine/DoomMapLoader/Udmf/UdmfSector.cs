@@ -10,7 +10,9 @@
         public const string SPECIAL = "special";
         public const string ID = "id";
 
-        public int? HeightFloor => GetValue<int>(HEIGHT_FLOOR);
-        public int? HeightCeiling => GetValue<int>(HEIGHT_CEILING);
+        public string TextureCeiling => properties[TEXTURE_CEILING];
+        public string TextureFloor => properties[TEXTURE_FLOOR];
+        public int HeightFloor => GetValue<int>(HEIGHT_FLOOR) ?? 0;
+        public int HeightCeiling => GetValue<int>(HEIGHT_CEILING) ?? 0;
     }
 }

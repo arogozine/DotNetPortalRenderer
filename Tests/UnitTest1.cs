@@ -1,6 +1,5 @@
 ﻿using RenderingEngine.Engine;
 using RenderingEngine.Models;
-using System.Security.AccessControl;
 
 namespace Tests
 {
@@ -9,7 +8,7 @@ namespace Tests
         [Fact]
         public void FilterOutWallsBehindPlayer_Works()
         {
-            Span<Wall> walls = [new Wall(1f, 1f, 2f, 2f, null)];
+            Span<Wall> walls = [new Wall(null!, 1f, 1f, 2f, 2f, null)];
 
             WallHelper.FilterOutWallsBehindPlayer(ref walls);
 
@@ -19,7 +18,7 @@ namespace Tests
         [Fact]
         public void BreakUpIntoBunches_SingleWall_Works()
         {
-            Span<Wall> walls = [new Wall(1f, 1f, 2f, 2f, null)];
+            Span<Wall> walls = [new Wall(null!, 1f, 1f, 2f, 2f, null)];
 
             Span<Range> bunches = WallHelper.BreakUpIntoBunches(walls);
 
@@ -36,15 +35,15 @@ namespace Tests
         {
             Span<Wall> walls = [
                 // Square A
-                new Wall(0f, 0f, 5f, 0f, null),
-                new Wall(5f, 0f, 5f, 5f, null),
-                new Wall(5f, 5f, 0f, 5f, null),
-                new Wall(0f, 5f, 0f, 0f, null),
+                new Wall(null!, 0f, 0f, 5f, 0f, null),
+                new Wall(null!, 5f, 0f, 5f, 5f, null),
+                new Wall(null!, 5f, 5f, 0f, 5f, null),
+                new Wall(null!, 0f, 5f, 0f, 0f, null),
                 // Square B
-                new Wall(1f, 1f, 2f, 1f, null),
-                new Wall(2f, 1f, 2f, 2f, null),
-                new Wall(2f, 2f, 1f, 2f, null),
-                new Wall(1f, 2f, 1f, 1f, null),
+                new Wall(null!, 1f, 1f, 2f, 1f, null),
+                new Wall(null!, 2f, 1f, 2f, 2f, null),
+                new Wall(null!, 2f, 2f, 1f, 2f, null),
+                new Wall(null!, 1f, 2f, 1f, 1f, null),
             ];
 
             Span<Range> bunches = WallHelper.BreakUpIntoBunches(walls);
@@ -70,19 +69,19 @@ namespace Tests
         {
             Span<Wall> walls = [
                 // Square A
-                new Wall(0f, 0f, 5f, 0f, null),
-                new Wall(5f, 0f, 5f, 5f, null),
-                new Wall(5f, 5f, 0f, 5f, null),
-                new Wall(0f, 5f, 0f, 0f, null),
+                new Wall(null!, 0f, 0f, 5f, 0f, null),
+                new Wall(null!, 5f, 0f, 5f, 5f, null),
+                new Wall(null!, 5f, 5f, 0f, 5f, null),
+                new Wall(null!, 0f, 5f, 0f, 0f, null),
                 // Square B
-                new Wall(1f, 1f, 2f, 1f, null),
-                new Wall(2f, 1f, 2f, 2f, null),
-                new Wall(2f, 2f, 1f, 2f, null),
-                new Wall(1f, 2f, 1f, 1f, null),
+                new Wall(null!, 1f, 1f, 2f, 1f, null),
+                new Wall(null!, 2f, 1f, 2f, 2f, null),
+                new Wall(null!, 2f, 2f, 1f, 2f, null),
+                new Wall(null!, 1f, 2f, 1f, 1f, null),
                 // Triangle
-                new Wall(0f, 0.33f, 0.33f, 0.66f, null),
-                new Wall(0.33f, 0.66f, -0.33f, 0.66f, null),
-                new Wall(-0.33f, 0.66f, 0f, 0.33f, null)
+                new Wall(null!, 0f, 0.33f, 0.33f, 0.66f, null),
+                new Wall(null!, 0.33f, 0.66f, -0.33f, 0.66f, null),
+                new Wall(null!, -0.33f, 0.66f, 0f, 0.33f, null)
             ];
 
             Span<Range> bunches = WallHelper.BreakUpIntoBunches(walls);

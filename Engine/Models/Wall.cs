@@ -1,8 +1,11 @@
-﻿
+﻿using RenderingEngine.Models.Json;
+
 namespace RenderingEngine.Models
 {
     internal sealed class Wall
     {
+        public readonly Line Line;
+
         public bool IntersectsView;
         // Point A
         public float X1;
@@ -28,8 +31,9 @@ namespace RenderingEngine.Models
         public int YRightCeil;
         public int YRightFloor;
 
-        public Wall(float x1, float y1, float x2, float y2, int? neighbor)
+        public Wall(Line line, float x1, float y1, float x2, float y2, int? neighbor)
         {
+            Line = line;
             X1 = x1;
             Y1 = y1;
             X2 = x2;

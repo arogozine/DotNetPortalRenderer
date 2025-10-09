@@ -1,6 +1,5 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.TextureManagement;
-using System.Runtime.InteropServices;
 
 namespace RenderingEngine.Engine
 {

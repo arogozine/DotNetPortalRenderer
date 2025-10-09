@@ -4,7 +4,7 @@
     {
         public const string COMMENT = "comment";
 
-        private readonly Dictionary<string, string> properties = [];
+        protected readonly Dictionary<string, string> properties = [];
 
         [DisallowNull]
         public string? this[string key] {

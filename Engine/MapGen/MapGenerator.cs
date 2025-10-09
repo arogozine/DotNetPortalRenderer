@@ -4,10 +4,10 @@ namespace RenderingEngine.MapGen
 {
     public class MapGenerator
     {
-        private int wallId = 0;
         private int sectorId = 0;
+        private int lineId = 0;
 
-        private MapPlayer? player = null;
+        private PlayerStart? player = null;
         private readonly Dictionary<int, MapSector> sectors = [];
 
         public int AddWall(int sectorId, Vector pointA, Vector pointB, int? toSectorId = null)
@@ -22,9 +22,13 @@ namespace RenderingEngine.MapGen
                 throw new ArgumentException("Sector Not Found", nameof(toSectorId));
             }
 
-            int currentId = wallId++;
-            sector.Walls.Add(new Line { PointA = pointA, PointB = pointB, WallId = currentId, SectorTo = toSectorId });
-
+            int currentId = lineId++;
+            sector.Walls.Add(
+                new Line { PointA = pointA, PointB = pointB, Id = currentId, SectorTo = toSectorId,
+                UpperTexture = null,
+                MiddleTexture = null,
+                LowerTexture = null
+            });
 
             return currentId;
         }
@@ -52,7 +56,9 @@ namespace RenderingEngine.MapGen
             {
                 Ceiling = ceiling,
                 Floor = floor,
-                SectorId = currentId
+                Id = currentId,
+                CeilingTexture = string.Empty,
+                FloorTexture = string.Empty
             });
 
             return currentId;
@@ -60,7 +66,7 @@ namespace RenderingEngine.MapGen
 
         public void AddPlayer(XyzTuple where, float angle)
         {
-            player = new MapPlayer
+            player = new PlayerStart
             {
                 Angle = angle,
                 XPosition = where.X,
@@ -76,7 +82,7 @@ namespace RenderingEngine.MapGen
                 throw new NotSupportedException("Player Required");
             }
 
-            return new Map { Player = player, Sectors = [.. sectors.Values] };
+            return new Map { PlayerStart = player, Sectors = [.. sectors.Values] };
         }
     }
 }

@@ -26,7 +26,7 @@ namespace RenderingEngine.MapGen
             int sectorCount = map.Sectors.Count;
 
             Dictionary<int, int> sectorIdToIndex = map.Sectors.Select((x, i) => new { x, i }).ToDictionary(
-                x => x.x.SectorId, x => x.i);
+                x => x.x.Id, x => x.i);
 
             foreach (var sector in map.Sectors)
             {
@@ -159,11 +159,6 @@ namespace RenderingEngine.MapGen
         internal static (Player player, Sector[] sectors) LoadData()
         {
             var map = WadReader.ExtractDoomMap();
-
-            // var map = GenerateMap();
-            // var map = LoadMap("C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\test3.json")!;
-            // map.Sectors = map.Sectors.Where(x => x.SectorId == 0).ToList(); // || x.SectorId == 21 || x.SectorId == 25).ToList();
-
             StripInvalidNeighbors(map);
 
             for (int i = 0; i < map.Sectors.Count; i++)
@@ -174,11 +169,9 @@ namespace RenderingEngine.MapGen
 
             Player player = new Player
             {
-                Angle = map.Player.Angle,
+                Angle = map.PlayerStart.Angle,
                 Sector = 0, //10,
-                Where = (map.Player.XPosition, map.Player.YPosition, 4) //  (744/8f, -1013/8f, 8f)
-                //Where = (8.251516f, 26.0253067f, 8f)
-                // (1, 1, map.Player.ZPosition)
+                Where = (map.PlayerStart.XPosition, map.PlayerStart.YPosition, 4)
             };
 
             var sectors = map.Sectors.Select(ParseMapSector).ToArray();
@@ -193,7 +186,7 @@ namespace RenderingEngine.MapGen
             for (int i = 0; i < x.Walls.Count; i++)
             {
                 Line v = x.Walls[i];
-                vertex[i] = new Wall(
+                vertex[i] = new Wall(v,
                     v.PointA.X, v.PointA.Y,
                     v.PointB.X, v.PointB.Y,
                     v.SectorTo
@@ -203,6 +196,8 @@ namespace RenderingEngine.MapGen
             var sector = new Sector
             {
 
+                FloorTexture = x.FloorTexture,
+                CeilTexture = x.CeilingTexture,
                 Ceil = x.Ceiling,
                 Floor = x.Floor,
                 Walls = vertex

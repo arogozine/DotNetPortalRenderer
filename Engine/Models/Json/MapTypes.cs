@@ -3,24 +3,29 @@
 
     public sealed class MapSector
     {
-        public required int SectorId { get; set; }
+        public required int Id { get; set; }
         public List<int> Children { get; set; } = [];
         public List<Line> Walls { get; set; } = [];
         public required float Floor { get; set; }
         public required float Ceiling { get; set; }
+        public required string FloorTexture { get; set; }
+        public required string CeilingTexture { get; set; }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is MapSector sector &&
+                   Id == sector.Id;
     }
 
-    public sealed class MapPlayer
+        public override int GetHashCode()
     {
-        public required float XPosition { get; set; }
-        public required float YPosition { get; set; }
-        public required float ZPosition { get; set; }
-        public required float Angle { get; set; }
+            return HashCode.Combine(Id);
+        }
     }
 
     public sealed class Map
     {
-        public required MapPlayer Player { get; set; }
+        public required PlayerStart PlayerStart { get; set; }
         public List<MapSector> Sectors { get; set; } = [];
     }
 }

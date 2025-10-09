@@ -1,6 +1,4 @@
 ﻿using RenderingEngine.Models;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 namespace RenderingEngine.Engine
 {
@@ -709,7 +707,7 @@ namespace RenderingEngine.Engine
             float rx2 = tx2 * psin - ty2 * pcos;
             float ry2 = tx2 * pcos + ty2 * psin;
 
-            return new Wall(rx1, ry1, rx2, ry2, wall.Neighbor);
+            return new Wall(wall.Line, rx1, ry1, rx2, ry2, wall.Neighbor);
         }
     }
 }

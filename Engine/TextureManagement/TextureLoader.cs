@@ -1,8 +1,75 @@
 ﻿using RenderingEngine.Models;
 using SkiaSharp;
-using System.Runtime.CompilerServices;
 
 namespace RenderingEngine.TextureManagement;
+
+internal readonly struct Texture
+{
+    public readonly int Width;
+    public readonly int Height;
+    public readonly BGRA[] Data;
+    public readonly BGRA[] Rotated;
+
+    public Texture(int width, int height, BGRA[] data, BGRA[] rotated)
+    {
+        Width = width;
+        Height = height;
+        Data = data;
+        Rotated = rotated;
+    }
+}
+
+internal static class TextureCache
+{
+    private static readonly Dictionary<string, Texture> Cache = [];
+
+    public static void Add(string name, int width, int height, BGRA[] data)
+    {
+        BGRA[] rotated = RotateTexture(height, width, data);
+        Cache[name] = new Texture(width, height, data, rotated);
+    }
+
+    private static unsafe BGRA[] RotateTexture(int height, int width, Span<BGRA> input)
+    {
+        BGRA[] output = new BGRA[height * width];
+        ref BGRA inputPtr = ref MemoryMarshal.GetReference(input);
+        ref BGRA outputPtr = ref MemoryMarshal.GetReference(output.AsSpan());
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                int newX = height - 1 - y;
+                int newY = x;
+                int dstIndex = newY * height + newX;
+                Unsafe.Add(ref outputPtr, dstIndex) = inputPtr;
+                inputPtr = ref Unsafe.Add(ref inputPtr, 1);
+                
+            }
+        }
+
+        return output;
+    }
+
+    public static TextureInfo GetTexture(string name, bool rotated)
+    {
+        ref Texture texture = ref CollectionsMarshal.GetValueRefOrNullRef(Cache, name);
+
+        if (Unsafe.IsNullRef(ref texture))
+        {
+            throw new ArgumentException($"Texture {name} not found", nameof(name));
+        }
+
+        if (rotated)
+        {
+            return new TextureInfo(texture.Width, texture.Height, ref MemoryMarshal.GetArrayDataReference(texture.Rotated));
+        }
+        else
+        {
+            return new TextureInfo(texture.Width, texture.Height, ref MemoryMarshal.GetArrayDataReference(texture.Data));
+        }
+    }
+}
 
 internal static class TextureLoader
 {
@@ -33,7 +100,7 @@ internal static class TextureLoader
 
         for (int i = 0; i < textureCount; i++)
         {
-            RotatedTextureCache[i] = RotateTexture(TextureCache[i]);
+            RotatedTextureCache[i] = RotateTexture(64, 64, TextureCache[i]);
         }
     }
 
@@ -58,12 +125,9 @@ internal static class TextureLoader
         return bitmap.Bytes;
     }
 
-    private static unsafe byte[] RotateTexture(byte[] input)
+    private static unsafe byte[] RotateTexture(int height, int width, byte[] input)
     {
-        const int height = 64;
-        const int width = 64;
-
-        byte[] output = new byte[64 * 64 * sizeof(BGRA)];
+        byte[] output = new byte[height * width * sizeof(BGRA)];
 
         fixed (byte* outPtr = &output[0])
         fixed (byte* inPtr = &input[0])

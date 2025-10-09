@@ -56,6 +56,10 @@ namespace RenderingEngine.DoomMapLoader.Map
         /// </summary>
         public readonly ushort Sector;
 
+        public readonly string? UpperTextureNullable => UpperTexture == "-" ? null : UpperTexture;
+        public readonly string? MiddleTextureNullable => MiddleTexture == "-" ? null : MiddleTexture;
+        public readonly string? LowerTextureNullable => LowerTexture == "-" ? null : LowerTexture;
+
         /// <summary>
         /// Constructor.
         /// </summary>

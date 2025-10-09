@@ -4,6 +4,7 @@ using RenderingEngine.DoomMapLoader.Udmf;
 using RenderingEngine.DoomMapLoader.Wad;
 using RenderingEngine.Models;
 using RenderingEngine.Models.Json;
+using RenderingEngine.TextureManagement;
 using SkiaSharp;
 using System.Text;
 using Sector = RenderingEngine.DoomMapLoader.Map.Sector;
@@ -20,7 +21,14 @@ namespace RenderingEngine.DoomMapLoader
             // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\testmap.wad"
             // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\doommap.wad"
             );
+
             var textMap = test["TEXTMAP"];
+
+            Dictionary<string, BGRA[]> textures = ExtractFloorTextures(test);
+
+            foreach ((string name, BGRA[] image) in textures) {
+                TextureCache.Add(name, 64, 64, image);
+            }
 
             if (textMap is not null)
             {
@@ -147,7 +155,7 @@ namespace RenderingEngine.DoomMapLoader
             {
                 Sector sector = sectorDefs[i];
 
-                if (!sectorToLinedefs.TryGetValue(i, out List<(int LineDefId, int ParentSectorId)>? lines))
+                if (!sectorToLinedefs.TryGetValue(i, out List<LineInfo>? lines))
                 {
                     continue;
                 }
@@ -155,20 +163,29 @@ namespace RenderingEngine.DoomMapLoader
                 float ceiling = sector.CeilingHeight;
                 float floor = sector.FloorHeight;
 
-                MapSector mapSector = new MapSector { SectorId = i, Ceiling = ceiling, Floor = floor };
+                MapSector mapSector = new MapSector {
+                    Id = i,
+                    Ceiling = ceiling,
+                    Floor = floor,
+                    CeilingTexture = sector.CeilingTexture,
+                    FloorTexture = sector.FloorTexture
+                };
 
-                foreach ((int lineId, int parentSectorId) in lines)
+                foreach (LineInfo lineInfo in lines)
                 {
-                    Linedef linedef = lineDefs[lineId];
+                    Linedef linedef = lineDefs[lineInfo.LineDefId];
                     Vertex vertex1 = verticies[linedef.Vertex1];
                     Vertex vertex2 = verticies[linedef.Vertex2];
 
                     var line = new Line
                     {
-                        WallId = lineId,
+                        Id = lineInfo.LineDefId,
                         PointA = ToVector(vertex1),
                         PointB = ToVector(vertex2),
-                        SectorTo = parentSectorId
+                        SectorTo = lineInfo.ParentSectorId,
+                        UpperTexture = lineInfo.UpperTexture,
+                        MiddleTexture = lineInfo.MiddleTexture,
+                        LowerTexture = lineInfo.LowerTexture,
                     };
 
                     // Debug.WriteLine($"line: {lineId}, {linedef.Vertex1} {linedef.Vertex2} {parentSectorId}");
@@ -180,7 +197,7 @@ namespace RenderingEngine.DoomMapLoader
 
             return new Models.Json.Map
             {
-                Player = new MapPlayer
+                PlayerStart = new PlayerStart
                 {
                     Angle = player1Start.Value.Angle,
                     XPosition = player1Start.Value.X,
@@ -216,7 +233,7 @@ namespace RenderingEngine.DoomMapLoader
                 throw new ArgumentException("No Player 1 Start", nameof(textLump));
             }
 
-            Dictionary<int, List<(int LineDefId, int ParentSectorId)>> sectorToLinedefs = GetSectorToLineDefs(map);
+            Dictionary<int, List<LineInfo>> sectorToLinedefs = GetSectorToLineDefs(map);
 
             var sectors = new List<MapSector>();
 
@@ -224,28 +241,37 @@ namespace RenderingEngine.DoomMapLoader
             {
                 UdmfSector sector = sectorDefs[i];
 
-                if (!sectorToLinedefs.TryGetValue(i, out List<(int LineDefId, int ParentSectorId)>? lines))
+                if (!sectorToLinedefs.TryGetValue(i, out List<LineInfo>? lines))
                 {
                     continue;
                 }
 
-                float ceiling = sector.HeightCeiling!.Value;
-                float floor = sector.HeightFloor!.Value;
+                float ceiling = sector.HeightCeiling;
+                float floor = sector.HeightFloor;
 
-                MapSector mapSector = new MapSector { SectorId = i, Ceiling = ceiling, Floor = floor };
+                MapSector mapSector = new MapSector {
+                    Id = i,
+                    Ceiling = ceiling,
+                    Floor = floor,
+                    FloorTexture = sector.TextureFloor,
+                    CeilingTexture = sector.TextureCeiling
+                };
 
-                foreach ((int lineId, int parentSectorId) in lines)
+                foreach (LineInfo lineInfo in lines)
                 {
-                    UdmfLinedef linedef = lineDefs[lineId];
+                    UdmfLinedef linedef = lineDefs[lineInfo.LineDefId];
                     UdmfVertex vertex1 = verticies[linedef.V1];
                     UdmfVertex vertex2 = verticies[linedef.V2];
 
                     var line = new Line
                     {
-                        WallId = lineId,
+                        Id = lineInfo.LineDefId,
                         PointA = ToVector(vertex1),
                         PointB = ToVector(vertex2),
-                        SectorTo = parentSectorId
+                        SectorTo = lineInfo.ParentSectorId,
+                        UpperTexture = lineInfo.UpperTexture,
+                        MiddleTexture = lineInfo.MiddleTexture,
+                        LowerTexture = lineInfo.LowerTexture,
                     };
 
                     mapSector.Walls.Add(line);
@@ -256,7 +282,7 @@ namespace RenderingEngine.DoomMapLoader
 
             return new Models.Json.Map
             {
-                Player = new MapPlayer
+                PlayerStart = new PlayerStart
                 {
                     Angle = player1Start.Angle,
                     XPosition = player1Start.X,
@@ -355,7 +381,7 @@ namespace RenderingEngine.DoomMapLoader
                         break;
                 }
 
-                Debug.WriteLine(lumpName + " " + lumpSize + " " + lumpOffset + " " + (directoryOffset + 16 * i));
+                // Debug.WriteLine(lumpName + " " + lumpSize + " " + lumpOffset + " " + (directoryOffset + 16 * i));
 
                 byte[] lumpbytes = new byte[lumpSize];
 
@@ -371,12 +397,30 @@ namespace RenderingEngine.DoomMapLoader
             return wadFile;
         }
 
-        public static Dictionary<int, List<(int LineDefId, int ParentSectorId)>> GetSectorToLineDefs(UdmfMapData textMap)
+        internal sealed class LineInfo
+        {
+            public readonly int ParentSectorId;
+            public readonly int LineDefId;
+            public readonly string? UpperTexture;
+            public readonly string? MiddleTexture;
+            public readonly string? LowerTexture;
+
+            public LineInfo(int parentSectorId, int lineDefId, string? upperTexture, string? middleTexture, string? lowerTexture)
+            {
+                ParentSectorId = parentSectorId;
+                LineDefId = lineDefId;
+                UpperTexture = upperTexture;
+                MiddleTexture = middleTexture;
+                LowerTexture = lowerTexture;
+            }
+        }
+
+        public static Dictionary<int, List<LineInfo>> GetSectorToLineDefs(UdmfMapData textMap)
         {
             ReadOnlySpan<UdmfLinedef> lineDefs = CollectionsMarshal.AsSpan(textMap.Linedefs);
             ReadOnlySpan<UdmfSidedef> sideDefs = CollectionsMarshal.AsSpan(textMap.Sidedefs);
 
-            var sectorToLineDefs = new Dictionary<int, List<(int LineDefId, int SectorId)>>();
+            var sectorToLineDefs = new Dictionary<int, List<LineInfo>>();
 
             for (int i = 0; i < lineDefs.Length; i++)
             {
@@ -387,34 +431,34 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (leftDef?.Sector is int leftSector)
                 {
-                    AddSectorLineDef(leftSector, i, rightDef?.Sector ?? -1);
+                    AddSectorLineDef(leftSector, i, rightDef?.Sector ?? -1, leftDef);
                 }
 
                 if (rightDef?.Sector is int rightSector)
                 {
-                    AddSectorLineDef(rightSector, i, leftDef?.Sector ?? -1);
+                    AddSectorLineDef(rightSector, i, leftDef?.Sector ?? -1, rightDef);
                 }
             }
 
             return sectorToLineDefs;
 
-            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId)
+            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId, UdmfSidedef sidedef)
             {
-                if (!sectorToLineDefs.TryGetValue(sectorId, out List<(int LineDefId, int ParentSectorId)>? sectorLineDefs))
+                if (!sectorToLineDefs.TryGetValue(sectorId, out List<LineInfo>? sectorLineDefs))
                 {
                     sectorLineDefs = [];
                     sectorToLineDefs[sectorId] = sectorLineDefs;
                 }
 
-                sectorLineDefs.Add((linedefId, parentSectorId));
+                sectorLineDefs.Add(new LineInfo(parentSectorId, linedefId, sidedef.TextureTop, sidedef.TextureMiddle, sidedef.TextureBottom));
             }
         }
 
-        public static Dictionary<int, List<(int LineDefId, int ParentSectorId)>> GetSectorToLineDefs(
+        public static Dictionary<int, List<LineInfo>> GetSectorToLineDefs(
             ReadOnlySpan<Linedef> lineDefs,
             ReadOnlySpan<Sidedef> sideDefs)
         {
-            var sectorToLineDefs = new Dictionary<int, List<(int LineDefId, int SectorId)>>();
+            var sectorToLineDefs = new Dictionary<int, List<LineInfo>>();
 
             for (int i = 0; i < lineDefs.Length; i++)
             {
@@ -425,26 +469,26 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (leftDef is Sidedef left)
                 {
-                    AddSectorLineDef(left.Sector, i, rightDef is null ? -1 : rightDef.Value.Sector);
+                    AddSectorLineDef(left.Sector, i, rightDef is null ? -1 : rightDef.Value.Sector, left);
                 }
 
                 if (rightDef is Sidedef right)
                 {
-                    AddSectorLineDef(right.Sector, i, leftDef is null ? - 1: leftDef.Value.Sector);
+                    AddSectorLineDef(right.Sector, i, leftDef is null ? - 1: leftDef.Value.Sector, right);
                 }
             }
 
             return sectorToLineDefs;
 
-            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId)
+            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId, Sidedef sidedef)
             {
-                if (!sectorToLineDefs.TryGetValue(sectorId, out List<(int LineDefId, int ParentSectorId)>? sectorLineDefs))
+                if (!sectorToLineDefs.TryGetValue(sectorId, out List<LineInfo>? sectorLineDefs))
                 {
                     sectorLineDefs = [];
                     sectorToLineDefs[sectorId] = sectorLineDefs;
                 }
 
-                sectorLineDefs.Add((linedefId, parentSectorId));
+                sectorLineDefs.Add(new LineInfo(parentSectorId, linedefId, sidedef.UpperTextureNullable, sidedef.MiddleTextureNullable, sidedef.LowerTextureNullable));
             }
         }
 
