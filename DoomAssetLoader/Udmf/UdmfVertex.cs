@@ -1,6 +1,6 @@
-﻿namespace RenderingEngine.DoomMapLoader.Udmf
+﻿namespace DoomAssetLoader.Udmf
 {
-    internal class UdmfVertex : UdmfObject
+    public class UdmfVertex : UdmfObject
     {
         public const string POSITION_X = "x";
         public const string POSITION_Y = "y";

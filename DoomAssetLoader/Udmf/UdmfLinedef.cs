@@ -1,6 +1,6 @@
-﻿namespace RenderingEngine.DoomMapLoader.Udmf
+﻿namespace DoomAssetLoader.Udmf
 {
-    internal class UdmfLinedef : UdmfObject
+    public class UdmfLinedef : UdmfObject
     {
         public const string FLAG_BLOCKING = "blocking";
         public const string FLAG_BLOCK_MONSTERS = "blockmonsters";

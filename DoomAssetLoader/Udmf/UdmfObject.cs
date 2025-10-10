@@ -1,6 +1,6 @@
-﻿namespace RenderingEngine.DoomMapLoader.Udmf
+﻿namespace DoomAssetLoader.Udmf
 {
-    internal abstract class UdmfObject
+    public abstract class UdmfObject
     {
         public const string COMMENT = "comment";
 

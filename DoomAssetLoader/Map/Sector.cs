@@ -1,4 +1,4 @@
-﻿namespace RenderingEngine.DoomMapLoader.Map
+﻿namespace DoomAssetLoader.Map
 {
     public readonly struct Sector
     {

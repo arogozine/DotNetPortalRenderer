@@ -1,6 +1,6 @@
-﻿namespace RenderingEngine.DoomMapLoader.Texture
+﻿namespace DoomAssetLoader.Texture
 {
-    internal readonly struct PatchHeader
+    public readonly struct PatchHeader
     {
         public readonly ushort Width;
         public readonly ushort Height;

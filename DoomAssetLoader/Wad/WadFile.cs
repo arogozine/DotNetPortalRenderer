@@ -1,6 +1,6 @@
-﻿namespace RenderingEngine.DoomMapLoader.Wad
+﻿namespace DoomAssetLoader.Wad
 {
-    internal sealed class WadFile
+    public sealed class WadFile
     {
         public WadType Type { get; set; }
 

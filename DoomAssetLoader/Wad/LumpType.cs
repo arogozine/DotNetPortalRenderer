@@ -1,6 +1,6 @@
-﻿namespace RenderingEngine.DoomMapLoader.Wad
+﻿namespace DoomAssetLoader.Wad
 {
-    internal static class LumpType
+    public static class LumpType
     {
         public const string PlayPal = "PLAYPAL";
         public const string TextMap = "TEXTMAP";

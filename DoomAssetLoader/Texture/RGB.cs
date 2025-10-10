@@ -1,7 +1,7 @@
-﻿namespace RenderingEngine.DoomMapLoader.Texture
+﻿namespace DoomAssetLoader.Texture
 {
     [StructLayout(LayoutKind.Sequential)]
-    internal readonly struct RGB
+    public readonly struct RGB
     {
         public readonly byte R;
         public readonly byte G;

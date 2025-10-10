@@ -1,4 +1,4 @@
-﻿namespace RenderingEngine.DoomMapLoader.Wad
+﻿namespace DoomAssetLoader.Wad
 {
     public enum WadType
     {

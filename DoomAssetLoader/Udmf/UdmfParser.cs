@@ -1,6 +1,6 @@
 ﻿using static System.MemoryExtensions;
 
-namespace RenderingEngine.DoomMapLoader.Udmf
+namespace DoomAssetLoader.Udmf
 {
     internal static partial class UdmfParser
     {
@@ -81,7 +81,7 @@ namespace RenderingEngine.DoomMapLoader.Udmf
 
                     if (token.Length == 0) { continue; }
 
-                    if (MemoryExtensions.SequenceEqual(token, "namespace")) { break; }
+                    if (token.SequenceEqual("namespace")) { break; }
 
                     if (expectKey)
                     {
@@ -130,7 +130,7 @@ namespace RenderingEngine.DoomMapLoader.Udmf
                         continue;
                     }
 
-                    if (expectBlock && MemoryExtensions.SequenceEqual(token, "{"))
+                    if (expectBlock && token.SequenceEqual("{"))
                     {
                         expectBlock = false;
                         expectEndBlock = true;
@@ -139,7 +139,7 @@ namespace RenderingEngine.DoomMapLoader.Udmf
                         continue;
                     }
 
-                    if (expectEndBlock && MemoryExtensions.SequenceEqual(token, "}"))
+                    if (expectEndBlock && token.SequenceEqual("}"))
                     {
                         expectEndBlock = false;
                         expectKey = true;
@@ -155,7 +155,7 @@ namespace RenderingEngine.DoomMapLoader.Udmf
                         continue;
                     }
 
-                    if (expectEquals && MemoryExtensions.SequenceEqual(token, "="))
+                    if (expectEquals && token.SequenceEqual("="))
                     {
                         expectEquals = false;
                         expectValue = true;

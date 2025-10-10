@@ -1,4 +1,4 @@
-﻿namespace RenderingEngine.DoomMapLoader.Map
+﻿namespace DoomAssetLoader.Map
 {
     /// <summary>
     /// These are the beginning and end points for LINEDEFS and SEGS.

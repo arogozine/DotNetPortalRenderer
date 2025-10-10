@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel;
 
-namespace RenderingEngine.DoomMapLoader.Udmf
+namespace DoomAssetLoader.Udmf
 {
-    internal class UdmfThing : UdmfObject
+    public class UdmfThing : UdmfObject
     {
         public const string ID = "id";
         public const string POSITION_X = "x";

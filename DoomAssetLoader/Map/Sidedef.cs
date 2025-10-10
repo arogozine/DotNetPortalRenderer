@@ -1,25 +1,4 @@
-﻿/*
-==========================================================================
-This file is part of Tools of Doom, a library providing a collection of
-classes to load/edit/save Doom maps and wad archives, created by @akaAgar
-(https://github.com/akaAgar/tools-of-doom).
-
-Tools of Doom is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Tools of Doom is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Tools of Doom. If not, see https://www.gnu.org/licenses/
-==========================================================================
-*/
-
-namespace RenderingEngine.DoomMapLoader.Map
+﻿namespace DoomAssetLoader.Map
 {
     /// <summary>
     /// A Doom map sidedef.
@@ -57,7 +36,9 @@ namespace RenderingEngine.DoomMapLoader.Map
         public readonly ushort Sector;
 
         public readonly string? UpperTextureNullable => UpperTexture == "-" ? null : UpperTexture;
+
         public readonly string? MiddleTextureNullable => MiddleTexture == "-" ? null : MiddleTexture;
+
         public readonly string? LowerTextureNullable => LowerTexture == "-" ? null : LowerTexture;
 
         /// <summary>

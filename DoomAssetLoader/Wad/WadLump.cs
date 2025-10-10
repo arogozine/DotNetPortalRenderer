@@ -1,6 +1,6 @@
-﻿namespace RenderingEngine.DoomMapLoader.Wad
+﻿namespace DoomAssetLoader.Wad
 {
-    internal sealed class WadLump
+    public sealed class WadLump
     {
         public string Name { get; private init; }
 

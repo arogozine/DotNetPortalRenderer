@@ -19,7 +19,7 @@ along with Tools of Doom. If not, see https://www.gnu.org/licenses/
 ==========================================================================
 */
 
-namespace RenderingEngine.DoomMapLoader.Map
+namespace DoomAssetLoader.Map
 {
     /// <summary>
     /// Special flags for a Doom map linedef.

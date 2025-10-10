@@ -1,19 +1,20 @@
-﻿using RenderingEngine.DoomMapLoader.Map;
-using RenderingEngine.DoomMapLoader.Texture;
-using RenderingEngine.DoomMapLoader.Udmf;
-using RenderingEngine.DoomMapLoader.Wad;
+﻿using DoomAssetLoader;
+using DoomAssetLoader.Map;
+using DoomAssetLoader.Texture;
+using DoomAssetLoader.Udmf;
+using DoomAssetLoader.Wad;
 using RenderingEngine.Models;
 using RenderingEngine.Models.Json;
 using RenderingEngine.TextureManagement;
 using SkiaSharp;
 using System.Text;
-using Sector = RenderingEngine.DoomMapLoader.Map.Sector;
+using Sector = DoomAssetLoader.Map.Sector;
 
 namespace RenderingEngine.DoomMapLoader
 {
     internal static class WadReader
     {
-        public static Models.Json.Map ExtractDoomMap()
+        public static Map ExtractDoomMap()
         {
             WadFile wad = LoadWad(
                 "C:\\Users\\Alexa\\Downloads\\New folder\\doom2.wad"

@@ -1,6 +1,6 @@
-﻿namespace RenderingEngine.DoomMapLoader.Udmf
+﻿namespace DoomAssetLoader.Udmf
 {
-    internal sealed class UdmfMapData
+    public sealed class UdmfMapData
     {
         public List<UdmfVertex> Vertices { get; } = [];
         public List<UdmfLinedef> Linedefs { get; } = [];

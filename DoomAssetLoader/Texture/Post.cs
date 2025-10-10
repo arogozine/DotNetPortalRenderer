@@ -1,6 +1,6 @@
-﻿namespace RenderingEngine.DoomMapLoader.Texture
+﻿namespace DoomAssetLoader.Texture
 {
-    internal readonly struct Post
+    public readonly struct Post
     {
         /// <summary>
         /// Y offset

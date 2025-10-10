@@ -1,4 +1,4 @@
-﻿namespace RenderingEngine.DoomMapLoader.Texture
+﻿namespace DoomAssetLoader.Texture
 {
     public readonly struct TextureDefinition
     {

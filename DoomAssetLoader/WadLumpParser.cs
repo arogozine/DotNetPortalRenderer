@@ -1,13 +1,12 @@
-﻿using RenderingEngine.DoomMapLoader.Map;
-using RenderingEngine.DoomMapLoader.Texture;
-using RenderingEngine.DoomMapLoader.Udmf;
-using RenderingEngine.DoomMapLoader.Wad;
+﻿using DoomAssetLoader.Map;
+using DoomAssetLoader.Texture;
+using DoomAssetLoader.Udmf;
+using DoomAssetLoader.Wad;
 using System.Text;
 
-namespace RenderingEngine.DoomMapLoader
+namespace DoomAssetLoader
 {
-
-    internal static class WadLumpParser
+    public static class WadLumpParser
     {
         public static (PatchHeader, Post[]) ReadPatch(WadLump? patchLump)
         {

@@ -1,4 +1,4 @@
-﻿namespace RenderingEngine.DoomMapLoader.Map
+﻿namespace DoomAssetLoader.Map
 {
     [StructLayout(LayoutKind.Sequential)]
     public readonly struct Linedef
