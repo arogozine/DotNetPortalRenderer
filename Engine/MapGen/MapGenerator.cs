@@ -1,4 +1,5 @@
-﻿using RenderingEngine.Models.Json;
+﻿using RenderingEngine.Models;
+using RenderingEngine.Models.Json;
 
 namespace RenderingEngine.MapGen
 {
@@ -10,7 +11,7 @@ namespace RenderingEngine.MapGen
         private PlayerStart? player = null;
         private readonly Dictionary<int, MapSector> sectors = [];
 
-        public int AddWall(int sectorId, Vector pointA, Vector pointB, int? toSectorId = null)
+        public int AddWall(int sectorId, Point pointA, Point pointB, int? toSectorId = null)
         {
             if (!sectors.TryGetValue(sectorId, out MapSector? sector))
             {

@@ -133,6 +133,9 @@ namespace RenderingEngine.Engine
 
                     sectorRenderQueue.Enqueue(neighborToRender);
                 }
+
+                DebugPortal(screen, this.RenderWindowHelper.RenderWindow);
+
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxPortalsRendered);
         }

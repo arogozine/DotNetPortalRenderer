@@ -266,64 +266,6 @@ namespace RenderingEngine.Engine
                 walls = walls[..j];
             }
         }
-        private static Span<Point> GetUniquePoints(Span<Wall> bunch)
-        {
-            int n = bunch.Length << 1;
-            Span<Point> points = new Point[n];
-
-            for (int i = 0, j = 0; i < bunch.Length; i++)
-            {
-                Wall wall = bunch[i];
-                points[j++] = new Point(wall.X1, wall.Y1);
-                points[j++] = new Point(wall.X2, wall.Y2);
-            }
-
-            return DistinctInPlace(points);
-        }
-
-        private static Span<T> DistinctInPlace<T>(Span<T> span)
-        {
-            if (span.Length <= 1)
-            {
-                return span;
-            }
-
-            var seen = new HashSet<T>();
-            int writeIndex = 0;
-
-            for (int readIndex = 0; readIndex < span.Length; readIndex++)
-            {
-                T current = span[readIndex];
-
-                if (seen.Add(current))
-                {
-                    span[writeIndex] = current;
-                    writeIndex++;
-                }
-            }
-
-            return span[..writeIndex];
-        }
-
-        private static bool IsPointInPolygon(Span<Point> vertexes, float x, float y)
-        {
-            int n = vertexes.Length;
-            bool isInside = false;
-
-            for (int i = 0, j = n - 1; i < n; j = i++)
-            {
-                Point vertexI = vertexes[i];
-                Point vertexJ = vertexes[j];
-
-                if (vertexI.Y > y != vertexJ.Y > y &&
-                    x < (vertexJ.X - vertexI.X) * (y - vertexI.Y) / (vertexJ.Y - vertexI.Y) + vertexI.X)
-                {
-                    isInside = !isInside;
-                }
-            }
-
-            return isInside;
-        }
 
         public Span<Wall> CullHiddenWallsAndCombineBunches(
             Span<Range> bunches, Span<Wall> rotatedWalls, Span<Wall> parentPortalWallsToOcclude)

@@ -1,7 +1,6 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.TextureManagement;
 using System.Numerics;
-using System.Runtime.InteropServices;
 
 namespace RenderingEngine.Engine
 {
@@ -278,8 +277,8 @@ namespace RenderingEngine.Engine
                     increment -= 1;
                 }
 
-                            ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
-            renderWindow.FloorEnd = renderWindow.WallEnd;
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                renderWindow.FloorEnd = renderWindow.WallEnd;
             }
         }
 

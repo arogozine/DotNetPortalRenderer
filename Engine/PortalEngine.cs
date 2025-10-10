@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using RenderingEngine.Engine;
+﻿using RenderingEngine.Engine;
 using RenderingEngine.MapGen;
 using RenderingEngine.Models;
 using Silk.NET.Input;

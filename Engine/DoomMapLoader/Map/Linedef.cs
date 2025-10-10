@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-
-namespace RenderingEngine.DoomMapLoader.Map
+﻿namespace RenderingEngine.DoomMapLoader.Map
 {
     [StructLayout(LayoutKind.Sequential)]
     public readonly struct Linedef

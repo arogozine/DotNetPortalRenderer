@@ -12,7 +12,7 @@
             {
                 foreach (WadLump wadLump in Lumps)
                 {
-                    if (wadLump.Name == wadName)
+                    if (wadLump.Name.Equals(wadName, StringComparison.InvariantCultureIgnoreCase))
                     {
                         return wadLump;
                     }

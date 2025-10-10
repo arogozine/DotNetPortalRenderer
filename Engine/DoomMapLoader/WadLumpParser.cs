@@ -53,7 +53,7 @@ namespace RenderingEngine.DoomMapLoader
             return (header, posts);
         }
 
-        public static ReadOnlySpan<TextureDefinition> ReadTexture([NotNull] WadLump? texture)
+        public static Span<TextureDefinition> ReadTexture([NotNull] WadLump? texture)
         {
             WadLumpCheck(texture, LumpType.Texture1);
 
@@ -91,11 +91,12 @@ namespace RenderingEngine.DoomMapLoader
 
                 for (int j = 0; j < compositeTexture.PatchCount; j++)
                 {
-
                     PatchDescriptor patchDescriptor = MemoryMarshal.Read<PatchDescriptor>(offsetBytes[offset..(offset + 10)]);
                     compositeTexture.Patches[j] = patchDescriptor;
                     offset += 10;
                 }
+
+                list[texNum] = compositeTexture;
             }
 
             return list;

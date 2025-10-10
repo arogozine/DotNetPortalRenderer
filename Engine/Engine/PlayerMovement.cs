@@ -1,5 +1,4 @@
 ﻿using RenderingEngine.Models;
-using System.Diagnostics;
 
 namespace RenderingEngine.Engine
 {
@@ -40,7 +39,7 @@ namespace RenderingEngine.Engine
 
             if (z < sector.Floor)
             {
-                player.Where = (x, y, sector.Floor + 6);
+                player.Where = (x, y, EngineConstants.PlayerHeight);
             }
         }
 

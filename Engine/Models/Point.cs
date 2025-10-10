@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-
-namespace RenderingEngine.Models
+﻿namespace RenderingEngine.Models
 {
     [StructLayout(LayoutKind.Sequential)]
     public readonly struct Point

@@ -3,8 +3,8 @@
     public sealed class Line
     {
         public required int Id { get; set; }
-        public required Vector PointA { get; set; }
-        public required Vector PointB { get; set; }
+        public required Point PointA { get; set; }
+        public required Point PointB { get; set; }
         public required int? SectorTo { get; set; }
 
         public required string? UpperTexture { get; set; }

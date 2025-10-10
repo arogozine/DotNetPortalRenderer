@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.DoomMapLoader;
+using RenderingEngine.Engine;
 using RenderingEngine.Models;
 using RenderingEngine.Models.Json;
 using System.Text.Json;
@@ -171,7 +172,7 @@ namespace RenderingEngine.MapGen
             {
                 Angle = map.PlayerStart.Angle,
                 Sector = 0, //10,
-                Where = (map.PlayerStart.XPosition, map.PlayerStart.YPosition, 4)
+                Where = (map.PlayerStart.XPosition, map.PlayerStart.YPosition, EngineConstants.PlayerHeight)
             };
 
             var sectors = map.Sectors.Select(ParseMapSector).ToArray();

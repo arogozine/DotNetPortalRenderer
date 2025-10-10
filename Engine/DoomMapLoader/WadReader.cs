@@ -15,20 +15,27 @@ namespace RenderingEngine.DoomMapLoader
     {
         public static Models.Json.Map ExtractDoomMap()
         {
-            WadFile test = WadReader.LoadWad(
+            WadFile wad = LoadWad(
                 "C:\\Users\\Alexa\\Downloads\\New folder\\doom2.wad"
-            //     "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\EISBERG.wad"
-            // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\testmap.wad"
-            // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\doommap.wad"
+                // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\EISBERG.wad"
+                // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\testmap.wad"
+                // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\doommap.wad"
             );
 
-            var textMap = test["TEXTMAP"];
+            Dictionary<string, BGRA[]> floorTextures = ExtractFloorTextures(wad);
 
-            Dictionary<string, BGRA[]> textures = ExtractFloorTextures(test);
-
-            foreach ((string name, BGRA[] image) in textures) {
+            foreach ((string name, BGRA[] image) in floorTextures) {
                 TextureCache.Add(name, 64, 64, image);
             }
+
+            Dictionary<string, TextureInfo> textures = ExtractTextures(wad);
+
+            foreach ((string name, var info) in textures)
+            {
+                TextureCache.Add(name, info.Width, info.Height, info.Data);
+            }
+
+            WadLump? textMap = wad["TEXTMAP"];
 
             if (textMap is not null)
             {
@@ -36,48 +43,73 @@ namespace RenderingEngine.DoomMapLoader
             }
             else
             {
-                return ExtractDoomMap(test);
+                return ExtractDoomMap(wad);
             }
         }
 
-        public static unsafe Dictionary<string, BGRA[]> ExtractTextures(WadFile wad)
+        internal sealed class TextureInfo
         {
-            Dictionary<string, BGRA[]> textures = [];
+            public readonly int Width;
+            public readonly int Height;
+            public readonly BGRA[] Data;
+            public readonly int LeftOffset;
+            public readonly int TopOffset;
+
+            public TextureInfo(int width, int height, BGRA[] data, int leftOffset, int topOffset)
+            {
+                Width = width;
+                Height = height;
+                Data = data;
+                LeftOffset = leftOffset;
+                TopOffset = topOffset;
+            }
+        }
+
+        public static unsafe Dictionary<string, TextureInfo> ExtractTextures(WadFile wad)
+        {
+            Dictionary<string, TextureInfo> textures = [];
             Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
+
+            Span<string> pNames = WadLumpParser.ReadPNames(wad[LumpType.PNames]);
+            Span<TextureDefinition> names = WadLumpParser.ReadTexture(wad[LumpType.Texture1]);
 
             const int normalPalette = 0;
             RGB[] palette = playPal[normalPalette];
 
-            for (int i = 0; i < wad.Lumps.Count; i++)
+            for (int i = 0; i < names.Length; i++)
             {
-                WadLump wadLump = wad.Lumps[i];
+                ref TextureDefinition textureDefinition = ref names[i];
 
-                if (!wadLump.IsPatch || wadLump.Bytes.Length == 0)
+                for (int p = 0; p < textureDefinition.Patches.Length; p++)
                 {
-                    continue;
-                }
+                    ref PatchDescriptor patch = ref textureDefinition.Patches[p];
+                    string patchName = pNames[patch.Number];
 
-                (PatchHeader header, Post[] posts) = WadLumpParser.ReadPatch(wadLump);
-                BGRA[] texture = new BGRA[header.Width * header.Height];
+                    (PatchHeader header, Post[] posts) = WadLumpParser.ReadPatch(wad[patchName]);
 
-                for (int x = header.LeftOffset; x < header.Width; x++)
-                {
-                    ref Post post = ref posts[x];
+                    BGRA[] texture = new BGRA[header.Width * header.Height];
 
-                    int index = post.TopDelta * header.Width + x;
-
-                    for (int y = 0; y < post.Length; y++)
+                    for (int x = 0; x < header.Width; x++)
+                    // for (int x = header.LeftOffset; x < header.Width; x++)
                     {
-                        byte paletteIndex = post.Data[y];
+                        ref Post post = ref posts[x];
 
-                        RGB color = palette[paletteIndex];
-                        texture[index] = new BGRA(color.B, color.G, color.R);
+                        int index = x;
 
-                        index += header.Width;
+                        for (int y = 0; y < post.Length; y++)
+                        {
+                            byte paletteIndex = post.Data[y];
+
+                            RGB color = palette[paletteIndex];
+                            texture[index] = new BGRA(color.B, color.G, color.R);
+
+                            index += header.Width;
+                        }
                     }
-                }
 
-                textures[wadLump.Name] = texture;
+                    textures[textureDefinition.Name] = new TextureInfo(header.Width, header.Height, texture, header.LeftOffset, header.TopOffset);
+
+                }
             }
 
             return textures;
@@ -293,14 +325,14 @@ namespace RenderingEngine.DoomMapLoader
             };
         }
 
-        private static Vector ToVector(UdmfVertex vertex)
+        private static Point ToVector(UdmfVertex vertex)
         {
-            return new Vector(vertex.X, vertex.Y);
+            return new Point(vertex.X, vertex.Y);
         }
 
-        private static Vector ToVector(Vertex vertex)
+        private static Point ToVector(Vertex vertex)
         {
-            return new Vector(vertex.X, vertex.Y);
+            return new Point(vertex.X, vertex.Y);
         }
 
         public static WadFile LoadWad(string filePath)
@@ -381,7 +413,7 @@ namespace RenderingEngine.DoomMapLoader
                         break;
                 }
 
-                // Debug.WriteLine(lumpName + " " + lumpSize + " " + lumpOffset + " " + (directoryOffset + 16 * i));
+                // Debug.WriteLine($"{lumpName}, patch? {isPatches}, flat? {isFlats}");
 
                 byte[] lumpbytes = new byte[lumpSize];
 

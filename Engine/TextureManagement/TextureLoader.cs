@@ -57,12 +57,13 @@ internal static class TextureCache
 
         if (Unsafe.IsNullRef(ref texture))
         {
-            throw new ArgumentException($"Texture {name} not found", nameof(name));
+            return TextureLoader.GetTexture(TextureName.Brick, rotated);
+            // throw new ArgumentException($"Texture {name} not found", nameof(name));
         }
 
         if (rotated)
         {
-            return new TextureInfo(texture.Width, texture.Height, ref MemoryMarshal.GetArrayDataReference(texture.Rotated));
+            return new TextureInfo(texture.Height, texture.Width, ref MemoryMarshal.GetArrayDataReference(texture.Rotated));
         }
         else
         {

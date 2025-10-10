@@ -9,7 +9,10 @@
 
         public const int MaxSectorRenderQueue = 32;
         public const float CameraPlaneX = 0.66f;
-        public const float LightFallOffDistance = 32f;
+        public const float LightFallOffDistance = 1024f;
         public const float OneOverLightFallOffDistance = 1f / LightFallOffDistance;
+
+        // This is DoomGuy height, but as I am working with rendering doom maps at the moment, is a good starting point
+        public const int PlayerHeight = 56;
     }
 }
