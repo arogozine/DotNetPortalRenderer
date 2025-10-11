@@ -1,5 +1,4 @@
 ﻿using RenderingEngine.Models;
-using System.Runtime.CompilerServices;
 
 namespace RenderingEngine.Engine
 {

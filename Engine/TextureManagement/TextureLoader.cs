@@ -7,13 +7,15 @@ internal readonly struct Texture
 {
     public readonly int Width;
     public readonly int Height;
+    public readonly int TopOffset;
     public readonly BGRA[] Data;
     public readonly BGRA[] Rotated;
 
-    public Texture(int width, int height, BGRA[] data, BGRA[] rotated)
+    public Texture(int width, int height, int topOffset, BGRA[] data, BGRA[] rotated)
     {
         Width = width;
         Height = height;
+        TopOffset = topOffset;
         Data = data;
         Rotated = rotated;
     }
@@ -23,10 +25,10 @@ internal static class TextureCache
 {
     private static readonly Dictionary<string, Texture> Cache = [];
 
-    public static void Add(string name, int width, int height, BGRA[] data)
+    public static void Add(string name, int width, int height, int topOffset, BGRA[] data)
     {
         BGRA[] rotated = RotateTexture(height, width, data);
-        Cache[name] = new Texture(width, height, data, rotated);
+        Cache[name] = new Texture(width, height, topOffset, data, rotated);
     }
 
     private static unsafe BGRA[] RotateTexture(int height, int width, Span<BGRA> input)
@@ -51,14 +53,18 @@ internal static class TextureCache
         return output;
     }
 
-    public static TextureInfo GetTexture(string name, bool rotated)
+    public static TextureInfo GetTexture(string? name, bool rotated)
     {
+        if (name == null)
+        {
+            return TextureLoader.GetTexture(TextureName.Brick, rotated);
+        }
+
         ref Texture texture = ref CollectionsMarshal.GetValueRefOrNullRef(Cache, name);
 
         if (Unsafe.IsNullRef(ref texture))
         {
             return TextureLoader.GetTexture(TextureName.Brick, rotated);
-            // throw new ArgumentException($"Texture {name} not found", nameof(name));
         }
 
         if (rotated)

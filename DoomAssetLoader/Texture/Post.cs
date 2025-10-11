@@ -1,9 +1,12 @@
 ﻿namespace DoomAssetLoader.Texture
 {
-    public readonly struct Post
+    /// <summary>
+    /// Column of pixels going downwards
+    /// </summary>
+    public sealed class Post
     {
         /// <summary>
-        /// Y offset
+        /// Row to begin drawing this post at. 0 means whatever height the PatchHeader (TopOffset)
         /// </summary>
         public readonly byte TopDelta;
         public readonly byte Length;

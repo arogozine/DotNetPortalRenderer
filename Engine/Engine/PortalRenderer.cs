@@ -1,9 +1,6 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.TextureManagement;
-using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace RenderingEngine.Engine
 {
@@ -29,7 +26,7 @@ namespace RenderingEngine.Engine
         {
             PixelWidth = width;
             PixelHeight = height;
-            VFov = .7f * height;
+            VFov = 1f * height;
             WallHelper = new WallHelper(width, height, EngineConstants.CameraPlaneX, VFov);
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             distanceCache = new float[height];
@@ -158,10 +155,6 @@ namespace RenderingEngine.Engine
             GenerateDistanceCache(player, sectorInfo, sector);
             RenderWindowHelper.NewSector(sectorInfo);
 
-            TextureInfo wallTexture = TextureLoader.GetTexture(TextureName.Rock, true);
-            // TextureInfo groundTexture = TextureLoader.GetTexture(TextureName.CaveGround, false);
-            // TextureInfo ceilingTexture = TextureLoader.GetTexture(TextureName.CeilingOffice, false);
-
             List<RenderableWall> renderableWalls = [];
 
             for (int s = 0; s < walls.Length; s++)
@@ -191,8 +184,8 @@ namespace RenderingEngine.Engine
                 Wall wall = renderableWall.Wall;
 
                 bool wallDrawn = wall.Neighbor == EngineConstants.NullSector ?
-                    DrawBasicWall(screen, wallTexture, renderableWall) :
-                    DrawPortalWall(sector, sectors, screen, wallTexture, renderableWall);
+                    DrawBasicWall(screen, sector, renderableWall) :
+                    DrawPortalWall(screen, sector, sectors, renderableWall);
 
                 if (wallDrawn && wall.Neighbor != EngineConstants.NullSector)
                 {

@@ -1,6 +1,5 @@
 ﻿using RenderingEngine.Engine;
 using RenderingEngine.Models;
-using System.Diagnostics.CodeAnalysis;
 
 namespace RenderingEngine
 {

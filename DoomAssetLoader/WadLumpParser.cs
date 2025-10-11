@@ -8,7 +8,7 @@ namespace DoomAssetLoader
 {
     public static class WadLumpParser
     {
-        public static (PatchHeader, Post[]) ReadPatch(WadLump? patchLump)
+        public static PatchHeader ReadPatch(WadLump? patchLump)
         {
             ArgumentNullException.ThrowIfNull(patchLump);
 
@@ -31,25 +31,39 @@ namespace DoomAssetLoader
                 columnOffsets[i] = columnOffset;
             }
 
-            Post[] posts = new Post[width];
+            const byte EndOfColumn = 0xFF;
+
+            List<Post>[] columns = new List<Post>[width];
 
             for (int i = 0; i < width; i++)
             {
-                offset = (int)columnOffsets[i];
-                byte topDelta = MemoryMarshal.Read<byte>(bytes[offset..]);
-                offset++;
-                byte length = MemoryMarshal.Read<byte>(bytes[offset..]);
-                offset++;
-                // unused
-                offset++;
-                byte[] data = bytes[offset..(offset + length)].ToArray();
+                List<Post> posts = [];
+                columns[i] = posts;
 
-                posts[i] = new Post(topDelta, length, data);
+                offset = (int)columnOffsets[i];
+                int nextOffset = i + 1 < width ? (int)columnOffsets[i + 1] : bytes.Length;
+
+                while (offset < nextOffset && bytes[offset] != EndOfColumn)
+                {
+                    byte topDelta = MemoryMarshal.Read<byte>(bytes[offset..]);
+                    offset++;
+                    byte length = MemoryMarshal.Read<byte>(bytes[offset..]);
+                    offset++;
+                    // Unused padding byte
+                    offset++;
+                    byte[] data = bytes[offset..(offset + length)].ToArray();
+                    offset += length;
+                    // Unused padding byte
+                    offset++;
+
+                    posts.Add(new Post(topDelta, length, data));
+                }
+
             }
 
-            var header = new PatchHeader(width, height, leftOffset, topOffset, columnOffsets);
+            var header = new PatchHeader(width, height, leftOffset, topOffset, columns);
 
-            return (header, posts);
+            return header;
         }
 
         public static Span<TextureDefinition> ReadTexture([NotNull] WadLump? texture)

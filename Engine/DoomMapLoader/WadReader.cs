@@ -53,64 +53,96 @@ namespace RenderingEngine.DoomMapLoader
             public readonly int Width;
             public readonly int Height;
             public readonly BGRA[] Data;
-            public readonly int LeftOffset;
-            public readonly int TopOffset;
 
-            public TextureInfo(int width, int height, BGRA[] data, int leftOffset, int topOffset)
+            public TextureInfo(int width, int height, BGRA[] data)
             {
                 Width = width;
                 Height = height;
                 Data = data;
-                LeftOffset = leftOffset;
-                TopOffset = topOffset;
             }
         }
 
         public static unsafe Dictionary<string, TextureInfo> ExtractTextures(WadFile wad)
         {
-            Dictionary<string, TextureInfo> textures = [];
             Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
+            Span<string> patchNames = WadLumpParser.ReadPNames(wad[LumpType.PNames]);
+            Span<TextureDefinition> textureList = WadLumpParser.ReadTexture(wad[LumpType.Texture1]);
 
-            Span<string> pNames = WadLumpParser.ReadPNames(wad[LumpType.PNames]);
-            Span<TextureDefinition> names = WadLumpParser.ReadTexture(wad[LumpType.Texture1]);
+            Dictionary<string, TextureInfo> textures = [];
 
             const int normalPalette = 0;
             RGB[] palette = playPal[normalPalette];
 
-            for (int i = 0; i < names.Length; i++)
+            for (int t = 0; t < textureList.Length; t++)
             {
-                ref TextureDefinition textureDefinition = ref names[i];
+                ref TextureDefinition textureDefinition = ref textureList[t];
+                int height = textureDefinition.Height;
+                int width = textureDefinition.Width;
 
-                for (int p = 0; p < textureDefinition.Patches.Length; p++)
+                BGRA[] texture = new BGRA[textureDefinition.Width * textureDefinition.Height];
+
+                for (int patchIndex = 0; patchIndex < textureDefinition.Patches.Length; patchIndex++)
                 {
-                    ref PatchDescriptor patch = ref textureDefinition.Patches[p];
-                    string patchName = pNames[patch.Number];
+                    ref PatchDescriptor patch = ref textureDefinition.Patches[patchIndex];
+                    string patchName = patchNames[patch.Number];
 
-                    (PatchHeader header, Post[] posts) = WadLumpParser.ReadPatch(wad[patchName]);
+                    PatchHeader header = WadLumpParser.ReadPatch(wad[patchName]);
 
-                    BGRA[] texture = new BGRA[header.Width * header.Height];
+                    int originX = Math.Max((short)0, patch.XOffset);
+                    int originY = Math.Max((short)0, patch.YOffset);
 
-                    for (int x = 0; x < header.Width; x++)
-                    // for (int x = header.LeftOffset; x < header.Width; x++)
+                    for (int col = 0; col < header.Width; col++)
                     {
-                        ref Post post = ref posts[x];
+                        int x = originX + col;
 
-                        int index = x;
-
-                        for (int y = 0; y < post.Length; y++)
+                        // clip to texture bounds
+                        if (x < 0 || x >= width)
                         {
-                            byte paletteIndex = post.Data[y];
-
-                            RGB color = palette[paletteIndex];
-                            texture[index] = new BGRA(color.B, color.G, color.R);
-
-                            index += header.Width;
+                            continue;
                         }
+
+                        List<Post> column = header.Columns[col];
+
+                        foreach (Post post in column)
+                        {
+                            for (int s = 0; s < post.Length; s++)
+                            {
+                                int y = originY + post.TopDelta;
+
+                                for (int i = 0; i < post.Length; i++)
+                                {
+                                    if (x >= 0 && x < width && y + i >= 0 && y + i < height)
+                                    {
+                                        byte paletteIndex = post.Data[i];
+
+                                        // skip transparent pixels
+                                        if (paletteIndex == 0)
+                                        {
+                                            continue;
+                                        }
+                                        else if (paletteIndex == 255)
+                                        {
+                                            break;
+                                        }
+
+                                        int destY = y + i;
+
+                                        RGB color = palette[paletteIndex];
+
+                                        int index = x + (destY) * width;
+
+                                        texture[index] = new BGRA(color.B, color.G, color.R);
+                                    }
+                                }
+
+                            }
+
+                        }
+
                     }
-
-                    textures[textureDefinition.Name] = new TextureInfo(header.Width, header.Height, texture, header.LeftOffset, header.TopOffset);
-
                 }
+
+                textures[textureDefinition.Name] = new TextureInfo(textureDefinition.Width, textureDefinition.Height, texture);
             }
 
             return textures;
@@ -575,7 +607,7 @@ namespace RenderingEngine.DoomMapLoader
                 var image = SKImage.FromPixels(info, (nint)bgraPtr, info.RowBytes);
 
                 using var data = image.Encode(SKEncodedImageFormat.Png, 100); // 100 = max quality
-                string outputPath = Path.Combine(Directory.GetCurrentDirectory(), $"C:\\Users\\Alexa\\Downloads\\New folder\\{textureName}.PNG");
+                string outputPath = Path.Combine(Directory.GetCurrentDirectory(), $"C:\\Users\\Alexa\\Downloads\\New folder\\tex\\{textureName}.PNG");
                 using (var stream = File.OpenWrite(outputPath))
                 {
                     data.SaveTo(stream);

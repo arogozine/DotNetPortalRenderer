@@ -18,6 +18,9 @@
         /// </summary>
         public const string Texture2 = "TEXTURE2";
         public const string EnDoom = "ENDOOM";
+        /// <summary>
+        /// Patch names
+        /// </summary>
         public const string PNames = "PNAMES";
         public const string Vertexes = "VERTEXES";
         /// <summary>
