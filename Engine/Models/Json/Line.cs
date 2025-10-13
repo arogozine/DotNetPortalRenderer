@@ -10,5 +10,7 @@
         public required string? UpperTexture { get; set; }
         public required string? MiddleTexture { get; set; }
         public required string? LowerTexture { get; set; }
+        public int YOffset { get; set; }
+        public int XOffset { get; set; }
     }
 }

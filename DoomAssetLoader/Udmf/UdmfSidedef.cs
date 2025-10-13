@@ -13,6 +13,7 @@
         public string? TextureMiddle => this[TEXTURE_MIDDLE];
         public string? TextureBottom => this[TEXTURE_BOTTOM];
         public int? Sector => GetValue<int>(SECTOR_INDEX);
-
+        public int? XOffset => GetValue<int>(OFFSET_X);
+        public int? YOffset => GetValue<int>(OFFSET_Y);
     }
 }

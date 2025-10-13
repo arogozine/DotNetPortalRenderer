@@ -12,6 +12,7 @@ using Sector = DoomAssetLoader.Map.Sector;
 
 namespace RenderingEngine.DoomMapLoader
 {
+    [SkipLocalsInit]
     internal static class WadReader
     {
         public static Map ExtractDoomMap()
@@ -24,12 +25,12 @@ namespace RenderingEngine.DoomMapLoader
             );
 
             Dictionary<string, BGRA[]> floorTextures = ExtractFloorTextures(wad);
+            Dictionary<string, TextureInfo> textures = ExtractTextures(wad);
 
-            foreach ((string name, BGRA[] image) in floorTextures) {
+            foreach ((string name, BGRA[] image) in floorTextures)
+            {
                 TextureCache.Add(name, 64, 64, image);
             }
-
-            Dictionary<string, TextureInfo> textures = ExtractTextures(wad);
 
             foreach ((string name, var info) in textures)
             {
@@ -71,7 +72,7 @@ namespace RenderingEngine.DoomMapLoader
             Dictionary<string, TextureInfo> textures = [];
 
             const int normalPalette = 0;
-            RGB[] palette = playPal[normalPalette];
+            ReadOnlySpan<BGRA> palette = ToBGRA(playPal[normalPalette]);
 
             for (int t = 0; t < textureList.Length; t++)
             {
@@ -80,6 +81,7 @@ namespace RenderingEngine.DoomMapLoader
                 int width = textureDefinition.Width;
 
                 BGRA[] texture = new BGRA[textureDefinition.Width * textureDefinition.Height];
+                ref BGRA textureRef = ref MemoryMarshal.GetArrayDataReference(texture);
 
                 for (int patchIndex = 0; patchIndex < textureDefinition.Patches.Length; patchIndex++)
                 {
@@ -101,7 +103,7 @@ namespace RenderingEngine.DoomMapLoader
                             continue;
                         }
 
-                        List<Post> column = header.Columns[col];
+                        ReadOnlySpan<Post> column = CollectionsMarshal.AsSpan(header.Columns[col]);
 
                         foreach (Post post in column)
                         {
@@ -111,7 +113,7 @@ namespace RenderingEngine.DoomMapLoader
 
                                 for (int i = 0; i < post.Length; i++)
                                 {
-                                    if (x >= 0 && x < width && y + i >= 0 && y + i < height)
+                                    if (y + i >= 0 && y + i < height)
                                     {
                                         byte paletteIndex = post.Data[i];
 
@@ -127,11 +129,11 @@ namespace RenderingEngine.DoomMapLoader
 
                                         int destY = y + i;
 
-                                        RGB color = palette[paletteIndex];
+                                        BGRA color = palette[paletteIndex];
 
                                         int index = x + (destY) * width;
 
-                                        texture[index] = new BGRA(color.B, color.G, color.R);
+                                        Unsafe.Add(ref textureRef, index) = color;
                                     }
                                 }
 
@@ -155,8 +157,8 @@ namespace RenderingEngine.DoomMapLoader
 
             const int brightestColormap = 0;
             const int normalPalette = 0;
-            RGB[] palette = playPal[normalPalette];
-            byte[] colorMap = colorMaps[brightestColormap];
+            ReadOnlySpan<BGRA> palette = ToBGRA(playPal[normalPalette]);
+            ReadOnlySpan<byte> colorMap = colorMaps[brightestColormap];
 
             Dictionary<string, BGRA[]> flats = [];
 
@@ -173,13 +175,14 @@ namespace RenderingEngine.DoomMapLoader
 
                 ReadOnlySpan<byte> bytes = wadLump.Bytes;
                 BGRA[] texture = new BGRA[bytes.Length];
+                ref BGRA textureRef = ref MemoryMarshal.GetArrayDataReference(texture);
 
                 for (int c = 0; c < bytes.Length; c++)
                 {
                     int colorMapIndex = bytes[c];
                     int paletteIndex = colorMap[colorMapIndex];
-                    RGB color = palette[paletteIndex];
-                    texture[c] = new BGRA(color.B, color.G, color.R);
+                    BGRA color = palette[paletteIndex];
+                    Unsafe.Add(ref textureRef, c) = color;
                 }
 
                 flats[wadLump.Name] = texture;
@@ -204,6 +207,7 @@ namespace RenderingEngine.DoomMapLoader
                 if (thing.Type == ThingType.Player1Start)
                 {
                     player1Start = thing;
+                    break;
                 }
             }
 
@@ -212,13 +216,13 @@ namespace RenderingEngine.DoomMapLoader
                 throw new ArgumentException("No Player 1 Start", nameof(wad));
             }
 
-            var sectorToLinedefs = WadReader.GetSectorToLineDefs(lineDefs, sideDefs);
+            var sectorToLinedefs = WadReader.GetSectorToLineDefs(lineDefs, sideDefs, sectorDefs.Length);
 
-            var sectors = new List<MapSector>();
+            var sectors = new List<MapSector>(sectorDefs.Length);
 
             for (int i = 0; i < sectorDefs.Length; i++)
             {
-                Sector sector = sectorDefs[i];
+                ref Sector sector = ref sectorDefs[i];
 
                 if (!sectorToLinedefs.TryGetValue(i, out List<LineInfo>? lines))
                 {
@@ -238,7 +242,7 @@ namespace RenderingEngine.DoomMapLoader
 
                 foreach (LineInfo lineInfo in lines)
                 {
-                    Linedef linedef = lineDefs[lineInfo.LineDefId];
+                    ref Linedef linedef = ref lineDefs[lineInfo.LineDefId];
                     Vertex vertex1 = verticies[linedef.Vertex1];
                     Vertex vertex2 = verticies[linedef.Vertex2];
 
@@ -251,6 +255,8 @@ namespace RenderingEngine.DoomMapLoader
                         UpperTexture = lineInfo.UpperTexture,
                         MiddleTexture = lineInfo.MiddleTexture,
                         LowerTexture = lineInfo.LowerTexture,
+                        YOffset = lineInfo.YOffset,
+                        XOffset = lineInfo.XOffset
                     };
 
                     // Debug.WriteLine($"line: {lineId}, {linedef.Vertex1} {linedef.Vertex2} {parentSectorId}");
@@ -290,6 +296,7 @@ namespace RenderingEngine.DoomMapLoader
                 if (thing.Type == (int)ThingType.Player1Start)
                 {
                     player1Start = thing;
+                    break;
                 }
             }
 
@@ -298,7 +305,7 @@ namespace RenderingEngine.DoomMapLoader
                 throw new ArgumentException("No Player 1 Start", nameof(textLump));
             }
 
-            Dictionary<int, List<LineInfo>> sectorToLinedefs = GetSectorToLineDefs(map);
+            Dictionary<int, List<LineInfo>> sectorToLinedefs = GetSectorToLineDefs(map, sectorDefs.Length);
 
             var sectors = new List<MapSector>();
 
@@ -356,16 +363,6 @@ namespace RenderingEngine.DoomMapLoader
                 },
                 Sectors = sectors
             };
-        }
-
-        private static Point ToVector(UdmfVertex vertex)
-        {
-            return new Point(vertex.X, vertex.Y);
-        }
-
-        private static Point ToVector(Vertex vertex)
-        {
-            return new Point(vertex.X, vertex.Y);
         }
 
         public static WadFile LoadWad(string filePath)
@@ -469,23 +466,27 @@ namespace RenderingEngine.DoomMapLoader
             public readonly string? UpperTexture;
             public readonly string? MiddleTexture;
             public readonly string? LowerTexture;
+            public readonly int XOffset;
+            public readonly int YOffset;
 
-            public LineInfo(int parentSectorId, int lineDefId, string? upperTexture, string? middleTexture, string? lowerTexture)
+            public LineInfo(int parentSectorId, int lineDefId, string? upperTexture, string? middleTexture, string? lowerTexture, int xOffset, int yOffset)
             {
                 ParentSectorId = parentSectorId;
                 LineDefId = lineDefId;
                 UpperTexture = upperTexture;
                 MiddleTexture = middleTexture;
                 LowerTexture = lowerTexture;
+                XOffset = xOffset;
+                YOffset = yOffset;
             }
         }
 
-        public static Dictionary<int, List<LineInfo>> GetSectorToLineDefs(UdmfMapData textMap)
+        public static Dictionary<int, List<LineInfo>> GetSectorToLineDefs(UdmfMapData textMap, int sectors)
         {
             ReadOnlySpan<UdmfLinedef> lineDefs = CollectionsMarshal.AsSpan(textMap.Linedefs);
             ReadOnlySpan<UdmfSidedef> sideDefs = CollectionsMarshal.AsSpan(textMap.Sidedefs);
 
-            var sectorToLineDefs = new Dictionary<int, List<LineInfo>>();
+            var sectorToLineDefs = new Dictionary<int, List<LineInfo>>(sectors);
 
             for (int i = 0; i < lineDefs.Length; i++)
             {
@@ -515,15 +516,16 @@ namespace RenderingEngine.DoomMapLoader
                     sectorToLineDefs[sectorId] = sectorLineDefs;
                 }
 
-                sectorLineDefs.Add(new LineInfo(parentSectorId, linedefId, sidedef.TextureTop, sidedef.TextureMiddle, sidedef.TextureBottom));
+                sectorLineDefs.Add(new LineInfo(parentSectorId, linedefId, sidedef.TextureTop, sidedef.TextureMiddle, sidedef.TextureBottom, sidedef.XOffset ?? 0, sidedef.YOffset ?? 0));
             }
         }
 
         public static Dictionary<int, List<LineInfo>> GetSectorToLineDefs(
             ReadOnlySpan<Linedef> lineDefs,
-            ReadOnlySpan<Sidedef> sideDefs)
+            ReadOnlySpan<Sidedef> sideDefs,
+            int sectors)
         {
-            var sectorToLineDefs = new Dictionary<int, List<LineInfo>>();
+            var sectorToLineDefs = new Dictionary<int, List<LineInfo>>(sectors);
 
             for (int i = 0; i < lineDefs.Length; i++)
             {
@@ -543,6 +545,8 @@ namespace RenderingEngine.DoomMapLoader
                 }
             }
 
+            Debug.WriteLine($"{sectors} vs {sectorToLineDefs.Count}");
+
             return sectorToLineDefs;
 
             void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId, Sidedef sidedef)
@@ -553,7 +557,7 @@ namespace RenderingEngine.DoomMapLoader
                     sectorToLineDefs[sectorId] = sectorLineDefs;
                 }
 
-                sectorLineDefs.Add(new LineInfo(parentSectorId, linedefId, sidedef.UpperTextureNullable, sidedef.MiddleTextureNullable, sidedef.LowerTextureNullable));
+                sectorLineDefs.Add(new LineInfo(parentSectorId, linedefId, sidedef.UpperTextureNullable, sidedef.MiddleTextureNullable, sidedef.LowerTextureNullable, sidedef.XOffset, sidedef.YOffset));
             }
         }
 
@@ -616,5 +620,41 @@ namespace RenderingEngine.DoomMapLoader
                 Console.WriteLine($"Image saved to {outputPath}");
             }
         }
+
+        [SkipLocalsInit]
+        private static ReadOnlySpan<BGRA> ToBGRA(ReadOnlySpan<RGB> rgb) {
+            ref RGB color = ref MemoryMarshal.GetReference(rgb);
+
+            Span<BGRA> bgra = new BGRA[rgb.Length];
+
+            for (int i = 0; i < rgb.Length; i++)
+            {
+                // Calling "new BGRA" is extremely slow
+                unchecked
+                {
+                    const uint Alpha = (uint)byte.MaxValue << 24;
+                    uint b = color.B;
+                    uint g = (uint)color.G << 8;
+                    uint r = (uint)color.R << 16;
+
+                    bgra[i] = b | g | r | Alpha;
+                }
+
+                color = ref Unsafe.Add(ref color, 1);
+            }
+
+            return bgra;
+        }
+
+        private static Point ToVector(UdmfVertex vertex)
+        {
+            return new Point(vertex.X, vertex.Y);
+        }
+
+        private static Point ToVector(Vertex vertex)
+        {
+            return new Point(vertex.X, vertex.Y);
+        }
+
     }
 }

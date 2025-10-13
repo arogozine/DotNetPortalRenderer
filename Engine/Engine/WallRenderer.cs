@@ -11,13 +11,13 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors,
             RenderableWall renderableWall)
         {
-            var line = renderableWall.Wall.Line;
+            var wall = renderableWall.Wall;
+            var line = wall.Line;
             int wallFromXOffset = renderableWall.Offset;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
             float sectorHeight = sector.Ceil - sector.Floor;
-
-            var wall = renderableWall.Wall;
+            int yOffset = line.YOffset;
 
             WallYPlaneInfo yPlaneInfo = WallHelper.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
 
@@ -89,7 +89,6 @@ namespace RenderingEngine.Engine
                 {
                     int textureWidth = upperTexture.Height;
                     int textureHeight = upperTexture.Width;
-                    // int mask = textureWidth - 1;
 
                     wallTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperTexture.Rotated);
 
@@ -111,9 +110,8 @@ namespace RenderingEngine.Engine
                     float textureXIncr = (float)sectorHeight / (wallEndYInt - wallStartYInt);
                     // texture is rotated - y position is x position in texture
                     int textureYPos = ((int)distance) % textureHeight;
-                    float textureXPos = textureWidth - textureXIncr * Math.Abs(wallStartYInt - clamptedFromY);
+                    float textureXPos = textureWidth - yOffset - textureXIncr * Math.Abs(wallStartYInt - clamptedFromY);
                     int textureYPosI = textureYPos * textureWidth;
-
 
                     uint shaded = default;
                     int textureXPosIOld = -1;
@@ -125,7 +123,6 @@ namespace RenderingEngine.Engine
                         {
                             textureXPosI = 0;
                         }
-                        //textureXPosI = textureXPosI & mask;
 
                         if (textureXPosI != textureXPosIOld)
                         {
@@ -140,10 +137,6 @@ namespace RenderingEngine.Engine
                         textureXPos -= textureXIncr;
                     }
 
-                   //  Debug.WriteLine(textureYPosI + (int)textureXPos);
-
-
-
                     textureWidth = lowerTexture.Width;
                     textureHeight = lowerTexture.Height;
                     wallTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
@@ -152,7 +145,7 @@ namespace RenderingEngine.Engine
 
                     textureXIncr = (float)sectorHeight / (wallEndYInt - wallStartYInt);
                     textureYPos = ((int)distance) % textureHeight;
-                    textureXPos = textureWidth - textureXIncr * Math.Abs(wallStartYInt - portalToY);
+                    textureXPos = textureWidth - yOffset - textureXIncr * Math.Abs(wallStartYInt - portalToY);
                     textureYPosI = textureYPos * textureWidth;
 
                     shaded = default;
@@ -198,16 +191,16 @@ namespace RenderingEngine.Engine
             Sector sector,
             RenderableWall renderableWall)
         {
-            var line = renderableWall.Wall.Line;
+            var wall = renderableWall.Wall;
+            var line = wall.Line;
             int wallFromXOffset = renderableWall.Offset;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
             float sectorHeight = sector.Ceil - sector.Floor;
+            int yOffset = line.YOffset;
 
             WallYPlaneInfo yPlaneInfo = WallHelper.CalculateLeftWallYPlaneInfo(renderableWall.Wall, wallFromXOffset);
             Texture wallTexture = TextureCache.GetTexture(line.MiddleTexture);
-
-            var wall = renderableWall.Wall;
 
             float wallStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
@@ -228,7 +221,7 @@ namespace RenderingEngine.Engine
             float cameraRay = -1f * EngineConstants.CameraPlaneX;
             cameraRay += cameraWidthIncr * wallFromX;
 
-            ref BGRA wallTexturePtr = ref MemoryMarshal.GetArrayDataReference(wallTexture.Rotated);// wallTexture.Texture;
+            ref BGRA wallTexturePtr = ref MemoryMarshal.GetArrayDataReference(wallTexture.Rotated);
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
 
             int textureWidth = wallTexture.Height;
@@ -267,7 +260,7 @@ namespace RenderingEngine.Engine
                 int textureYPos = ((int)distance) % textureHeight;
                 // 
                 float textureXIncr = sectorHeight / (wallEndYInt - wallStartYInt);
-                float textureXPos = textureWidth - textureXIncr * Math.Abs(wallStartYInt - clamptedFromY);
+                float textureXPos = textureWidth - yOffset - textureXIncr * Math.Abs(wallStartYInt - clamptedFromY);
                 int textureYPosI = textureYPos * textureWidth;
 
                 uint shaded = default;
