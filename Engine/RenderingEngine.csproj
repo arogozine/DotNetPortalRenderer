@@ -18,10 +18,4 @@
     <ProjectReference Include="..\DoomAssetLoader\DoomAssetLoader.csproj" />
   </ItemGroup>
 
-	<ItemGroup>
-		<None Update="Textures\**\*">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
-
 </Project>

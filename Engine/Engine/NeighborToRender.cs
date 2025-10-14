@@ -4,16 +4,20 @@ namespace RenderingEngine.Engine
 {
     internal sealed class NeighborsToRender
     {
-        public NeighborsToRender() { }
+        public NeighborsToRender() {
+            ParentWalls = [];
+        }
 
-        public NeighborsToRender(RenderableWall renderableWall)
+        public NeighborsToRender(RenderableWall renderableWall, Span<Wall> walls)
         {
             this.RenderableWall = renderableWall;
-            ParentWalls.Add(renderableWall.Wall);
+            ParentWalls = new Wall[walls.Length + 1];
+            walls.CopyTo(ParentWalls);
+            ParentWalls[^1] = renderableWall.Wall;
         }
 
         public required int SectorId { get; init; }
         public RenderableWall? RenderableWall { get; init; }
-        public List<Wall> ParentWalls { get; } = [];
+        public Wall[] ParentWalls { get; }
     }
 }

@@ -4,32 +4,34 @@ namespace RenderingEngine.Models
 {
     internal sealed class Wall
     {
-        public readonly Line Line;
+        public Line Line { get; }
 
-        public bool IntersectsView;
-        // Point A
-        public float X1;
-        public float Y1;
-        // Point B
-        public float X2;
-        public float Y2;
+        public bool IntersectsView { get; set; }
+        public bool Flipped { get; set; }
+
+        // Rotated Point A
+        public float X1 { get; set; }
+        public float Y1 { get; set; }
+        // Rotated Point B
+        public float X2 { get; set; }
+        public float Y2 { get; set; }
 
         // Clamped Point A
-        public float CX1;
-        public float CY1;
+        public float CX1 { get; set; }
+        public float CY1 { get; set; }
         // Clamped Point B
-        public float CX2;
-        public float CY2;
+        public float CX2 { get; set; }
+        public float CY2 { get; set; }
 
         //
-        public int Neighbor;
+        public int Neighbor { get; set; }
         // Plane
-        public int XLeft;
-        public int XRight;
-        public int YLeftCeil;
-        public int YLeftFloor;
-        public int YRightCeil;
-        public int YRightFloor;
+        public int XLeft { get; set; }
+        public int XRight { get; set; }
+        public int YLeftCeil { get; set; }
+        public int YLeftFloor { get; set; }
+        public int YRightCeil { get; set; }
+        public int YRightFloor { get; set; }
 
         public Wall(Line line, float x1, float y1, float x2, float y2, int? neighbor)
         {
@@ -81,6 +83,7 @@ namespace RenderingEngine.Models
             hash.Add(YRightFloor);
             return hash.ToHashCode();
         }
+
         public static bool operator ==(Wall left, Wall right)
         {
             return left.Equals(right);

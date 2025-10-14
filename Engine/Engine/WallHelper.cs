@@ -355,6 +355,8 @@ namespace RenderingEngine.Engine
 
                 (wall.X1, wall.X2) = (wall.X2, wall.X1);
                 (wall.Y1, wall.Y2) = (wall.Y2, wall.Y1);
+
+                wall.Flipped = true;
             }
 
             // part of the wall is in the back
@@ -430,6 +432,8 @@ namespace RenderingEngine.Engine
 
                 (wall.X1, wall.X2) = (wall.X2, wall.X1);
                 (wall.Y1, wall.Y2) = (wall.Y2, wall.Y1);
+
+                wall.Flipped = !wall.Flipped;
             }
 
             wall.IntersectsView |= CalculatePlaneIntersectionsForWall(ref xLeft, ref xRight, ref rx1, ref ry1, ref rx2, ref ry2);

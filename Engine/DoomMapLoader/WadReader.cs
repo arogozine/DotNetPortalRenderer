@@ -3,9 +3,9 @@ using DoomAssetLoader.Map;
 using DoomAssetLoader.Texture;
 using DoomAssetLoader.Udmf;
 using DoomAssetLoader.Wad;
+using RenderingEngine.Engine;
 using RenderingEngine.Models;
 using RenderingEngine.Models.Json;
-using RenderingEngine.TextureManagement;
 using SkiaSharp;
 using System.Text;
 using Sector = DoomAssetLoader.Map.Sector;
@@ -37,7 +37,7 @@ namespace RenderingEngine.DoomMapLoader
                 TextureCache.Add(name, info.Width, info.Height, info.Data);
             }
 
-            WadLump? textMap = wad["TEXTMAP"];
+            WadLump? textMap = wad[LumpType.TextMap];
 
             if (textMap is not null)
             {
@@ -259,7 +259,6 @@ namespace RenderingEngine.DoomMapLoader
                         XOffset = lineInfo.XOffset
                     };
 
-                    // Debug.WriteLine($"line: {lineId}, {linedef.Vertex1} {linedef.Vertex2} {parentSectorId}");
                     mapSector.Walls.Add(line);
                 }
 

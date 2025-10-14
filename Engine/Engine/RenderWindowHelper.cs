@@ -146,50 +146,48 @@ namespace RenderingEngine.Engine
             return (wallFromXOffset, wallFromX, wallToX);
         }
 
-        private static readonly RenderWindow Default = default;
-
         [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public RenderWindow TryGetRenderableDimensionsForX2(int x)
+        public ref RenderWindow TryGetRenderableDimensionsForX2(int x)
         {
             if (sectorFromX > x || x > sectorToX)
-                return Default;
+                return ref Unsafe.NullRef<RenderWindow>();
 
             ref RenderWindow window = ref this.renderWindow[x];
 
             if (!window.Calculated || window.WallStart >= window.WallEnd)
-                return Default;
+                return ref Unsafe.NullRef<RenderWindow>();
 
-            return window;
+            return ref window;
         }
 
         [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public RenderWindow GetFloorCeilDimensions2(int x)
+        public ref RenderWindow GetFloorCeilDimensions2(int x)
         {
             if (sectorFromX > x || x > sectorToX)
-                return Default;
+                return ref Unsafe.NullRef<RenderWindow>();
 
             ref RenderWindow window = ref this.renderWindow[x];
 
             if (!window.Calculated || window.WallStart >= window.WallEnd)
-                return Default;
+                return ref Unsafe.NullRef<RenderWindow>();
 
-            return window;
+            return ref window;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public RenderWindow GetCeilingDimensions(int x)
+        public ref RenderWindow GetCeilingDimensions(int x)
         {
             if (sectorFromX > x || x > sectorToX)
-                return Default;
+                return ref Unsafe.NullRef<RenderWindow>();
 
             ref RenderWindow window = ref this.renderWindow[x];
 
             if (!window.Calculated || window.CeilingStart >= window.WallEnd)
-                return Default;
+                return ref Unsafe.NullRef<RenderWindow>();
 
-            return window;
+            return ref window;
         }
     }
 }

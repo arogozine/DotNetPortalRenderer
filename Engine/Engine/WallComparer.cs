@@ -2,6 +2,9 @@
 
 namespace RenderingEngine.Engine
 {
+    /// <summary>
+    /// Wall distance comparer
+    /// </summary>
     internal sealed class WallComparer : IComparer<Wall>
     {
         private readonly float cameraWidthIncr;

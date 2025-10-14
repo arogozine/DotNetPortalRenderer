@@ -1,5 +1,4 @@
 ﻿using RenderingEngine.Models;
-using RenderingEngine.TextureManagement;
 using System.Numerics;
 
 namespace RenderingEngine.Engine
@@ -111,7 +110,7 @@ namespace RenderingEngine.Engine
 
                 float yceil = sector.Ceil - pz;
                 float yfloor = sector.Floor - pz;
-                Span<Wall> parentWalls = CollectionsMarshal.AsSpan(sectorInfo.ParentWalls);
+                Span<Wall> parentWalls = sectorInfo.ParentWalls;
 
                 Span<Wall> walls = WallHelper.DetermineWallsToRender(sector,
                     parentWalls, pSin, pCos, px, py, yceil, yfloor, yaw);
@@ -122,16 +121,15 @@ namespace RenderingEngine.Engine
                 {
                     Wall neighbor = renderableWall.Wall;
 
-                    var neighborToRender = new NeighborsToRender(renderableWall)
+                    var neighborToRender = new NeighborsToRender(renderableWall, parentWalls)
                     {
                         SectorId = neighbor.Neighbor
                     };
-                    neighborToRender.ParentWalls.AddRange(parentWalls);
 
                     sectorRenderQueue.Enqueue(neighborToRender);
                 }
 
-                DebugPortal(screen, this.RenderWindowHelper.RenderWindow);
+                // DebugPortal(screen, this.RenderWindowHelper.RenderWindow);
 
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxPortalsRendered);
@@ -164,18 +162,18 @@ namespace RenderingEngine.Engine
                 CalculateRenderWindow(wall, renderableWalls);
             }
 
-            TextureInfo groundTexture = TextureCache.GetTexture(sector.FloorTexture, false);
-            TextureInfo ceilingTexture = TextureCache.GetTexture(sector.FloorTexture, false);
+            ref Texture groundTexture = ref TextureCache.GetTexture(sector.FloorTexture);
+            ref Texture ceilingTexture = ref TextureCache.GetTexture(sector.CeilTexture);
 
             if (Vector.IsHardwareAccelerated)
             {
-                RenderFloorVector(player, sector, screen, groundTexture);
-                RenderCeilingVector(player, sector, screen, ceilingTexture);
+                RenderFloorVector(player, sector, screen, ref groundTexture);
+                RenderCeilingVector(player, sector, screen, ref ceilingTexture);
             }
             else
             {
-                RenderFloor(player, sector, screen, groundTexture);
-                RenderCeiling(player, sector, screen, ceilingTexture);
+                RenderFloor(player, sector, screen, ref groundTexture);
+                RenderCeiling(player, sector, screen, ref ceilingTexture);
             }
 
             for (int s = 0; s < renderableWalls.Count; s++)

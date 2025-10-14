@@ -1,5 +1,4 @@
 ﻿using RenderingEngine.Models;
-using RenderingEngine.TextureManagement;
 using System.Numerics;
 
 namespace RenderingEngine.Engine
@@ -16,7 +15,7 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             Sector sector,
             Span<BGRA> screen,
-            TextureInfo ceilingTexture)
+            ref Texture ceilingTexture)
         {
             int height = PixelHeight;
             int width = PixelWidth;
@@ -34,7 +33,7 @@ namespace RenderingEngine.Engine
 
             const float sixtyFourF = 64f;
 
-            ref BGRA ceilingTexturePtr = ref ceilingTexture.Texture;
+            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
             ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
@@ -42,9 +41,9 @@ namespace RenderingEngine.Engine
 
             for (int x = sectroFromX; x < sectorToX; x++)
             {
-                var info = RenderWindowHelper.GetCeilingDimensions(x);
+                ref RenderWindow info = ref RenderWindowHelper.GetCeilingDimensions(x);
 
-                if (!info.Calculated || info.CeilingStart >= info.WallStart)
+                if (Unsafe.IsNullRef(ref info) || info.CeilingStart >= info.WallStart)
                 {
                     continue;
                 }
@@ -90,7 +89,7 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             Sector sector,
             Span<BGRA> screen,
-            TextureInfo ceilingTexture
+            ref Texture ceilingTexture
             )
         {
             int height = PixelHeight;
@@ -121,7 +120,7 @@ namespace RenderingEngine.Engine
             Vector<float> incramentVector = default;
             ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
-            ref BGRA ceilingTexturePtr = ref ceilingTexture.Texture;
+            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
             ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
@@ -129,9 +128,9 @@ namespace RenderingEngine.Engine
 
             for (int x = sectroFromX; x <= sectorToX; x++)
             {
-                var info = RenderWindowHelper.GetCeilingDimensions(x);
+                ref RenderWindow info = ref RenderWindowHelper.GetCeilingDimensions(x);
 
-                if (!info.Calculated || info.CeilingStart >= info.WallStart)
+                if (Unsafe.IsNullRef(ref info) || info.CeilingStart >= info.WallStart)
                 {
                     continue;
                 }
@@ -215,7 +214,7 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             Sector sector,
             Span<BGRA> screen,
-            TextureInfo floorTexture)
+            ref Texture floorTexture)
         {
             int height = PixelHeight;
             int width = PixelWidth;
@@ -231,7 +230,7 @@ namespace RenderingEngine.Engine
             float oneOvervFov = 1f / vFov;
             int halfHeightInt = height / 2;
 
-            ref BGRA floorTexturePtr = ref floorTexture.Texture;
+            ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
             ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
@@ -241,7 +240,7 @@ namespace RenderingEngine.Engine
 
             for (int x = sectroFromX; x < sectorToX; x++)
             {
-                var info = RenderWindowHelper.GetFloorCeilDimensions2(x);
+                ref RenderWindow info = ref RenderWindowHelper.GetFloorCeilDimensions2(x);
 
                 if (!info.Calculated || info.CeilingStart >= info.FloorEnd || info.WallEnd >= info.FloorEnd)
                 {
@@ -287,7 +286,7 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             Sector sector,
             Span<BGRA> screen,
-            TextureInfo floorTexture)
+            ref Texture floorTexture)
         {
             int height = PixelHeight;
             int width = PixelWidth;
@@ -303,7 +302,7 @@ namespace RenderingEngine.Engine
             float oneOvervFov = 1f / vFov;
             int halfHeightInt = height / 2;
 
-            ref BGRA floorTexturePtr = ref floorTexture.Texture;
+            ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
             ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
@@ -323,9 +322,9 @@ namespace RenderingEngine.Engine
 
             for (int x = sectroFromX; x <= sectorToX; x++)
             {
-                var info = RenderWindowHelper.GetFloorCeilDimensions2(x);
+                ref RenderWindow info = ref RenderWindowHelper.GetFloorCeilDimensions2(x);
 
-                if (!info.Calculated || info.CeilingStart >= info.FloorEnd || info.WallEnd >= info.FloorEnd)
+                if (Unsafe.IsNullRef(ref info) || info.CeilingStart >= info.FloorEnd || info.WallEnd >= info.FloorEnd)
                 {
                     continue;
                 }
