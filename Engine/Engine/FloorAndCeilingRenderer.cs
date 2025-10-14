@@ -31,25 +31,23 @@ namespace RenderingEngine.Engine
             float yaw = player.Yaw;
             float yCeil = sector.Ceil - pz;
 
-            const float sixtyFourF = 64f;
-
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
             ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
             (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            for (int x = sectroFromX; x < sectorToX; x++)
+            for (int x = sectroFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow info = ref RenderWindowHelper.GetCeilingDimensions(x);
+                ref RenderWindow renderWindow = ref RenderWindowHelper.GetCeilingDimensions(x);
 
-                if (Unsafe.IsNullRef(ref info) || info.CeilingStart >= info.WallStart)
+                if (Unsafe.IsNullRef(ref renderWindow) || renderWindow.CeilingStart >= renderWindow.WallStart)
                 {
                     continue;
                 }
 
-                int floorFromY = info.CeilingStart;
-                int floorToY = info.WallStart;
+                int floorFromY = renderWindow.CeilingStart;
+                int floorToY = renderWindow.WallStart;
 
                 int screenIndex = floorFromY * width + x;
 
@@ -65,11 +63,8 @@ namespace RenderingEngine.Engine
 
                     (float xMapPos, float yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
 
-                    float xf = MathF.Abs(xMapPos - MathF.Truncate(xMapPos));
-                    float yf = MathF.Abs(yMapPos - MathF.Truncate(yMapPos));
-
-                    int _y1 = (int)(yf * sixtyFourF);
-                    int _x1 = (int)(xf * sixtyFourF);
+                    int _y1 = (int)(yMapPos) & 63;
+                    int _x1 = (int)(xMapPos) & 63;
                     int textureIndex = (_y1 << 6) + _x1;
 
                     ref BGRA tex = ref Unsafe.Add(ref ceilingTexturePtr, textureIndex);
@@ -79,7 +74,6 @@ namespace RenderingEngine.Engine
                     ii--;
                 }
 
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
                 renderWindow.CeilingStart = renderWindow.WallStart;
             }
         }
@@ -128,15 +122,15 @@ namespace RenderingEngine.Engine
 
             for (int x = sectroFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow info = ref RenderWindowHelper.GetCeilingDimensions(x);
+                ref RenderWindow renderWindow = ref RenderWindowHelper.GetCeilingDimensions(x);
 
-                if (Unsafe.IsNullRef(ref info) || info.CeilingStart >= info.WallStart)
+                if (Unsafe.IsNullRef(ref renderWindow) || renderWindow.CeilingStart >= renderWindow.WallStart)
                 {
                     continue;
                 }
 
-                int floorFromY = info.CeilingStart;
-                int floorToY = info.WallStart;
+                int floorFromY = renderWindow.CeilingStart;
+                int floorToY = renderWindow.WallStart;
 
                 int screenIndex = floorFromY * width + x;
 
@@ -204,7 +198,6 @@ namespace RenderingEngine.Engine
                     ii -= oneOvervFov; // --;
                 }
 
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
                 renderWindow.CeilingStart = renderWindow.WallStart;
             }
         }
@@ -234,21 +227,19 @@ namespace RenderingEngine.Engine
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
             ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
-            const float sixtyFourF = 64f;
-
             (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            for (int x = sectroFromX; x < sectorToX; x++)
+            for (int x = sectroFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow info = ref RenderWindowHelper.GetFloorCeilDimensions2(x);
+                ref RenderWindow renderWindow = ref RenderWindowHelper.GetFloorCeilDimensions2(x);
 
-                if (!info.Calculated || info.CeilingStart >= info.FloorEnd || info.WallEnd >= info.FloorEnd)
+                if (Unsafe.IsNullRef(ref renderWindow) || renderWindow.CeilingStart >= renderWindow.FloorEnd || renderWindow.WallEnd >= renderWindow.FloorEnd)
                 {
                     continue;
                 }
 
-                int floorFromY = info.WallEnd;
-                int floorToY = info.FloorEnd;
+                int floorFromY = renderWindow.WallEnd;
+                int floorToY = renderWindow.FloorEnd;
 
                 int screenIndex = floorFromY * width + x;
                 float xMapPosMultiplier = (width / 2 - x) * idkWhatThisIs;
@@ -262,11 +253,8 @@ namespace RenderingEngine.Engine
 
                     (float xMapPos, float yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
 
-                    float xf = MathF.Abs(xMapPos - MathF.Truncate(xMapPos));
-                    float yf = MathF.Abs(yMapPos - MathF.Truncate(yMapPos));
-
-                    int _y1 = (int)(yf * sixtyFourF);
-                    int _x1 = (int)(xf * sixtyFourF);
+                    int _y1 = (int)(yMapPos) & 63;
+                    int _x1 = (int)(xMapPos) & 63;
                     int textureIndex = (_y1 << 6) + _x1;
 
                     ref BGRA tex = ref Unsafe.Add(ref floorTexturePtr, textureIndex);
@@ -276,7 +264,6 @@ namespace RenderingEngine.Engine
                     increment -= 1;
                 }
 
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
                 renderWindow.FloorEnd = renderWindow.WallEnd;
             }
         }
@@ -322,15 +309,15 @@ namespace RenderingEngine.Engine
 
             for (int x = sectroFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow info = ref RenderWindowHelper.GetFloorCeilDimensions2(x);
+                ref RenderWindow renderWindow = ref RenderWindowHelper.GetFloorCeilDimensions2(x);
 
-                if (Unsafe.IsNullRef(ref info) || info.CeilingStart >= info.FloorEnd || info.WallEnd >= info.FloorEnd)
+                if (Unsafe.IsNullRef(ref renderWindow) || renderWindow.CeilingStart >= renderWindow.FloorEnd || renderWindow.WallEnd >= renderWindow.FloorEnd)
                 {
                     continue;
                 }
 
-                int floorFromY = info.WallEnd;
-                int floorToY = info.FloorEnd;
+                int floorFromY = renderWindow.WallEnd;
+                int floorToY = renderWindow.FloorEnd;
 
                 int screenIndex = floorFromY * width + x;
                 float xMapPosMultiplier = (width / 2 - x) * idkWhatThisIs;
@@ -401,7 +388,6 @@ namespace RenderingEngine.Engine
                     increment -= 1;
                 }
 
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
                 renderWindow.FloorEnd = renderWindow.WallEnd;
             }
         }
