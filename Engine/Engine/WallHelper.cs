@@ -72,23 +72,8 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool SameLine(Wall a, Wall b)
         {
-            if (a is not null && b is not null)
-            {
-                return (
-                    a.X1 == b.X1
-                    && a.X2 == b.X2
-                    && a.Y1 == b.Y1
-                    && a.Y2 == b.Y2
-                    ) ||
-                    (
-                    a.X2 == b.X1
-                    && a.X1 == b.X2
-                    && a.Y2 == b.Y1
-                    && a.Y1 == b.Y2
-                );
-            }
-
-            return false;
+            return (a.R1 == b.R1 && a.R2 == b.R2) ||
+                (a.R2 == b.R1 && a.R1 == b.R2);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -145,11 +130,8 @@ namespace RenderingEngine.Engine
                 Wall current = rotatedWalls[i];
                 Wall next = rotatedWalls[b];
 
-                bool leftConnects = current.X1 == next.X1 && current.Y1 == next.Y1 ||
-                    current.X1 == next.X2 && current.Y1 == next.Y2;
-
-                bool rightConnects = current.X2 == next.X1 && current.Y2 == next.Y1 ||
-                    current.X2 == next.X2 && current.Y2 == next.Y2;
+                bool leftConnects = current.R1 == next.R1 || current.R1 == next.R2;
+                bool rightConnects = current.R2 == next.R1 || current.R2 == next.R2;
 
                 if (b + 1 == rotatedWalls.Length)
                 {
@@ -178,7 +160,7 @@ namespace RenderingEngine.Engine
             {
                 Wall wall = walls[i];
 
-                if (wall.Y1 <= 0f && wall.Y2 <= 0f)
+                if (wall.R1.Y <= 0f && wall.R2.Y <= 0f)
                 {
                     continue;
                 }
@@ -244,7 +226,7 @@ namespace RenderingEngine.Engine
                         continue;
                     }
 
-                    if (wall.CY1 <= 0f || wall.CY2 <= 0f)
+                    if (wall.C1.Y <= 0f || wall.C2.Y <= 0f)
                     {
                         continue;
                     }
@@ -300,8 +282,8 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            bool[] visibility = this.visibility;
-            visibility.AsSpan().Fill(true);
+            Span<bool> visibility = this.visibility;
+            visibility.Fill(true);
 
             int j = 0;
             for (int i = 0; i < walls.Length; i++)
@@ -332,10 +314,10 @@ namespace RenderingEngine.Engine
         public void CalculateWallPlane(Wall wall, float yCeil, float yFloor, float yaw)
         {
             // calculate the x, y for the wall on the screen for both points
-            float rx1 = wall.X1;
-            float ry1 = wall.Y1;
-            float rx2 = wall.X2;
-            float ry2 = wall.Y2;
+            float rx1 = wall.R1.X;
+            float ry1 = wall.R1.Y;
+            float rx2 = wall.R2.X;
+            float ry2 = wall.R2.Y;
 
             float xLeft, xRight, yLeftCeil, yLeftFloor, yRightCeil, yRightFloor;
             float scale = width * -0.7575231f;
@@ -353,8 +335,7 @@ namespace RenderingEngine.Engine
                 (rx1, rx2) = (rx2, rx1);
                 (ry1, ry2) = (ry2, ry1);
 
-                (wall.X1, wall.X2) = (wall.X2, wall.X1);
-                (wall.Y1, wall.Y2) = (wall.Y2, wall.Y1);
+                (wall.R1, wall.R2) = (wall.R2, wall.R1);
 
                 wall.Flipped = true;
             }
@@ -430,8 +411,7 @@ namespace RenderingEngine.Engine
                 (rx1, rx2) = (rx2, rx1);
                 (ry1, ry2) = (ry2, ry1);
 
-                (wall.X1, wall.X2) = (wall.X2, wall.X1);
-                (wall.Y1, wall.Y2) = (wall.Y2, wall.Y1);
+                (wall.R1, wall.R2) = (wall.R2, wall.R1);
 
                 wall.Flipped = !wall.Flipped;
             }
@@ -445,10 +425,8 @@ namespace RenderingEngine.Engine
                 yRightCeil = halfHeight - (yCeil / ry2 - yaw) * vFov;
                 yRightFloor = halfHeight - (yFloor / ry2 - yaw) * vFov;
 
-                wall.CX1 = rx1;
-                wall.CY1 = ry1;
-                wall.CX2 = rx2;
-                wall.CY2 = ry2;
+                wall.C1 = new(rx1, ry1);
+                wall.C2 = new(rx2, ry2);
 
                 wall.XLeft = (int)xLeft;
                 wall.XRight = (int)xRight;
@@ -636,10 +614,10 @@ namespace RenderingEngine.Engine
         {
             // Vertex Points (Wall)
             // point 1 (vx1, vy1), point 2 (vx2, vy2)
-            float vx1 = wall.X1;
-            float vy1 = wall.Y1;
-            float vx2 = wall.X2;
-            float vy2 = wall.Y2;
+            float vx1 = wall.R1.X;
+            float vy1 = wall.R1.Y;
+            float vx2 = wall.R2.X;
+            float vy2 = wall.R2.Y;
 
             // offset by player coordinates for easier calculations
             float tx1 = vx1 - px;
@@ -653,7 +631,7 @@ namespace RenderingEngine.Engine
             float rx2 = tx2 * psin - ty2 * pcos;
             float ry2 = tx2 * pcos + ty2 * psin;
 
-            return new Wall(wall.Line, rx1, ry1, rx2, ry2, wall.Neighbor);
+            return new Wall(wall.Line, new Point(rx1, ry1), new Point(rx2, ry2), wall.Neighbor);
         }
     }
 }

@@ -70,10 +70,10 @@ namespace RenderingEngine.Engine
             {
                 Wall wall = walls[i];
 
-                float pointA_X = wall.X1;
-                float pointA_Y = wall.Y1;
-                float pointB_X = wall.X2;
-                float pointB_Y = wall.Y2;
+                float pointA_X = wall.R1.X;
+                float pointA_Y = wall.R1.Y;
+                float pointB_X = wall.R2.X;
+                float pointB_Y = wall.R2.Y;
 
                 // Check if point is on the same horizontal level as the edge's y-coordinates
                 if (point.Y > MathF.Min(pointA_Y, pointB_Y) && point.Y <= MathF.Max(pointA_Y, pointB_Y))

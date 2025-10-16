@@ -25,65 +25,59 @@ namespace RenderingEngine.Engine
         private int Compare3(Wall x, Wall y)
         {
             // x = y are the same
-            if (x.X1 == y.X1 && x.X2 == y.X2 && x.Y2 == y.Y2)
+            if (x.R1 == y.R1 && x.R2 == y.R2)
             {
                 return 0;
             }
 
-            float xCX1 = x.CX1;
-            float xCX2 = x.CX2;
-            float xCY1 = x.CY1;
-            float xCY2 = x.CY2;
+            float xCX1 = x.C1.X;
+            float xCX2 = x.C2.X;
+            float xCY1 = x.C1.Y;
+            float xCY2 = x.C2.Y;
 
-            float yCX1 = y.CX1;
-            float yCX2 = y.CX2;
-            float yCY1 = y.CY1;
-            float yCY2 = y.CY2;
+            float yCX1 = y.C1.X;
+            float yCX2 = y.C2.X;
+            float yCY1 = y.C1.Y;
+            float yCY2 = y.C2.Y;
 
             if (Within(x.XLeft, y.XLeft, y.XRight))
             {
                 // y left
-                TryGetIntersection(x.XLeft, y.X1, y.Y1, y.X2, y.Y2, ref yCX1, ref yCY1);
+                TryGetIntersection(x.XLeft, y.R1.X, y.R1.Y, y.R2.X, y.R2.Y, ref yCX1, ref yCY1);
             }
 
             if (Within(x.XRight, y.XLeft, y.XRight))
             {
                 // y right
-                TryGetIntersection(x.XRight, y.X1, y.Y1, y.X2, y.Y2, ref yCX2, ref yCY2);
+                TryGetIntersection(x.XRight, y.R1.X, y.R1.Y, y.R2.X, y.R2.Y, ref yCX2, ref yCY2);
             }
 
             if (Within(y.XLeft, x.XLeft, x.XRight))
             {
                 // x left
-                TryGetIntersection(y.XLeft, x.X1, x.Y1, x.X2, x.Y2, ref xCX1, ref xCY1);
+                TryGetIntersection(y.XLeft, x.R1.X, x.R1.Y, x.R2.X, x.R2.Y, ref xCX1, ref xCY1);
             }
 
             if (Within(y.XRight, x.XLeft, x.XRight))
             {
                 // x right
-                TryGetIntersection(y.XRight, x.X1, x.Y1, x.X2, x.Y2, ref xCX2, ref xCY2);
+                TryGetIntersection(y.XRight, x.R1.X, x.R1.Y, x.R2.X, x.R2.Y, ref xCX2, ref xCY2);
             }
 
             // for connected walls, only compare the un-connected vertex
-            bool connected1 = x.X1 == y.X1 && x.Y1 == y.Y1;
-            bool connected2 = x.X2 == y.X2 && x.Y2 == y.Y2;
-            bool connected3 = x.X1 == y.X2 && x.Y1 == y.Y2;
-            bool connected4 = x.X2 == y.X1 && x.Y2 == y.Y1;
-
-            if (connected1)
+            if (x.R1 == y.R1)
             {
                 return Compare(xCX2, xCY2, yCX2, yCY2);
             }
-            else if (connected2)
+            else if (x.R2 == y.R2)
             {
                 return Compare(xCX1, xCY1, yCX1, yCY1);
-
             }
-            else if (connected3)
+            else if (x.R1 == y.R2)
             {
                 return Compare(xCX2, xCY2, yCX1, yCY1);
             }
-            else if (connected4)
+            else if (x.R2 == y.R1)
             {
                 return Compare(xCX1, xCY1, yCX2, yCY2);
             }

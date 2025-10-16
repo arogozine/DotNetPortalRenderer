@@ -9,22 +9,14 @@ namespace RenderingEngine.Models
         public bool IntersectsView { get; set; }
         public bool Flipped { get; set; }
 
-        // Rotated Point A
-        public float X1 { get; set; }
-        public float Y1 { get; set; }
-        // Rotated Point B
-        public float X2 { get; set; }
-        public float Y2 { get; set; }
+        public Point R1 { get; set; }
+        public Point R2 { get; set; }
 
-        // Clamped Point A
-        public float CX1 { get; set; }
-        public float CY1 { get; set; }
-        // Clamped Point B
-        public float CX2 { get; set; }
-        public float CY2 { get; set; }
+        public Point C1 { get; set; }
+        public Point C2 { get; set; }
 
         //
-        public int Neighbor { get; set; }
+        public int Neighbor { get; }
         // Plane
         public int XLeft { get; set; }
         public int XRight { get; set; }
@@ -33,27 +25,21 @@ namespace RenderingEngine.Models
         public int YRightCeil { get; set; }
         public int YRightFloor { get; set; }
 
-        public Wall(Line line, float x1, float y1, float x2, float y2, int? neighbor)
+        public Wall(Line line, Point r1, Point r2, int? neighbor)
         {
             Line = line;
-            X1 = x1;
-            Y1 = y1;
-            X2 = x2;
-            Y2 = y2;
+            R1 = r1;
+            R2 = r2;
             Neighbor = neighbor ?? -1;
         }
 
         public override bool Equals(object? obj)
         {
             return obj is Wall wall &&
-                   X1 == wall.X1 &&
-                   Y1 == wall.Y1 &&
-                   X2 == wall.X2 &&
-                   Y2 == wall.Y2 &&
-                   CX1 == wall.CX1 &&
-                   CY1 == wall.CY1 &&
-                   CX2 == wall.CX2 &&
-                   CY2 == wall.CY2 &&
+                   R1 == wall.R1 &&
+                   R2 == wall.R2 &&
+                   C1 == wall.C1 &&
+                   C2 == wall.C2 &&
                    Neighbor == wall.Neighbor &&
                    XLeft == wall.XLeft &&
                    XRight == wall.XRight &&
@@ -66,14 +52,10 @@ namespace RenderingEngine.Models
         public override int GetHashCode()
         {
             HashCode hash = new();
-            hash.Add(X1);
-            hash.Add(Y1);
-            hash.Add(X2);
-            hash.Add(Y2);
-            hash.Add(CX1);
-            hash.Add(CY1);
-            hash.Add(CX2);
-            hash.Add(CY2);
+            hash.Add(R1);
+            hash.Add(R2);
+            hash.Add(C1);
+            hash.Add(C2);
             hash.Add(Neighbor);
             hash.Add(XLeft);
             hash.Add(XRight);

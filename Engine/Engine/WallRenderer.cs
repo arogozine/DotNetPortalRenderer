@@ -244,10 +244,10 @@ namespace RenderingEngine.Engine
         private static (float CameraRay, float CameraRayIncr, float t1, float d2y, float d2x) CalculateCameraRay(Wall wall, int width, int wallFromX)
         {
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
-            float rx1 = wall.X1;
-            float ry1 = wall.Y1;
-            float d2x = wall.X2 - rx1;
-            float d2y = wall.Y2 - ry1;
+            float rx1 = wall.R1.X;
+            float ry1 = wall.R1.Y;
+            float d2x = wall.R2.X - rx1;
+            float d2y = wall.R2.Y - ry1;
             float t1 = rx1 * d2y - ry1 * d2x;
             float cameraRay = -1f * EngineConstants.CameraPlaneX;
             cameraRay += cameraWidthIncr * wallFromX;
@@ -265,8 +265,8 @@ namespace RenderingEngine.Engine
             float fromToYDist = t1 / denominator;
             float fromToXDist = fromToYDist * cameraRay;
 
-            float distX = (flipped ? wall.X2 : wall.X1) - fromToXDist;
-            float distY = (flipped ? wall.Y2 : wall.Y1) - fromToYDist;
+            float distX = (flipped ? wall.R2.X : wall.R1.X) - fromToXDist;
+            float distY = (flipped ? wall.R2.Y: wall.R1.Y) - fromToYDist;
 
             float distance = MathF.Sqrt(distX * distX + distY * distY);
             float brightness = 1f - EngineConstants.OneOverLightFallOffDistance * fromToYDist;

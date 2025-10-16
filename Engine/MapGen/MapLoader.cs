@@ -188,15 +188,13 @@ namespace RenderingEngine.MapGen
             {
                 Line v = x.Walls[i];
                 vertex[i] = new Wall(v,
-                    v.PointA.X, v.PointA.Y,
-                    v.PointB.X, v.PointB.Y,
+                    v.PointA, v.PointB,
                     v.SectorTo
                 );
             }
 
             var sector = new Sector
             {
-
                 FloorTexture = x.FloorTexture,
                 CeilTexture = x.CeilingTexture,
                 Ceil = x.Ceiling,

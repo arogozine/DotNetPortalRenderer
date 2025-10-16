@@ -202,7 +202,7 @@ namespace RenderingEngine.DoomMapLoader
             Thing? player1Start = null;
             for (int i = 0; i < things.Length; i++)
             {
-                Thing thing = things[i];
+                ref Thing thing = ref things[i];
 
                 if (thing.Type == ThingType.Player1Start)
                 {
@@ -520,7 +520,7 @@ namespace RenderingEngine.DoomMapLoader
         }
 
         public static Dictionary<int, List<LineInfo>> GetSectorToLineDefs(
-            ReadOnlySpan<Linedef> lineDefs,
+            Span<Linedef> lineDefs,
             ReadOnlySpan<Sidedef> sideDefs,
             int sectors)
         {
@@ -528,19 +528,19 @@ namespace RenderingEngine.DoomMapLoader
 
             for (int i = 0; i < lineDefs.Length; i++)
             {
-                Linedef linedef = lineDefs[i];
+                ref Linedef linedef = ref lineDefs[i];
 
                 Sidedef? leftDef = linedef.HasSideDefLeft ? sideDefs[linedef.SidedefLeft] : null;
                 Sidedef? rightDef = linedef.HasSideDefRight ? sideDefs[linedef.SidedefRight] : null;
 
                 if (leftDef is Sidedef left)
                 {
-                    AddSectorLineDef(left.Sector, i, rightDef is null ? -1 : rightDef.Value.Sector, left);
+                    AddSectorLineDef(left.Sector, i, rightDef is null ? -1 : rightDef.Value.Sector, ref left);
                 }
 
                 if (rightDef is Sidedef right)
                 {
-                    AddSectorLineDef(right.Sector, i, leftDef is null ? - 1: leftDef.Value.Sector, right);
+                    AddSectorLineDef(right.Sector, i, leftDef is null ? - 1: leftDef.Value.Sector, ref right);
                 }
             }
 
@@ -548,7 +548,7 @@ namespace RenderingEngine.DoomMapLoader
 
             return sectorToLineDefs;
 
-            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId, Sidedef sidedef)
+            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId, ref Sidedef sidedef)
             {
                 if (!sectorToLineDefs.TryGetValue(sectorId, out List<LineInfo>? sectorLineDefs))
                 {
@@ -560,13 +560,13 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
-        public static Dictionary<int, List<int>> GetLineDefsToVectors(ReadOnlySpan<Linedef> lineDefs)
+        public static Dictionary<int, List<int>> GetLineDefsToVectors(Span<Linedef> lineDefs)
         {
             var lineDefsToVectors = new Dictionary<int, List<int>>();
 
             for (int i = 0; i < lineDefs.Length; i++)
             {
-                Linedef linedef = lineDefs[i];
+                ref Linedef linedef = ref lineDefs[i];
                 AddSectorLineDef(i, linedef.Vertex1);
                 AddSectorLineDef(i, linedef.Vertex2);
             }
