@@ -1,4 +1,5 @@
-﻿using RenderingEngine.Models.Json;
+﻿using RenderingEngine.Engine;
+using RenderingEngine.Models.Json;
 
 namespace RenderingEngine.Models
 {
@@ -24,6 +25,8 @@ namespace RenderingEngine.Models
         public int YLeftFloor { get; set; }
         public int YRightCeil { get; set; }
         public int YRightFloor { get; set; }
+
+        public bool IsPortal => Neighbor != EngineConstants.NullSector;
 
         public Wall(Line line, Point r1, Point r2, int? neighbor)
         {

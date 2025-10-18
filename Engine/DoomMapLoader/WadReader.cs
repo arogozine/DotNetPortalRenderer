@@ -26,6 +26,7 @@ namespace RenderingEngine.DoomMapLoader
 
             Dictionary<string, BGRA[]> floorTextures = ExtractFloorTextures(wad);
             Dictionary<string, TextureInfo> textures = ExtractTextures(wad);
+            Dictionary<string, TextureInfo> sprites  = ExtractSprites(wad);
 
             foreach ((string name, BGRA[] image) in floorTextures)
             {
@@ -37,9 +38,12 @@ namespace RenderingEngine.DoomMapLoader
                 TextureCache.Add(name, info.Width, info.Height, info.Data);
             }
 
-            WadLump? textMap = wad[LumpType.TextMap];
+            foreach ((string name, var info) in sprites)
+            {
+                TextureCache.Add(name, info.Width, info.Height, info.Data);
+            }
 
-            if (textMap is not null)
+            if (wad[LumpType.TextMap] is WadLump textMap)
             {
                 return ExtractDoomMap(textMap);
             }
@@ -51,9 +55,11 @@ namespace RenderingEngine.DoomMapLoader
 
         internal sealed class TextureInfo
         {
-            public readonly int Width;
-            public readonly int Height;
-            public readonly BGRA[] Data;
+            public int Width { get; }
+            public int Height { get; }
+            public BGRA[] Data { get; }
+            public short LeftOffset { get; init; }
+            public short TopOffset { get; init; }
 
             public TextureInfo(int width, int height, BGRA[] data)
             {
@@ -61,6 +67,79 @@ namespace RenderingEngine.DoomMapLoader
                 Height = height;
                 Data = data;
             }
+        }
+
+        public static unsafe Dictionary<string, TextureInfo> ExtractSprites(WadFile wad)
+        {
+            Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
+
+            Dictionary<string, TextureInfo> textures = [];
+
+            const int normalPalette = 0;
+            ReadOnlySpan<BGRA> palette = ToBGRA(playPal[normalPalette]);
+
+            for (int l = 0; l < wad.Lumps.Count; l++)
+            {
+                WadLump wadLump = wad.Lumps[l];
+
+                if (!wadLump.IsSprite || wadLump.Bytes.Length == 0)
+                {
+                    continue;
+                }
+
+                PatchHeader header = WadLumpParser.ReadPatchOrSprite(wadLump);
+
+                BGRA[] texture = new BGRA[header.Width * header.Height];
+                ref BGRA textureRef = ref MemoryMarshal.GetArrayDataReference(texture);
+
+                int originX = 0;
+                int originY = 0;
+
+                for (int col = 0; col < header.Width; col++)
+                {
+                    int x = originX + col;
+
+                    ReadOnlySpan<Post> column = CollectionsMarshal.AsSpan(header.Columns[col]);
+
+                    foreach (Post post in column)
+                    {
+                        for (int s = 0; s < post.Length; s++)
+                        {
+                            int y = originY + post.TopDelta;
+
+                            for (int i = 0; i < post.Length; i++)
+                            {                                
+                                byte paletteIndex = post.Data[i];
+
+                                // skip transparent pixels
+                                if (paletteIndex == 0)
+                                {
+                                    continue;
+                                }
+
+                                int destY = y + i;
+
+                                BGRA color = palette[paletteIndex];
+
+                                int index = x + (destY) * header.Width;
+
+                                Unsafe.Add(ref textureRef, index) = color;
+                            }
+
+                        }
+
+                    }
+
+                }
+
+                textures[wadLump.Name] = new TextureInfo(header.Width, header.Height, texture)
+                {
+                    LeftOffset = header.LeftOffset,
+                    TopOffset = header.TopOffset
+                };
+            }
+
+            return textures;
         }
 
         public static unsafe Dictionary<string, TextureInfo> ExtractTextures(WadFile wad)
@@ -88,7 +167,7 @@ namespace RenderingEngine.DoomMapLoader
                     ref PatchDescriptor patch = ref textureDefinition.Patches[patchIndex];
                     string patchName = patchNames[patch.Number];
 
-                    PatchHeader header = WadLumpParser.ReadPatch(wad[patchName]);
+                    PatchHeader header = WadLumpParser.ReadPatchOrSprite(wad[patchName]);
 
                     int originX = Math.Max((short)0, patch.XOffset);
                     int originY = Math.Max((short)0, patch.YOffset);
@@ -409,6 +488,7 @@ namespace RenderingEngine.DoomMapLoader
 
             bool isFlats = false;
             bool isPatches = false;
+            bool isSprites = false;
 
             for (i = 0; i < lumpCount; i++)
             {
@@ -440,6 +520,12 @@ namespace RenderingEngine.DoomMapLoader
                     case LumpType.FEnd:
                         isFlats = false;
                         break;
+                    case LumpType.SStart:
+                        isSprites = true;
+                        break;
+                    case LumpType.SEnd:
+                        isSprites = false;
+                        break;
                 }
 
                 // Debug.WriteLine($"{lumpName}, patch? {isPatches}, flat? {isFlats}");
@@ -452,7 +538,11 @@ namespace RenderingEngine.DoomMapLoader
                     fs.ReadExactly(lumpbytes, 0, (int)lumpSize);
                 }
 
-                wadFile.Lumps.Add(new WadLump(lumpName, lumpbytes, isFlats, isPatches));
+                wadFile.Lumps.Add(new WadLump(lumpName, lumpbytes) {
+                    IsFlat = isFlats,
+                    IsPatch = isPatches,
+                    IsSprite = isSprites
+                });
             }
 
             return wadFile;
@@ -599,6 +689,8 @@ namespace RenderingEngine.DoomMapLoader
 
         private unsafe static void DebugTexture(int width, int height, Span<BGRA> texture, string textureName)
         {
+            textureName = textureName.Replace("\\", "_");
+
             var info = new SKImageInfo(width, height)
             {
                 AlphaType = SKAlphaType.Premul,

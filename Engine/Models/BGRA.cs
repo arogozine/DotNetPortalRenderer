@@ -30,6 +30,8 @@
         [FieldOffset(3)]
         public readonly byte A; // Alpha (transparency)
 
+        public readonly bool IsTransparent => A == 0;
+
         public BGRA(uint value)
         {
             Value = value;

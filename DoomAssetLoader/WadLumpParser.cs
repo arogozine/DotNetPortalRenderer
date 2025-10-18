@@ -8,13 +8,13 @@ namespace DoomAssetLoader
 {
     public static class WadLumpParser
     {
-        public static PatchHeader ReadPatch(WadLump? patchLump)
+        public static PatchHeader ReadPatchOrSprite(WadLump? patchLump)
         {
             ArgumentNullException.ThrowIfNull(patchLump);
 
-            if (!patchLump.IsPatch || patchLump.Bytes.Length == 0)
+            if ((!patchLump.IsPatch && !patchLump.IsSprite) || patchLump.Bytes.Length == 0)
             {
-                throw new ArgumentException("Not a patch lump");
+                throw new ArgumentException("Not a patch / sprite lump");
             }
 
             Span<byte> bytes = patchLump.Bytes;

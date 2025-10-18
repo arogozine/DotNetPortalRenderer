@@ -58,6 +58,13 @@ namespace RenderingEngine.Engine
             }
         }
 
+        public RenderWindow[] CopyRenderWindow()
+        {
+            RenderWindow[] renderWindow = new RenderWindow[this.renderWindow.Length];
+            this.renderWindow.AsSpan()[sectorFromX..sectorToX].CopyTo(renderWindow.AsSpan()[sectorFromX..sectorToX]);
+            return renderWindow;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public (int SectroFromX, int SectorToX) GetSectorX()
         {

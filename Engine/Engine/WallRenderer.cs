@@ -138,7 +138,8 @@ namespace RenderingEngine.Engine
                     screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth);
                     textureXPos += textureXIncr;
                 }
-                
+
+                zBuffer[x] = distance;
                 renderWindow.Calculated = false;
                 renderWindow.CeilingStart = portalFromY;
                 renderWindow.FloorEnd = portalToY;
@@ -229,6 +230,7 @@ namespace RenderingEngine.Engine
                     textureXPos += textureXIncr;   
                 }
 
+                zBuffer[x] = distance;
                 renderWindow.WallEnd = renderWindow.WallStart;
                 renderWindow.FloorEnd = renderWindow.WallStart;
                 renderWindow.Calculated = false;

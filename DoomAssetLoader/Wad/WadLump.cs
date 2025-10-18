@@ -6,17 +6,16 @@
 
         public byte[] Bytes { get; private init; }
 
-        public bool IsFlat { get; private init; }
+        public required bool IsFlat { get; init; }
 
-        public bool IsPatch { get; private init; }
+        public required bool IsPatch { get; init; }
 
+        public required bool IsSprite { get; init; }
 
-        public WadLump(string name, byte[] bytes, bool isFlat, bool isPatch)
+        public WadLump(string name, byte[] bytes)
         {
             Name = name;
             Bytes = bytes;
-            IsFlat = isFlat;
-            IsPatch = isPatch;
         }
     }
 }

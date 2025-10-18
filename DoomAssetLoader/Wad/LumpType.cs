@@ -37,5 +37,8 @@
 
         public const string PStart = "P_START";
         public const string PEnd = "P_END";
+
+        public const string SStart = "S_START";
+        public const string SEnd = "S_END";
     }
 }

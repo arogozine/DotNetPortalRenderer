@@ -16,6 +16,7 @@ namespace RenderingEngine.Engine
 
         private PortalPlayerSnapshot? Snapshot = null;
 
+        private readonly float[] zBuffer;
         private readonly float[] distanceCache;
         private readonly uint[] distanceMult;
         private readonly BGRA[] buffer;
@@ -30,6 +31,7 @@ namespace RenderingEngine.Engine
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             distanceCache = new float[height];
             distanceMult = new uint[height];
+            zBuffer = new float[width];
 
             RenderWindowHelper = new RenderWindowHelper(width, height);
         }
@@ -91,6 +93,8 @@ namespace RenderingEngine.Engine
             (float px, float py, float pz) = player.Where;
             screen.Fill(BGRA.Black);
 
+            zBuffer.AsSpan().Clear();
+
             ReadOnlySpan<Sector> sectors = Sectors;
 
             RenderWindowHelper.NewRender();
@@ -102,6 +106,8 @@ namespace RenderingEngine.Engine
             });
 
             int renderDepth = 0;
+
+            List<RenderableWall> transparentWalls = [];
 
             do
             {
@@ -117,6 +123,9 @@ namespace RenderingEngine.Engine
 
                 List<RenderableWall> neighbors = RenderSector(player, sector, sectors, sectorInfo, walls, screen);
 
+                // copy of the renderable area here
+                RenderWindow[]? renderableArea = null;
+
                 foreach (RenderableWall renderableWall in neighbors)
                 {
                     Wall neighbor = renderableWall.Wall;
@@ -127,13 +136,26 @@ namespace RenderingEngine.Engine
                     };
 
                     sectorRenderQueue.Enqueue(neighborToRender);
+
+                    if (renderableWall.IsTransparent)
+                    {
+                        renderableArea ??= RenderWindowHelper.CopyRenderWindow();
+                        renderableWall.RenderWindow = renderableArea;
+                        transparentWalls.Add(renderableWall);
+                    }
                 }
 
                 // DebugPortal(screen, this.RenderWindowHelper.RenderWindow);
 
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxPortalsRendered);
+
+            foreach (var wall in transparentWalls)
+            {
+                DrawTransparentWall(screen, sectors, wall);
+            }
         }
+
 
         private List<RenderableWall> RenderSector(
             PortalPlayerSnapshot player,
@@ -159,7 +181,7 @@ namespace RenderingEngine.Engine
             {
                 Wall wall = walls[s];
 
-                CalculateRenderWindow(wall, renderableWalls);
+                CalculateRenderWindow(wall, sector, renderableWalls);
             }
 
             ref Texture groundTexture = ref TextureCache.GetTexture(sector.FloorTexture);
@@ -181,11 +203,11 @@ namespace RenderingEngine.Engine
                 RenderableWall renderableWall = renderableWalls[s];
                 Wall wall = renderableWall.Wall;
 
-                bool wallDrawn = wall.Neighbor == EngineConstants.NullSector ?
-                    DrawBasicWall(screen, sector, renderableWall) :
-                    DrawPortalWall(screen, sector, sectors, renderableWall);
+                bool wallDrawn = wall.IsPortal ?
+                    DrawPortalWall(screen, sector, sectors, renderableWall) :
+                    DrawBasicWall(screen, sector, renderableWall);
 
-                if (wallDrawn && wall.Neighbor != EngineConstants.NullSector)
+                if (wallDrawn && wall.IsPortal)
                 {
                     neightbors.Add(renderableWall);
                 }
@@ -236,7 +258,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private void CalculateRenderWindow(Wall wall, List<RenderableWall> renderableWalls)
+        private void CalculateRenderWindow(Wall wall, Sector sector, List<RenderableWall> renderableWalls)
         {
             Span<RenderWindow> renderedArea = RenderWindowHelper.RenderWindow;
 
@@ -270,7 +292,6 @@ namespace RenderingEngine.Engine
 
                 if (renderedAreaX.Calculated || wallStartY >= wallEndY || renderedAreaX.CeilingStart >= renderedAreaX.FloorEnd)
                 {
-
                     if (x - 1 > renderableFromX)
                     {
                         offset = wallFromX > wall.XLeft ? wallFromX - wall.XLeft : 0;
@@ -280,10 +301,9 @@ namespace RenderingEngine.Engine
                             Wall = wall,
                             XLeft = renderableFromX,
                             XRight = x,
-                            Offset = offset
+                            Offset = offset,
+                            Sector = sector
                         });
-
-                        renderableFromX = x;
                     }
 
                     renderableFromX = x;
@@ -308,7 +328,8 @@ namespace RenderingEngine.Engine
                     Wall = wall,
                     XLeft = renderableFromX,
                     XRight = renderableToX,
-                    Offset = offset
+                    Offset = offset,
+                    Sector = sector
                 });
             }
         }
