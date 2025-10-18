@@ -62,8 +62,8 @@ namespace RenderingEngine.Engine
                 int wallEndYInt = (int)wallEndY;
 
                 float pixelsPerUnit = (wallEndYInt - wallStartYInt) * oneOverSectorHeight;
-                int floorPixelOffset = (int)(pixelsPerUnit * floorOffset);
-                int ceilPixelOffset = (int)(pixelsPerUnit * ceilOffset);
+                // int floorPixelOffset = (int)(pixelsPerUnit * floorOffset);
+                // int ceilPixelOffset = (int)(pixelsPerUnit * ceilOffset);
 
                 // wallStartYInt = wallStartYInt - ceilPixelOffset;
                 // wallEndYInt = wallEndYInt - floorPixelOffset;

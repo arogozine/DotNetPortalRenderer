@@ -110,13 +110,6 @@ namespace RenderingEngine.DoomMapLoader
                             for (int i = 0; i < post.Length; i++)
                             {                                
                                 byte paletteIndex = post.Data[i];
-
-                                // skip transparent pixels
-                                if (paletteIndex == 0)
-                                {
-                                    continue;
-                                }
-
                                 int destY = y + i;
 
                                 BGRA color = palette[paletteIndex];
@@ -195,16 +188,6 @@ namespace RenderingEngine.DoomMapLoader
                                     if (y + i >= 0 && y + i < height)
                                     {
                                         byte paletteIndex = post.Data[i];
-
-                                        // skip transparent pixels
-                                        if (paletteIndex == 0)
-                                        {
-                                            continue;
-                                        }
-                                        else if (paletteIndex == 255)
-                                        {
-                                            break;
-                                        }
 
                                         int destY = y + i;
 
