@@ -17,12 +17,14 @@ namespace RenderingEngine.DoomMapLoader
     {
         public static Map ExtractDoomMap(string mapName)
         {
-            WadFile wad = LoadWad(
-                "C:\\Users\\Alexa\\Downloads\\New folder\\doom2.wad"
-                // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\EISBERG.wad"
-                // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\testmap.wad"
-                // "C:\\Users\\Alexa\\source\\repos\\DoomStruct\\src\\test\\resources\\doommap.wad"
-            );
+            var loader = new WadLoader("C:\\Users\\Alexa\\Downloads\\New folder\\doom2.wad") {
+                LoadMaps = true,
+                LoadTextures = true,
+                LoadOther = false,
+                MapToLoad = mapName
+            };
+
+            WadFile wad = loader.LoadWad();
 
             Dictionary<string, BGRA[]> floorTextures = ExtractFloorTextures(wad);
             Dictionary<string, TextureInfo> textures = ExtractTextures(wad);
@@ -424,152 +426,6 @@ namespace RenderingEngine.DoomMapLoader
                 },
                 Sectors = sectors
             };
-        }
-
-        private static readonly string[] MapLumps = [
-            LumpType.Things,
-            LumpType.LineDefs,
-            LumpType.SideDefs,
-            LumpType.SSectors,
-            LumpType.Vertexes,
-            LumpType.Segs,
-            LumpType.Sectors,
-            LumpType.Nodes,
-            LumpType.Reject,
-            LumpType.TextMap,
-            LumpType.BlockMap
-        ];
-
-        public static WadFile LoadWad(string filePath)
-        {
-            ArgumentNullException.ThrowIfNull(filePath);
-
-            if (!File.Exists(filePath))
-            {
-                throw new ArgumentException("Not Found", nameof(filePath));
-            }
-
-            var wadFile = new WadFile();
-
-            byte[] buffer4 = new byte[4];
-            byte[] buffer8 = new byte[8];
-
-            int i;
-
-            using FileStream fs = new FileStream(filePath, FileMode.Open);
-
-            fs.Seek(0, SeekOrigin.Begin);
-
-            // Bytes 0-3 (ASCII string): IWAD or PWAD
-            fs.ReadExactly(buffer4, 0, buffer4.Length);
-
-            string wadType = GetStringFromBytes(buffer4);
-
-            wadFile.Type = Enum.Parse<WadType>(wadType);
-
-            // Bytes 4-7 (int): lump count
-            fs.ReadExactly(buffer4, 0, 4);
-            int lumpCount = BitConverter.ToInt32(buffer4);
-            if (lumpCount <= 0)
-            {
-                throw new ArgumentException("Invalid Format", nameof(filePath));
-            }
-
-            // Bytes 8-11 (int): directory offset
-            fs.ReadExactly(buffer4, 0, 4);
-            uint directoryOffset = BitConverter.ToUInt32(buffer4);
-            if (directoryOffset < 12)
-            {
-                throw new ArgumentException("Invalid Format", nameof(filePath));
-            }
-
-            bool isFlats = false;
-            bool isPatches = false;
-            bool isSprites = false;
-            bool isMap = false;
-            string? mapName = null;
-
-            for (i = 0; i < lumpCount; i++)
-            {
-                fs.Seek(directoryOffset + 16 * i, SeekOrigin.Begin);
-
-                // a long integer, the file offset to the start of the lump
-                fs.ReadExactly(buffer4, 0, 4);
-                uint lumpOffset = BitConverter.ToUInt32(buffer4);
-
-                // a long integer, the size of the lump in bytes
-                fs.ReadExactly(buffer4, 0, 4);
-                uint lumpSize = BitConverter.ToUInt32(buffer4);
-
-                // 8-byte ASCII string, the name of the lump, padded with zeros
-                fs.ReadExactly(buffer8, 0, 8);
-                string lumpName = GetStringFromBytes(buffer8);
-
-                if (lumpName.StartsWith("MAP"))
-                {
-                    mapName = lumpName;
-                    isMap = true;
-                }
-                else if (isMap && !MapLumps.Contains(lumpName))
-                {
-                    isMap = false;
-                    mapName = null;
-                }
-
-                switch (lumpName)
-                {
-                    case LumpType.PStart:
-                        isPatches = true;
-                        isMap = false;
-                        mapName = null;
-                        break;
-                    case LumpType.PEnd:
-                        isPatches = false;
-                        isMap = false;
-                        mapName = null;
-                        break;
-                    case LumpType.FStart:
-                        isFlats = true;
-                        isMap = false;
-                        mapName = null;
-                        break;
-                    case LumpType.FEnd:
-                        isFlats = false;
-                        isMap = false;
-                        mapName = null;
-                        break;
-                    case LumpType.SStart:
-                        isSprites = true;
-                        isMap = false;
-                        mapName = null;
-                        break;
-                    case LumpType.SEnd:
-                        isSprites = false;
-                        isMap = false;
-                        mapName = null;
-                        break;
-                }
-
-                // Debug.WriteLine($"{lumpName}, patch? {isPatches}, flat? {isFlats}");
-
-                byte[] lumpbytes = new byte[lumpSize];
-
-                if (lumpSize != 0)
-                {
-                    fs.Seek(lumpOffset, SeekOrigin.Begin);
-                    fs.ReadExactly(lumpbytes, 0, (int)lumpSize);
-                }
-
-                wadFile.Lumps.Add(new WadLump(lumpName, lumpbytes) {
-                    IsFlat = isFlats,
-                    IsPatch = isPatches,
-                    IsSprite = isSprites,
-                    MapName = mapName,
-                    IsMap = isMap
-                });
-            }
-
-            return wadFile;
         }
 
         internal sealed class LineInfo
