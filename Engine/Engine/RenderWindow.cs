@@ -7,6 +7,7 @@
         public int WallStart;
         public int WallEnd;
         public int FloorEnd;
+        public float Distance;
 
         public override readonly string ToString()
         {

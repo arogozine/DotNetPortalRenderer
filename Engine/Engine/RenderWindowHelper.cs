@@ -71,40 +71,6 @@ namespace RenderingEngine.Engine
             return (sectorFromX, sectorToX);
         }
 
-        [MemberNotNull(nameof(wall))]
-        public bool SetWallToRender2(Wall wall)
-        {
-            this.wall = wall;
-            this.wallFromX = wall.XLeft;
-            this.wallToX = wall.XRight;
-
-            // clamp to sector window
-            wallFromX = Math.Max(sectorFromX, wall.XLeft);
-            wallToX = Math.Min(sectorToX, wall.XRight);
-
-            // find where rendering didn't take place
-            for (; wallFromX <= wallToX; wallFromX++)
-            {
-                ref RenderWindow window = ref renderWindow[wallFromX];
-
-                if (window.Calculated)
-                {
-                    break;
-                }
-            }
-
-            for (; wallToX > wallFromX; wallToX--)
-            {
-                ref RenderWindow window = ref renderWindow[wallToX];
-
-                if (window.Calculated)
-                {
-                    break;
-                }
-            }
-
-            return wallFromX < wallToX;
-        }
 
         [MemberNotNull(nameof(wall))]
         public bool SetWallToCalculate(Wall wall)

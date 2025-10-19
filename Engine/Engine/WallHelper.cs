@@ -76,24 +76,6 @@ namespace RenderingEngine.Engine
                 (a.R2 == b.R1 && a.R1 == b.R2);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static WallYPlaneInfo CalculateLeftWallYPlaneInfo(Wall wall, int wallFromXOffset)
-        {
-            float wallStartY = wall.YLeftCeil;
-            float ceilDistIncr = (wall.YRightCeil - (float)wall.YLeftCeil) / (wall.XRight - wall.XLeft);
-
-            float wallEndY = wall.YLeftFloor;
-            float floorDistIncr = (wall.YRightFloor - (float)wall.YLeftFloor) / (wall.XRight - wall.XLeft);
-
-            if (wallFromXOffset != 0)
-            {
-                wallEndY += wallFromXOffset * floorDistIncr;
-                wallStartY += wallFromXOffset * ceilDistIncr;
-            }
-
-            return new WallYPlaneInfo(wallStartY, wallEndY, ceilDistIncr, floorDistIncr);
-        }
-
         public static Span<Wall> RotateSectorWallsRelativeToPlayer(Sector sector, float pSin, float pCos, float px, float py)
         {
             ReadOnlySpan<Wall> walls = sector.Walls;

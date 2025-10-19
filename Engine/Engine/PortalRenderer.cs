@@ -16,7 +16,6 @@ namespace RenderingEngine.Engine
 
         private PortalPlayerSnapshot? Snapshot = null;
 
-        private readonly float[] zBuffer;
         private readonly float[] distanceCache;
         private readonly uint[] distanceMult;
         private readonly BGRA[] buffer;
@@ -31,7 +30,6 @@ namespace RenderingEngine.Engine
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             distanceCache = new float[height];
             distanceMult = new uint[height];
-            zBuffer = new float[width];
 
             RenderWindowHelper = new RenderWindowHelper(width, height);
         }
@@ -93,8 +91,6 @@ namespace RenderingEngine.Engine
             (float px, float py, float pz) = player.Where;
             screen.Fill(BGRA.Black);
 
-            zBuffer.AsSpan().Clear();
-
             ReadOnlySpan<Sector> sectors = Sectors;
 
             RenderWindowHelper.NewRender();
@@ -150,10 +146,13 @@ namespace RenderingEngine.Engine
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxPortalsRendered);
 
+            transparentWalls.Reverse();
             foreach (var wall in transparentWalls)
             {
                 DrawTransparentWall(screen, sectors, wall);
             }
+
+            DebugZBuffer(screen, this.RenderWindowHelper.RenderWindow);
         }
 
 
@@ -213,7 +212,49 @@ namespace RenderingEngine.Engine
                 }
             }
 
+
             return neightbors;
+        }
+
+        private void DebugZBuffer(Span<BGRA> screen, Span<RenderWindow> window)
+        {
+            int height = Math.Min(PixelHeight, 20);
+            ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
+
+
+            float min = float.MaxValue;
+            float max = float.MinValue;
+            for (int x = 0; x < PixelWidth; x++)
+            {
+                ref RenderWindow renderWindow = ref window[x];
+                float value = renderWindow.Distance;
+
+                min = MathF.Min(value, min);
+                max = MathF.Max(value, max);
+            }
+
+            float range = byte.MaxValue / max;
+
+            for (int x = 0; x < PixelWidth; x++)
+            {
+                ref RenderWindow renderWindow = ref window[x];
+                float value = renderWindow.Distance;
+                uint val = (uint) Math.Clamp((int)(value * range), 0, byte.MaxValue);
+
+                const uint Alpha = (uint)byte.MaxValue << 24;
+                uint b = val;
+                uint g = val << 8;
+                uint r = val << 16;
+
+                val = b | g | r | Alpha;
+
+
+                for (int y = 0; y < height; y++)
+                {
+                    int index = y * PixelWidth + x;
+                    Unsafe.Add(ref screenPtr, index) = val;
+                }
+            }
         }
 
         private void DebugPortal(
@@ -269,7 +310,7 @@ namespace RenderingEngine.Engine
 
             (int offset, int wallFromX, int wallToX) = RenderWindowHelper.GetWallRenderWindowX();
 
-            WallYPlaneInfo yPlaneInfo = WallHelper.CalculateLeftWallYPlaneInfo(wall, offset);
+            WallYPlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, offset);
             float wallStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float wallEndY = yPlaneInfo.WallEndY;

@@ -26,7 +26,7 @@ namespace RenderingEngine.Engine
             ref Texture texture = ref TextureCache.GetTexture(line.MiddleTexture);
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
 
-            WallYPlaneInfo yPlaneInfo = WallHelper.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
+            WallYPlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
             float wallStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float wallEndY = yPlaneInfo.WallEndY;
@@ -38,9 +38,18 @@ namespace RenderingEngine.Engine
 
             float oneOverSectorHeight = 1f / sectorHeight;
 
-
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
+
+            if (floorOffset < 0f)
+            {
+                floorOffset = 0f;
+            }
+
+            if (ceilOffset > 0f)
+            {
+                ceilOffset = 0f;
+            }
 
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
 
@@ -48,56 +57,65 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                (int distance, float brightness) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
+                ref RenderWindow renderWindow = ref window[x];
 
-                /*
-                if (distance > zBuffer[x] && zBuffer[x] != 0)
+                if (renderWindow.Calculated)
                 {
                     wallStartY += ceilDistIncr;
                     wallEndY += floorDistIncr;
                     continue;
                 }
-                */
-                int wallStartYInt = (int)wallStartY;
-                int wallEndYInt = (int)wallEndY;
 
-                float pixelsPerUnit = (wallEndYInt - wallStartYInt) * oneOverSectorHeight;
-                // int floorPixelOffset = (int)(pixelsPerUnit * floorOffset);
-                // int ceilPixelOffset = (int)(pixelsPerUnit * ceilOffset);
+                float buffer = renderWindow.Distance;
 
-                // wallStartYInt = wallStartYInt - ceilPixelOffset;
-                // wallEndYInt = wallEndYInt - floorPixelOffset;
+                (int distance, float brightness, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
 
-                // re-calculate un-clamped middle portal
-                int fromY = (int)(wallEndYInt - texture.Height * pixelsPerUnit);
-                int toY = wallEndYInt;
+                if (fromToYdist > buffer)
+                {
+                    wallStartY += ceilDistIncr;
+                    wallEndY += floorDistIncr;
+                    continue;
+                }
 
-                int offset = fromY < 0 ? -fromY : 0;
+                float pixelsPerUnit = (wallEndY - wallStartY) * oneOverSectorHeight;
 
-                // clamp to render window
-                ref RenderWindow renderWindow = ref window[x];
-                fromY = Math.Max(renderWindow.WallStart, fromY);
-                toY = Math.Min(renderWindow.WallEnd, toY);
+                // Wall Calculation
+                int fromYClamped = renderWindow.WallStart;
+                int toYClamped = renderWindow.WallEnd;
 
-                // texture
-                float textureXIncr = (float)sectorHeight / (wallEndYInt - wallStartYInt);
+                // Portal Calculation
+                float floorPixelOffset = pixelsPerUnit * floorOffset;
+                float ceilPixelOffset = pixelsPerUnit * ceilOffset;
+                float portalFromY = wallStartY - ceilPixelOffset;
+                float portalToY = wallEndY - floorPixelOffset;
+
+                float textureStartY = portalToY - texture.Height * pixelsPerUnit;
+
+                // clamp to view window
+                int portalFromYClamped = (int)Math.Clamp(portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int portalToYClamped = (int)Math.Clamp(portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int textureStartYClamped = (int)Math.Clamp(textureStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+
+                float offset = textureStartYClamped - textureStartY;
+
+                // Calculate Middle Texture Position
+                float textureXIncr = (float)((sectorHeight - 1) / (wallEndY - wallStartY));
                 int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
                 float textureXPos = textureXIncr * offset;
 
                 uint shaded = default;
                 int textureXPosIOld = -1;
 
-                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, fromY * PixelWidth + x);
+                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * PixelWidth + x);
                 ref BGRA textureIndexPtr = ref texturePtr;
 
-                for (int y = fromY; y < toY; y++, textureXPos += textureXIncr)
+                for (int y = textureStartYClamped; y < portalToYClamped; y++, textureXPos += textureXIncr)
                 {
                     int textureXPosI = (int)textureXPos;
 
                     if (textureXPosI != textureXPosIOld)
                     {
                         textureXPosI %= textureWidth;
-
                         textureXPosIOld = textureXPosI;
                         textureIndexPtr = ref Unsafe.Add(ref texturePtr, textureYPos + textureXPosI);
                         shaded = ShadeByBrightness2(textureIndexPtr, brightness);
