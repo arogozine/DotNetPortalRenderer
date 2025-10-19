@@ -25,9 +25,9 @@ namespace RenderingEngine.Engine
             else
             {
                 player.Sector = sector.Value;
-                Sector oldSector = sectors[oldSectorId];
                 Sector newSector = sectors[sector.Value];
-                z += newSector.Floor - oldSector.Floor;
+                
+                z = newSector.Floor + EngineConstants.PlayerHeight;
 
                 player.Where = (x + dx, y + dy, z);
             }

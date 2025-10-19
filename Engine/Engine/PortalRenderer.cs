@@ -83,6 +83,9 @@ namespace RenderingEngine.Engine
             }
         }
 
+        private readonly List<RenderableWall> transparentWalls = [];
+        private readonly Queue<NeighborsToRender> sectorRenderQueue = [];
+
         public void DrawScreen(Span<BGRA> screen, PortalPlayerSnapshot player)
         {
             float yaw = player.Yaw;
@@ -95,7 +98,6 @@ namespace RenderingEngine.Engine
 
             RenderWindowHelper.NewRender();
 
-            Queue<NeighborsToRender> sectorRenderQueue = [];
             sectorRenderQueue.Enqueue(new NeighborsToRender
             {
                 SectorId = player.Sector
@@ -103,8 +105,7 @@ namespace RenderingEngine.Engine
 
             int renderDepth = 0;
 
-            List<RenderableWall> transparentWalls = [];
-
+            // render solid walls using a portal based approach
             do
             {
                 NeighborsToRender sectorInfo = sectorRenderQueue.Dequeue();
@@ -146,15 +147,20 @@ namespace RenderingEngine.Engine
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxPortalsRendered);
 
+            // render transparent objects and sprites
             transparentWalls.Reverse();
             foreach (var wall in transparentWalls)
             {
                 DrawTransparentWall(screen, sectors, wall);
             }
 
-            DebugZBuffer(screen, this.RenderWindowHelper.RenderWindow);
+            // DebugZBuffer(screen, this.RenderWindowHelper.RenderWindow);
+
+            transparentWalls.Clear();
+            sectorRenderQueue.Clear();
         }
 
+        private readonly List<RenderableWall> neightbors = [];
 
         private List<RenderableWall> RenderSector(
             PortalPlayerSnapshot player,
@@ -164,7 +170,7 @@ namespace RenderingEngine.Engine
             Span<Wall> walls,
             Span<BGRA> screen)
         {
-            List<RenderableWall> neightbors = [];
+            neightbors.Clear();
 
             if (sector.Floor == sector.Ceil)
             {

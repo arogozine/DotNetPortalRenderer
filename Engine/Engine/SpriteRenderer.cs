@@ -25,6 +25,10 @@ namespace RenderingEngine.Engine
 
             ref Texture texture = ref TextureCache.GetTexture(line.MiddleTexture);
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
+            int textureWidth = texture.Height;
+            int textureHeight = texture.Width;
+
+            Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
 
             WallYPlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
             float wallStartY = yPlaneInfo.WallStartY;
@@ -38,8 +42,6 @@ namespace RenderingEngine.Engine
 
             float oneOverSectorHeight = 1f / sectorHeight;
 
-            int textureWidth = texture.Height;
-            int textureHeight = texture.Width;
 
             if (floorOffset < 0f)
             {
@@ -55,14 +57,12 @@ namespace RenderingEngine.Engine
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
 
-            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
+            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
             {
                 ref RenderWindow renderWindow = ref window[x];
 
                 if (renderWindow.Calculated)
                 {
-                    wallStartY += ceilDistIncr;
-                    wallEndY += floorDistIncr;
                     continue;
                 }
 
@@ -92,22 +92,23 @@ namespace RenderingEngine.Engine
                 float textureStartY = portalToY - texture.Height * pixelsPerUnit;
 
                 // clamp to view window
-                int portalFromYClamped = (int)Math.Clamp(portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int portalToYClamped = (int)Math.Clamp(portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int textureStartYClamped = (int)Math.Clamp(textureStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int portalFromYClamped = Math.Clamp((int)portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int portalToYClamped = Math.Clamp((int)portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int textureStartYClamped = Math.Clamp((int)textureStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
 
                 float offset = textureStartYClamped - textureStartY;
 
                 // Calculate Middle Texture Position
                 float textureXIncr = (float)((sectorHeight - 1) / (wallEndY - wallStartY));
                 int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
-                float textureXPos = textureXIncr * offset;
+                float textureXPos = textureWidth + textureXIncr * offset;
 
                 uint shaded = default;
                 int textureXPosIOld = -1;
 
+                CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, brightness);
+
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * PixelWidth + x);
-                ref BGRA textureIndexPtr = ref texturePtr;
 
                 for (int y = textureStartYClamped; y < portalToYClamped; y++, textureXPos += textureXIncr)
                 {
@@ -117,21 +118,65 @@ namespace RenderingEngine.Engine
                     {
                         textureXPosI %= textureWidth;
                         textureXPosIOld = textureXPosI;
-                        textureIndexPtr = ref Unsafe.Add(ref texturePtr, textureYPos + textureXPosI);
-                        shaded = ShadeByBrightness2(textureIndexPtr, brightness);
+                        shaded = columnBuffer[textureXPosI];
                     }
 
-                    if (!textureIndexPtr.IsTransparent)
+                    if (shaded != 0U)
                     {
                         screenIndexPtr = shaded;
                     }
 
                     screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth);
                 }
-
-                wallStartY += ceilDistIncr;
-                wallEndY += floorDistIncr;
             }
+
+            columnABufferIndex = EngineConstants.Unset;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void CalculateSprite(Span<uint> spriteTexturePtr, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, float brightness)
+        {
+            // reuse the cached column
+            if (bufferIndex == textureYPos)
+            {
+                return;
+            }
+
+            const uint Alpha = (uint)byte.MaxValue << 24;
+
+            bufferIndex = textureYPos;
+
+            // avoid calculating if too far away (all black)
+            if (brightness <= 0)
+            {
+                spriteTexturePtr.Fill(Alpha);
+                return;
+            }
+
+            ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
+            uint scale = (uint)(brightness * 255f);
+
+            for (int i = 0; i < spriteTexturePtr.Length; i++)
+            {
+                if (columnPtr.IsTransparent)
+                {
+                    spriteTexturePtr[i] = default;
+                }
+                else
+                {
+                    unchecked
+                    {
+                        uint b = columnPtr.B * scale >> 8;
+                        uint g = columnPtr.G * scale >> 8 << 8;
+                        uint r = columnPtr.R * scale >> 8 << 16;
+                        spriteTexturePtr[i] = b | g | r | Alpha;
+                    }
+                }
+
+                columnPtr = ref Unsafe.Add(ref columnPtr, 1);
+            }
+
+            return;
         }
     }
 }
