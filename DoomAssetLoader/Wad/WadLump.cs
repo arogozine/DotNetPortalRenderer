@@ -4,7 +4,11 @@
     {
         public string Name { get; private init; }
 
+        public required string? MapName { get; init; }
+
         public byte[] Bytes { get; private init; }
+
+        public required bool IsMap { get; init; }
 
         public required bool IsFlat { get; init; }
 

@@ -15,7 +15,7 @@ namespace RenderingEngine.DoomMapLoader
     [SkipLocalsInit]
     internal static class WadReader
     {
-        public static Map ExtractDoomMap()
+        public static Map ExtractDoomMap(string mapName)
         {
             WadFile wad = LoadWad(
                 "C:\\Users\\Alexa\\Downloads\\New folder\\doom2.wad"
@@ -43,13 +43,13 @@ namespace RenderingEngine.DoomMapLoader
                 TextureCache.Add(name, info.Width, info.Height, info.Data);
             }
 
-            if (wad[LumpType.TextMap] is WadLump textMap)
+            if (wad.GetMapLump(mapName, LumpType.TextMap) is WadLump textMap)
             {
                 return ExtractDoomMap(textMap);
             }
             else
             {
-                return ExtractDoomMap(wad);
+                return ExtractDoomMap(wad, mapName);
             }
         }
 
@@ -253,13 +253,13 @@ namespace RenderingEngine.DoomMapLoader
             return flats;
         }
 
-        public static Models.Json.Map ExtractDoomMap(WadFile wad)
+        public static Map ExtractDoomMap(WadFile wad, string mapName)
         {
-            Span<Vertex> verticies = WadLumpParser.ReadVertexes(wad[LumpType.Vertexes]);
-            Span<Sidedef> sideDefs = WadLumpParser.ReadSideDefs(wad[LumpType.SideDefs]);
-            Span<Linedef> lineDefs = WadLumpParser.ReadLineDefs(wad[LumpType.LineDefs]);
-            Span<Sector> sectorDefs = WadLumpParser.ReadSectors(wad[LumpType.Sectors]);
-            Span<Thing> things = WadLumpParser.ReadThings(wad[LumpType.Things]);
+            Span<Vertex> verticies = WadLumpParser.ReadVertexes(wad.GetMapLump(mapName, LumpType.Vertexes));
+            Span<Sidedef> sideDefs = WadLumpParser.ReadSideDefs(wad.GetMapLump(mapName, LumpType.SideDefs));
+            Span<Linedef> lineDefs = WadLumpParser.ReadLineDefs(wad.GetMapLump(mapName, LumpType.LineDefs));
+            Span<Sector> sectorDefs = WadLumpParser.ReadSectors(wad.GetMapLump(mapName, LumpType.Sectors));
+            Span<Thing> things = WadLumpParser.ReadThings(wad.GetMapLump(mapName, LumpType.Things));
 
             Thing? player1Start = null;
             for (int i = 0; i < things.Length; i++)
@@ -426,6 +426,20 @@ namespace RenderingEngine.DoomMapLoader
             };
         }
 
+        private static readonly string[] MapLumps = [
+            LumpType.Things,
+            LumpType.LineDefs,
+            LumpType.SideDefs,
+            LumpType.SSectors,
+            LumpType.Vertexes,
+            LumpType.Segs,
+            LumpType.Sectors,
+            LumpType.Nodes,
+            LumpType.Reject,
+            LumpType.TextMap,
+            LumpType.BlockMap
+        ];
+
         public static WadFile LoadWad(string filePath)
         {
             ArgumentNullException.ThrowIfNull(filePath);
@@ -472,6 +486,8 @@ namespace RenderingEngine.DoomMapLoader
             bool isFlats = false;
             bool isPatches = false;
             bool isSprites = false;
+            bool isMap = false;
+            string? mapName = null;
 
             for (i = 0; i < lumpCount; i++)
             {
@@ -489,25 +505,48 @@ namespace RenderingEngine.DoomMapLoader
                 fs.ReadExactly(buffer8, 0, 8);
                 string lumpName = GetStringFromBytes(buffer8);
 
+                if (lumpName.StartsWith("MAP"))
+                {
+                    mapName = lumpName;
+                    isMap = true;
+                }
+                else if (isMap && !MapLumps.Contains(lumpName))
+                {
+                    isMap = false;
+                    mapName = null;
+                }
+
                 switch (lumpName)
                 {
                     case LumpType.PStart:
                         isPatches = true;
+                        isMap = false;
+                        mapName = null;
                         break;
                     case LumpType.PEnd:
                         isPatches = false;
+                        isMap = false;
+                        mapName = null;
                         break;
                     case LumpType.FStart:
                         isFlats = true;
+                        isMap = false;
+                        mapName = null;
                         break;
                     case LumpType.FEnd:
                         isFlats = false;
+                        isMap = false;
+                        mapName = null;
                         break;
                     case LumpType.SStart:
                         isSprites = true;
+                        isMap = false;
+                        mapName = null;
                         break;
                     case LumpType.SEnd:
                         isSprites = false;
+                        isMap = false;
+                        mapName = null;
                         break;
                 }
 
@@ -524,7 +563,9 @@ namespace RenderingEngine.DoomMapLoader
                 wadFile.Lumps.Add(new WadLump(lumpName, lumpbytes) {
                     IsFlat = isFlats,
                     IsPatch = isPatches,
-                    IsSprite = isSprites
+                    IsSprite = isSprites,
+                    MapName = mapName,
+                    IsMap = isMap
                 });
             }
 

@@ -6,9 +6,14 @@
         public const string TextMap = "TEXTMAP";
         public const string SideDefs = "SIDEDEFS";
         public const string LineDefs = "LINEDEFS";
+        public const string Segs = "SEGS";
+        public const string SSectors = "SSECTORS";
         public const string Sectors = "SECTORS";
         public const string Things = "THINGS";
         public const string Other = "OTHER";
+        public const string Reject = "REJECT";
+        public const string Nodes = "NODES";
+        public const string BlockMap = "NODES";
         /// <summary>
         /// Lists of wall texture names used in SIDEDEFS lumps
         /// </summary>

@@ -159,7 +159,7 @@ namespace RenderingEngine.MapGen
 
         internal static (Player player, Sector[] sectors) LoadData()
         {
-            var map = WadReader.ExtractDoomMap();
+            var map = WadReader.ExtractDoomMap("MAP26");//("MAP26");
             StripInvalidNeighbors(map);
 
             for (int i = 0; i < map.Sectors.Count; i++)
