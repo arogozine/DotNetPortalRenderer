@@ -16,6 +16,7 @@ namespace RenderingEngine.Engine
 
         private PortalPlayerSnapshot? Snapshot = null;
 
+        private readonly float[] angleCache;
         private readonly float[] distanceCache;
         private readonly uint[] distanceMult;
         private readonly BGRA[] buffer;
@@ -30,8 +31,23 @@ namespace RenderingEngine.Engine
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             distanceCache = new float[height];
             distanceMult = new uint[height];
+            angleCache = new float[width];
 
             RenderWindowHelper = new RenderWindowHelper(width, height);
+
+            GenerateAngleCache();
+        }
+
+        private void GenerateAngleCache()
+        {
+            int width = this.PixelWidth;
+            float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
+            float cameraRay = -EngineConstants.CameraPlaneX;
+
+            for (int x = 0; x < width; x++, cameraRay += cameraWidthIncr)
+            {
+                angleCache[x] = MathF.Atan(cameraRay);
+            }
         }
 
         private void GenerateDistanceCache(PortalPlayerSnapshot player,
@@ -186,7 +202,7 @@ namespace RenderingEngine.Engine
             {
                 Wall wall = walls[s];
 
-                CalculateRenderWindow(wall, sector, renderableWalls);
+                CalculateRenderWindow(wall, sector, renderableWalls, sectors);
             }
 
             ref Texture groundTexture = ref TextureCache.GetTexture(sector.FloorTexture);
@@ -195,12 +211,28 @@ namespace RenderingEngine.Engine
             if (Vector.IsHardwareAccelerated)
             {
                 RenderFloorVector(player, sector, screen, ref groundTexture);
-                RenderCeilingVector(player, sector, screen, ref ceilingTexture);
+
+                if (sector.HasSkybox)
+                {
+                    RenderSkyboxVector(player, screen, ref ceilingTexture);
+                }
+                else
+                {
+                    RenderCeilingVector(player, sector, screen, ref ceilingTexture);
+                }
             }
             else
             {
                 RenderFloor(player, sector, screen, ref groundTexture);
-                RenderCeiling(player, sector, screen, ref ceilingTexture);
+
+                if (sector.HasSkybox)
+                {
+                    RenderSkybox(player, screen, ref ceilingTexture);
+                }
+                else
+                {
+                    RenderCeiling(player, sector, screen, ref ceilingTexture);
+                }
             }
 
             for (int s = 0; s < renderableWalls.Count; s++)
@@ -217,7 +249,6 @@ namespace RenderingEngine.Engine
                     neightbors.Add(renderableWall);
                 }
             }
-
 
             return neightbors;
         }
@@ -305,7 +336,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private void CalculateRenderWindow(Wall wall, Sector sector, List<RenderableWall> renderableWalls)
+        private void CalculateRenderWindow(Wall wall, Sector sector, List<RenderableWall> renderableWalls, ReadOnlySpan<Sector> sectors)
         {
             Span<RenderWindow> renderedArea = RenderWindowHelper.RenderWindow;
 
@@ -327,14 +358,19 @@ namespace RenderingEngine.Engine
                 return;
             }
 
+            bool renderUpperWallAsSky = sector.HasSkybox && wall.IsPortal && wall.Line.UpperTexture is null;
+
+            if (renderUpperWallAsSky)
+            {
+                var n = sectors[wall.Neighbor];
+                renderUpperWallAsSky &= n.Ceil == n.Floor;
+            }
+
             int renderableFromX = wallFromX;
             int renderableToX = wallToX;
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                int wallStartYInt = (int)wallStartY;
-                int wallEndYInt = (int)wallEndY;
-
                 ref RenderWindow renderedAreaX = ref renderedArea[x];
 
                 if (renderedAreaX.Calculated || wallStartY >= wallEndY || renderedAreaX.CeilingStart >= renderedAreaX.FloorEnd)
@@ -359,9 +395,12 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
+                int wallStartYInt = (int)wallStartY;
+                int wallEndYInt = (int)wallEndY;
+
                 renderedAreaX.Calculated = true;
-                renderedAreaX.WallStart = Math.Clamp(wallStartYInt, renderedAreaX.CeilingStart, renderedAreaX.FloorEnd);
-                renderedAreaX.WallEnd = Math.Clamp(wallEndYInt, renderedAreaX.CeilingStart, renderedAreaX.FloorEnd);
+                renderedAreaX.WallStart = renderUpperWallAsSky ? wallEndYInt : wallStartYInt;
+                renderedAreaX.WallEnd = wallEndYInt;
 
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;

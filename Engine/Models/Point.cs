@@ -1,6 +1,4 @@
-﻿using DoomAssetLoader.Map;
-
-namespace RenderingEngine.Models
+﻿namespace RenderingEngine.Models
 {
     [StructLayout(LayoutKind.Explicit)]
     public readonly struct Point : IEquatable<Point>

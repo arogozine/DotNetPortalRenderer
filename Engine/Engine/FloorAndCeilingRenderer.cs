@@ -130,7 +130,7 @@ namespace RenderingEngine.Engine
                 }
 
                 int floorFromY = renderWindow.CeilingStart;
-                int floorToY = renderWindow.WallStart;
+                int floorToY = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
 
                 int screenIndex = floorFromY * width + x;
 
@@ -201,6 +201,190 @@ namespace RenderingEngine.Engine
                 renderWindow.CeilingStart = renderWindow.WallStart;
             }
         }
+
+        private void RenderSkybox(
+            PortalPlayerSnapshot player,
+            Span<BGRA> screen,
+            ref Texture ceilingTexture
+            )
+        {
+            const float twoPi = 2 * MathF.PI;
+            const float oneOverTwoPi = 1f / (2 * MathF.PI);
+
+            int width = PixelWidth;
+            int height = PixelHeight;
+            float viewAngle = player.Angle;
+
+            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
+            ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
+            ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
+
+            (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
+            int textureWidth = ceilingTexture.Width;
+            int textureHeight = ceilingTexture.Height;
+
+            int doubleTextureHeight = ceilingTexture.Height * 2 - 1;
+            float textureWidth4 = textureWidth * 4f * oneOverTwoPi;
+            float yTextureIncr = (2f / height) * textureHeight;
+
+            for (int x = sectroFromX; x <= sectorToX; x++)
+            {
+                ref RenderWindow renderWindow = ref RenderWindowHelper.GetCeilingDimensions(x);
+
+                if (Unsafe.IsNullRef(ref renderWindow) || renderWindow.CeilingStart >= renderWindow.WallStart)
+                {
+                    continue;
+                }
+
+                // calculate angle between 0 to 2 PI
+                float angleX = Unsafe.Add(ref angleCachePtr, x) - viewAngle;
+                if (angleX > twoPi)
+                {
+                    angleX = angleX - twoPi;
+                }
+                else if (angleX < 0f)
+                {
+                    angleX = twoPi + angleX;
+                }
+
+                int texX = (int)(textureWidth4 * angleX) % textureWidth;
+
+                int ceilingStart = renderWindow.CeilingStart;
+                int wallStartClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
+
+                float vScreen = (float)ceilingStart * yTextureIncr;
+
+                ref BGRA screenColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * ceilingStart);
+                ref BGRA textureColumnPtr = ref Unsafe.Add(ref ceilingTexturePtr, texX);
+
+                for (int y = ceilingStart; y < wallStartClamped; y++, vScreen += yTextureIncr)
+                {
+                    int index = Math.Clamp((int)(vScreen), 0, doubleTextureHeight);
+                    index = index % textureHeight;
+                    index *= textureWidth;
+
+                    screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
+                    screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
+                }
+
+                renderWindow.CeilingStart = renderWindow.WallStart;
+            }
+
+        }
+
+        private void RenderSkyboxVector(
+            PortalPlayerSnapshot player,
+            Span<BGRA> screen,
+            ref Texture ceilingTexture
+            )
+        {
+            const float twoPi = 2 * MathF.PI;
+            const float oneOverTwoPi = 1f / (2 * MathF.PI);
+
+            int width = PixelWidth;
+            int height = PixelHeight;
+            float viewAngle = player.Angle;
+
+            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
+            ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
+            ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
+
+            (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
+            int textureWidth = ceilingTexture.Width;
+            int textureHeight = ceilingTexture.Height;
+
+            float textureWidth4 = textureWidth * 4f * oneOverTwoPi;
+            float yTextureIncr = (2f / height) * textureHeight;
+            int doubleTextureHeight = ceilingTexture.Height * 2 - 1;
+
+            Vector<int> zeroV = Vector.Create(0);
+            Vector<int> textureWidthV = Vector.Create(ceilingTexture.Width);
+            Vector<int> textureHeightV = Vector.Create(doubleTextureHeight);
+
+            Vector<float> ivIncrF = new(yTextureIncr * Vector<float>.Count);
+
+            Vector<float> incramentVector = default;
+            ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
+            float yTextureIncrSum = 0f;
+            for (int j = 0; j < Vector<int>.Count; j++)
+            {
+                Unsafe.Add(ref incramentVectorPtr, j) = yTextureIncrSum;
+                yTextureIncrSum += yTextureIncr;
+            }
+
+            for (int x = sectroFromX; x <= sectorToX; x++)
+            {
+                ref RenderWindow renderWindow = ref RenderWindowHelper.GetCeilingDimensions(x);
+
+                if (Unsafe.IsNullRef(ref renderWindow) || renderWindow.CeilingStart >= renderWindow.WallStart)
+                {
+                    continue;
+                }
+
+                // calculate angle between 0 to 2 PI
+                float angleX = Unsafe.Add(ref angleCachePtr, x) - viewAngle;
+
+                if (angleX > twoPi)
+                {
+                    angleX -= twoPi;
+                }
+                else if (angleX < 0f)
+                {
+                    angleX = twoPi + angleX;
+                }
+
+                int texX = (int)(textureWidth4 * angleX) % textureWidth;
+
+                int ceilingStart = renderWindow.CeilingStart;
+                int wallStartClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
+
+                int rem = (wallStartClamped - ceilingStart) % Vector<int>.Count;
+                wallStartClamped -= rem;
+
+                ref BGRA screenColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * ceilingStart);
+                ref BGRA screenEndColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * wallStartClamped);
+                ref BGRA textureColumnPtr = ref Unsafe.Add(ref ceilingTexturePtr, texX);
+
+                float vScreen = ceilingStart * yTextureIncr;
+                Vector<float> vScreenV = Vector.Create(vScreen) + incramentVector;
+
+                for (; !Unsafe.AreSame(ref screenColumnPtr, ref screenEndColumnPtr); vScreenV += ivIncrF)
+                {
+                    var texY = Vector.ClampNative(Vector.ConvertToInt32Native(vScreenV), zeroV, textureHeightV);
+
+                    ref int texYPtr = ref Unsafe.As<Vector<int>, int>(ref texY);
+
+                    for (int j = 0; j < Vector<int>.Count; j++)
+                    {
+                        int index = Unsafe.Add(ref texYPtr, j);
+                        index = index % textureHeight;
+
+                        index *= textureWidth;
+
+                        screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
+                        screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
+                    }
+                }
+
+                Vector<int> vScreenVInt = Vector.ConvertToInt32Native(vScreenV);
+
+                for (int y = 0; y < rem; y++)
+                {
+                    int index = Math.Clamp(vScreenVInt[y], 0, doubleTextureHeight);
+                    index = index % textureHeight;
+                    index *= textureWidth;
+
+                    screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
+                    screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
+                }
+
+                renderWindow.CeilingStart = renderWindow.WallStart;
+            }
+
+        }
+
 
         [SkipLocalsInit]
         public void RenderFloor(
@@ -316,7 +500,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int floorFromY = renderWindow.WallEnd;
+                int floorFromY = Math.Clamp(renderWindow.WallEnd, renderWindow.CeilingStart, renderWindow.FloorEnd);
                 int floorToY = renderWindow.FloorEnd;
 
                 int screenIndex = floorFromY * width + x;

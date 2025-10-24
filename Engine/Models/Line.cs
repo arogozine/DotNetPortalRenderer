@@ -1,4 +1,4 @@
-﻿namespace RenderingEngine.Models.Json
+﻿namespace RenderingEngine.Models
 {
     public sealed class Line
     {
@@ -10,7 +10,7 @@
         public required string? UpperTexture { get; set; }
         public required string? MiddleTexture { get; set; }
         public required string? LowerTexture { get; set; }
-        public int YOffset { get; set; }
-        public int XOffset { get; set; }
+        public required int YOffset { get; set; }
+        public required int XOffset { get; set; }
     }
 }

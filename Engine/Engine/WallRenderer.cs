@@ -19,18 +19,11 @@ namespace RenderingEngine.Engine
             int width = PixelWidth;
             var wall = renderableWall.Wall;
             var line = wall.Line;
-            int wallFromXOffset = renderableWall.Offset;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
             float sectorHeight = sector.Ceil - sector.Floor;
             int yOffset = line.YOffset;
             int xOffset = line.XOffset;
-
-            WallYPlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
-            float wallStartY = yPlaneInfo.WallStartY;
-            float ceilDistIncr = yPlaneInfo.CeilDistIncr;
-            float wallEndY = yPlaneInfo.WallEndY;
-            float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
 
@@ -65,7 +58,7 @@ namespace RenderingEngine.Engine
                 ceilOffset = 0f;
             }
 
-            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
+            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
 
@@ -76,11 +69,14 @@ namespace RenderingEngine.Engine
 
                 (int distance, float brightness, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
 
+                float wallStartY = renderWindow.WallStart;
+                float wallEndY = renderWindow.WallEnd;
+
                 float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
 
                 // Wall Calculation
-                int fromYClamped = renderWindow.WallStart;
-                int toYClamped = renderWindow.WallEnd;
+                int fromYClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int toYClamped = Math.Clamp(renderWindow.WallEnd, renderWindow.CeilingStart, renderWindow.FloorEnd);
                 // Portal Calculation
                 float floorPixelOffset = pixelsPerHeight * floorOffset;
                 float ceilPixelOffset = pixelsPerHeight * ceilOffset;
@@ -174,7 +170,6 @@ namespace RenderingEngine.Engine
             int width = PixelWidth;
             var wall = renderableWall.Wall;
             var line = wall.Line;
-            int wallFromXOffset = renderableWall.Offset;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
             float sectorHeight = sector.Ceil - sector.Floor;
@@ -190,18 +185,11 @@ namespace RenderingEngine.Engine
             int textureWidth = wallTexture.Height;
             int textureHeight = wallTexture.Width;
 
-            WallYPlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(renderableWall.Wall, wallFromXOffset);
-            float wallStartY = yPlaneInfo.WallStartY;
-            float ceilDistIncr = yPlaneInfo.CeilDistIncr;
-            float wallEndY = yPlaneInfo.WallEndY;
-            float floorDistIncr = yPlaneInfo.FloorDistIncr;
-
-
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
             
-            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
+            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
 
@@ -212,8 +200,11 @@ namespace RenderingEngine.Engine
 
                 (int distance, float brightness, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
 
-                int clamptedFromY = renderWindow.WallStart;
-                int clamptedToY = renderWindow.WallEnd;
+                int wallStartY = renderWindow.WallStart;
+                int wallEndY = renderWindow.WallEnd;
+
+                int clamptedFromY = Math.Clamp(wallStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int clamptedToY = Math.Clamp(wallEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
 

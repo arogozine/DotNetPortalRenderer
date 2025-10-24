@@ -128,7 +128,7 @@ namespace RenderingEngine.Engine
 
             ref RenderWindow window = ref this.renderWindow[x];
 
-            if (!window.Calculated || window.WallStart >= window.WallEnd)
+            if (!window.Calculated || window.WallStart >= window.WallEnd || window.FloorEnd < window.CeilingStart)
                 return ref Unsafe.NullRef<RenderWindow>();
 
             return ref window;

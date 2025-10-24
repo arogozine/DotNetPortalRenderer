@@ -72,6 +72,7 @@ namespace RenderingEngine
         private void Rotate(float rotSpeed)
         {
             Player.Angle += rotSpeed;
+            Player.Angle %= MathF.PI * 2f;
             PlayerMovement.MovePlayer(Player, Sectors, 0, 0);
         }
 

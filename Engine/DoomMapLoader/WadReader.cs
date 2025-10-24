@@ -5,7 +5,6 @@ using DoomAssetLoader.Udmf;
 using DoomAssetLoader.Wad;
 using RenderingEngine.Engine;
 using RenderingEngine.Models;
-using RenderingEngine.Models.Json;
 using SkiaSharp;
 using System.Text;
 using Sector = DoomAssetLoader.Map.Sector;
@@ -296,12 +295,16 @@ namespace RenderingEngine.DoomMapLoader
                 float ceiling = sector.CeilingHeight;
                 float floor = sector.FloorHeight;
 
-                MapSector mapSector = new MapSector {
+                bool hasSkyBox = sector.CeilingTexture.StartsWith("F_SKY", StringComparison.OrdinalIgnoreCase);
+
+                MapSector mapSector = new MapSector
+                {
                     Id = i,
                     Ceiling = ceiling,
                     Floor = floor,
-                    CeilingTexture = sector.CeilingTexture,
-                    FloorTexture = sector.FloorTexture
+                    FloorTexture = sector.FloorTexture,
+                    CeilingTexture = hasSkyBox ? "SKY1" : sector.CeilingTexture,
+                    HasSkybox = hasSkyBox
                 };
 
                 foreach (LineInfo lineInfo in lines)
@@ -329,20 +332,20 @@ namespace RenderingEngine.DoomMapLoader
                 sectors.Add(mapSector);
             }
 
-            return new Models.Json.Map
+            float radians = MathF.PI * (player1Start.Value.Angle / 180f);
+
+            return new Map
             {
-                PlayerStart = new PlayerStart
+                Player = new Player
                 {
-                    Angle = player1Start.Value.Angle,
-                    XPosition = player1Start.Value.X,
-                    YPosition = player1Start.Value.Y,
-                    ZPosition = 0f
+                    Angle = radians,
+                    Where = (player1Start.Value.X, player1Start.Value.Y, 0f)
                 },
                 Sectors = sectors
             };
         }
 
-        public static Models.Json.Map ExtractDoomMap(WadLump textLump)
+        public static Map ExtractDoomMap(WadLump textLump)
         {
             var map = WadLumpParser.ReadTextMap(textLump);
 
@@ -383,13 +386,15 @@ namespace RenderingEngine.DoomMapLoader
 
                 float ceiling = sector.HeightCeiling;
                 float floor = sector.HeightFloor;
+                bool hasSkyBox = sector.TextureCeiling.StartsWith("F_SKY", StringComparison.OrdinalIgnoreCase);
 
                 MapSector mapSector = new MapSector {
                     Id = i,
                     Ceiling = ceiling,
                     Floor = floor,
                     FloorTexture = sector.TextureFloor,
-                    CeilingTexture = sector.TextureCeiling
+                    CeilingTexture = hasSkyBox ? "SKY1" : sector.TextureCeiling,
+                    HasSkybox = hasSkyBox
                 };
 
                 foreach (LineInfo lineInfo in lines)
@@ -407,6 +412,8 @@ namespace RenderingEngine.DoomMapLoader
                         UpperTexture = lineInfo.UpperTexture,
                         MiddleTexture = lineInfo.MiddleTexture,
                         LowerTexture = lineInfo.LowerTexture,
+                        XOffset = lineInfo.XOffset,
+                        YOffset = lineInfo.YOffset,
                     };
 
                     mapSector.Walls.Add(line);
@@ -415,14 +422,12 @@ namespace RenderingEngine.DoomMapLoader
                 sectors.Add(mapSector);
             }
 
-            return new Models.Json.Map
+            return new Map
             {
-                PlayerStart = new PlayerStart
+                Player = new Player
                 {
                     Angle = player1Start.Angle,
-                    XPosition = player1Start.X,
-                    YPosition = player1Start.Y,
-                    ZPosition = 0f
+                    Where = (player1Start.X, player1Start.Y, 0f)
                 },
                 Sectors = sectors
             };
