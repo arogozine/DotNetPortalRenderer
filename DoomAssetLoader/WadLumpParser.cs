@@ -8,6 +8,21 @@ namespace DoomAssetLoader
 {
     public static class WadLumpParser
     {
+        public static bool IsPng(WadLump? patchLump)
+        {
+            ArgumentNullException.ThrowIfNull(patchLump);
+
+            if ((!patchLump.IsPatch && !patchLump.IsSprite) || patchLump.Bytes.Length == 0)
+            {
+                throw new ArgumentException("Not a patch / sprite lump");
+            }
+
+            Span<byte> bytes = patchLump.Bytes;
+            Span<byte> pngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+
+            return bytes.StartsWith(pngSignature);
+        }
+
         public static PatchHeader ReadPatchOrSprite(WadLump? patchLump)
         {
             ArgumentNullException.ThrowIfNull(patchLump);
@@ -68,7 +83,7 @@ namespace DoomAssetLoader
 
         public static Span<TextureDefinition> ReadTexture([NotNull] WadLump? texture)
         {
-            WadLumpCheck(texture, LumpType.Texture1);
+            WadLumpCheck(texture, "TEXTURE");
 
             Span<byte> bytes = texture.Bytes;     
 
@@ -118,10 +133,10 @@ namespace DoomAssetLoader
         public static unsafe Dictionary<int, RGB[]> ReadPlaypal([NotNull] WadLump? playPalLump)
         {
             const int setSize = 256;
-            const int numberOfSets = 14;
 
-            WadLumpCheck(playPalLump, LumpType.PlayPal, setSize * numberOfSets * sizeof(RGB));
+            WadLumpCheck(playPalLump, LumpType.PlayPal, divisor: 256);
 
+            int numberOfSets = playPalLump.Bytes.Length / 256;
             Dictionary<int, RGB[]> colorSets = new(numberOfSets);
 
             ReadOnlySpan<RGB> bytes = MemoryMarshal.Cast<byte, RGB>(playPalLump.Bytes);
@@ -259,7 +274,7 @@ namespace DoomAssetLoader
         {
             ArgumentNullException.ThrowIfNull(wadLump);
 
-            if (wadLump.Name != wadName)
+            if (!wadLump.Name.StartsWith(wadName))
             {
                 throw new ArgumentException($"WadLump is not a {wadName} lump");
             }

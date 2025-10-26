@@ -503,9 +503,9 @@ namespace RenderingEngine.Engine
             Vector<float> incramentVector = default;
             ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
-            (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            for (int x = sectroFromX; x <= sectorToX; x++)
+            for (int x = sectorFromX; x <= sectorToX; x++)
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.GetFloorCeilDimensions2(x);
 

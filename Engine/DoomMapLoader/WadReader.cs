@@ -14,20 +14,52 @@ namespace RenderingEngine.DoomMapLoader
     [SkipLocalsInit]
     internal static class WadReader
     {
-        public static Map ExtractDoomMap(string mapName)
+        public static WadFile LoadWad(string path,
+            bool loadMaps = false,
+            bool loadTextures = false,
+            bool loadOther = false,
+            string? mapName = null)
         {
-            var loader = new WadLoader("C:\\Users\\Alexa\\Downloads\\New folder\\doom2.wad") {
-                LoadMaps = true,
-                LoadTextures = true,
-                LoadOther = false,
+            var loader = new WadLoader(path)
+            {
+                LoadMaps = loadMaps,
+                LoadTextures = loadTextures,
+                LoadOther = loadOther,
                 MapToLoad = mapName
             };
 
-            WadFile wad = loader.LoadWad();
+            return loader.LoadWad();
+        }
 
+        public static Map LoadDoomMap(WadFile wad, string mapName)
+        {
+            if (wad.GetMapLump(mapName, LumpType.TextMap) is WadLump textMap)
+            {
+                return ExtractDoomMap(textMap);
+            }
+            else
+            {
+                return ExtractDoomMap(wad, mapName);
+            }
+        }
+
+        public static WadFile ExtractAllTextures(string path)
+        {
+            var loader = new WadLoader(path)
+            {
+                LoadTextures = true
+            };
+
+            WadFile wad = loader.LoadWad();
+            ExtractAllTextures(wad);
+            return wad;
+        }
+
+        public static void ExtractAllTextures(WadFile wad)
+        {
             Dictionary<string, BGRA[]> floorTextures = ExtractFloorTextures(wad);
             Dictionary<string, TextureInfo> textures = ExtractTextures(wad);
-            Dictionary<string, TextureInfo> sprites  = ExtractSprites(wad);
+            Dictionary<string, TextureInfo> sprites = ExtractSprites(wad);
 
             foreach ((string name, BGRA[] image) in floorTextures)
             {
@@ -42,15 +74,6 @@ namespace RenderingEngine.DoomMapLoader
             foreach ((string name, var info) in sprites)
             {
                 TextureCache.Add(name, info.Width, info.Height, info.Data);
-            }
-
-            if (wad.GetMapLump(mapName, LumpType.TextMap) is WadLump textMap)
-            {
-                return ExtractDoomMap(textMap);
-            }
-            else
-            {
-                return ExtractDoomMap(wad, mapName);
             }
         }
 
@@ -85,6 +108,12 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (!wadLump.IsSprite || wadLump.Bytes.Length == 0)
                 {
+                    continue;
+                }
+
+                if (WadLumpParser.IsPng(wadLump))
+                {
+                    Debug.WriteLine(wadLump.Name);
                     continue;
                 }
 
@@ -138,11 +167,26 @@ namespace RenderingEngine.DoomMapLoader
 
         public static unsafe Dictionary<string, TextureInfo> ExtractTextures(WadFile wad)
         {
+            Dictionary<string, TextureInfo> textures = [];
+
+            if (wad[LumpType.Texture1] is WadLump textureLump1)
+            {
+                ExtractTextures(wad, textureLump1, textures);
+            }
+
+            if (wad[LumpType.Texture2] is WadLump textureLump2)
+            {
+                ExtractTextures(wad, textureLump2, textures);
+            }
+
+            return textures;
+        }
+
+        private static unsafe void ExtractTextures(WadFile wad, WadLump textureLump, Dictionary<string, TextureInfo> textures)
+        {
             Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
             Span<string> patchNames = WadLumpParser.ReadPNames(wad[LumpType.PNames]);
-            Span<TextureDefinition> textureList = WadLumpParser.ReadTexture(wad[LumpType.Texture1]);
-
-            Dictionary<string, TextureInfo> textures = [];
+            Span<TextureDefinition> textureList = WadLumpParser.ReadTexture(textureLump);
 
             const int normalPalette = 0;
             ReadOnlySpan<BGRA> palette = ToBGRA(playPal[normalPalette]);
@@ -209,8 +253,6 @@ namespace RenderingEngine.DoomMapLoader
 
                 textures[textureDefinition.Name] = new TextureInfo(textureDefinition.Width, textureDefinition.Height, texture);
             }
-
-            return textures;
         }
 
         public static unsafe Dictionary<string, BGRA[]> ExtractFloorTextures(WadFile wad)
@@ -254,7 +296,7 @@ namespace RenderingEngine.DoomMapLoader
             return flats;
         }
 
-        public static Map ExtractDoomMap(WadFile wad, string mapName)
+        private static Map ExtractDoomMap(WadFile wad, string mapName)
         {
             Span<Vertex> verticies = WadLumpParser.ReadVertexes(wad.GetMapLump(mapName, LumpType.Vertexes));
             Span<Sidedef> sideDefs = WadLumpParser.ReadSideDefs(wad.GetMapLump(mapName, LumpType.SideDefs));
@@ -345,7 +387,7 @@ namespace RenderingEngine.DoomMapLoader
             };
         }
 
-        public static Map ExtractDoomMap(WadLump textLump)
+        private static Map ExtractDoomMap(WadLump textLump)
         {
             var map = WadLumpParser.ReadTextMap(textLump);
 

@@ -99,6 +99,7 @@ namespace RenderingEngine.MapGen
 
             var sector = new Sector
             {
+                Id = x.Id,
                 HasSkybox = x.HasSkybox,
                 FloorTexture = x.FloorTexture,
                 CeilTexture = x.CeilingTexture,

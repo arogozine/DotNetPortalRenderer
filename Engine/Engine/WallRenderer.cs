@@ -82,6 +82,7 @@ namespace RenderingEngine.Engine
                 // Wall Calculation
                 int fromYClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
                 int toYClamped = Math.Clamp(renderWindow.WallEnd, renderWindow.CeilingStart, renderWindow.FloorEnd);
+
                 // Portal Calculation
                 float floorPixelOffset = pixelsPerHeight * floorOffset;
                 float ceilPixelOffset = pixelsPerHeight * ceilOffset;
@@ -90,68 +91,89 @@ namespace RenderingEngine.Engine
                 int portalFromYClamped = Math.Clamp((int)portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
                 int portalToYClamped = Math.Clamp((int)portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
 
-
-                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, fromYClamped * PixelWidth + x);
-
-                // Calculate Upper  Texture Position
-                int textureWidth = upperTexture.Height;
-                int textureHeight = upperTexture.Width;
                 float textureXIncr = (float)((sectorHeight - 1) / (wallEndY - wallStartY));
-                int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
-                float textureXPos = textureWidth + yOffset - textureXIncr * (wallStartY - fromYClamped);
 
-                CalculateWall(upperTextureBuffer, ref columnABufferIndex, ref upperTexturePtr, textureYPos, brightness);
-
-                uint shaded = default;
-                int textureXPosIOld = -1;
-
-                for (int y = fromYClamped; y < portalFromYClamped; ++y)
+                if (ceilOffset != 0)
                 {
-                    int textureXPosI = (int)textureXPos;
+                    ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, fromYClamped * width + x);
+                    ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, portalFromYClamped * width + x);
 
-                    if (textureXPosI != textureXPosIOld)
-                    {
-                        textureXPosI %= textureWidth;
+                    // Calculate Upper  Texture Position
+                    int textureWidth = upperTexture.Height;
+                    int textureHeight = upperTexture.Width;
+                    int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
+                    float textureXPos = textureWidth + yOffset - textureXIncr * (wallStartY - fromYClamped);
+                    textureXPos %= textureWidth;
 
-                        textureXPosIOld = textureXPosI;
-                        shaded = Unsafe.Add(ref upperTextureBufferPtr, textureXPosI);
-                    }
+                    uint shaded = default;
+                    int textureXPosIOld = -1;
 
-                    screenIndexPtr = shaded;
-                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth);
-                    textureXPos += textureXIncr;
-                }
+                    CalculateAndCacheWallColumn(upperTextureBuffer, ref columnABufferIndex, ref upperTexturePtr, textureYPos, brightness);
 
-                if (floorOffset != 0)
-                {
-                    screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * PixelWidth + x);
-
-                    textureWidth = lowerTexture.Height;
-                    textureHeight = lowerTexture.Width;
-
-                    textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
-                    textureXPos = textureWidth + textureXIncr * (portalToYClamped - portalToY);
-
-                    shaded = default;
-                    textureXPosIOld = -1;
-
-                    CalculateWall(lowerTextureBuffer, ref columnBBufferIndex, ref lowerTexturePtr, textureYPos, brightness);
-
-                    for (int y = portalToYClamped; y < toYClamped; ++y)
+                    for (;
+                        Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                        textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
+                        )
                     {
                         int textureXPosI = (int)textureXPos;
 
                         if (textureXPosI != textureXPosIOld)
                         {
-                            textureXPosI %= textureWidth;
+                            // wrap the texture
+                            if (textureXPosI >= textureWidth)
+                            {
+                                textureXPosI -= textureWidth;
+                                textureXPos -= textureWidth;
+                            }
+
+                            textureXPosIOld = textureXPosI;
+                            shaded = Unsafe.Add(ref upperTextureBufferPtr, textureXPosI);
+                        }
+
+                        screenIndexPtr = shaded;
+                    }
+                }
+
+                if (floorOffset != 0)
+                {
+                    ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * PixelWidth + x);
+                    ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, toYClamped * width + x);
+
+                    int textureWidth = lowerTexture.Height;
+                    int textureHeight = lowerTexture.Width;
+                    int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
+                    float textureXPos = textureWidth + textureXIncr * (portalToYClamped - portalToY);
+                    textureXPos %= textureWidth;
+
+                    uint shaded = default;
+                    int textureXPosIOld = -1;
+
+                    CalculateAndCacheWallColumn(lowerTextureBuffer, ref columnBBufferIndex, ref lowerTexturePtr, textureYPos, brightness);
+
+                    int textureXPosI = -1;
+
+                    for (;
+                        Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                        textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
+                        )
+                    {
+                        textureXPosI = (int)textureXPos;
+
+                        if (textureXPosI != textureXPosIOld)
+                        {
+                            // wrap the texture
+                            if (textureXPosI >= textureWidth)
+                            {
+                                textureXPosI -= textureWidth;
+                                textureXPos -= textureWidth;
+                            }
+
                             textureXPosIOld = textureXPosI;
 
                             shaded = Unsafe.Add(ref lowerTextureBufferPtr, textureXPosI);
                         }
 
                         screenIndexPtr = shaded;
-                        screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth);
-                        textureXPos += textureXIncr;
                     }
                 }
 
@@ -214,31 +236,39 @@ namespace RenderingEngine.Engine
                 int clamptedToY = Math.Clamp(wallEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
+                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
 
                 // texture is rotated - y position is x position in texture
                 int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
                 float textureXIncr = (sectorHeight - 1) / (wallEndY - wallStartY);
                 float textureXPos = textureWidth + yOffset - textureXIncr * (wallStartY - clamptedFromY);
 
-                CalculateWall(columnBuffer, ref columnABufferIndex, ref wallTexturePtr, textureYPos, brightness);
+                CalculateAndCacheWallColumn(columnBuffer, ref columnABufferIndex, ref wallTexturePtr, textureYPos, brightness);
 
-                uint shaded = default;
+                textureXPos %= textureWidth; // wrap the texture
+
+                int textureXPosI = -1;
                 int textureXPosIOld = -1;
 
-                for (int y = clamptedFromY; y <= clamptedToY; ++y)
+                for (uint shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
+                     Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                     textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width))
                 {
-                    int textureXPosI = (int)textureXPos;
+                    textureXPosI = (int)textureXPos;
 
                     if (textureXPosI != textureXPosIOld)
                     {
-                        textureXPosI %= textureWidth;
-                        textureXPosIOld = textureXPosI;
+                        // wrap the texture
+                        if (textureXPosI >= textureWidth)
+                        {
+                            textureXPosI -= textureWidth;
+                            textureXPos -= textureWidth;
+                        }
+
                         shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
                     }
 
                     screenIndexPtr = shaded;
-                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
-                    textureXPos += textureXIncr;   
                 }
 
                 renderWindow.Distance = fromToYdist;
@@ -253,7 +283,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CalculateWall(Span<uint> buffer, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, float brightness)
+        private static void CalculateAndCacheWallColumn(Span<uint> buffer, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, float brightness)
         {
             // reuse the cached column
             if (bufferIndex == textureYPos)

@@ -5,10 +5,10 @@ namespace DoomAssetLoader
 {
     public sealed class WadLoader
     {
-        public required bool LoadMaps { get; init; }
-        public required bool LoadTextures { get; init; }
-        public required bool LoadOther { get; init; }
-        public required string? MapToLoad { get; init; }
+        public bool LoadMaps { get; init; }
+        public bool LoadTextures { get; init; }
+        public bool LoadOther { get; init; }
+        public string? MapToLoad { get; init; }
 
         private readonly string filePath;
 
@@ -86,6 +86,8 @@ namespace DoomAssetLoader
             bool isMap = false;
             string? mapName = null;
 
+            Span<string> pNames = default;
+
             for (i = 0; i < lumpCount; i++)
             {
                 fs.Seek(directoryOffset + 16 * i, SeekOrigin.Begin);
@@ -116,31 +118,37 @@ namespace DoomAssetLoader
                 switch (lumpName)
                 {
                     case LumpType.PStart:
+                    case LumpType.PPStart:
                         isPatches = true;
                         isMap = false;
                         mapName = null;
                         break;
                     case LumpType.PEnd:
+                    case LumpType.PPEnd:
                         isPatches = false;
                         isMap = false;
                         mapName = null;
                         break;
                     case LumpType.FStart:
+                    case LumpType.FFStart:
                         isFlats = true;
                         isMap = false;
                         mapName = null;
                         break;
                     case LumpType.FEnd:
+                    case LumpType.FFEnd:
                         isFlats = false;
                         isMap = false;
                         mapName = null;
                         break;
                     case LumpType.SStart:
+                    case LumpType.SSStart:
                         isSprites = true;
                         isMap = false;
                         mapName = null;
                         break;
                     case LumpType.SEnd:
+                    case LumpType.SSEnd:
                         isSprites = false;
                         isMap = false;
                         mapName = null;
@@ -157,7 +165,9 @@ namespace DoomAssetLoader
                     continue;
                 }
 
-                bool isTexture = isFlats || isSprites || isPatches || TextureLumps.Contains(lumpName);
+                bool inPnames = pNames.Contains(lumpName);
+
+                bool isTexture = isFlats || isSprites || isPatches || inPnames || TextureLumps.Contains(lumpName);
 
                 if (isTexture && !LoadTextures)
                 {
@@ -177,14 +187,21 @@ namespace DoomAssetLoader
                     fs.ReadExactly(lumpbytes, 0, (int)lumpSize);
                 }
 
-                wadFile.Lumps.Add(new WadLump(lumpName, lumpbytes)
+                var lump = new WadLump(lumpName, lumpbytes)
                 {
                     IsFlat = isFlats,
-                    IsPatch = isPatches,
+                    IsPatch = isPatches || inPnames,
                     IsSprite = isSprites,
                     MapName = mapName,
                     IsMap = isMap
-                });
+                };
+
+                wadFile.Lumps.Add(lump);
+
+                if (lumpName == LumpType.PNames)
+                {
+                    pNames = WadLumpParser.ReadPNames(lump);
+                }
             }
 
             return wadFile;

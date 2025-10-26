@@ -1,4 +1,5 @@
-﻿using static System.MemoryExtensions;
+﻿using System.Text.RegularExpressions;
+using static System.MemoryExtensions;
 
 namespace DoomAssetLoader.Udmf
 {
@@ -75,13 +76,13 @@ namespace DoomAssetLoader.Udmf
                     continue;
                 }
 
-                foreach (Range tokenRange in line.Split(' '))
+                if (line.StartsWith("namespace")) { continue; }
+
+                foreach (var tokenStr in IdentifierRegex().Split(new string(line)))
                 {
-                    ReadOnlySpan<char> token = line[tokenRange].Trim();
+                    ReadOnlySpan<char> token = tokenStr.TrimEnd();
 
                     if (token.Length == 0) { continue; }
-
-                    if (token.SequenceEqual("namespace")) { break; }
 
                     if (expectKey)
                     {
@@ -197,5 +198,8 @@ namespace DoomAssetLoader.Udmf
 
             return line.Trim();
         }
+
+        [GeneratedRegex("([\\ =])")]
+        private static partial Regex IdentifierRegex();
     }
 }

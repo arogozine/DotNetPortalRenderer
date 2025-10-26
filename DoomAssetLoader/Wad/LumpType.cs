@@ -32,18 +32,24 @@
         /// Marks the beginning of the flats (floor textures)
         /// </summary>
         public const string FStart = "F_START";
+        public const string FFStart = "FF_START";
 
         /// <summary>
         /// Marks the end of the flats
         /// </summary>
         public const string FEnd = "F_END";
+        public const string FFEnd = "FF_END";
 
         public const string ColorMap = "COLORMAP";
 
         public const string PStart = "P_START";
+        public const string PPStart = "PP_START";
         public const string PEnd = "P_END";
+        public const string PPEnd = "PP_END";
 
         public const string SStart = "S_START";
+        public const string SSStart = "SS_START";
         public const string SEnd = "S_END";
+        public const string SSEnd = "SS_END";
     }
 }

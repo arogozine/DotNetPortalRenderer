@@ -154,15 +154,14 @@ namespace RenderingEngine.Engine
                 }
 
                 // DebugPortal(screen, this.RenderWindowHelper.RenderWindow);
-
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxPortalsRendered);
 
             // render transparent objects and sprites
-            transparentWalls.Reverse();
-            foreach (var wall in transparentWalls)
+            ReadOnlySpan<RenderableWall> transparentWallsSpan = CollectionsMarshal.AsSpan(transparentWalls);
+            for (int i = transparentWallsSpan.Length - 1; i >= 0; i--)
             {
-                DrawTransparentWall(screen, sectors, wall);
+                DrawTransparentWall(screen, sectors, transparentWallsSpan[i]);
             }
 
             // DebugZBuffer(screen, this.RenderWindowHelper.RenderWindow);
@@ -293,8 +292,6 @@ namespace RenderingEngine.Engine
             Span<BGRA> screen,
             Span<RenderWindow> renderedArea)
         {
-            int height = PixelWidth;
-
             for (int x = 0; x < PixelWidth; x++)
             {
                 ref RenderWindow rendered = ref renderedArea[x];
@@ -313,18 +310,21 @@ namespace RenderingEngine.Engine
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void Render(Span<BGRA> screen, int y, int x, BGRA color)
             {
-                int index = (y - 1) * height + x;
+                int index = (y - 1) * PixelWidth + x;
 
-                if (y != 0)
+                if (index > 0 && index < screen.Length)
                 {
                     screen[index] = color;
                 }
 
-                index += height;
-                screen[index] = color;
-                index += height;
+                index += PixelWidth;
+                if (index > 0 && index < screen.Length)
+                {
+                    screen[index] = color;
+                }
 
-                if (y != PixelHeight - 1)
+                index += PixelWidth;
+                if (index > 0 && index < screen.Length)
                 {
                     screen[index] = color;
                 }
