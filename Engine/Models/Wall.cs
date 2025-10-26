@@ -2,7 +2,7 @@
 
 namespace RenderingEngine.Models
 {
-    internal sealed class Wall
+    internal sealed class Wall : IEquatable<Wall?>
     {
         public Line Line { get; }
 
@@ -37,23 +37,35 @@ namespace RenderingEngine.Models
 
         public override bool Equals(object? obj)
         {
-            return obj is Wall wall &&
-                   R1 == wall.R1 &&
-                   R2 == wall.R2 &&
-                   C1 == wall.C1 &&
-                   C2 == wall.C2 &&
-                   Neighbor == wall.Neighbor &&
-                   XLeft == wall.XLeft &&
-                   XRight == wall.XRight &&
-                   YLeftCeil == wall.YLeftCeil &&
-                   YLeftFloor == wall.YLeftFloor &&
-                   YRightCeil == wall.YRightCeil &&
-                   YRightFloor == wall.YRightFloor;
+            return Equals(obj as Wall);
+        }
+
+        public bool Equals(Wall? other)
+        {
+            return other is not null &&
+                   EqualityComparer<Line>.Default.Equals(Line, other.Line) &&
+                   IntersectsView == other.IntersectsView &&
+                   Flipped == other.Flipped &&
+                   R1.Equals(other.R1) &&
+                   R2.Equals(other.R2) &&
+                   C1.Equals(other.C1) &&
+                   C2.Equals(other.C2) &&
+                   Neighbor == other.Neighbor &&
+                   XLeft == other.XLeft &&
+                   XRight == other.XRight &&
+                   YLeftCeil == other.YLeftCeil &&
+                   YLeftFloor == other.YLeftFloor &&
+                   YRightCeil == other.YRightCeil &&
+                   YRightFloor == other.YRightFloor &&
+                   IsPortal == other.IsPortal;
         }
 
         public override int GetHashCode()
         {
             HashCode hash = new();
+            hash.Add(Line);
+            hash.Add(IntersectsView);
+            hash.Add(Flipped);
             hash.Add(R1);
             hash.Add(R2);
             hash.Add(C1);
@@ -65,6 +77,7 @@ namespace RenderingEngine.Models
             hash.Add(YLeftFloor);
             hash.Add(YRightCeil);
             hash.Add(YRightFloor);
+            hash.Add(IsPortal);
             return hash.ToHashCode();
         }
 

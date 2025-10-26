@@ -16,28 +16,9 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors,
             RenderableWall renderableWall)
         {
-            int width = PixelWidth;
-            var wall = renderableWall.Wall;
-            var line = wall.Line;
-            int wallFromX = renderableWall.XLeft;
-            int wallToX = renderableWall.XRight;
             float sectorHeight = sector.Ceil - sector.Floor;
-            int yOffset = line.YOffset;
-            int xOffset = line.XOffset;
+            var wall = renderableWall.Wall;
 
-            ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
-
-            ref Texture lowerTexture = ref TextureCache.GetTexture(line.LowerTexture ?? line.MiddleTexture);
-            ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
-
-            ref Texture upperTexture = ref TextureCache.GetTexture(line.UpperTexture ?? line.MiddleTexture);
-            ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperTexture.Rotated);
-
-            Span<uint> lowerTextureBuffer = this.columnA.AsSpan(..lowerTexture.Height);
-            Span<uint> upperTextureBuffer = this.columnB.AsSpan(..upperTexture.Height);
-
-            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
-           
             Sector neighborSector = sectors[wall.Neighbor];
             float oneOverSectorHeight = 1f / sectorHeight;
             float floorOffset = neighborSector.Floor - sector.Floor;
@@ -57,6 +38,30 @@ namespace RenderingEngine.Engine
             {
                 ceilOffset = 0f;
             }
+
+
+            int width = PixelWidth;
+            var line = wall.Line;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+            int yOffset = line.YOffset;
+            int xOffset = line.XOffset;
+
+            ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
+
+            ref Texture lowerTexture = ref TextureCache.GetTexture(line.LowerTexture ?? line.MiddleTexture);
+            ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
+
+            ref Texture upperTexture = ref TextureCache.GetTexture(line.UpperTexture ?? line.MiddleTexture);
+            ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperTexture.Rotated);
+
+            Span<uint> lowerTextureBuffer = this.columnA.AsSpan(..lowerTexture.Height);
+            ref uint lowerTextureBufferPtr = ref MemoryMarshal.GetReference(lowerTextureBuffer);
+
+            Span<uint> upperTextureBuffer = this.columnB.AsSpan(..upperTexture.Height);
+            ref uint upperTextureBufferPtr = ref MemoryMarshal.GetReference(upperTextureBuffer);
+
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
@@ -109,7 +114,7 @@ namespace RenderingEngine.Engine
                         textureXPosI %= textureWidth;
 
                         textureXPosIOld = textureXPosI;
-                        shaded = upperTextureBuffer[textureXPosI];
+                        shaded = Unsafe.Add(ref upperTextureBufferPtr, textureXPosI);
                     }
 
                     screenIndexPtr = shaded;
@@ -140,7 +145,8 @@ namespace RenderingEngine.Engine
                         {
                             textureXPosI %= textureWidth;
                             textureXPosIOld = textureXPosI;
-                            shaded = lowerTextureBuffer[textureXPosI];
+
+                            shaded = Unsafe.Add(ref lowerTextureBufferPtr, textureXPosI);
                         }
 
                         screenIndexPtr = shaded;
@@ -186,6 +192,7 @@ namespace RenderingEngine.Engine
             int textureHeight = wallTexture.Width;
 
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
+            ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
             
@@ -226,7 +233,7 @@ namespace RenderingEngine.Engine
                     {
                         textureXPosI %= textureWidth;
                         textureXPosIOld = textureXPosI;
-                        shaded = columnBuffer[textureXPosI];
+                        shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
                     }
 
                     screenIndexPtr = shaded;

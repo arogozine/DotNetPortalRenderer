@@ -69,7 +69,7 @@ namespace RenderingEngine.Engine
             float oneOvervFov = 1f / vFov;
             var yaw = player.Yaw;
 
-            (_, _, float pz) = player.Where;
+            float pz = player.Z;
 
             float yfloor = sector.Floor - pz;
             float yCeil = sector.Ceil - pz;
@@ -104,10 +104,8 @@ namespace RenderingEngine.Engine
 
         public void DrawScreen(Span<BGRA> screen, PortalPlayerSnapshot player)
         {
-            float yaw = player.Yaw;
+            this.WallHelper.SetSnapShot(player);
 
-            (float pSin, float pCos) = MathF.SinCos(player.Angle);
-            (float px, float py, float pz) = player.Where;
             screen.Fill(BGRA.Black);
 
             ReadOnlySpan<Sector> sectors = Sectors;
@@ -127,12 +125,9 @@ namespace RenderingEngine.Engine
                 NeighborsToRender sectorInfo = sectorRenderQueue.Dequeue();
                 Sector sector = sectors[sectorInfo.SectorId];
 
-                float yceil = sector.Ceil - pz;
-                float yfloor = sector.Floor - pz;
                 Span<Wall> parentWalls = sectorInfo.ParentWalls;
 
-                Span<Wall> walls = WallHelper.DetermineWallsToRender(sector,
-                    parentWalls, pSin, pCos, px, py, yceil, yfloor, yaw);
+                Span<Wall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, player);
 
                 List<RenderableWall> neighbors = RenderSector(player, sector, sectors, sectorInfo, walls, screen);
 

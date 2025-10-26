@@ -23,8 +23,11 @@ namespace RenderingEngine.Engine
             int halfHeightInt = height / 2;
             float oneOvervFov = 1f / vFov;
 
-            (float px, float py, float pz) = player.Where;
-            (float pSin, float pCos) = MathF.SinCos(player.Angle);
+            float px = player.X;
+            float py = player.Y;
+            float pz = player.Z;
+            float pSin = player.Sin;
+            float pCos = player.Cos;
 
             float idkWhatThisIs = 1f / (width * -0.7594506f);
 
@@ -93,8 +96,11 @@ namespace RenderingEngine.Engine
             float oneOvervFov = 1f / vFov;
             int widthDiv2 = width / 2;
 
-            (float px, float py, float pz) = player.Where;
-            (float pSin, float pCos) = MathF.SinCos(player.Angle);
+            float px = player.X;
+            float py = player.Y;
+            float pz = player.Z;
+            float pSin = player.Sin;
+            float pCos = player.Cos;
 
             float idkWhatThisIs = 1f / (width * -0.7594506f);
 
@@ -397,8 +403,12 @@ namespace RenderingEngine.Engine
             int width = PixelWidth;
             float vFov = VFov;
 
-            (float pSin, float pCos) = MathF.SinCos(player.Angle);
-            (float px, float py, float pz) = player.Where;
+            float px = player.X;
+            float py = player.Y;
+            float pz = player.Z;
+            float pSin = player.Sin;
+            float pCos = player.Cos;
+
             float yfloor = sector.Floor - pz;
             float yaw = player.Yaw;
 
@@ -463,8 +473,12 @@ namespace RenderingEngine.Engine
             int width = PixelWidth;
             float vFov = VFov;
 
-            (float pSin, float pCos) = MathF.SinCos(player.Angle);
-            (float px, float py, float pz) = player.Where;
+            float px = player.X;
+            float py = player.Y;
+            float pz = player.Z;
+            float pSin = player.Sin;
+            float pCos = player.Cos;
+
             float yfloor = sector.Floor - pz;
             float yaw = player.Yaw;
 

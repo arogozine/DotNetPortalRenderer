@@ -10,6 +10,8 @@ namespace RenderingEngine.Engine
         private readonly float vFov;
         private readonly bool[] visibility;
         private readonly WallComparer wallComparer;
+        private PortalPlayerSnapshot? _player;
+        private readonly Dictionary<int, Wall[]> wallCache = [];
 
         public WallHelper(
             int width,
@@ -24,25 +26,58 @@ namespace RenderingEngine.Engine
             wallComparer = new WallComparer(width);
         }
 
-        public Span<Wall> DetermineWallsToRender(Sector sector,
-            Span<Wall> portalWallsToOcclude,
-            float pSin, float pCos, float px, float py, float yCeil, float yFloor, float yaw)
+        [MemberNotNull(nameof(_player))]
+        public void SetSnapShot(PortalPlayerSnapshot player)
         {
-            Span<Wall> rotatedWalls = RotateSectorWallsRelativeToPlayer(sector, pSin, pCos, px, py);
+            if (_player is PortalPlayerSnapshot old && (old.Angle != player.Angle || old.X != player.X || old.Y != player.Y || old.Z != player.Z))
+            {
+                wallCache.Clear();
+            }
+
+            _player = player;
+        }
+
+        public Span<Wall> DetermineWallsToRender(Sector sector, Span<Wall> portalWallsToOcclude, PortalPlayerSnapshot player)
+        {
+            Span<Wall> rotatedWalls = CacheRotatedWallsRelativeToPlayer(sector, player);
 
             Span<Range> bunches = BreakUpIntoBunches(rotatedWalls);
-
-            FilterOutWallsBehindPlayer(bunches, rotatedWalls);
-
-            CalculateWallPlanes(bunches, rotatedWalls, yCeil, yFloor, yaw);
-
-            FilterOutWallsOutsideView(bunches, rotatedWalls);
-
             Span<Wall> result = CullHiddenWallsAndCombineBunches(bunches, rotatedWalls, portalWallsToOcclude);
-
             result.Sort(wallComparer);
 
             return result;
+        }
+
+        private Span<Wall> CacheRotatedWallsRelativeToPlayer(Sector sector, PortalPlayerSnapshot player)
+        {
+            Wall[] copy;
+
+            if (wallCache.TryGetValue(sector.Id, out Wall[]? walls))
+            {
+                copy = new Wall[walls.Length];
+                walls.AsSpan().CopyTo(copy);
+                return copy;
+            }
+
+            float pSin = player.Sin;
+            float pCos = player.Cos;
+            float px = player.X;
+            float py = player.Y;
+            float yaw = player.Yaw;
+            float pz = player.Z;
+            float yCeil = sector.Ceil - pz;
+            float yFloor = sector.Floor - pz;
+
+            Span<Wall> rotatedWalls = RotateSectorWallsRelativeToPlayer(sector, pSin, pCos, px, py);
+            FilterOutWallsBehindPlayer(ref rotatedWalls);
+            CalculateWallPlanes(rotatedWalls, yCeil, yFloor, yaw);
+            FilterOutWallsOutsideView(ref rotatedWalls);
+
+            copy = new Wall[rotatedWalls.Length];
+            rotatedWalls.CopyTo(copy);
+            wallCache[sector.Id] = copy;
+
+            return rotatedWalls;
         }
 
         private static void FilterParentPortalWall(ref Span<Wall> rotatedWalls, Wall? parentSectorWall)
@@ -76,10 +111,10 @@ namespace RenderingEngine.Engine
                 (a.R2 == b.R1 && a.R1 == b.R2);
         }
 
-        public static Span<Wall> RotateSectorWallsRelativeToPlayer(Sector sector, float pSin, float pCos, float px, float py)
+        public static Wall[] RotateSectorWallsRelativeToPlayer(Sector sector, float pSin, float pCos, float px, float py)
         {
             ReadOnlySpan<Wall> walls = sector.Walls;
-            Span<Wall> rotatedWalls = new Wall[walls.Length];
+            Wall[] rotatedWalls = new Wall[walls.Length];
 
             // Rotate relative to player
             for (int i = 0; i < walls.Length; i++)
@@ -154,25 +189,6 @@ namespace RenderingEngine.Engine
             walls = walls[..j];
         }
 
-        public static void FilterOutWallsBehindPlayer(Span<Range> bunches, Span<Wall> rotatedWalls)
-        {
-            for (int s = 0; s < bunches.Length; s++)
-            {
-                Range range = bunches[s];
-                Span<Wall> bunch = rotatedWalls[range];
-                FilterOutWallsBehindPlayer(ref bunch);
-                bunches[s] = new Range(range.Start, new Index(bunch.Length + range.Start.Value));
-            }
-        }
-
-        public void CalculateWallPlanes(Span<Range> bunches, Span<Wall> rotatedWalls, float yCeil, float yFloor, float yaw)
-        {
-            for (int b = 0; b < bunches.Length; b++)
-            {
-                CalculateWallPlanes(rotatedWalls[bunches[b]], yCeil, yFloor, yaw);
-            }
-        }
-
         public void CalculateWallPlanes(Span<Wall> walls, float yCeil, float yFloor, float yaw)
         {
             for (int i = 0; i < walls.Length; i++)
@@ -192,43 +208,43 @@ namespace RenderingEngine.Engine
                 FilterOutWallsOutsideView(ref bunch);
                 bunches[s] = new Range(range.Start, new Index(bunch.Length + range.Start.Value));
             }
+        }
 
-            static void FilterOutWallsOutsideView(ref Span<Wall> walls)
+        private static void FilterOutWallsOutsideView(ref Span<Wall> walls)
+        {
+            // in-place sort out walls and trim the span
+
+            int j = 0;
+
+            for (int i = 0; i < walls.Length; i++)
             {
-                // in-place sort out walls and trim the span
+                Wall wall = walls[i];
 
-                int j = 0;
-
-                for (int i = 0; i < walls.Length; i++)
+                if (!wall.IntersectsView)
                 {
-                    Wall wall = walls[i];
-
-                    if (!wall.IntersectsView)
-                    {
-                        continue;
-                    }
-
-                    if (wall.C1.Y <= 0f || wall.C2.Y <= 0f)
-                    {
-                        continue;
-                    }
-
-                    if (wall.YLeftFloor < wall.YLeftCeil)
-                    {
-                        continue;
-                    }
-
-                    if (wall.YLeftFloor < 0 || wall.YRightFloor < 0)
-                    {
-                        continue;
-                    }
-
-                    walls[j] = wall;
-                    j++;
+                    continue;
                 }
 
-                walls = walls[..j];
+                if (wall.C1.Y <= 0f || wall.C2.Y <= 0f)
+                {
+                    continue;
+                }
+
+                if (wall.YLeftFloor < wall.YLeftCeil)
+                {
+                    continue;
+                }
+
+                if (wall.YLeftFloor < 0 || wall.YRightFloor < 0)
+                {
+                    continue;
+                }
+
+                walls[j] = wall;
+                j++;
             }
+
+            walls = walls[..j];
         }
 
         public Span<Wall> CullHiddenWallsAndCombineBunches(

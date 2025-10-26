@@ -28,6 +28,7 @@ namespace RenderingEngine.Engine
             int textureHeight = texture.Width;
 
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
+            ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
 
             WallYPlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
             float wallStartY = yPlaneInfo.WallStartY;
@@ -60,7 +61,7 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow renderWindow = ref window[x];
 
-                if (renderWindow.Calculated)
+                if (renderWindow.Calculated || renderWindow.FloorEnd <= renderWindow.CeilingStart)
                 {
                     continue;
                 }
@@ -117,7 +118,7 @@ namespace RenderingEngine.Engine
                     {
                         textureXPosI %= textureWidth;
                         textureXPosIOld = textureXPosI;
-                        shaded = columnBuffer[textureXPosI];
+                        shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
                     }
 
                     if (shaded != 0U)

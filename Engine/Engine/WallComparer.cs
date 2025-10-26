@@ -43,25 +43,25 @@ namespace RenderingEngine.Engine
             if (Within(x.XLeft, y.XLeft, y.XRight))
             {
                 // y left
-                TryGetIntersection(x.XLeft, y.R1.X, y.R1.Y, y.R2.X, y.R2.Y, ref yCX1, ref yCY1);
+                GetIntersection(x.XLeft, y.R1, y.R2, ref yCX1, ref yCY1);
             }
 
             if (Within(x.XRight, y.XLeft, y.XRight))
             {
                 // y right
-                TryGetIntersection(x.XRight, y.R1.X, y.R1.Y, y.R2.X, y.R2.Y, ref yCX2, ref yCY2);
+                GetIntersection(x.XRight, y.R1, y.R2, ref yCX2, ref yCY2);
             }
 
             if (Within(y.XLeft, x.XLeft, x.XRight))
             {
                 // x left
-                TryGetIntersection(y.XLeft, x.R1.X, x.R1.Y, x.R2.X, x.R2.Y, ref xCX1, ref xCY1);
+                GetIntersection(y.XLeft, x.R1, x.R2, ref xCX1, ref xCY1);
             }
 
             if (Within(y.XRight, x.XLeft, x.XRight))
             {
                 // x right
-                TryGetIntersection(y.XRight, x.R1.X, x.R1.Y, x.R2.X, x.R2.Y, ref xCX2, ref xCY2);
+                GetIntersection(y.XRight, x.R1, x.R2, ref xCX2, ref xCY2);
             }
 
             // for connected walls, only compare the un-connected vertex
@@ -130,37 +130,25 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void TryGetIntersection(
+        private void GetIntersection(
             int x,
-            float rx1, float ry1,
-            float rx2, float ry2,
+            Point r1,
+            Point r2,
             ref float cx,
             ref float cy)
         {
+            float rx1 = r1.X;
+            float ry1 = r1.Y;
+            float rx2 = r2.X;
+            float ry2 = r2.Y;
+
             float rayDirX = EngineConstants.CameraPlaneX * ((cameraWidthIncr * x) - 1f);
             float d2x = rx2 - rx1;
             float d2y = ry2 - ry1;
 
             float denominator = rayDirX * d2y - d2x;
 
-            if (MathF.Abs(denominator) < float.Epsilon)
-            {
-                return;
-            }
-
-            float u = (rx1 - ry1 * rayDirX) / denominator;
-
-            if (u < 0f || u > 1f)
-            {
-                return;
-            }
-
             float t = (rx1 * d2y - ry1 * d2x) / denominator;
-
-            if (t < 0f)
-            {
-                return;
-            }
 
             cy = t;
             cx = t * rayDirX;
