@@ -296,7 +296,7 @@ namespace RenderingEngine.Engine
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
-            (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
             int textureWidth = ceilingTexture.Width;
             int textureHeight = ceilingTexture.Height;
@@ -320,7 +320,7 @@ namespace RenderingEngine.Engine
                 yTextureIncrSum += yTextureIncr;
             }
 
-            for (int x = sectroFromX; x <= sectorToX; x++)
+            for (int x = sectorFromX; x <= sectorToX; x++)
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.GetCeilingDimensions(x);
 
@@ -365,7 +365,11 @@ namespace RenderingEngine.Engine
                     for (int j = 0; j < Vector<int>.Count; j++)
                     {
                         int index = Unsafe.Add(ref texYPtr, j);
-                        index = index % textureHeight;
+
+                        if (index >= textureHeight)
+                        {
+                            index -= textureHeight;
+                        }
 
                         index *= textureWidth;
 
@@ -379,7 +383,10 @@ namespace RenderingEngine.Engine
                 for (int y = 0; y < rem; y++)
                 {
                     int index = Math.Clamp(vScreenVInt[y], 0, doubleTextureHeight);
-                    index = index % textureHeight;
+                    if (index >= textureHeight)
+                    {
+                        index -= textureHeight;
+                    }
                     index *= textureWidth;
 
                     screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);

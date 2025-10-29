@@ -41,13 +41,20 @@
 
         public WadFile LoadRequired(WadFile wadFile)
         {
-            if (this[LumpType.ColorMap] is null && wadFile[LumpType.ColorMap] is WadLump lump)
-            {
-                Lumps.Add(lump);
-            }
+            EnsureExist(LumpType.ColorMap);
+            EnsureExist(LumpType.PlayPal);
 
             Lumps.AddRange(wadFile.Lumps.Where(x => x.IsPatch));
             return this;
+
+            void EnsureExist(string lumpType)
+            {
+                if (this[lumpType] is null && wadFile[lumpType] is WadLump lump)
+                {
+                    Lumps.Add(lump);
+                }
+
+            }
         }
     }
 }

@@ -25,5 +25,9 @@
 
         public int? SidedefFront => GetValue<int>(SIDEDEF_FRONT);
         public int? SidedefBack => GetValue<int>(SIDEDEF_BACK);
+
+        public bool DontPegBottom => GetValue<bool>(FLAG_UNPEG_BOTTOM) ?? false;
+        public bool DontPegTop => GetValue<bool>(FLAG_UNPEG_TOP) ?? false;
+
     }
 }

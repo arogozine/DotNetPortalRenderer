@@ -109,14 +109,20 @@ namespace RenderingEngine.Engine
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, brightness);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * PixelWidth + x);
+                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, portalToYClamped * PixelWidth + x);
 
-                for (int y = textureStartYClamped; y < portalToYClamped; y++, textureXPos += textureXIncr)
+                for (;Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                    textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth))
                 {
                     int textureXPosI = (int)textureXPos;
 
                     if (textureXPosI != textureXPosIOld)
                     {
-                        textureXPosI %= textureWidth;
+                        if (textureXPosI >= textureWidth)
+                        {
+                            textureXPosI -= textureWidth;
+                        }
+
                         textureXPosIOld = textureXPosI;
                         shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
                     }
@@ -125,8 +131,6 @@ namespace RenderingEngine.Engine
                     {
                         screenIndexPtr = shaded;
                     }
-
-                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth);
                 }
             }
 

@@ -324,11 +324,12 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static WallYPlaneInfo CalculateLeftWallYPlaneInfo(Wall wall, int wallFromXOffset)
         {
+            float wallLengthX = wall.XRight - wall.XLeft;
             float wallStartY = wall.YLeftCeil;
-            float ceilDistIncr = (wall.YRightCeil - (float)wall.YLeftCeil) / (wall.XRight - wall.XLeft);
+            float ceilDistIncr = (wall.YRightCeil - wallStartY) / wallLengthX;
 
             float wallEndY = wall.YLeftFloor;
-            float floorDistIncr = (wall.YRightFloor - (float)wall.YLeftFloor) / (wall.XRight - wall.XLeft);
+            float floorDistIncr = (wall.YRightFloor - wallEndY) / wallLengthX;
 
             if (wallFromXOffset != 0)
             {

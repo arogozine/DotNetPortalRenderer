@@ -6,7 +6,6 @@ using DoomAssetLoader.Wad;
 using RenderingEngine.Engine;
 using RenderingEngine.Models;
 using SkiaSharp;
-using System.Text;
 using Sector = DoomAssetLoader.Map.Sector;
 
 namespace RenderingEngine.DoomMapLoader
@@ -364,6 +363,8 @@ namespace RenderingEngine.DoomMapLoader
                         UpperTexture = lineInfo.UpperTexture,
                         MiddleTexture = lineInfo.MiddleTexture,
                         LowerTexture = lineInfo.LowerTexture,
+                        LowerUnpegged = (linedef.Flags & LinedefFlags.LowerUnpegged) == LinedefFlags.LowerUnpegged,
+                        UpperUnpegged = (linedef.Flags & LinedefFlags.UpperUnpegged) == LinedefFlags.UpperUnpegged,
                         YOffset = lineInfo.YOffset,
                         XOffset = lineInfo.XOffset
                     };
@@ -456,6 +457,8 @@ namespace RenderingEngine.DoomMapLoader
                         LowerTexture = lineInfo.LowerTexture,
                         XOffset = lineInfo.XOffset,
                         YOffset = lineInfo.YOffset,
+                        LowerUnpegged = lineInfo.LowerUnpegged,
+                        UpperUnpegged = lineInfo.UpperUnpegged
                     };
 
                     mapSector.Walls.Add(line);
@@ -477,24 +480,16 @@ namespace RenderingEngine.DoomMapLoader
 
         internal sealed class LineInfo
         {
-            public readonly int ParentSectorId;
-            public readonly int LineDefId;
-            public readonly string? UpperTexture;
-            public readonly string? MiddleTexture;
-            public readonly string? LowerTexture;
-            public readonly int XOffset;
-            public readonly int YOffset;
+            public required int ParentSectorId { get; init; }
+            public required int LineDefId { get; init; }
+            public required string? UpperTexture { get; init; }
+            public required string? MiddleTexture { get; init; }
+            public required string? LowerTexture { get; init; }
+            public required int XOffset { get; init; }
+            public required int YOffset { get; init; }
+            public required bool LowerUnpegged { get; init; }
+            public required bool UpperUnpegged { get; init; }
 
-            public LineInfo(int parentSectorId, int lineDefId, string? upperTexture, string? middleTexture, string? lowerTexture, int xOffset, int yOffset)
-            {
-                ParentSectorId = parentSectorId;
-                LineDefId = lineDefId;
-                UpperTexture = upperTexture;
-                MiddleTexture = middleTexture;
-                LowerTexture = lowerTexture;
-                XOffset = xOffset;
-                YOffset = yOffset;
-            }
         }
 
         public static Dictionary<int, List<LineInfo>> GetSectorToLineDefs(UdmfMapData textMap, int sectors)
@@ -513,18 +508,18 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (leftDef?.Sector is int leftSector)
                 {
-                    AddSectorLineDef(leftSector, i, rightDef?.Sector ?? -1, leftDef);
+                    AddSectorLineDef(leftSector, i, rightDef?.Sector ?? -1, leftDef, linedef);
                 }
 
                 if (rightDef?.Sector is int rightSector)
                 {
-                    AddSectorLineDef(rightSector, i, leftDef?.Sector ?? -1, rightDef);
+                    AddSectorLineDef(rightSector, i, leftDef?.Sector ?? -1, rightDef, linedef);
                 }
             }
 
             return sectorToLineDefs;
 
-            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId, UdmfSidedef sidedef)
+            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId, UdmfSidedef sidedef, UdmfLinedef linedef)
             {
                 if (!sectorToLineDefs.TryGetValue(sectorId, out List<LineInfo>? sectorLineDefs))
                 {
@@ -532,7 +527,17 @@ namespace RenderingEngine.DoomMapLoader
                     sectorToLineDefs[sectorId] = sectorLineDefs;
                 }
 
-                sectorLineDefs.Add(new LineInfo(parentSectorId, linedefId, sidedef.TextureTop, sidedef.TextureMiddle, sidedef.TextureBottom, sidedef.XOffset ?? 0, sidedef.YOffset ?? 0));
+                sectorLineDefs.Add(new LineInfo {
+                    ParentSectorId = parentSectorId,
+                    LineDefId = linedefId,
+                    UpperTexture = sidedef.TextureTop,
+                    MiddleTexture = sidedef.TextureMiddle,
+                    LowerTexture = sidedef.TextureBottom,
+                    XOffset = sidedef.XOffset ?? 0,
+                    YOffset = sidedef.YOffset ?? 0,
+                    LowerUnpegged = linedef.DontPegBottom,
+                    UpperUnpegged = linedef.DontPegTop
+                });
             }
         }
 
@@ -552,20 +557,20 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (leftDef is Sidedef left)
                 {
-                    AddSectorLineDef(left.Sector, i, rightDef is null ? -1 : rightDef.Value.Sector, ref left);
+                    AddSectorLineDef(left.Sector, i, rightDef is null ? -1 : rightDef.Value.Sector, ref left, ref linedef);
                 }
 
                 if (rightDef is Sidedef right)
                 {
-                    AddSectorLineDef(right.Sector, i, leftDef is null ? - 1: leftDef.Value.Sector, ref right);
+                    AddSectorLineDef(right.Sector, i, leftDef is null ? - 1: leftDef.Value.Sector, ref right, ref linedef);
                 }
             }
 
-            Debug.WriteLine($"{sectors} vs {sectorToLineDefs.Count}");
+            // Debug.WriteLine($"{sectors} vs {sectorToLineDefs.Count}");
 
             return sectorToLineDefs;
 
-            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId, ref Sidedef sidedef)
+            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId, ref Sidedef sidedef, ref Linedef linedef)
             {
                 if (!sectorToLineDefs.TryGetValue(sectorId, out List<LineInfo>? sectorLineDefs))
                 {
@@ -573,45 +578,19 @@ namespace RenderingEngine.DoomMapLoader
                     sectorToLineDefs[sectorId] = sectorLineDefs;
                 }
 
-                sectorLineDefs.Add(new LineInfo(parentSectorId, linedefId, sidedef.UpperTextureNullable, sidedef.MiddleTextureNullable, sidedef.LowerTextureNullable, sidedef.XOffset, sidedef.YOffset));
-            }
-        }
-
-        public static Dictionary<int, List<int>> GetLineDefsToVectors(Span<Linedef> lineDefs)
-        {
-            var lineDefsToVectors = new Dictionary<int, List<int>>();
-
-            for (int i = 0; i < lineDefs.Length; i++)
-            {
-                ref Linedef linedef = ref lineDefs[i];
-                AddSectorLineDef(i, linedef.Vertex1);
-                AddSectorLineDef(i, linedef.Vertex2);
-            }
-
-            return lineDefsToVectors;
-
-            void AddSectorLineDef(int lineDefId, int vertexId)
-            {
-                if (!lineDefsToVectors.TryGetValue(lineDefId, out List<int>? vertexes))
+                sectorLineDefs.Add(new LineInfo
                 {
-                    vertexes = [];
-                    lineDefsToVectors[lineDefId] = vertexes;
-                }
-
-                vertexes.Add(vertexId);
+                    ParentSectorId = parentSectorId,
+                    LineDefId = linedefId,
+                    UpperTexture = sidedef.UpperTextureNullable,
+                    MiddleTexture = sidedef.MiddleTextureNullable,
+                    LowerTexture = sidedef.LowerTextureNullable,
+                    XOffset = sidedef.XOffset,
+                    YOffset = sidedef.YOffset,
+                    LowerUnpegged = (linedef.Flags & LinedefFlags.LowerUnpegged) == LinedefFlags.LowerUnpegged,
+                    UpperUnpegged = (linedef.Flags & LinedefFlags.UpperUnpegged) == LinedefFlags.UpperUnpegged
+                });
             }
-        }
-
-        private static string GetStringFromBytes(ReadOnlySpan<byte> asciiBytes)
-        {
-            int index = asciiBytes.IndexOf((byte)0);
-
-            if (index > 0)
-            {
-                asciiBytes = asciiBytes[..index];
-            }
-
-            return Encoding.ASCII.GetString(asciiBytes);
         }
 
         private unsafe static void DebugTexture(int width, int height, Span<BGRA> texture, string textureName)

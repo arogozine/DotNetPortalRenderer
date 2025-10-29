@@ -23,7 +23,7 @@ namespace RenderingEngine.Engine
             this.cameraPlaneX = cameraPlaneX;
             this.vFov = vFov;
             this.visibility = new bool[width];
-            wallComparer = new WallComparer(width);
+            wallComparer = new WallComparer();
         }
 
         [MemberNotNull(nameof(_player))]

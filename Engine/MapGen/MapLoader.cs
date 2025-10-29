@@ -1,4 +1,5 @@
-﻿using RenderingEngine.DoomMapLoader;
+﻿using DoomAssetLoader.Wad;
+using RenderingEngine.DoomMapLoader;
 using RenderingEngine.Engine;
 using RenderingEngine.Models;
 using System.Text.Json;
@@ -68,9 +69,30 @@ namespace RenderingEngine.MapGen
             return walls;
         }
 
-        internal static (Player player, Sector[] sectors) LoadData()
+        internal static (Player player, Sector[] sectors) LoadData(Arguments arguments)
         {
-            Map map = WadReader.ExtractDoomMap("MAP01");//("MAP26");
+            Map map;
+
+            string mapName = arguments.Map ?? "MAP01";
+
+            bool loadMapsFromIWad = arguments.PWad is null;
+            WadFile wadFile = WadReader.LoadWad(arguments.IWad, loadMaps: loadMapsFromIWad, loadTextures: true, mapName: mapName);
+            WadReader.ExtractAllTextures(wadFile);
+
+            if (arguments.PWad is string pwad)
+            {
+                WadFile wadFile2 = WadReader.LoadWad("C:\\Users\\Alexa\\Downloads\\New folder\\testmap.wad", loadMaps: true, loadTextures: true, mapName: mapName);
+                wadFile2.LoadRequired(wadFile);
+                WadReader.ExtractAllTextures(wadFile2);
+
+                map = WadReader.LoadDoomMap(wadFile2, mapName);
+
+            }
+            else
+            {
+                map = WadReader.LoadDoomMap(wadFile, mapName);
+            }
+
             StripInvalidNeighbors(map);
 
             for (int i = 0; i < map.Sectors.Count; i++)

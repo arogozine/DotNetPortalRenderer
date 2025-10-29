@@ -152,25 +152,22 @@ namespace RenderingEngine.Engine
                         transparentWalls.Add(renderableWall);
                     }
                 }
-
-                // DebugPortal(screen, this.RenderWindowHelper.RenderWindow);
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxPortalsRendered);
 
             // render transparent objects and sprites
-            ReadOnlySpan<RenderableWall> transparentWallsSpan = CollectionsMarshal.AsSpan(transparentWalls);
+            Span<RenderableWall> transparentWallsSpan = CollectionsMarshal.AsSpan(transparentWalls);
             for (int i = transparentWallsSpan.Length - 1; i >= 0; i--)
             {
                 DrawTransparentWall(screen, sectors, transparentWallsSpan[i]);
             }
-
-            // DebugZBuffer(screen, this.RenderWindowHelper.RenderWindow);
 
             transparentWalls.Clear();
             sectorRenderQueue.Clear();
         }
 
         private readonly List<RenderableWall> neightbors = [];
+        private readonly List<RenderableWall> renderableWalls = [];
 
         private List<RenderableWall> RenderSector(
             PortalPlayerSnapshot player,
@@ -181,6 +178,7 @@ namespace RenderingEngine.Engine
             Span<BGRA> screen)
         {
             neightbors.Clear();
+            renderableWalls.Clear();
 
             if (sector.Floor == sector.Ceil)
             {
@@ -189,8 +187,6 @@ namespace RenderingEngine.Engine
 
             GenerateDistanceCache(player, sectorInfo, sector);
             RenderWindowHelper.NewSector(sectorInfo);
-
-            List<RenderableWall> renderableWalls = [];
 
             for (int s = 0; s < walls.Length; s++)
             {
@@ -337,6 +333,7 @@ namespace RenderingEngine.Engine
 
             if (!RenderWindowHelper.SetWallToCalculate(wall))
             {
+                // don't render this wall, as its not within the window or is fully obscured by other walls
                 return;
             }
 
@@ -353,8 +350,8 @@ namespace RenderingEngine.Engine
                 return;
             }
 
+            // temporary doom specific code
             bool renderUpperWallAsSky = sector.HasSkybox && wall.IsPortal && wall.Line.UpperTexture is null;
-
             if (renderUpperWallAsSky)
             {
                 var n = sectors[wall.Neighbor];
@@ -429,28 +426,6 @@ namespace RenderingEngine.Engine
                 uint bgra = b | g | r | Alpha;
 
                 Unsafe.As<BGRA, uint>(ref outColor) = bgra;
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static uint ShadeByBrightness2(BGRA inColor, float brightness)
-        {
-            const uint Alpha = (uint)byte.MaxValue << 24;
-
-            if (brightness <= 0)
-            {
-                return Alpha;
-            }
-
-            unchecked
-            {
-                uint scale = (uint)(brightness * 255f);
-
-                uint b = inColor.B * scale >> 8;
-                uint g = inColor.G * scale >> 8 << 8;
-                uint r = inColor.R * scale >> 8 << 16;
-
-                return b | g | r | Alpha;
             }
         }
 

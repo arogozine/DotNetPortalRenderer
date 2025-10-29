@@ -8,15 +8,19 @@ namespace RenderingEngine
     public sealed class PortalEngine
     {
         public Player Player { get; private set; }
+
         internal Sector[] Sectors { get; private set; }
+
+        internal Arguments Arguments { get; }
 
         public int Width { get; set; }
 
         public int Height { get; set; }
 
-        public PortalEngine()
+        public PortalEngine(Arguments arguments)
         {
-            (Player, Sectors) = MapLoader.LoadData();
+            this.Arguments = arguments;
+            (Player, Sectors) = MapLoader.LoadData(arguments);
         }
 
         private readonly HashSet<Key> PressedKeys = [];

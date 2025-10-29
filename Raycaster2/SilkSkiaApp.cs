@@ -20,10 +20,10 @@ namespace SoftwareRenderer
 
         private readonly PortalEngine Engine;
 
-        public SilkSkiaApp()
+        public SilkSkiaApp(Arguments arguments)
         {
             SetupWindow();
-            Engine = new PortalEngine();
+            Engine = new PortalEngine(arguments);
         }
 
         public void Run() => window.Run();

@@ -12,6 +12,8 @@
         public required string? LowerTexture { get; init; }
         public required int YOffset { get; init; }
         public required int XOffset { get; init; }
+        public required bool LowerUnpegged { get; init; }
+        public required bool UpperUnpegged { get; init; }
 
         public override bool Equals(object? obj)
         {
