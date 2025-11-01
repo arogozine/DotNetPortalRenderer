@@ -9,5 +9,6 @@
         public required string FloorTexture { get; set; }
         public required string CeilingTexture { get; set; }
         public required bool HasSkybox { get; set; }
+        public required short LightLevel { get; set; }
     }
 }

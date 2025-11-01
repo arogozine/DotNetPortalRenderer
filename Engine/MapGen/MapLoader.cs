@@ -127,6 +127,7 @@ namespace RenderingEngine.MapGen
                 CeilTexture = x.CeilingTexture,
                 Ceil = x.Ceiling,
                 Floor = x.Floor,
+                LightLevel = (byte)x.LightLevel,
                 Walls = vertex
             };
 

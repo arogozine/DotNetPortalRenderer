@@ -412,23 +412,6 @@ namespace RenderingEngine.Engine
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ShadeByPrecalc(ref BGRA inColor, ref BGRA outColor, ref uint scale)
-        {
-            unchecked
-            {
-                const uint Alpha = (uint)byte.MaxValue << 24;
-
-                uint b = inColor.B * scale >> 8;
-                uint g = inColor.G * scale >> 8 << 8;
-                uint r = inColor.R * scale >> 8 << 16;
-
-                uint bgra = b | g | r | Alpha;
-
-                Unsafe.As<BGRA, uint>(ref outColor) = bgra;
-            }
-        }
-
         [MemberNotNull(nameof(Snapshot))]
         public BGRA[] DrawFrame(PortalPlayerSnapshot snapShot)
         {

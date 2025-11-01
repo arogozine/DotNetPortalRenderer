@@ -17,6 +17,7 @@ namespace RenderingEngine.Engine
             Span<BGRA> screen,
             ref Texture ceilingTexture)
         {
+            byte lightLevel = sector.LightLevel;
             int height = PixelHeight;
             int width = PixelWidth;
             float vFov = VFov;
@@ -72,7 +73,7 @@ namespace RenderingEngine.Engine
 
                     ref BGRA tex = ref Unsafe.Add(ref ceilingTexturePtr, textureIndex);
                     ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-                    ShadeByPrecalc(ref tex, ref screenTex, ref Unsafe.Add(ref scalePtr, j));
+                    ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
 
                     ii--;
                 }
@@ -89,6 +90,8 @@ namespace RenderingEngine.Engine
             ref Texture ceilingTexture
             )
         {
+            byte lightLevel = sector.LightLevel;
+
             int height = PixelHeight;
             int width = PixelWidth;
             float vFov = VFov;
@@ -175,7 +178,7 @@ namespace RenderingEngine.Engine
                         ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
 
                         fromScalePtr = ref Unsafe.Add(ref fromScalePtr, 1);
-                        ShadeByPrecalc(ref tex, ref screenTex, ref fromScalePtr);
+                        ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
                     }
 
                     incramentVector -= ivIncrF;
@@ -199,7 +202,7 @@ namespace RenderingEngine.Engine
 
                     ref BGRA tex = ref Unsafe.Add(ref ceilingTexturePtr, textureIndex);
                     ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-                    ShadeByPrecalc(ref tex, ref screenTex, ref Unsafe.Add(ref scalePtr, j));
+                    ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
 
                     ii -= oneOvervFov; // --;
                 }
@@ -398,7 +401,6 @@ namespace RenderingEngine.Engine
 
         }
 
-
         [SkipLocalsInit]
         public void RenderFloor(
             PortalPlayerSnapshot player,
@@ -406,6 +408,8 @@ namespace RenderingEngine.Engine
             Span<BGRA> screen,
             ref Texture floorTexture)
         {
+            byte lightLevel = sector.LightLevel;
+
             int height = PixelHeight;
             int width = PixelWidth;
             float vFov = VFov;
@@ -460,7 +464,7 @@ namespace RenderingEngine.Engine
 
                     ref BGRA tex = ref Unsafe.Add(ref floorTexturePtr, textureIndex);
                     ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-                    ShadeByPrecalc(ref tex, ref screenTex, ref Unsafe.Add(ref scalePtr, i));
+                    ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
 
                     increment -= 1;
                 }
@@ -476,6 +480,8 @@ namespace RenderingEngine.Engine
             Span<BGRA> screen,
             ref Texture floorTexture)
         {
+            byte lightLevel = sector.LightLevel;
+
             int height = PixelHeight;
             int width = PixelWidth;
             float vFov = VFov;
@@ -565,7 +571,7 @@ namespace RenderingEngine.Engine
                         ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
 
                         fromScalePtr = ref Unsafe.Add(ref fromScalePtr, 1);
-                        ShadeByPrecalc(ref tex, ref screenTex, ref fromScalePtr);
+                        ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
                     }
 
                     incramentVector -= ivIncrF;
@@ -588,7 +594,7 @@ namespace RenderingEngine.Engine
 
                     ref BGRA tex = ref Unsafe.Add(ref floorTexturePtr, textureIndex);
                     ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-                    ShadeByPrecalc(ref tex, ref screenTex, ref Unsafe.Add(ref scalePtr, i));
+                    ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
 
                     increment -= 1;
                 }
@@ -619,6 +625,24 @@ namespace RenderingEngine.Engine
             float ry1 = y * psin - x * pcos;
 
             return (rx1 + px, ry1 + py);
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void ShadeByPrecalc(ref BGRA inColor, ref BGRA outColor, uint scale)
+        {
+            unchecked
+            {
+                const uint Alpha = (uint)byte.MaxValue << 24;
+
+                uint b = inColor.B * scale >> 8;
+                uint g = inColor.G * scale >> 8 << 8;
+                uint r = inColor.R * scale >> 8 << 16;
+
+                uint bgra = b | g | r | Alpha;
+
+                Unsafe.As<BGRA, uint>(ref outColor) = bgra;
+            }
         }
     }
 }

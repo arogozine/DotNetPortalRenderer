@@ -11,5 +11,6 @@
         public required float Floor { get; init; }
         public required float Ceil { get; init; }
         public required Wall[] Walls { get; init; }
+        public required byte LightLevel { get; set; }
     }
 }

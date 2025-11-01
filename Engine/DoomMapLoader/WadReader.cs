@@ -345,7 +345,8 @@ namespace RenderingEngine.DoomMapLoader
                     Floor = floor,
                     FloorTexture = sector.FloorTexture,
                     CeilingTexture = hasSkyBox ? "SKY1" : sector.CeilingTexture,
-                    HasSkybox = hasSkyBox
+                    HasSkybox = hasSkyBox,
+                    LightLevel = sector.LightLevel
                 };
 
                 foreach (LineInfo lineInfo in lines)
@@ -437,7 +438,8 @@ namespace RenderingEngine.DoomMapLoader
                     Floor = floor,
                     FloorTexture = sector.TextureFloor,
                     CeilingTexture = hasSkyBox ? "SKY1" : sector.TextureCeiling,
-                    HasSkybox = hasSkyBox
+                    HasSkybox = hasSkyBox,
+                    LightLevel = sector.LightLevel
                 };
 
                 foreach (LineInfo lineInfo in lines)

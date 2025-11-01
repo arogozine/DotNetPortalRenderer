@@ -2,6 +2,7 @@
 
 namespace RenderingEngine.Engine;
 
+[SkipLocalsInit]
 internal static class TextureCache
 {
     private const string FallBack = "-";

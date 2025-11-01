@@ -20,6 +20,8 @@ namespace RenderingEngine.Engine
             float sectorHeight = sector.Ceil - sector.Floor;
             int yOffset = line.YOffset;
             int xOffset = line.XOffset;
+            byte lightLevel = sector.LightLevel;
+
             Span<RenderWindow> window = renderableWall.RenderWindow!;
 
             ref Texture texture = ref TextureCache.GetTexture(line.MiddleTexture);
@@ -68,7 +70,7 @@ namespace RenderingEngine.Engine
 
                 float buffer = renderWindow.Distance;
 
-                (int distance, float brightness, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
+                (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
 
                 if (fromToYdist > buffer)
                 {
@@ -106,7 +108,7 @@ namespace RenderingEngine.Engine
                 uint shaded = default;
                 int textureXPosIOld = -1;
 
-                CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, brightness);
+                CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * PixelWidth + x);
                 ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, portalToYClamped * PixelWidth + x);
@@ -135,6 +137,53 @@ namespace RenderingEngine.Engine
             }
 
             columnABufferIndex = EngineConstants.Unset;
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void CalculateSprite(Span<uint> spriteTexturePtr, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, byte brightness)
+        {
+            // reuse the cached column
+            if (bufferIndex == textureYPos)
+            {
+                return;
+            }
+
+            const uint Alpha = (uint)byte.MaxValue << 24;
+
+            bufferIndex = textureYPos;
+
+            // avoid calculating if too far away (all black)
+            if (brightness <= 0)
+            {
+                spriteTexturePtr.Fill(Alpha);
+                return;
+            }
+
+            ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
+            uint scale = (uint)brightness;
+
+            for (int i = 0; i < spriteTexturePtr.Length; i++)
+            {
+                if (columnPtr.IsTransparent)
+                {
+                    spriteTexturePtr[i] = default;
+                }
+                else
+                {
+                    unchecked
+                    {
+                        uint b = columnPtr.B * scale >> 8;
+                        uint g = columnPtr.G * scale >> 8 << 8;
+                        uint r = columnPtr.R * scale >> 8 << 16;
+                        spriteTexturePtr[i] = b | g | r | Alpha;
+                    }
+                }
+
+                columnPtr = ref Unsafe.Add(ref columnPtr, 1);
+            }
+
+            return;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

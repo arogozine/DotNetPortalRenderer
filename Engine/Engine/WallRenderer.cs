@@ -23,6 +23,7 @@ namespace RenderingEngine.Engine
             float oneOverSectorHeight = 1f / sectorHeight;
             float floorOffset = neighborSector.Floor - sector.Floor;
             float ceilOffset = neighborSector.Ceil - sector.Ceil;
+            byte lightLevel = sector.LightLevel;
 
             if (floorOffset == 0 && ceilOffset == 0)
             {
@@ -39,20 +40,36 @@ namespace RenderingEngine.Engine
                 ceilOffset = 0f;
             }
 
-
             int width = PixelWidth;
             var line = wall.Line;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
             int yOffset = line.YOffset;
             int xOffset = line.XOffset;
+            bool lowerUnpegged = line.LowerUnpegged;
+            bool upperUnpegged = line.UpperUnpegged;
 
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
 
             ref Texture lowerTexture = ref TextureCache.GetTexture(line.LowerTexture ?? line.MiddleTexture);
             ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
 
+            int lowerTextureStart = yOffset + lowerTexture.Height;
+
+            if (lowerUnpegged)
+            {
+                lowerTextureStart += (int)(sectorHeight - floorOffset);
+                lowerTextureStart %= lowerTexture.Height;
+            }
+
             ref Texture upperTexture = ref TextureCache.GetTexture(line.UpperTexture ?? line.MiddleTexture);
+
+            int upperTextureStart = upperTexture.Height + yOffset;
+
+            if (!upperUnpegged) {
+                upperTextureStart = upperTextureStart - (int)sectorHeight % upperTexture.Height;
+            }
+
             ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperTexture.Rotated);
 
             Span<uint> lowerTextureBuffer = this.columnA.AsSpan(..lowerTexture.Height);
@@ -72,7 +89,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                (int distance, float brightness, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
+                (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
 
                 float wallStartY = renderWindow.WallStart;
                 float wallEndY = renderWindow.WallEnd;
@@ -102,13 +119,13 @@ namespace RenderingEngine.Engine
                     int textureWidth = upperTexture.Height;
                     int textureHeight = upperTexture.Width;
                     int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
-                    float textureXPos = textureWidth + yOffset - textureXIncr * (wallStartY - fromYClamped);
+                    float textureXPos = upperTextureStart - textureXIncr * (wallStartY - fromYClamped);
                     textureXPos %= textureWidth;
 
                     uint shaded = default;
                     int textureXPosIOld = -1;
 
-                    CalculateAndCacheWallColumn(upperTextureBuffer, ref columnABufferIndex, ref upperTexturePtr, textureYPos, brightness);
+                    CalculateAndCacheWallColumn(upperTextureBuffer, ref columnABufferIndex, ref upperTexturePtr, textureYPos, lightLevel);
 
                     for (;
                         Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
@@ -142,13 +159,13 @@ namespace RenderingEngine.Engine
                     int textureWidth = lowerTexture.Height;
                     int textureHeight = lowerTexture.Width;
                     int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
-                    float textureXPos = textureWidth + textureXIncr * (portalToYClamped - portalToY);
+                    float textureXPos = lowerTextureStart + textureXIncr * (portalToYClamped - portalToY);
                     textureXPos %= textureWidth;
 
                     uint shaded = default;
                     int textureXPosIOld = -1;
 
-                    CalculateAndCacheWallColumn(lowerTextureBuffer, ref columnBBufferIndex, ref lowerTexturePtr, textureYPos, brightness);
+                    CalculateAndCacheWallColumn(lowerTextureBuffer, ref columnBBufferIndex, ref lowerTexturePtr, textureYPos, lightLevel);
 
                     int textureXPosI = -1;
 
@@ -203,6 +220,9 @@ namespace RenderingEngine.Engine
             float sectorHeight = sector.Ceil - sector.Floor;
             int yOffset = line.YOffset;
             int xOffset = line.XOffset;
+            bool lowerUnpegged = line.LowerUnpegged;
+            bool upperUnpegged = line.UpperUnpegged;
+            byte lightLevel = sector.LightLevel;
 
             float oneOverSectorHeight = 1f / sectorHeight;
 
@@ -212,6 +232,13 @@ namespace RenderingEngine.Engine
             ref BGRA wallTexturePtr = ref MemoryMarshal.GetArrayDataReference(wallTexture.Rotated);
             int textureWidth = wallTexture.Height;
             int textureHeight = wallTexture.Width;
+
+            int textueStart = yOffset + textureWidth;
+
+            if (lowerUnpegged)
+            {
+                textueStart = textureWidth - (int)sectorHeight % textureWidth;
+            }
 
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
             ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
@@ -227,7 +254,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                (int distance, float brightness, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
+                (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
 
                 int wallStartY = renderWindow.WallStart;
                 int wallEndY = renderWindow.WallEnd;
@@ -241,9 +268,9 @@ namespace RenderingEngine.Engine
                 // texture is rotated - y position is x position in texture
                 int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
                 float textureXIncr = (sectorHeight - 1) / (wallEndY - wallStartY);
-                float textureXPos = textureWidth + yOffset - textureXIncr * (wallStartY - clamptedFromY);
+                float textureXPos = textueStart - textureXIncr * (wallStartY - clamptedFromY);
 
-                CalculateAndCacheWallColumn(columnBuffer, ref columnABufferIndex, ref wallTexturePtr, textureYPos, brightness);
+                CalculateAndCacheWallColumn(columnBuffer, ref columnABufferIndex, ref wallTexturePtr, textureYPos, lightLevel);
 
                 textureXPos %= textureWidth; // wrap the texture
 
@@ -283,7 +310,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CalculateAndCacheWallColumn(Span<uint> buffer, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, float brightness)
+        private static void CalculateAndCacheWallColumn(Span<uint> buffer, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, byte brightness)
         {
             // reuse the cached column
             if (bufferIndex == textureYPos)
@@ -303,7 +330,7 @@ namespace RenderingEngine.Engine
             }
 
             ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
-            uint scale = (uint)(brightness * 255f);
+            uint scale = (uint)brightness;
 
             for (int i = 0; i < buffer.Length; i++)
             {
@@ -320,6 +347,7 @@ namespace RenderingEngine.Engine
 
             return;
         }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static WallYPlaneInfo CalculateLeftWallYPlaneInfo(Wall wall, int wallFromXOffset)
@@ -357,7 +385,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static (int TextureLocation, float TextureBrightness, float FromToYDist) CalculateDistance(Wall wall, float cameraRay, float t1, float d2y, float d2x)
+        private static (int TextureLocation, float FromToYDist) CalculateDistance(Wall wall, float cameraRay, float t1, float d2y, float d2x)
         {
             bool flipped = wall.Flipped;
 
@@ -369,9 +397,8 @@ namespace RenderingEngine.Engine
             float distY = (flipped ? wall.R2.Y: wall.R1.Y) - fromToYDist;
 
             float textureXLocation = MathF.Sqrt(distX * distX + distY * distY);
-            float brightness = 1f - EngineConstants.OneOverLightFallOffDistance * fromToYDist;
 
-            return ((int)textureXLocation, brightness, fromToYDist);
+            return ((int)textureXLocation, fromToYDist);
         }
     }
 }
