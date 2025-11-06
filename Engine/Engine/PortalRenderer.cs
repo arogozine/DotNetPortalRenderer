@@ -8,10 +8,13 @@ namespace RenderingEngine.Engine
         public readonly int PixelWidth;
         public readonly int PixelHeight;
         public readonly float VFov;
+        public required Sprite[] Sprites { get; set; }
         public required Player Player { get; set; }
         public required Sector[] Sectors { get; set; }
 
         private readonly WallHelper WallHelper;
+        private readonly SpriteHelper SpriteHelper;
+
         private readonly RenderWindowHelper RenderWindowHelper;
 
         private PortalPlayerSnapshot? Snapshot = null;
@@ -27,6 +30,7 @@ namespace RenderingEngine.Engine
             PixelWidth = width;
             PixelHeight = height;
             VFov = 1f * height;
+            SpriteHelper = new SpriteHelper(width, height, EngineConstants.CameraPlaneX, VFov);
             WallHelper = new WallHelper(width, height, EngineConstants.CameraPlaneX, VFov);
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             distanceCache = new float[height];
@@ -99,7 +103,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private readonly List<RenderableWall> transparentWalls = [];
+        private readonly List<RenderableSprite> transparentWalls = [];
         private readonly Queue<NeighborsToRender> sectorRenderQueue = [];
 
         public void DrawScreen(Span<BGRA> screen, PortalPlayerSnapshot player)
@@ -119,6 +123,8 @@ namespace RenderingEngine.Engine
 
             int renderDepth = 0;
 
+            Span<Sprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites);
+
             // render solid walls using a portal based approach
             do
             {
@@ -130,6 +136,8 @@ namespace RenderingEngine.Engine
                 Span<Wall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, player);
 
                 List<RenderableWall> neighbors = RenderSector(player, sector, sectors, sectorInfo, walls, screen);
+
+                var oldRenderWindow = RenderWindowHelper.CopyRenderWindow();
 
                 // copy of the renderable area here
                 RenderWindow[]? renderableArea = null;
@@ -149,17 +157,72 @@ namespace RenderingEngine.Engine
                     {
                         renderableArea ??= RenderWindowHelper.CopyRenderWindow();
                         renderableWall.RenderWindow = renderableArea;
-                        transparentWalls.Add(renderableWall);
+                        transparentWalls.Add(new TransparentWall {
+                            Offset = renderableWall.Offset,
+                            XLeft = renderableWall.XLeft,
+                            XRight = renderableWall.XRight,
+                            RenderWindow = renderableArea,
+                            Sector = renderableWall.Sector,
+                            Wall = renderableWall.Wall
+                        });
                     }
+
+                    if (sectorInfo.RenderableWall is RenderableWall currentRenderableWall)
+                    {
+                        renderableArea ??= RenderWindowHelper.CopyRenderWindow();
+
+                        transparentWalls.Add(new SectorSprites
+                        {
+                            XLeft = renderableWall.XLeft,
+                            XRight = renderableWall.XRight,
+                            RenderWindow = renderableArea,
+                            Sector = renderableWall.Sector,
+                        });
+                    }
+
+                }
+
+                if (renderDepth == 0)
+                {
+                    RenderWindow[] renderWindow = RenderWindowHelper.CopyRenderWindow();
+                    for (int i = 0; i < renderWindow.Length; i++)
+                    {
+                        ref RenderWindow window = ref renderWindow[i];
+                        window.CeilingStart = 0;
+                        window.FloorEnd = PixelHeight - 1;
+                    }
+
+                    transparentWalls.Add(new SectorSprites
+                    {
+                        RenderWindow = renderWindow,
+                        Sector = sector,
+                        XLeft = 0,
+                        XRight = PixelWidth,
+                    });
                 }
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxPortalsRendered);
 
             // render transparent objects and sprites
-            Span<RenderableWall> transparentWallsSpan = CollectionsMarshal.AsSpan(transparentWalls);
+            Span<RenderableSprite> transparentWallsSpan = CollectionsMarshal.AsSpan(transparentWalls);
             for (int i = transparentWallsSpan.Length - 1; i >= 0; i--)
             {
-                DrawTransparentWall(screen, sectors, transparentWallsSpan[i]);
+                RenderableSprite renderableWall = transparentWallsSpan[i];
+
+                if (renderableWall is TransparentWall transparentWall)
+                {
+                    DrawTransparentWall(screen, sectors, transparentWall);
+
+                }
+                else if (renderableWall is SectorSprites sectorSprites)
+                {
+                    List<Sprite> sprites = this.SpriteHelper.FilterOutSpritesOutsideSector(player, renderableWall.Sector, playerVisibleSprites);
+
+                    foreach (Sprite s in sprites)
+                    {
+                        DrawSprite(screen, s, sectorSprites);
+                    }
+                }
             }
 
             transparentWalls.Clear();

@@ -6,6 +6,8 @@ using DoomAssetLoader.Wad;
 using RenderingEngine.Engine;
 using RenderingEngine.Models;
 using SkiaSharp;
+using System.ComponentModel;
+using System.Reflection;
 using Sector = DoomAssetLoader.Map.Sector;
 
 namespace RenderingEngine.DoomMapLoader
@@ -302,6 +304,7 @@ namespace RenderingEngine.DoomMapLoader
             Span<Linedef> lineDefs = WadLumpParser.ReadLineDefs(wad.GetMapLump(mapName, LumpType.LineDefs));
             Span<Sector> sectorDefs = WadLumpParser.ReadSectors(wad.GetMapLump(mapName, LumpType.Sectors));
             Span<Thing> things = WadLumpParser.ReadThings(wad.GetMapLump(mapName, LumpType.Things));
+            Sprite[] sprites = ExtractSprites(things);
 
             Thing? player1Start = null;
             for (int i = 0; i < things.Length; i++)
@@ -320,7 +323,7 @@ namespace RenderingEngine.DoomMapLoader
                 throw new ArgumentException("No Player 1 Start", nameof(wad));
             }
 
-            var sectorToLinedefs = WadReader.GetSectorToLineDefs(lineDefs, sideDefs, sectorDefs.Length);
+            var sectorToLinedefs = GetSectorToLineDefs(lineDefs, sideDefs, sectorDefs.Length);
 
             var sectors = new List<MapSector>(sectorDefs.Length);
 
@@ -385,8 +388,47 @@ namespace RenderingEngine.DoomMapLoader
                     Angle = radians,
                     Where = (player1Start.Value.X, player1Start.Value.Y, 0f)
                 },
+                Sprites = sprites,
                 Sectors = sectors
             };
+        }
+
+        private static Sprite[] ExtractSprites(Span<Thing> things)
+        {
+            Sprite[] sprites = new Sprite[things.Length]; 
+
+            for (int i = 0; i < things.Length; i++)
+            {
+                ref Thing thing = ref things[i];
+
+                sprites[i] = new Sprite
+                {
+                    Angle = thing.Angle,
+                    Location = new Point(thing.X, thing.Y),
+                    TextureName = GetTextureName(thing.Type)
+                };
+            }
+
+            return sprites;
+
+            static string GetTextureName(ThingType type) {
+                DescriptionAttribute descriptionAttribute = typeof(ThingType).GetField(type.ToString())!.GetCustomAttribute<DescriptionAttribute>()!;
+                string name = descriptionAttribute.Description;
+
+                if (TextureCache.TextureExists(name))
+                {
+                    return name;
+                }
+
+                name = descriptionAttribute.Description + "A0";
+
+                if (TextureCache.TextureExists(name))
+                {
+                    return name;
+                }
+
+                return descriptionAttribute.Description + "A1";
+            }
         }
 
         private static Map ExtractDoomMap(WadLump textLump)
@@ -476,6 +518,7 @@ namespace RenderingEngine.DoomMapLoader
                     Angle = player1Start.Angle,
                     Where = (player1Start.X, player1Start.Y, 0f)
                 },
+                Sprites = [],
                 Sectors = sectors
             };
         }

@@ -4,10 +4,133 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
+        private void DrawSprite(Span<BGRA> screen, Sprite sprite, SectorSprites renderableWall)
+        {
+            int width = PixelWidth;
+            int height = PixelHeight;
+
+
+            ref Texture texture = ref TextureCache.GetTextureOrNullRef(sprite.TextureName);
+            if (Unsafe.IsNullRef(ref texture))
+            {
+                return;
+            }
+            float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
+
+            ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
+
+
+            ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
+
+            int textureWidth = texture.Height;
+            int textureHeight = texture.Width;
+
+            /*
+            int wallFromXOffset = renderableWall.Offset;
+            int wallFromX = renderableWall.XLeft + wallFromXOffset;
+            int wallToX = renderableWall.XRight;
+            */
+            Sector sector = renderableWall.Sector;
+            byte lightLevel = sector.LightLevel;
+
+            float rx1 = sprite.R1.X;
+            float rx2 = sprite.R2.X;
+            float ry = sprite.R1.Y;
+
+            int xLeft = sprite.XLeft;
+            int xRight = sprite.XRight;
+
+            int wallStartY = sprite.YLeftCeil;
+            int wallEndY = sprite.YLeftFloor;
+
+            int wallFromX = xLeft;
+            int wallToX = xRight;
+
+            /*
+            wallFromX = Math.Max(wallFromX, (int)xLeft);
+            wallToX = Math.Min(wallToX, (int)xRight);
+            */
+            Span<RenderWindow> window = renderableWall.RenderWindow!;
+
+            float d2x = textureHeight;
+            float t1 = -ry * d2x;
+            float fromToYDist = t1 / -textureHeight;
+
+            float cameraRay = -1f * EngineConstants.CameraPlaneX;
+            cameraRay += cameraWidthIncr * wallFromX;
+
+            //int textueStart = textureWidth;
+   
+            float distIncr = texture.Width / (float)(xRight - xLeft);
+
+            Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
+            ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
+
+            for (int x = wallFromX; x < wallToX; x++, cameraRay += cameraWidthIncr)
+            {
+                ref RenderWindow renderWindow = ref window[x];
+
+                if (renderWindow.FloorEnd <= renderWindow.CeilingStart)
+                {
+                    continue;
+                }
+
+                (float fromToYdist, float textureXLocation) = CalculateDistance(sprite, cameraRay, t1, d2x);
+
+                if (renderWindow.Distance < fromToYdist)
+                {
+                    continue;
+                }
+
+                int clamptedFromY = Math.Clamp(wallStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int clamptedToY = Math.Clamp(wallEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+
+                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
+                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
+
+                // Calculate Middle Texture Position
+                float textureXIncr = (float)((textureWidth - 1f) / (wallEndY - wallStartY));
+                int textureYPos = ((int)textureXLocation) * textureWidth;
+                float textureXPos = (clamptedFromY - wallStartY) * textureXIncr;
+
+                CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel);
+
+                int textureXPosI = -1;
+                int textureXPosIOld = -1;
+
+                for (uint shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
+                     Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                     textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width))
+                {
+                    textureXPosI = (int)textureXPos;
+
+                    if (textureXPosI != textureXPosIOld)
+                    {
+                        shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
+                    }
+
+                    if (shaded != 0U)
+                    {
+                        screenIndexPtr = shaded;
+                    }
+                }
+            }
+
+            (float distance, int textureLocation) CalculateDistance(Sprite wall, float cameraRay, float t1, float d2x)
+            {
+                float fromToXDist = fromToYDist * cameraRay;
+                float distX = rx1 - fromToXDist;
+
+                int textureXLocation = (int)MathF.Sqrt(distX * distX);
+
+                return (fromToYDist, textureXLocation);
+            }
+        }
+
         private void DrawTransparentWall(
             Span<BGRA> screen,
             ReadOnlySpan<Sector> sectors,
-            RenderableWall renderableWall)
+            TransparentWall renderableWall)
         {
             int width = PixelWidth;
             int height = PixelHeight;
@@ -162,52 +285,6 @@ namespace RenderingEngine.Engine
 
             ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
             uint scale = (uint)brightness;
-
-            for (int i = 0; i < spriteTexturePtr.Length; i++)
-            {
-                if (columnPtr.IsTransparent)
-                {
-                    spriteTexturePtr[i] = default;
-                }
-                else
-                {
-                    unchecked
-                    {
-                        uint b = columnPtr.B * scale >> 8;
-                        uint g = columnPtr.G * scale >> 8 << 8;
-                        uint r = columnPtr.R * scale >> 8 << 16;
-                        spriteTexturePtr[i] = b | g | r | Alpha;
-                    }
-                }
-
-                columnPtr = ref Unsafe.Add(ref columnPtr, 1);
-            }
-
-            return;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CalculateSprite(Span<uint> spriteTexturePtr, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, float brightness)
-        {
-            // reuse the cached column
-            if (bufferIndex == textureYPos)
-            {
-                return;
-            }
-
-            const uint Alpha = (uint)byte.MaxValue << 24;
-
-            bufferIndex = textureYPos;
-
-            // avoid calculating if too far away (all black)
-            if (brightness <= 0)
-            {
-                spriteTexturePtr.Fill(Alpha);
-                return;
-            }
-
-            ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
-            uint scale = (uint)(brightness * 255f);
 
             for (int i = 0; i < spriteTexturePtr.Length; i++)
             {

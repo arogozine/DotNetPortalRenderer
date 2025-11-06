@@ -24,6 +24,7 @@ namespace RenderingEngine
         {
             var renderer = new PortalRenderer(Engine.Width, Engine.Height)
             {
+                Sprites = Engine.Sprites,
                 Player = Engine.Player,
                 Sectors = Engine.Sectors
             };

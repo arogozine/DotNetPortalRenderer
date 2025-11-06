@@ -10,6 +10,7 @@ namespace RenderingEngine
         public Player Player { get; private set; }
 
         internal Sector[] Sectors { get; private set; }
+        internal Sprite[] Sprites { get; private set; }
 
         internal Arguments Arguments { get; }
 
@@ -20,7 +21,7 @@ namespace RenderingEngine
         public PortalEngine(Arguments arguments)
         {
             this.Arguments = arguments;
-            (Player, Sectors) = MapLoader.LoadData(arguments);
+            (Player, Sectors, Sprites) = MapLoader.LoadData(arguments);
         }
 
         private readonly HashSet<Key> PressedKeys = [];

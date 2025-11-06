@@ -69,7 +69,7 @@ namespace RenderingEngine.MapGen
             return walls;
         }
 
-        internal static (Player player, Sector[] sectors) LoadData(Arguments arguments)
+        internal static (Player player, Sector[] sectors, Sprite[] sprites) LoadData(Arguments arguments)
         {
             Map map;
 
@@ -81,7 +81,7 @@ namespace RenderingEngine.MapGen
 
             if (arguments.PWad is string pwad)
             {
-                WadFile wadFile2 = WadReader.LoadWad("C:\\Users\\Alexa\\Downloads\\New folder\\testmap.wad", loadMaps: true, loadTextures: true, mapName: mapName);
+                WadFile wadFile2 = WadReader.LoadWad(pwad, loadMaps: true, loadTextures: true, mapName: mapName);
                 wadFile2.LoadRequired(wadFile);
                 WadReader.ExtractAllTextures(wadFile2);
 
@@ -103,7 +103,7 @@ namespace RenderingEngine.MapGen
 
             var sectors = map.Sectors.Select(ParseMapSector).ToArray();
 
-            return (map.Player, sectors);
+            return (map.Player, sectors, map.Sprites);
         }
 
         static Sector ParseMapSector(MapSector x)

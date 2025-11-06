@@ -4,6 +4,8 @@ namespace RenderingEngine.Models
 {
     internal sealed class RenderableWall
     {
+        public bool SpritesOnly { get; set; }
+
         public required Wall Wall { get; set; }
         public required int XLeft { get; set; }
         public required int XRight { get; set; }
@@ -11,6 +13,6 @@ namespace RenderingEngine.Models
         public required Sector Sector { get; set; }
         public RenderWindow[]? RenderWindow { get; set; }
 
-        public bool IsTransparent => Wall.IsPortal && Wall.Line.MiddleTexture != null;
+        public bool IsTransparent => Wall.IsPortal == true && Wall.Line.MiddleTexture != null;
     }
 }
