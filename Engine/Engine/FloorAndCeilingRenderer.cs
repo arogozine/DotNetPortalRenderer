@@ -20,9 +20,8 @@ namespace RenderingEngine.Engine
             byte lightLevel = sector.LightLevel;
             int height = PixelHeight;
             int width = PixelWidth;
-            float vFov = VFov;
             int halfHeightInt = height / 2;
-            float oneOvervFov = 1f / vFov;
+            float oneOvervFov = 1f / height;
 
             float px = player.X;
             float py = player.Y;
@@ -94,9 +93,8 @@ namespace RenderingEngine.Engine
 
             int height = PixelHeight;
             int width = PixelWidth;
-            float vFov = VFov;
             int halfHeightInt = height / 2;
-            float oneOvervFov = 1f / vFov;
+            float oneOverHeight = 1f / height;
             int widthDiv2 = width / 2;
 
             float px = player.X;
@@ -117,8 +115,8 @@ namespace RenderingEngine.Engine
             Vector<float> yawV = Vector.Create(yaw);
 
             Vector<float> yCeilV = Vector.Create(yCeil);
-            Vector<float> oneOvervFovV = Vector.Create(oneOvervFov);
-            Vector<float> ivIncrF = new(oneOvervFov * Vector<float>.Count);
+            Vector<float> oneOverHeightV = Vector.Create(oneOverHeight);
+            Vector<float> ivIncrF = new(oneOverHeight * Vector<float>.Count);
 
             Vector<float> incramentVector = default;
             ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
@@ -150,7 +148,7 @@ namespace RenderingEngine.Engine
 
                 for (int j = 0; j < Vector<int>.Count; j++)
                 {
-                    Unsafe.Add(ref incramentVectorPtr, j) = (halfHeightInt - floorFromY - j) * oneOvervFov + yaw;
+                    Unsafe.Add(ref incramentVectorPtr, j) = (halfHeightInt - floorFromY - j) * oneOverHeight + yaw;
                 }
 
                 int rem = (floorToY - floorFromY) % Vector<int>.Count;
@@ -204,7 +202,7 @@ namespace RenderingEngine.Engine
                     ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
                     ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
 
-                    ii -= oneOvervFov; // --;
+                    ii -= oneOverHeight; // --;
                 }
 
                 renderWindow.CeilingStart = renderWindow.WallStart;
@@ -412,7 +410,6 @@ namespace RenderingEngine.Engine
 
             int height = PixelHeight;
             int width = PixelWidth;
-            float vFov = VFov;
 
             float px = player.X;
             float py = player.Y;
@@ -425,7 +422,7 @@ namespace RenderingEngine.Engine
 
             float idkWhatThisIs = 1f / (width * -0.7594506f);
 
-            float oneOvervFov = 1f / vFov;
+            float oneOvervFov = 1f / height;
             int halfHeightInt = height / 2;
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
@@ -484,7 +481,6 @@ namespace RenderingEngine.Engine
 
             int height = PixelHeight;
             int width = PixelWidth;
-            float vFov = VFov;
 
             float px = player.X;
             float py = player.Y;
@@ -497,7 +493,7 @@ namespace RenderingEngine.Engine
 
             float idkWhatThisIs = 1f / (width * -0.7594506f);
 
-            float oneOvervFov = 1f / vFov;
+            float oneOvervFov = 1f / height;
             int halfHeightInt = height / 2;
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);

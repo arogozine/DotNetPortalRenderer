@@ -48,17 +48,15 @@ namespace RenderingEngine.Engine
         private readonly int width;
         private readonly int height;
         private readonly float cameraPlaneX;
-        private readonly float vFov;
 
         public SpriteHelper(
             int width,
             int height,
-            float cameraPlaneX, float vFov)
+            float cameraPlaneX)
         {
             this.width = width;
             this.height = height;
             this.cameraPlaneX = cameraPlaneX;
-            this.vFov = vFov;
         }
 
         public Span<Sprite> GetSpritesForPlayer(PortalPlayerSnapshot player, Sprite[] sprites, Sector[] sectors)
@@ -353,10 +351,10 @@ namespace RenderingEngine.Engine
             if (sprite.IntersectsView)
             {
                 yCeil = yFloor + textureHeight;
-                yLeftCeil = halfHeight - (yCeil / ry1 - yaw) * vFov;
-                yLeftFloor = halfHeight - (yFloor / ry1 - yaw) * vFov;
-                yRightCeil = halfHeight - (yCeil / ry2 - yaw) * vFov;
-                yRightFloor = halfHeight - (yFloor / ry2 - yaw) * vFov;
+                yLeftCeil = halfHeight - (yCeil / ry1 - yaw) * height;
+                yLeftFloor = halfHeight - (yFloor / ry1 - yaw) * height;
+                yRightCeil = halfHeight - (yCeil / ry2 - yaw) * height;
+                yRightFloor = halfHeight - (yFloor / ry2 - yaw) * height;
 
                 // wall.C1 = new(rx1, ry1);
                 // wall.C2 = new(rx2, ry2);

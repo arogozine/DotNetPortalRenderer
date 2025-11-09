@@ -7,7 +7,6 @@ namespace RenderingEngine.Engine
     {
         public readonly int PixelWidth;
         public readonly int PixelHeight;
-        public readonly float VFov;
         public required Sprite[] Sprites { get; set; }
         public required Player Player { get; set; }
         public required Sector[] Sectors { get; set; }
@@ -29,9 +28,8 @@ namespace RenderingEngine.Engine
         {
             PixelWidth = width;
             PixelHeight = height;
-            VFov = 1f * height;
-            SpriteHelper = new SpriteHelper(width, height, EngineConstants.CameraPlaneX, VFov);
-            WallHelper = new WallHelper(width, height, EngineConstants.CameraPlaneX, VFov);
+            SpriteHelper = new SpriteHelper(width, height, EngineConstants.CameraPlaneX);
+            WallHelper = new WallHelper(width, height, EngineConstants.CameraPlaneX);
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             distanceCache = new float[height];
             distanceMult = new uint[height];
@@ -68,9 +66,8 @@ namespace RenderingEngine.Engine
             float[] distanceArray = distanceCache;
 
             int height = PixelHeight;
-            float vFov = VFov;
             int halfHeightInt = height / 2;
-            float oneOvervFov = 1f / vFov;
+            float oneOverHeight = 1f / height;
             var yaw = player.Yaw;
 
             float pz = player.Z;
@@ -82,7 +79,7 @@ namespace RenderingEngine.Engine
             {
                 int j = halfHeightInt - i;
 
-                float yMopPosR = yCeil / (j * oneOvervFov + yaw);
+                float yMopPosR = yCeil / (j * oneOverHeight + yaw);
                 float distance = yMopPosR + 1;
                 distanceArray[i] = distance;
 
@@ -94,7 +91,7 @@ namespace RenderingEngine.Engine
             {
                 int j = halfHeightInt - i;
 
-                float yMopPosR = yfloor / (j * oneOvervFov + yaw);
+                float yMopPosR = yfloor / (j * oneOverHeight + yaw);
                 float distance = yMopPosR + 1;
                 distanceArray[i] = distance;
 
@@ -110,7 +107,7 @@ namespace RenderingEngine.Engine
         {
             this.WallHelper.SetSnapShot(player);
 
-            screen.Fill(BGRA.Black);
+            // screen.Fill(BGRA.Black);
 
             ReadOnlySpan<Sector> sectors = Sectors;
 
