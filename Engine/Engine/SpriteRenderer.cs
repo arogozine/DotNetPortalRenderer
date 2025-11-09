@@ -6,30 +6,23 @@ namespace RenderingEngine.Engine
     {
         private void DrawSprite(Span<BGRA> screen, Sprite sprite, SectorSprites renderableWall)
         {
-            int width = PixelWidth;
-            int height = PixelHeight;
-
-
             ref Texture texture = ref TextureCache.GetTextureOrNullRef(sprite.TextureName);
+
             if (Unsafe.IsNullRef(ref texture))
             {
                 return;
             }
-            float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
 
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
-
-
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
 
+            int width = PixelWidth;
+            int height = PixelHeight;
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
 
-            /*
-            int wallFromXOffset = renderableWall.Offset;
-            int wallFromX = renderableWall.XLeft + wallFromXOffset;
-            int wallToX = renderableWall.XRight;
-            */
+            float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
+
             Sector sector = renderableWall.Sector;
             byte lightLevel = sector.LightLevel;
 
@@ -46,10 +39,6 @@ namespace RenderingEngine.Engine
             int wallFromX = xLeft;
             int wallToX = xRight;
 
-            /*
-            wallFromX = Math.Max(wallFromX, (int)xLeft);
-            wallToX = Math.Min(wallToX, (int)xRight);
-            */
             Span<RenderWindow> window = renderableWall.RenderWindow!;
 
             float d2x = textureHeight;
@@ -59,8 +48,6 @@ namespace RenderingEngine.Engine
             float cameraRay = -1f * EngineConstants.CameraPlaneX;
             cameraRay += cameraWidthIncr * wallFromX;
 
-            //int textueStart = textureWidth;
-   
             float distIncr = texture.Width / (float)(xRight - xLeft);
 
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
@@ -69,6 +56,7 @@ namespace RenderingEngine.Engine
             for (int x = wallFromX; x < wallToX; x++, cameraRay += cameraWidthIncr)
             {
                 ref RenderWindow renderWindow = ref window[x];
+                bool clamp = renderWindow.FloorEnd > renderWindow.CeilingStart;
 
                 if (renderWindow.FloorEnd <= renderWindow.CeilingStart)
                 {
@@ -77,7 +65,7 @@ namespace RenderingEngine.Engine
 
                 (float fromToYdist, float textureXLocation) = CalculateDistance(sprite, cameraRay, t1, d2x);
 
-                if (renderWindow.Distance < fromToYdist)
+                if (renderWindow.Distance != 0 && renderWindow.Distance < fromToYdist)
                 {
                     continue;
                 }
@@ -89,25 +77,20 @@ namespace RenderingEngine.Engine
                 ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
 
                 // Calculate Middle Texture Position
-                float textureXIncr = (float)((textureWidth - 1f) / (wallEndY - wallStartY));
+                float textureXIncr = (((float)textureWidth) / (wallEndY - wallStartY));
                 int textureYPos = ((int)textureXLocation) * textureWidth;
                 float textureXPos = (clamptedFromY - wallStartY) * textureXIncr;
 
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel);
 
                 int textureXPosI = -1;
-                int textureXPosIOld = -1;
 
                 for (uint shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
                      Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
                      textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width))
                 {
                     textureXPosI = (int)textureXPos;
-
-                    if (textureXPosI != textureXPosIOld)
-                    {
                         shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
-                    }
 
                     if (shaded != 0U)
                     {
@@ -121,7 +104,7 @@ namespace RenderingEngine.Engine
                 float fromToXDist = fromToYDist * cameraRay;
                 float distX = rx1 - fromToXDist;
 
-                int textureXLocation = (int)MathF.Sqrt(distX * distX);
+                int textureXLocation = (int)MathF.Abs(distX); //(int)MathF.Sqrt(distX * distX);
 
                 return (fromToYDist, textureXLocation);
             }
