@@ -2,6 +2,47 @@
 
 namespace RenderingEngine.Engine
 {
+    internal sealed class SectorInSectorComparer : IComparer<Sector>
+    {
+        public int Compare(Sector? x, Sector? y)
+        {
+            ArgumentNullException.ThrowIfNull(x);
+            ArgumentNullException.ThrowIfNull(y);
+
+            if (IsSectorInSector(x, y))
+            {
+                return -1;
+            }
+
+            if (IsSectorInSector(y, x))
+            {
+                return 1;
+            }
+
+            return 0;
+        }
+
+        public static bool IsSectorInSector(Sector a, Sector b)
+        {
+            for (int i = 0; i < a.Walls.Length; i++)
+            {
+                Wall wall = a.Walls[i];
+
+                if (!SpriteHelper.IsPointInPolygon(b.Walls, wall.R1))
+                {
+                    return false;
+                }
+
+                if (!SpriteHelper.IsPointInPolygon(b.Walls, wall.R2))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+    }
+
     internal class SpriteHelper
     {
         private readonly int width;
@@ -20,23 +61,51 @@ namespace RenderingEngine.Engine
             this.vFov = vFov;
         }
 
-        public Span<Sprite> GetSpritesForPlayer(PortalPlayerSnapshot player, Sprite[] sprites)
+        public Span<Sprite> GetSpritesForPlayer(PortalPlayerSnapshot player, Sprite[] sprites, Sector[] sectors)
         {
             Span<Sprite> rotatedSprites = RotateSprites(sprites, player);
+
             FilterOutSpritesBehindPlayer(ref rotatedSprites);
-            rotatedSprites.Sort(new SpriteComparer());
+            AssignSectors(rotatedSprites, sectors);
 
             return rotatedSprites;
         }
 
-        public List<Sprite> FilterOutSpritesOutsideSector(PortalPlayerSnapshot player, Sector sector, Span<Sprite> rotatedSprites)
+        private static void AssignSectors(ReadOnlySpan<Sprite> sprites, ReadOnlySpan<Sector> sectors)
         {
+            for (int j = 0; j < sprites.Length; j++)
+            {
+                Sprite sprite = sprites[j];
+                List<Sector> potentialSectors = [];
+
+                for (int i = sectors.Length - 1; i >= 0; i--)
+                {
+                    Sector sector = sectors[i];
+
+                    if (IsPointInPolygon(sector.Walls, sprite.Location))
+                    {
+                        potentialSectors.Add(sector);
+                    }
+                }
+
+                if (potentialSectors.Count == 0)
+                {
+                    throw new Exception();
+                }
+
+                potentialSectors.Sort(new SectorInSectorComparer());
+                sprite.SectorId = potentialSectors[0].Id;
+            }
+
+        }
+
+        public List<Sprite> FilterOutSpritesOutsideSector(PortalPlayerSnapshot player, SectorSprites sectorSprites, Span<Sprite> rotatedSprites)
+        {
+            Sector sector = sectorSprites.Sector;
             float yaw = player.Yaw;
             float pz = player.Z;
             float yCeil = sector.Ceil - pz;
             float yFloor = sector.Floor - pz;
-
-            CalculateWallPlanes(rotatedSprites, yCeil, yFloor, yaw);
 
             List<Sprite> sprites = [];
 
@@ -44,13 +113,30 @@ namespace RenderingEngine.Engine
             {
                 Sprite sprite = rotatedSprites[i];
 
-                if (IsPointInSector(sector.Walls, sprite.Location) && sprite.IntersectsView)
+                if (sector.Id == sprite.SectorId)
                 {
-                    sprites.Add(sprite);
+                    CalculateWallPlane(sprite, yCeil, yFloor, yaw);
+
+                    if (IntersectsView(sprite))
+                    {
+                        sprites.Add(sprite);
+                    }
                 }
             }
 
+            sprites.Sort(new SpriteComparer());
+
             return sprites;
+
+            bool IntersectsView(Sprite s)
+            {
+                if (!s.IntersectsView)
+                {
+                    return false;
+                }
+
+                return ((sectorSprites.XLeft <= s.XLeft) && (s.XLeft <= sectorSprites.XRight)) || ((sectorSprites.XLeft <= s.XRight) && (s.XRight <= sectorSprites.XRight));
+            }
         }
 
         public void CalculateWallPlanes(Span<Sprite> sprites, float yCeil, float yFloor, float yaw)
@@ -63,9 +149,9 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static Sprite[] RotateSprites(Sprite[] sprites, PortalPlayerSnapshot player)
+        public static Span<Sprite> RotateSprites(Sprite[] sprites, PortalPlayerSnapshot player)
         {
-            Sprite[] rotatedSprites = new Sprite[sprites.Length];
+            var rotatedSprites = new Sprite[sprites.Length];
 
             float pSin = player.Sin;
             float pCos = player.Cos;
@@ -121,36 +207,38 @@ namespace RenderingEngine.Engine
             rotatedSprites = rotatedSprites[..j];
         }
 
-        public static bool IsPointInSector(Span<Wall> walls, Point point)
+        public static bool IsPointInPolygon(ReadOnlySpan<Wall> walls, Point point)
         {
-            int intersections = 0;
+            float x = point.X;
+            float y = point.Y;
+            bool inside = false;
 
             for (int i = 0; i < walls.Length; i++)
             {
                 Wall wall = walls[i];
 
-                float pointA_X = wall.R1.X;
-                float pointA_Y = wall.R1.Y;
-                float pointB_X = wall.R2.X;
-                float pointB_Y = wall.R2.Y;
+                float x1 = wall.R1.X;
+                float y1 = wall.R1.Y;
+                float x2 = wall.R2.X;
+                float y2 = wall.R2.Y;
 
-                // Check if point is on the same horizontal level as the edge's y-coordinates
-                if (point.Y > MathF.Min(pointA_Y, pointB_Y) && point.Y <= MathF.Max(pointA_Y, pointB_Y))
+                if (MathF.Min(y1, y2) < y && y <= MathF.Max(y1, y2) && x <= MathF.Max(x1, x2))
                 {
-                    // Calculate the x-coordinate of the intersection of the ray with the edge
-                    if (point.Y != pointA_Y && point.Y != pointB_Y)
+                    float xinters = default;
+
+                    if (y1 != y2)
                     {
-                        float intersectX = pointA_X + (point.Y - pointA_Y) * (pointB_X - pointA_X) / (pointB_Y - pointA_Y);
-                        if (intersectX > point.X)
-                        {
-                            intersections++;
-                        }
+                        xinters = (y - y1) * (x2 - x1) / (y2 - y1) + x1;
+                    }
+
+                    if (x1 == x2 || x <= xinters)
+                    {
+                        inside = !inside;
                     }
                 }
             }
 
-            // If the number of intersections is odd, the point is inside the polygon
-            return intersections % 2 != 0;
+            return inside;
         }
 
         public void CalculateWallPlane(Sprite sprite, float yCeil, float yFloor, float yaw)
@@ -187,7 +275,7 @@ namespace RenderingEngine.Engine
             }
 
             // part of the wall is in the back
-                if (ry1 <= 0f || ry2 <= 0f)
+            if (ry1 <= 0f || ry2 <= 0f)
             {
                 float d2x = rx2 - rx1;
                 float d2y = ry2 - ry1;

@@ -58,10 +58,21 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public RenderWindow[] CopyRenderWindow()
+        public RenderWindow[] CopyRenderWindow(bool partial)
         {
             RenderWindow[] renderWindow = new RenderWindow[this.renderWindow.Length];
-            this.renderWindow.AsSpan()[sectorFromX..sectorToX].CopyTo(renderWindow.AsSpan()[sectorFromX..sectorToX]);
+            Span<RenderWindow> span = this.renderWindow.AsSpan();
+            Span<RenderWindow> renderWindowSpan = renderWindow.AsSpan();
+
+            if (partial)
+            {
+                span[sectorFromX..sectorToX].CopyTo(renderWindowSpan[sectorFromX..sectorToX]);
+            }
+            else
+            {
+                span.CopyTo(renderWindowSpan);
+            }
+
             return renderWindow;
         }
 

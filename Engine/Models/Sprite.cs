@@ -2,6 +2,7 @@
 {
     public sealed class Sprite
     {
+        public int SectorId { get; set; }
         public required Point Location { get; init; }
 
         public Point Rotated { get; set; }

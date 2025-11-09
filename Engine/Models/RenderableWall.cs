@@ -13,6 +13,6 @@ namespace RenderingEngine.Models
         public required Sector Sector { get; set; }
         public RenderWindow[]? RenderWindow { get; set; }
 
-        public bool IsTransparent => Wall.IsPortal == true && Wall.Line.MiddleTexture != null;
+        public bool IsPortalWithMiddleTexture => Wall.IsPortal && Wall.Line.MiddleTexture != null;
     }
 }

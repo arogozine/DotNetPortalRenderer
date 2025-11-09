@@ -304,7 +304,7 @@ namespace RenderingEngine.DoomMapLoader
             Span<Linedef> lineDefs = WadLumpParser.ReadLineDefs(wad.GetMapLump(mapName, LumpType.LineDefs));
             Span<Sector> sectorDefs = WadLumpParser.ReadSectors(wad.GetMapLump(mapName, LumpType.Sectors));
             Span<Thing> things = WadLumpParser.ReadThings(wad.GetMapLump(mapName, LumpType.Things));
-            Sprite[] sprites = ExtractSprites(things);
+            List<Sprite> sprites = ExtractSprites(things);
 
             Thing? player1Start = null;
             for (int i = 0; i < things.Length; i++)
@@ -388,25 +388,34 @@ namespace RenderingEngine.DoomMapLoader
                     Angle = radians,
                     Where = (player1Start.Value.X, player1Start.Value.Y, 0f)
                 },
-                Sprites = sprites,
+                Sprites = sprites.ToArray(),
                 Sectors = sectors
             };
         }
 
-        private static Sprite[] ExtractSprites(Span<Thing> things)
+        private static List<Sprite> ExtractSprites(Span<Thing> things)
         {
-            Sprite[] sprites = new Sprite[things.Length]; 
+            List<Sprite> sprites = new List<Sprite>(things.Length);
 
             for (int i = 0; i < things.Length; i++)
             {
                 ref Thing thing = ref things[i];
 
-                sprites[i] = new Sprite
+                switch (thing.Type)
+                {
+                    case ThingType.DeathmatchStart:
+                    case ThingType.TeleportLanding:
+                    case ThingType.SpawnSpot:
+                    case ThingType.MonsterSpawner:
+                        continue;
+                }
+
+                sprites.Add(new Sprite
                 {
                     Angle = thing.Angle,
                     Location = new Point(thing.X, thing.Y),
                     TextureName = GetTextureName(thing.Type)
-                };
+                });
             }
 
             return sprites;

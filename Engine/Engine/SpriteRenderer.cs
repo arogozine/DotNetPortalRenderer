@@ -47,7 +47,7 @@ namespace RenderingEngine.Engine
 
             float cameraRay = -1f * EngineConstants.CameraPlaneX;
             cameraRay += cameraWidthIncr * wallFromX;
-
+   
             float distIncr = texture.Width / (float)(xRight - xLeft);
 
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
@@ -90,7 +90,7 @@ namespace RenderingEngine.Engine
                      textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width))
                 {
                     textureXPosI = (int)textureXPos;
-                        shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
+                    shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
 
                     if (shaded != 0U)
                     {
