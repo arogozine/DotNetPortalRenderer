@@ -37,7 +37,7 @@ internal static class TextureCache
 
             for (int x = 0; x < width; x++)
             {
-                int newX = height - 1 - y;
+                int newX = height - y;
                 int dstIndex = newY + newX;
                 Unsafe.Add(ref outputPtr, dstIndex) = inputPtr;
                 inputPtr = ref Unsafe.Add(ref inputPtr, 1);
