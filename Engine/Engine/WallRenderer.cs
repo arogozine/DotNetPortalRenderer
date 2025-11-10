@@ -67,7 +67,11 @@ namespace RenderingEngine.Engine
             int upperTextureStart = upperTexture.Height + yOffset;
 
             if (!upperUnpegged) {
-                upperTextureStart = upperTextureStart - (int)sectorHeight % upperTexture.Height;
+                int sectorHeightI = (int)sectorHeight;
+                if (sectorHeightI < upperTexture.Height)
+                    upperTextureStart = upperTextureStart - (int)sectorHeight % upperTexture.Height;
+                else
+                    upperTextureStart = 0;
             }
 
             ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperTexture.Rotated);

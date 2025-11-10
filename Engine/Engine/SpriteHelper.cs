@@ -220,7 +220,7 @@ namespace RenderingEngine.Engine
                 float x2 = wall.R2.X;
                 float y2 = wall.R2.Y;
 
-                if (MathF.Min(y1, y2) < y && y <= MathF.Max(y1, y2) && x <= MathF.Max(x1, x2))
+                if (MathF.Min(y1, y2) <= y && y < MathF.Max(y1, y2) && x <= MathF.Max(x1, x2))
                 {
                     float xinters = default;
 
