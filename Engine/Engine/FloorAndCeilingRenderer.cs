@@ -29,7 +29,7 @@ namespace RenderingEngine.Engine
             float pSin = player.Sin;
             float pCos = player.Cos;
 
-            float idkWhatThisIs = 1f / (width * -0.7594506f);
+            float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
 
             float yaw = player.Yaw;
             float yCeil = sector.Ceil - pz;
@@ -54,12 +54,12 @@ namespace RenderingEngine.Engine
 
                 int screenIndex = floorFromY * width + x;
 
-                float xMapPosMultiplier = (width / 2 - x) * idkWhatThisIs;
+                float xMapPosMultiplier = (halfHeightInt - x) * xPosIncr;
 
                 int ii = halfHeightInt - floorFromY;
 
                 // from screen top to start of the wall (bottom)
-                for (int j = floorFromY; j < floorToY; j++, screenIndex += width)
+                for (int j = floorFromY; j < floorToY; j++, screenIndex += width, ii--)
                 {
                     float yMapPosR = yCeil / (ii * oneOvervFov + yaw);
                     float xMapPosR = yMapPosR * xMapPosMultiplier;
@@ -73,8 +73,6 @@ namespace RenderingEngine.Engine
                     ref BGRA tex = ref Unsafe.Add(ref ceilingTexturePtr, textureIndex);
                     ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
                     ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
-
-                    ii--;
                 }
 
                 renderWindow.CeilingStart = renderWindow.WallStart;
@@ -103,7 +101,7 @@ namespace RenderingEngine.Engine
             float pSin = player.Sin;
             float pCos = player.Cos;
 
-            float idkWhatThisIs = 1f / (width * -0.7594506f);
+            float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
 
             float yaw = player.Yaw;
             float yCeil = sector.Ceil - pz;
@@ -141,7 +139,7 @@ namespace RenderingEngine.Engine
 
                 int screenIndex = floorFromY * width + x;
 
-                float xMapPosMultiplier = (width / 2 - x) * idkWhatThisIs;
+                float xMapPosMultiplier = (widthDiv2 - x) * xPosIncr;
 
                 Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
                 Vector<int> halfHeightIntV = Vector.Create(halfHeightInt);
@@ -189,7 +187,7 @@ namespace RenderingEngine.Engine
 
                 for (int j = floorFromY; j < floorToY; j++, screenIndex += width)
                 {
-                    float yMapPosR = yCeil / (ii + yaw); // (ii * oneOvervFov + yaw);
+                    float yMapPosR = yCeil / (ii + yaw);
                     float xMapPosR = yMapPosR * xMapPosMultiplier;
 
                     (float xMapPos, float yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
@@ -420,7 +418,7 @@ namespace RenderingEngine.Engine
             float yfloor = sector.Floor - pz;
             float yaw = player.Yaw;
 
-            float idkWhatThisIs = 1f / (width * -0.7594506f);
+            float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
 
             float oneOvervFov = 1f / height;
             int halfHeightInt = height / 2;
@@ -444,7 +442,7 @@ namespace RenderingEngine.Engine
                 int floorToY = renderWindow.FloorEnd;
 
                 int screenIndex = floorFromY * width + x;
-                float xMapPosMultiplier = (width / 2 - x) * idkWhatThisIs;
+                float xMapPosMultiplier = (width / 2 - x) * xPosIncr;
                 int increment = halfHeightInt - floorFromY;
 
                 // from start of wall (buttom) to screen buttom
@@ -491,10 +489,11 @@ namespace RenderingEngine.Engine
             float yfloor = sector.Floor - pz;
             float yaw = player.Yaw;
 
-            float idkWhatThisIs = 1f / (width * -0.7594506f);
+            float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
 
             float oneOvervFov = 1f / height;
             int halfHeightInt = height / 2;
+            int widthDiv2 = width / 2;
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
@@ -527,7 +526,7 @@ namespace RenderingEngine.Engine
                 int floorToY = renderWindow.FloorEnd;
 
                 int screenIndex = floorFromY * width + x;
-                float xMapPosMultiplier = (width / 2 - x) * idkWhatThisIs;
+                float xMapPosMultiplier = (widthDiv2 - x) * xPosIncr;
                 Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
 
                 for (int j = 0; j < Vector<int>.Count; j++)
