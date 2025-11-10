@@ -132,13 +132,22 @@ namespace RenderingEngine.Engine
 
                 Span<Wall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, player);
 
-                SectorSprites sectorSprites = new SectorSprites
+                // copy render window to render sprites
+                SectorSprites sectorSprites = new()
                 {
                     XLeft = sectorInfo.RenderableWall?.XLeft ?? 0,
                     XRight = sectorInfo.RenderableWall?.XRight ?? PixelWidth,
-                    RenderWindow = RenderWindowHelper.CopyRenderWindow(false),
+                    CeilingStart = new int[PixelWidth],
+                    FloorEnd = new int[PixelWidth],
                     Sector = sector,
                 };
+
+                for (int i = 0; i < RenderWindowHelper.RenderWindow.Length; i++)
+                {
+                    ref RenderWindow from = ref RenderWindowHelper.RenderWindow[i];
+                    sectorSprites.CeilingStart[i] = from.CeilingStart;
+                    sectorSprites.FloorEnd[i] = from.FloorEnd;
+                }
 
                 transparentWalls.Add(sectorSprites);
 
@@ -173,20 +182,10 @@ namespace RenderingEngine.Engine
                         });
                     }
                 }
-
-                for (int i = 0; i < RenderWindowHelper.RenderWindow.Length; i++)
-                {
-                    ref RenderWindow from = ref RenderWindowHelper.RenderWindow[i];
-                    ref RenderWindow to = ref sectorSprites.RenderWindow[i];
-                    to.Distance = from.Distance;
-                }
-
-                // sprites need depth
-                // proper window
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxPortalsRendered);
 
-            // render transparent objects and sprites
+            // render transparent walls and sprites
             Span<RenderableSprite> transparentWallsSpan = CollectionsMarshal.AsSpan(transparentWalls);
             for (int i = transparentWallsSpan.Length - 1; i >= 0; i--)
             {

@@ -39,7 +39,9 @@ namespace RenderingEngine.Engine
             int wallFromX = xLeft;
             int wallToX = xRight;
 
-            Span<RenderWindow> window = renderableWall.RenderWindow!;
+            Span<int> floorEndArray = renderableWall.FloorEnd;
+            Span<int> ceilingStartArray = renderableWall.CeilingStart;
+            Span<RenderWindow> window = RenderWindowHelper.RenderWindow;
 
             float d2x = textureHeight;
             float t1 = -ry * d2x;
@@ -55,23 +57,24 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x < wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                ref RenderWindow renderWindow = ref window[x];
-                bool clamp = renderWindow.FloorEnd > renderWindow.CeilingStart;
+                int ceilingStart = ceilingStartArray[x];
+                int floorEnd = floorEndArray[x];
 
-                if (renderWindow.FloorEnd <= renderWindow.CeilingStart)
+                if (floorEnd <= ceilingStart)
                 {
-                    continue;
+                   continue;
                 }
 
+                ref RenderWindow renderWindow = ref window[x];
                 (float fromToYdist, float textureXLocation) = CalculateDistance(sprite, cameraRay, t1, d2x);
 
-                if (renderWindow.Distance != 0 && renderWindow.Distance < fromToYdist)
+                if (renderWindow.Distance < fromToYdist)
                 {
-                    continue;
+                   continue;
                 }
 
-                int clamptedFromY = Math.Clamp(wallStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int clamptedToY = Math.Clamp(wallEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int clamptedFromY = Math.Clamp(wallStartY, ceilingStart, floorEnd);
+                int clamptedToY = Math.Clamp(wallEndY, ceilingStart, floorEnd);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
                 ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
@@ -104,7 +107,7 @@ namespace RenderingEngine.Engine
                 float fromToXDist = fromToYDist * cameraRay;
                 float distX = rx1 - fromToXDist;
 
-                int textureXLocation = (int)MathF.Abs(distX); //(int)MathF.Sqrt(distX * distX);
+                int textureXLocation = (int)MathF.Abs(distX);
 
                 return (fromToYDist, textureXLocation);
             }
