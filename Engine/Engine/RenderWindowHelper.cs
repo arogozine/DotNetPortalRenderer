@@ -36,7 +36,8 @@ namespace RenderingEngine.Engine
             renderWindow.AsSpan().Fill(new RenderWindow {
                 CeilingStart = 0,
                 FloorEnd = height - 1,
-                WallEnd = height - 1
+                WallEnd = height - 1,
+                Distance = float.MaxValue
             });
         }
 

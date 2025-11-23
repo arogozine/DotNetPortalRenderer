@@ -42,7 +42,6 @@ namespace RenderingEngine.Engine
             Span<int> floorEndArray = renderableWall.FloorEnd;
             Span<int> ceilingStartArray = renderableWall.CeilingStart;
             Span<float> distance = renderableWall.Distance;
-            Span<RenderWindow> window = RenderWindowHelper.RenderWindow;
 
             float d2x = textureHeight;
             float t1 = -ry * d2x;
@@ -65,8 +64,6 @@ namespace RenderingEngine.Engine
                 {
                    continue;
                 }
-
-                ref RenderWindow renderWindow = ref window[x];
 
                 if (distance[x] < fromToYDist && distance[x] != 0)
                 {
