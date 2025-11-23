@@ -132,26 +132,16 @@ namespace RenderingEngine.Engine
 
         [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref RenderWindow TryGetRenderableDimensionsForX2(int x)
+        public ref RenderWindow TryGetRenderableDimensionsForX2(int x) // wall
         {
-            if (sectorFromX > x || x > sectorToX)
-                return ref Unsafe.NullRef<RenderWindow>();
-
-            ref RenderWindow window = ref this.renderWindow[x];
-
-            if (!window.Calculated || window.WallStart >= window.WallEnd || window.FloorEnd < window.CeilingStart)
-                return ref Unsafe.NullRef<RenderWindow>();
-
-            return ref window;
+            // window.WallStart >= window.WallEnd
+            return ref this.renderWindow[x];
         }
 
         [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref RenderWindow GetFloorCeilDimensions2(int x)
         {
-            if (sectorFromX > x || x > sectorToX)
-                return ref Unsafe.NullRef<RenderWindow>();
-
             ref RenderWindow window = ref this.renderWindow[x];
 
             if (!window.Calculated || window.WallStart >= window.WallEnd)
@@ -160,12 +150,10 @@ namespace RenderingEngine.Engine
             return ref window;
         }
 
+        [SkipLocalsInit]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref RenderWindow GetCeilingDimensions(int x)
         {
-            if (sectorFromX > x || x > sectorToX)
-                return ref Unsafe.NullRef<RenderWindow>();
-
             ref RenderWindow window = ref this.renderWindow[x];
 
             if (!window.Calculated || window.CeilingStart >= window.WallEnd)

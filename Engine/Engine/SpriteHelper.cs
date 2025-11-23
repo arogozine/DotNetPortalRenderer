@@ -137,16 +137,6 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public void CalculateWallPlanes(Span<Sprite> sprites, float yCeil, float yFloor, float yaw)
-        {
-            for (int i = 0; i < sprites.Length; i++)
-            {
-                Sprite sprite = sprites[i];
-
-                CalculateSpritePlane(sprite, yCeil, yFloor, yaw);
-            }
-        }
-
         public static Span<Sprite> RotateSprites(Sprite[] sprites, PortalPlayerSnapshot player)
         {
             var rotatedSprites = new Sprite[sprites.Length];

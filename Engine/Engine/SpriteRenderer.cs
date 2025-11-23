@@ -41,6 +41,7 @@ namespace RenderingEngine.Engine
 
             Span<int> floorEndArray = renderableWall.FloorEnd;
             Span<int> ceilingStartArray = renderableWall.CeilingStart;
+            Span<float> distance = renderableWall.Distance;
             Span<RenderWindow> window = RenderWindowHelper.RenderWindow;
 
             float d2x = textureHeight;
@@ -66,12 +67,13 @@ namespace RenderingEngine.Engine
                 }
 
                 ref RenderWindow renderWindow = ref window[x];
-                (float fromToYdist, float textureXLocation) = CalculateDistance(sprite, cameraRay, t1, d2x);
 
-                if (renderWindow.Distance < fromToYdist)
+                if (distance[x] < fromToYDist && distance[x] != 0)
                 {
                    continue;
                 }
+
+                int textureXLocation = CalculateTextureXPosition(sprite, cameraRay, t1, d2x);
 
                 int clamptedFromY = Math.Clamp(wallStartY, ceilingStart, floorEnd);
                 int clamptedToY = Math.Clamp(wallEndY, ceilingStart, floorEnd);
@@ -81,7 +83,7 @@ namespace RenderingEngine.Engine
 
                 // Calculate Middle Texture Position
                 float textureXIncr = (((float)textureWidth) / (wallEndY - wallStartY));
-                int textureYPos = ((int)textureXLocation) * textureWidth;
+                int textureYPos = textureXLocation * textureWidth;
                 float textureXPos = (clamptedFromY - wallStartY) * textureXIncr;
 
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel);
@@ -102,14 +104,12 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            (float distance, int textureLocation) CalculateDistance(Sprite wall, float cameraRay, float t1, float d2x)
+            int CalculateTextureXPosition(Sprite wall, float cameraRay, float t1, float d2x)
             {
                 float fromToXDist = fromToYDist * cameraRay;
                 float distX = rx1 - fromToXDist;
 
-                int textureXLocation = (int)MathF.Abs(distX);
-
-                return (fromToYDist, textureXLocation);
+                return (int)MathF.Abs(distX);
             }
         }
 

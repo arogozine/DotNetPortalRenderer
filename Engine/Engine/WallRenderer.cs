@@ -10,6 +10,29 @@ namespace RenderingEngine.Engine
         private int columnBBufferIndex = -1;
         private readonly uint[] columnB = new uint[256];
 
+        private void CalculateDistance(RenderableWall renderableWall)
+        {
+            int width = PixelWidth;
+            var wall = renderableWall.Wall;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
+
+            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
+            {
+                ref RenderWindow renderWindow = ref RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
+
+                if (!renderWindow.Calculated)
+                {
+                    continue;
+                }
+
+                renderWindow.Distance = CalculateDistance2(wall, cameraRay, t1, d2y, d2x);
+                renderWindow.Calculated = false;
+            }
+        }
+
         private bool DrawPortalWall(
             Span<BGRA> screen,
             Sector sector,
@@ -27,6 +50,7 @@ namespace RenderingEngine.Engine
 
             if (floorOffset == 0 && ceilOffset == 0)
             {
+                CalculateDistance(renderableWall);
                 return true;
             }
 
@@ -88,8 +112,10 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
 
-                if (Unsafe.IsNullRef(ref renderWindow))
+                if (renderWindow.FloorEnd < renderWindow.CeilingStart)
                 {
+                    renderWindow.Distance = CalculateDistance2(wall, cameraRay, t1, d2y, d2x);
+                    renderWindow.Calculated = false;
                     continue;
                 }
 
@@ -253,8 +279,10 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
 
-                if (Unsafe.IsNullRef(ref renderWindow))
+                if (renderWindow.FloorEnd < renderWindow.CeilingStart)
                 {
+                    renderWindow.Distance = CalculateDistance2(wall, cameraRay, t1, d2y, d2x);
+                    renderWindow.Calculated = false;
                     continue;
                 }
 
@@ -304,7 +332,7 @@ namespace RenderingEngine.Engine
 
                 renderWindow.Distance = fromToYdist;
                 renderWindow.WallEnd = renderWindow.WallStart;
-                renderWindow.FloorEnd = renderWindow.WallStart;
+                // renderWindow.FloorEnd = renderWindow.WallStart;
                 renderWindow.Calculated = false;
             }
 
@@ -403,6 +431,15 @@ namespace RenderingEngine.Engine
             float textureXLocation = MathF.Sqrt(distX * distX + distY * distY);
 
             return ((int)textureXLocation, fromToYDist);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static float CalculateDistance2(Wall wall, float cameraRay, float t1, float d2y, float d2x)
+        {
+            float denominator = cameraRay * d2y - d2x;
+            float fromToYDist = t1 / denominator;
+
+            return fromToYDist;
         }
     }
 }

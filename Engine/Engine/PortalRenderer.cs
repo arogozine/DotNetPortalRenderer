@@ -107,8 +107,6 @@ namespace RenderingEngine.Engine
         {
             this.WallHelper.SetSnapShot(player);
 
-            // screen.Fill(BGRA.Black);
-
             ReadOnlySpan<Sector> sectors = Sectors;
 
             RenderWindowHelper.NewRender();
@@ -139,8 +137,10 @@ namespace RenderingEngine.Engine
                     XRight = sectorInfo.RenderableWall?.XRight ?? PixelWidth,
                     CeilingStart = new int[PixelWidth],
                     FloorEnd = new int[PixelWidth],
+                    Distance = new float[PixelWidth],
                     Sector = sector,
                 };
+
 
                 for (int i = 0; i < RenderWindowHelper.RenderWindow.Length; i++)
                 {
@@ -181,6 +181,12 @@ namespace RenderingEngine.Engine
                             Wall = renderableWall.Wall
                         });
                     }
+                }
+
+                for (int i = 0; i < RenderWindowHelper.RenderWindow.Length; i++)
+                {
+                    ref RenderWindow from = ref RenderWindowHelper.RenderWindow[i];
+                    sectorSprites.Distance[i] = from.Distance;
                 }
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxPortalsRendered);
@@ -291,6 +297,44 @@ namespace RenderingEngine.Engine
             }
 
             return neightbors;
+        }
+
+        private void Meh(Span<BGRA> screen, SectorSprites sectorSprites)
+        {
+            var floorEnd = sectorSprites.FloorEnd;
+            var ceilingStart = sectorSprites.CeilingStart;
+
+            for (int x = 0; x < PixelWidth; x++)
+            {
+                int floor = floorEnd[x];
+                int ceiling = ceilingStart[x];
+
+                Render(screen, ceiling, x, BGRA.Green);
+                Render(screen, floor, x, BGRA.White);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            void Render(Span<BGRA> screen, int y, int x, BGRA color)
+            {
+                int index = (y - 1) * PixelWidth + x;
+
+                if (index > 0 && index < screen.Length)
+                {
+                    screen[index] = color;
+                }
+
+                index += PixelWidth;
+                if (index > 0 && index < screen.Length)
+                {
+                    screen[index] = color;
+                }
+
+                index += PixelWidth;
+                if (index > 0 && index < screen.Length)
+                {
+                    screen[index] = color;
+                }
+            }
         }
 
         private void DebugZBuffer(Span<BGRA> screen, Span<RenderWindow> window)
