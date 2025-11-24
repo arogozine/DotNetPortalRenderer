@@ -1,19 +1,15 @@
 ﻿namespace RenderingEngine.Models
 {
-    public sealed class Line : IEquatable<Line>
+    internal sealed class Line : IEquatable<Line>
     {
         public required int Id { get; init; }
         public required Point PointA { get; set; }
         public required Point PointB { get; set; }
         public required int? SectorTo { get; set; }
 
-        public required string? UpperTexture { get; init; }
-        public required string? MiddleTexture { get; init; }
-        public required string? LowerTexture { get; init; }
-        public required int YOffset { get; init; }
-        public required int XOffset { get; init; }
-        public required bool LowerUnpegged { get; init; }
-        public required bool UpperUnpegged { get; init; }
+        public required TextureInfo? UpperTexture { get; set; }
+        public required TextureInfo? MiddleTexture { get; set; }
+        public required TextureInfo? LowerTexture { get; set; }
 
         public override bool Equals(object? obj)
         {

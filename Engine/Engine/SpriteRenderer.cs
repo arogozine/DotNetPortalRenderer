@@ -124,8 +124,8 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
             Sector sector = renderableWall.Sector;
             float sectorHeight = sector.Ceil - sector.Floor;
-            int yOffset = line.YOffset;
-            int xOffset = line.XOffset;
+            int yOffset = line.MiddleTexture!.YOffset;
+            int xOffset = line.MiddleTexture!.XOffset;
             byte lightLevel = sector.LightLevel;
 
             Span<RenderWindow> window = renderableWall.RenderWindow!;

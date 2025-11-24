@@ -36,7 +36,7 @@ namespace RenderingEngine.DoomMapLoader
         {
             if (wad.GetMapLump(mapName, LumpType.TextMap) is WadLump textMap)
             {
-                return ExtractDoomMap(textMap);
+                return ExtractDoomMap(textMap, mapName);
             }
             else
             {
@@ -339,16 +339,13 @@ namespace RenderingEngine.DoomMapLoader
                 float ceiling = sector.CeilingHeight;
                 float floor = sector.FloorHeight;
 
-                bool hasSkyBox = sector.CeilingTexture.StartsWith("F_SKY", StringComparison.OrdinalIgnoreCase);
-
                 MapSector mapSector = new MapSector
                 {
                     Id = i,
                     Ceiling = ceiling,
                     Floor = floor,
-                    FloorTexture = sector.FloorTexture,
-                    CeilingTexture = hasSkyBox ? "SKY1" : sector.CeilingTexture,
-                    HasSkybox = hasSkyBox,
+                    FloorTexture = new Models.TextureInfo { Name = sector.FloorTexture },
+                    CeilingTexture = new Models.TextureInfo { Name = sector.CeilingTexture },
                     LightLevel = sector.LightLevel
                 };
 
@@ -364,13 +361,9 @@ namespace RenderingEngine.DoomMapLoader
                         PointA = ToVector(vertex1),
                         PointB = ToVector(vertex2),
                         SectorTo = lineInfo.ParentSectorId,
-                        UpperTexture = lineInfo.UpperTexture,
-                        MiddleTexture = lineInfo.MiddleTexture,
-                        LowerTexture = lineInfo.LowerTexture,
-                        LowerUnpegged = (linedef.Flags & LinedefFlags.LowerUnpegged) == LinedefFlags.LowerUnpegged,
-                        UpperUnpegged = (linedef.Flags & LinedefFlags.UpperUnpegged) == LinedefFlags.UpperUnpegged,
-                        YOffset = lineInfo.YOffset,
-                        XOffset = lineInfo.XOffset
+                        UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffset, lineInfo.YOffset, linedef.Flags.HasFlag(LinedefFlags.UpperUnpegged)),
+                        MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffset, lineInfo.YOffset, false),
+                        LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffset, lineInfo.YOffset, linedef.Flags.HasFlag(LinedefFlags.LowerUnpegged))
                     };
 
                     mapSector.Walls.Add(line);
@@ -378,6 +371,8 @@ namespace RenderingEngine.DoomMapLoader
 
                 sectors.Add(mapSector);
             }
+
+            DetermineSkybox(sectors, mapName);
 
             float radians = MathF.PI * (player1Start.Value.Angle / 180f);
 
@@ -391,6 +386,70 @@ namespace RenderingEngine.DoomMapLoader
                 Sprites = sprites.ToArray(),
                 Sectors = sectors
             };
+        }
+
+        private static void DetermineSkybox(List<MapSector> sectors, string mapName)
+        {
+            // This seems to be hard coded,
+            // https://doomwiki.org/wiki/Sky
+            _ = int.TryParse(mapName.ToUpperInvariant().Replace("MAP", string.Empty), out int mapNumber);
+            string skyTexture = mapNumber <= 11 ? "SKY1" : mapNumber <= 20 ? "SKY2" : "SKY3";
+
+            const string placeholderSkyTextureName = "F_SKY";
+
+            foreach (MapSector sector in sectors)
+            {
+                bool hasSkyBox = sector.CeilingTexture.Name.StartsWith(placeholderSkyTextureName, StringComparison.OrdinalIgnoreCase);
+                bool hasFloorBox = sector.FloorTexture.Name.StartsWith(placeholderSkyTextureName, StringComparison.OrdinalIgnoreCase);
+
+                if (hasSkyBox)
+                {
+                    sector.CeilingTexture.Name = skyTexture;
+                    sector.CeilingTexture.RenderingOptions |= TextureRenderingOptions.Skybox;
+                }
+
+                if (hasFloorBox)
+                {
+                    sector.CeilingTexture.Name = skyTexture;
+                    sector.FloorTexture.RenderingOptions |= TextureRenderingOptions.Skybox;
+                }
+            }
+
+
+            foreach (MapSector sector in sectors)
+            {
+                bool hasSkyBox = sector.CeilingTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+
+                if (!hasSkyBox)
+                {
+                    continue;
+                }
+
+                foreach (Line wall in sector.Walls)
+                {
+                    if (wall.SectorTo is int sectorId)
+                    {
+                        MapSector neightbor = sectors[sectorId];
+
+                        if (neightbor.CeilingTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
+                        {
+                            wall.UpperTexture = new Models.TextureInfo
+                            {
+                                Name = skyTexture,
+                                RenderingOptions = TextureRenderingOptions.Skybox
+                            };
+                        }
+                        else
+                        {
+                            wall.UpperTexture ??= new Models.TextureInfo
+                            {
+                                Name = skyTexture,
+                                RenderingOptions = TextureRenderingOptions.Skybox
+                            };
+                        }
+                    }
+                }
+            }
         }
 
         private static List<Sprite> ExtractSprites(Span<Thing> things)
@@ -440,7 +499,7 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
-        private static Map ExtractDoomMap(WadLump textLump)
+        private static Map ExtractDoomMap(WadLump textLump, string mapName)
         {
             var map = WadLumpParser.ReadTextMap(textLump);
 
@@ -481,15 +540,13 @@ namespace RenderingEngine.DoomMapLoader
 
                 float ceiling = sector.HeightCeiling;
                 float floor = sector.HeightFloor;
-                bool hasSkyBox = sector.TextureCeiling.StartsWith("F_SKY", StringComparison.OrdinalIgnoreCase);
 
                 MapSector mapSector = new MapSector {
                     Id = i,
                     Ceiling = ceiling,
                     Floor = floor,
-                    FloorTexture = sector.TextureFloor,
-                    CeilingTexture = hasSkyBox ? "SKY1" : sector.TextureCeiling,
-                    HasSkybox = hasSkyBox,
+                    FloorTexture = new Models.TextureInfo { Name = sector.TextureFloor },
+                    CeilingTexture = new Models.TextureInfo { Name = sector.TextureCeiling },
                     LightLevel = sector.LightLevel
                 };
 
@@ -505,13 +562,9 @@ namespace RenderingEngine.DoomMapLoader
                         PointA = ToVector(vertex1),
                         PointB = ToVector(vertex2),
                         SectorTo = lineInfo.ParentSectorId,
-                        UpperTexture = lineInfo.UpperTexture,
-                        MiddleTexture = lineInfo.MiddleTexture,
-                        LowerTexture = lineInfo.LowerTexture,
-                        XOffset = lineInfo.XOffset,
-                        YOffset = lineInfo.YOffset,
-                        LowerUnpegged = lineInfo.LowerUnpegged,
-                        UpperUnpegged = lineInfo.UpperUnpegged
+                        UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffset, lineInfo.YOffset, lineInfo.LowerUnpegged),
+                        MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffset, lineInfo.YOffset, false),
+                        LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffset, lineInfo.YOffset, lineInfo.UpperUnpegged)
                     };
 
                     mapSector.Walls.Add(line);
@@ -519,6 +572,8 @@ namespace RenderingEngine.DoomMapLoader
 
                 sectors.Add(mapSector);
             }
+
+            DetermineSkybox(sectors, mapName);
 
             return new Map
             {
@@ -534,7 +589,7 @@ namespace RenderingEngine.DoomMapLoader
 
         internal sealed class LineInfo
         {
-            public required int ParentSectorId { get; init; }
+            public required int? ParentSectorId { get; init; }
             public required int LineDefId { get; init; }
             public required string? UpperTexture { get; init; }
             public required string? MiddleTexture { get; init; }
@@ -562,18 +617,18 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (leftDef?.Sector is int leftSector)
                 {
-                    AddSectorLineDef(leftSector, i, rightDef?.Sector ?? -1, leftDef, linedef);
+                    AddSectorLineDef(leftSector, i, rightDef?.Sector, leftDef, linedef);
                 }
 
                 if (rightDef?.Sector is int rightSector)
                 {
-                    AddSectorLineDef(rightSector, i, leftDef?.Sector ?? -1, rightDef, linedef);
+                    AddSectorLineDef(rightSector, i, leftDef?.Sector, rightDef, linedef);
                 }
             }
 
             return sectorToLineDefs;
 
-            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId, UdmfSidedef sidedef, UdmfLinedef linedef)
+            void AddSectorLineDef(int sectorId, int linedefId, int? parentSectorId, UdmfSidedef sidedef, UdmfLinedef linedef)
             {
                 if (!sectorToLineDefs.TryGetValue(sectorId, out List<LineInfo>? sectorLineDefs))
                 {
@@ -611,12 +666,12 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (leftDef is Sidedef left)
                 {
-                    AddSectorLineDef(left.Sector, i, rightDef is null ? -1 : rightDef.Value.Sector, ref left, ref linedef);
+                    AddSectorLineDef(left.Sector, i, rightDef?.Sector, ref left, ref linedef);
                 }
 
                 if (rightDef is Sidedef right)
                 {
-                    AddSectorLineDef(right.Sector, i, leftDef is null ? - 1: leftDef.Value.Sector, ref right, ref linedef);
+                    AddSectorLineDef(right.Sector, i, leftDef?.Sector, ref right, ref linedef);
                 }
             }
 
@@ -624,7 +679,7 @@ namespace RenderingEngine.DoomMapLoader
 
             return sectorToLineDefs;
 
-            void AddSectorLineDef(int sectorId, int linedefId, int parentSectorId, ref Sidedef sidedef, ref Linedef linedef)
+            void AddSectorLineDef(int sectorId, int linedefId, int? parentSectorId, ref Sidedef sidedef, ref Linedef linedef)
             {
                 if (!sectorToLineDefs.TryGetValue(sectorId, out List<LineInfo>? sectorLineDefs))
                 {
@@ -707,5 +762,15 @@ namespace RenderingEngine.DoomMapLoader
             return new Point(vertex.X, vertex.Y);
         }
 
+        [return: NotNullIfNotNull(nameof(name))]
+        private static Models.TextureInfo? ToTextureInfo(string? name, int xOffset, int yOffset, bool unpegged)
+        {
+            if (name is null)
+            {
+                return null;
+            }
+
+            return new Models.TextureInfo { Name = name, XOffset = xOffset, YOffset = yOffset, RenderingOptions = unpegged ? TextureRenderingOptions.FromBottom : TextureRenderingOptions.FromTop };
+        }
     }
 }

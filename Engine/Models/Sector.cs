@@ -4,9 +4,8 @@
     {
         public required int Id { get; internal set; }
 
-        public required bool HasSkybox { get; init; }
-        public required string FloorTexture { get; init; }
-        public required string CeilTexture { get; init; }
+        public required TextureInfo FloorTexture { get; init; }
+        public required TextureInfo CeilTexture { get; init; }
 
         public required float Floor { get; init; }
         public required float Ceil { get; init; }

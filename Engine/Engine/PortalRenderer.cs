@@ -251,14 +251,14 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors,
             Span<BGRA> screen)
         {
-            ref Texture groundTexture = ref TextureCache.GetTexture(sector.FloorTexture);
-            ref Texture ceilingTexture = ref TextureCache.GetTexture(sector.CeilTexture);
+            ref Texture groundTexture = ref TextureCache.GetTexture(sector.FloorTexture.Name);
+            ref Texture ceilingTexture = ref TextureCache.GetTexture(sector.CeilTexture.Name);
 
             if (Vector.IsHardwareAccelerated)
             {
                 RenderFloorVector(player, sector, screen, ref groundTexture);
 
-                if (sector.HasSkybox)
+                if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
                 {
                     RenderSkyboxVector(player, screen, ref ceilingTexture);
                 }
@@ -271,7 +271,7 @@ namespace RenderingEngine.Engine
             {
                 RenderFloor(player, sector, screen, ref groundTexture);
 
-                if (sector.HasSkybox)
+                if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
                 {
                     RenderSkybox(player, screen, ref ceilingTexture);
                 }
@@ -287,7 +287,7 @@ namespace RenderingEngine.Engine
                 Wall wall = renderableWall.Wall;
 
                 bool wallDrawn = wall.IsPortal ?
-                    DrawPortalWall(screen, sector, sectors, renderableWall) :
+                    DrawPortalWall(player, screen, sector, sectors, renderableWall) :
                     DrawBasicWall(screen, sector, renderableWall);
 
                 if (wallDrawn && wall.IsPortal)
@@ -444,14 +444,6 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            // temporary doom specific code
-            bool renderUpperWallAsSky = sector.HasSkybox && wall.IsPortal && wall.Line.UpperTexture is null;
-            if (renderUpperWallAsSky)
-            {
-                var n = sectors[wall.Neighbor];
-                renderUpperWallAsSky &= n.Ceil == n.Floor;
-            }
-
             int renderableFromX = wallFromX;
             int renderableToX = wallToX;
 
@@ -485,7 +477,7 @@ namespace RenderingEngine.Engine
                 int wallEndYInt = (int)wallEndY;
 
                 renderedAreaX.Calculated = true;
-                renderedAreaX.WallStart = renderUpperWallAsSky ? wallEndYInt : wallStartYInt;
+                renderedAreaX.WallStart = wallStartYInt;
                 renderedAreaX.WallEnd = wallEndYInt;
 
                 wallStartY += ceilDistIncr;

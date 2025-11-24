@@ -34,10 +34,10 @@ internal static class TextureCache
         for (int y = height; y > 0; y--)
         {
             int newY = 0;
+            int newX = height - y;
 
             for (int x = 0; x < width; x++)
             {
-                int newX = height - y;
                 int dstIndex = newY + newX;
                 Unsafe.Add(ref outputPtr, dstIndex) = inputPtr;
                 inputPtr = ref Unsafe.Add(ref inputPtr, 1);
@@ -67,6 +67,8 @@ internal static class TextureCache
 
         return ref CollectionsMarshal.GetValueRefOrNullRef(Cache, name);
     }
+
+    public static ref Texture GetTexture(TextureInfo? textureInfo) => ref GetTexture(textureInfo?.Name);
 
     public static ref Texture GetTexture(string? name)
     {

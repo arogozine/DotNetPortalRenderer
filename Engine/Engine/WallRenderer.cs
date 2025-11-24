@@ -34,11 +34,15 @@ namespace RenderingEngine.Engine
         }
 
         private bool DrawPortalWall(
+            PortalPlayerSnapshot player,
             Span<BGRA> screen,
             Sector sector,
             ReadOnlySpan<Sector> sectors,
             RenderableWall renderableWall)
         {
+            const float twoPi = 2 * MathF.PI;
+            const float oneOverTwoPi = 1f / (2 * MathF.PI);
+
             float sectorHeight = sector.Ceil - sector.Floor;
             var wall = renderableWall.Wall;
 
@@ -65,13 +69,15 @@ namespace RenderingEngine.Engine
             }
 
             int width = PixelWidth;
+            int height = PixelHeight;
             var line = wall.Line;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
-            int yOffset = line.YOffset;
-            int xOffset = line.XOffset;
-            bool lowerUnpegged = line.LowerUnpegged;
-            bool upperUnpegged = line.UpperUnpegged;
+            int yOffset = line.LowerTexture?.YOffset ?? 0;
+            int xOffset = line.LowerTexture?.XOffset ?? 0;
+            bool lowerUnpegged = line.LowerTexture?.RenderingOptions.HasFlag(TextureRenderingOptions.FromBottom) ?? false;
+            bool upperUnpegged = line.UpperTexture?.RenderingOptions.HasFlag(TextureRenderingOptions.FromBottom) ?? false;
+            bool upperSkybox = line.UpperTexture?.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox) ?? false;
 
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
 
@@ -98,13 +104,16 @@ namespace RenderingEngine.Engine
                     upperTextureStart = 0;
             }
 
-            ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperTexture.Rotated);
+            ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperSkybox ? upperTexture.Data : upperTexture.Rotated);
+            ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
 
             Span<uint> lowerTextureBuffer = this.columnA.AsSpan(..lowerTexture.Height);
             ref uint lowerTextureBufferPtr = ref MemoryMarshal.GetReference(lowerTextureBuffer);
 
             Span<uint> upperTextureBuffer = this.columnB.AsSpan(..upperTexture.Height);
             ref uint upperTextureBufferPtr = ref MemoryMarshal.GetReference(upperTextureBuffer);
+
+            ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
 
@@ -142,42 +151,87 @@ namespace RenderingEngine.Engine
 
                 if (ceilOffset != 0)
                 {
-                    ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, fromYClamped * width + x);
+                    int ceilingStart = fromYClamped * width + x;
+                    ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, ceilingStart);
                     ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, portalFromYClamped * width + x);
 
-                    // Calculate Upper  Texture Position
-                    int textureWidth = upperTexture.Height;
-                    int textureHeight = upperTexture.Width;
-                    int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
-                    float textureXPos = upperTextureStart - textureXIncr * (wallStartY - fromYClamped);
-                    textureXPos %= textureWidth;
-
-                    uint shaded = default;
-                    int textureXPosIOld = -1;
-
-                    CalculateAndCacheWallColumn(upperTextureBuffer, ref columnABufferIndex, ref upperTexturePtr, textureYPos, lightLevel);
-
-                    for (;
-                        Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
-                        textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
-                        )
+                    if (upperSkybox)
                     {
-                        int textureXPosI = (int)textureXPos;
+                        float viewAngle = player.Angle;
 
-                        if (textureXPosI != textureXPosIOld)
+                        int textureWidth = upperTexture.Width;
+                        int textureHeight = upperTexture.Height;
+
+                        int doubleTextureHeight = textureHeight * 2 - 1;
+                        float textureWidth4 = textureWidth * 4f * oneOverTwoPi;
+                        float yTextureIncr = (2f / height) * textureHeight;
+
+                        // calculate angle between 0 to 2 PI
+                        float angleX = Unsafe.Add(ref angleCachePtr, x) - viewAngle;
+                        if (angleX > twoPi)
                         {
-                            // wrap the texture
-                            if (textureXPosI >= textureWidth)
-                            {
-                                textureXPosI -= textureWidth;
-                                textureXPos -= textureWidth;
-                            }
-
-                            textureXPosIOld = textureXPosI;
-                            shaded = Unsafe.Add(ref upperTextureBufferPtr, textureXPosI);
+                            angleX = angleX - twoPi;
+                        }
+                        else if (angleX < 0f)
+                        {
+                            angleX = twoPi + angleX;
                         }
 
-                        screenIndexPtr = shaded;
+                        int texX = (int)(textureWidth4 * angleX) % textureWidth;
+
+                        float vScreen = (float)renderWindow.CeilingStart * yTextureIncr;
+
+                        ref uint textureColumnPtr = ref Unsafe.Add(ref upperTextureUintPtr, texX);
+
+
+                        for (;
+                            Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                             vScreen += yTextureIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
+                            )
+                        {
+                            int index = Math.Clamp((int)(vScreen), 0, doubleTextureHeight);
+                            index = index % textureHeight;
+                            index *= textureWidth;
+
+                            screenIndexPtr = Unsafe.Add(ref textureColumnPtr, index);
+                        }
+                    }
+                    else
+                    {
+                        // Calculate Upper  Texture Position
+                        int textureWidth = upperTexture.Height;
+                        int textureHeight = upperTexture.Width;
+                        int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
+                        float textureXPos = upperTextureStart - textureXIncr * (wallStartY - fromYClamped);
+                        textureXPos %= textureWidth;
+
+                        uint shaded = default;
+                        int textureXPosIOld = -1;
+
+                        CalculateAndCacheWallColumn(upperTextureBuffer, ref columnABufferIndex, ref upperTexturePtr, textureYPos, lightLevel);
+
+                        for (;
+                            Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                            textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
+                            )
+                        {
+                            int textureXPosI = (int)textureXPos;
+
+                            if (textureXPosI != textureXPosIOld)
+                            {
+                                // wrap the texture
+                                if (textureXPosI >= textureWidth)
+                                {
+                                    textureXPosI -= textureWidth;
+                                    textureXPos -= textureWidth;
+                                }
+
+                                textureXPosIOld = textureXPosI;
+                                shaded = Unsafe.Add(ref upperTextureBufferPtr, textureXPosI);
+                            }
+
+                            screenIndexPtr = shaded;
+                        }
                     }
                 }
 
@@ -248,10 +302,10 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
             float sectorHeight = sector.Ceil - sector.Floor;
-            int yOffset = line.YOffset;
-            int xOffset = line.XOffset;
-            bool lowerUnpegged = line.LowerUnpegged;
-            bool upperUnpegged = line.UpperUnpegged;
+            int yOffset = line.MiddleTexture?.YOffset ?? 0;
+            int xOffset = line.MiddleTexture?.XOffset ?? 0;
+            bool lowerUnpegged = line.MiddleTexture?.RenderingOptions.HasFlag(TextureRenderingOptions.FromBottom) ?? false;
+            bool upperUnpegged = line.MiddleTexture?.RenderingOptions.HasFlag(TextureRenderingOptions.FromBottom) ?? false;
             byte lightLevel = sector.LightLevel;
 
             float oneOverSectorHeight = 1f / sectorHeight;
