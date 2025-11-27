@@ -290,7 +290,7 @@ namespace DoomAssetLoader
             }
         }
 
-        private static string GetStringFromBytes(ReadOnlySpan<byte> asciiBytes)
+        private static string GetStringFromBytes(scoped ReadOnlySpan<byte> asciiBytes)
         {
             int index = asciiBytes.IndexOf((byte)0);
 

@@ -28,7 +28,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                renderWindow.Distance = CalculateDistance2(wall, cameraRay, t1, d2y, d2x);
+                renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
                 renderWindow.Calculated = false;
             }
         }
@@ -123,7 +123,7 @@ namespace RenderingEngine.Engine
 
                 if (renderWindow.FloorEnd < renderWindow.CeilingStart)
                 {
-                    renderWindow.Distance = CalculateDistance2(wall, cameraRay, t1, d2y, d2x);
+                    renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
                     renderWindow.Calculated = false;
                     continue;
                 }
@@ -147,7 +147,7 @@ namespace RenderingEngine.Engine
                 int portalFromYClamped = Math.Clamp((int)portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
                 int portalToYClamped = Math.Clamp((int)portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
 
-                float textureXIncr = (float)((sectorHeight - 1) / (wallEndY - wallStartY));
+                float textureXIncr = (float)(sectorHeight / (wallEndY - wallStartY));
 
                 if (ceilOffset != 0)
                 {
@@ -335,7 +335,7 @@ namespace RenderingEngine.Engine
 
                 if (renderWindow.FloorEnd < renderWindow.CeilingStart)
                 {
-                    renderWindow.Distance = CalculateDistance2(wall, cameraRay, t1, d2y, d2x);
+                    renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
                     renderWindow.Calculated = false;
                     continue;
                 }
@@ -353,7 +353,7 @@ namespace RenderingEngine.Engine
 
                 // texture is rotated - y position is x position in texture
                 int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
-                float textureXIncr = (sectorHeight - 1) / (wallEndY - wallStartY);
+                float textureXIncr = sectorHeight / (wallEndY - wallStartY);
                 float textureXPos = textueStart - textureXIncr * (wallStartY - clamptedFromY);
 
                 CalculateAndCacheWallColumn(columnBuffer, ref columnABufferIndex, ref wallTexturePtr, textureYPos, lightLevel);
@@ -488,7 +488,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float CalculateDistance2(Wall wall, float cameraRay, float t1, float d2y, float d2x)
+        private static float CalculateDistance2(float cameraRay, float t1, float d2y, float d2x)
         {
             float denominator = cameraRay * d2y - d2x;
             float fromToYDist = t1 / denominator;
