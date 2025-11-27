@@ -12,6 +12,8 @@ namespace RenderingEngine.Models
         public required int Offset { get; set; }
         public required Sector Sector { get; set; }
         public RenderWindow[]? RenderWindow { get; set; }
+        public Wall[]? ParentWalls { get; set; }
+
 
         public bool IsPortalWithMiddleTexture => Wall.IsPortal && Wall.Line.MiddleTexture != null;
     }

@@ -8,7 +8,7 @@ namespace RenderingEngine.Engine
             ParentWalls = [];
         }
 
-        public NeighborsToRender(RenderableWall renderableWall, Span<Wall> walls)
+        public NeighborsToRender(RenderableWall renderableWall, scoped Span<Wall> walls)
         {
             this.RenderableWall = renderableWall;
             ParentWalls = new Wall[walls.Length + 1];
@@ -19,6 +19,5 @@ namespace RenderingEngine.Engine
         public required int SectorId { get; init; }
         public RenderableWall? RenderableWall { get; init; }
         public Wall[] ParentWalls { get; }
-        public required int Depth { get; init; }
     }
 }

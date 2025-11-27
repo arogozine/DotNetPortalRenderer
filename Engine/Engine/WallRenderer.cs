@@ -149,6 +149,7 @@ namespace RenderingEngine.Engine
 
                 float textureXIncr = (float)(sectorHeight / (wallEndY - wallStartY));
 
+                // draw upper wall / upper skybox
                 if (ceilOffset != 0)
                 {
                     int ceilingStart = fromYClamped * width + x;
@@ -235,6 +236,7 @@ namespace RenderingEngine.Engine
                     }
                 }
 
+                // draw lower wall
                 if (floorOffset != 0)
                 {
                     ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * PixelWidth + x);
