@@ -81,6 +81,7 @@ namespace RenderingEngine.Engine
             }
 
             FilterOutNonIntersectingSprites(ref rotatedSprites);
+            AssignDistance(rotatedSprites);
 
             rotatedSprites.Sort(new SpriteComparer());
 
@@ -115,7 +116,35 @@ namespace RenderingEngine.Engine
 
         }
 
-        public List<Sprite> FilterOutSpritesOutsideDepth(SectorSprites sectorSprites, Span<Sprite> rotatedSprites, float[] depth, float[]? parentDepth)
+        private static void AssignDistance(scoped ReadOnlySpan<Sprite> sprites)
+        {
+            for (int j = 0; j < sprites.Length; j++)
+            {
+                Sprite sprite = sprites[j];
+                sprite.Distance = CalculateDistance(sprite);
+            }
+
+            static float CalculateDistance(Sprite sprite)
+            {
+                ref Texture texture = ref TextureCache.GetTextureOrNullRef(sprite.TextureName);
+
+                if (Unsafe.IsNullRef(ref texture))
+                {
+                    return default;
+                }
+
+                int textureHeight = texture.Width;
+
+                float ry = sprite.Rotated.Y;
+
+                float d2x = textureHeight;
+                float t1 = -ry * d2x;
+
+                return t1 / -textureHeight;
+            }
+        }
+
+        public List<Sprite> FilterOutSpritesOutsideDepth(SectorSprites sectorSprites, scoped Span<Sprite> rotatedSprites, float[] depth, float[]? parentDepth)
         {
             List<Sprite> sprites = [];
 
@@ -123,7 +152,7 @@ namespace RenderingEngine.Engine
             {
                 Sprite sprite = rotatedSprites[i];
 
-                if (WithinDepth(sprite, sectorSprites))
+                if (WithinDepth(sprite))
                 {
                     sprites.Add(sprite);
                 }
@@ -132,25 +161,9 @@ namespace RenderingEngine.Engine
             return sprites;
 
 
-            bool WithinDepth(Sprite sprite, SectorSprites sectorSprites)
+            bool WithinDepth(Sprite sprite)
             {
-                ref Texture texture = ref TextureCache.GetTextureOrNullRef(sprite.TextureName);
-
-                if (Unsafe.IsNullRef(ref texture))
-                {
-                    return false;
-                }
-
-                //int textureWidth = texture.Height;
-                int textureHeight = texture.Width;
-
-                //float rx1 = sprite.R1.X;
-                //float rx2 = sprite.R2.X;
-                float ry = sprite.Rotated.Y;
-
-                float d2x = textureHeight;
-                float t1 = -ry * d2x;
-                float fromToYDist = t1 / -textureHeight;
+                float fromToYDist = sprite.Distance;
 
                 for (int x = sprite.XLeft; x <= sprite.XRight; x++)
                 {
@@ -255,7 +268,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static bool IsPointInPolygon(ReadOnlySpan<Wall> walls, Point point)
+        public static bool IsPointInPolygon(scoped ReadOnlySpan<Wall> walls, Point point)
         {
             float x = point.X;
             float y = point.Y;

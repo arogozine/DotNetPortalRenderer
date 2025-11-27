@@ -100,8 +100,11 @@ namespace RenderingEngine.Engine
             }
         }
 
+        private sealed record RenderableAreaAndZBuffer(int[] CeilingStart, int[] FloorEnd, float[] ZBuffer);
+
         private readonly List<RenderableSprite> transparentWalls = [];
         private readonly Queue<NeighborsToRender> sectorRenderQueue = [];
+        private readonly RenderableAreaAndZBuffer[] spriteRenderableAreaCache = new RenderableAreaAndZBuffer[EngineConstants.MaxRenderDepth];
 
         public void DrawScreen(Span<BGRA> screen, PortalPlayerSnapshot player)
         {
@@ -116,15 +119,28 @@ namespace RenderingEngine.Engine
 
             int renderDepth = 0;
 
-            float[][] renderDepthBuffer = new float[EngineConstants.MaxRenderDepth][];
-
             do
             {
-                // 1. Cache current renderable area for sprite rendering
-                int[] ceilingStart = new int[PixelWidth];
-                int[] floorEnd = new int[PixelWidth];
-                float[] zBuffer = new float[PixelWidth];
+                // 0. Cache current renderable area for sprite rendering
+                int[] ceilingStart;
+                int[] floorEnd;
+                float[] zBuffer;
 
+                if (spriteRenderableAreaCache[renderDepth] is RenderableAreaAndZBuffer spriteCache)
+                {
+                    ceilingStart = spriteCache.CeilingStart;
+                    floorEnd = spriteCache.FloorEnd;
+                    zBuffer = spriteCache.ZBuffer;
+                }
+                else
+                {
+                    ceilingStart = new int[PixelWidth];
+                    floorEnd = new int[PixelWidth];
+                    zBuffer = new float[PixelWidth];
+                    spriteRenderableAreaCache[renderDepth] = new RenderableAreaAndZBuffer(ceilingStart, floorEnd, zBuffer);
+                }
+
+                // 1. Copy over the renderable area for sprite rendering
                 for (int i = 0; i < RenderWindowHelper.RenderWindow.Length; i++)
                 {
                     ref RenderWindow from = ref RenderWindowHelper.RenderWindow[i];
@@ -153,10 +169,7 @@ namespace RenderingEngine.Engine
                     RenderDepth = renderDepth
                 });
 
-                // 5. Add zbuffer for current depth to lookup
-                renderDepthBuffer[renderDepth] = zBuffer;
-
-                // 6. We render transparent walls after all the walls were rendered
+                // 5. We render transparent walls after all the walls were rendered
                 RenderWindow[]? renderableArea = null;
                 foreach (RenderableWall renderableWall in neighborsForDepth)
                 {
@@ -193,7 +206,7 @@ namespace RenderingEngine.Engine
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxRenderDepth);
 
-            RenderSpritesAndTransparentWalls(screen, renderDepthBuffer, player);
+            RenderSpritesAndTransparentWalls(screen, player);
 
             transparentWalls.Clear();
             sectorRenderQueue.Clear();
@@ -239,7 +252,7 @@ namespace RenderingEngine.Engine
             return neighborsForDepth;
         }
 
-        public void RenderSpritesAndTransparentWalls(Span<BGRA> screen, float[][] renderDepthBuffer, PortalPlayerSnapshot player)
+        public void RenderSpritesAndTransparentWalls(Span<BGRA> screen, PortalPlayerSnapshot player)
         {
             ReadOnlySpan<Sector> sectors = Sectors;
 
@@ -259,7 +272,7 @@ namespace RenderingEngine.Engine
                 {
                     
                     float[] currentDistance = sectorSprites.Distance;
-                    float[]? nextDistance = sectorSprites.RenderDepth > 1 ? renderDepthBuffer[sectorSprites.RenderDepth - 1] : null;
+                    float[]? nextDistance = sectorSprites.RenderDepth > 1 ? spriteRenderableAreaCache[sectorSprites.RenderDepth - 1].ZBuffer : null;
 
                     List<Sprite> sprites = this.SpriteHelper.FilterOutSpritesOutsideDepth(sectorSprites, playerVisibleSprites, currentDistance, nextDistance);
 

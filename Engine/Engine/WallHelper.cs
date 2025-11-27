@@ -123,7 +123,7 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        public static Span<Range> BreakUpIntoBunches(Span<Wall> rotatedWalls)
+        public static Span<Range> BreakUpIntoBunches(scoped Span<Wall> rotatedWalls)
         {
             // a bunch is a set of connected walls
             // we figure out the range of each bunch here
@@ -187,7 +187,7 @@ namespace RenderingEngine.Engine
             walls = walls[..j];
         }
 
-        public void CalculateWallPlanes(Span<Wall> walls, float yCeil, float yFloor, float yaw)
+        public void CalculateWallPlanes(scoped Span<Wall> walls, float yCeil, float yFloor, float yaw)
         {
             for (int i = 0; i < walls.Length; i++)
             {

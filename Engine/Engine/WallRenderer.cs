@@ -207,16 +207,16 @@ namespace RenderingEngine.Engine
                         textureXPos %= textureWidth;
 
                         uint shaded = default;
-                        int textureXPosIOld = -1;
 
                         CalculateAndCacheWallColumn(upperTextureBuffer, ref columnABufferIndex, ref upperTexturePtr, textureYPos, lightLevel);
 
-                        for (;
+                        for (
+                            int textureXPosI = 0, textureXPosIOld = -1;
                             Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
                             textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
                             )
                         {
-                            int textureXPosI = (int)textureXPos;
+                            textureXPosI = (int)textureXPos;
 
                             if (textureXPosI != textureXPosIOld)
                             {
@@ -249,13 +249,11 @@ namespace RenderingEngine.Engine
                     textureXPos %= textureWidth;
 
                     uint shaded = default;
-                    int textureXPosIOld = -1;
 
                     CalculateAndCacheWallColumn(lowerTextureBuffer, ref columnBBufferIndex, ref lowerTexturePtr, textureYPos, lightLevel);
 
-                    int textureXPosI = -1;
-
-                    for (;
+                    for (
+                        int textureXPosI = 0, textureXPosIOld = -1;
                         Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
                         textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
                         )
@@ -362,8 +360,8 @@ namespace RenderingEngine.Engine
 
                 textureXPos %= textureWidth; // wrap the texture
 
-                int textureXPosI = -1;
-                int textureXPosIOld = -1;
+                int textureXPosI = (int)textureXPos;
+                int textureXPosIOld = textureXPosI;
 
                 for (uint shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
                      Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
@@ -380,6 +378,7 @@ namespace RenderingEngine.Engine
                             textureXPos -= textureWidth;
                         }
 
+                        textureXPosIOld = textureXPosI;
                         shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
                     }
 
@@ -398,7 +397,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CalculateAndCacheWallColumn(Span<uint> buffer, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, byte brightness)
+        private static void CalculateAndCacheWallColumn(scoped Span<uint> buffer, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, byte brightness)
         {
             // reuse the cached column
             if (bufferIndex == textureYPos)

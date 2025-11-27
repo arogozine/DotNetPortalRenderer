@@ -85,7 +85,7 @@ namespace RenderingEngine.Engine
 
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel);
 
-                int textureXPosI = -1;
+                int textureXPosI = 0;
 
                 for (uint shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
                      Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
@@ -247,7 +247,7 @@ namespace RenderingEngine.Engine
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CalculateSprite(Span<uint> spriteTexturePtr, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, byte brightness)
+        private static void CalculateSprite(scoped Span<uint> spriteTexturePtr, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, byte brightness)
         {
             // reuse the cached column
             if (bufferIndex == textureYPos)

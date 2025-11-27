@@ -21,6 +21,7 @@
         public int YLeftFloor { get; set; }
         public int YRightCeil { get; set; }
         public int YRightFloor { get; set; }
+        public float Distance { get; set; }
 
     }
 }

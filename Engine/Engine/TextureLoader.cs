@@ -24,7 +24,7 @@ internal static class TextureCache
         Cache[name] = new Texture(width, height, data, rotated);
     }
 
-    private static unsafe BGRA[] RotateTexture(int height, int width, Span<BGRA> input)
+    private static unsafe BGRA[] RotateTexture(int height, int width, scoped Span<BGRA> input)
     {
         // build engine rotates textures for faster access or something like that
         BGRA[] output = new BGRA[height * width];
