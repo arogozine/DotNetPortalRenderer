@@ -66,6 +66,24 @@ namespace RenderingEngine.Engine
             FilterOutSpritesBehindPlayer(ref rotatedSprites);
             AssignSectors(rotatedSprites, sectors);
 
+            float yaw = player.Yaw;
+            float pz = player.Z;
+
+            for (int i = 0; i < rotatedSprites.Length; i++)
+            {
+                Sprite sprite = rotatedSprites[i];
+
+                Sector sector = sectors[sprite.SectorId];
+                float yCeil = sector.Ceil - pz;
+                float yFloor = sector.Floor - pz;
+
+                CalculateSpritePlane(sprite, yCeil, yFloor, yaw);
+            }
+
+            FilterOutNonIntersectingSprites(ref rotatedSprites);
+
+            rotatedSprites.Sort(new SpriteComparer());
+
             return rotatedSprites;
         }
 
@@ -97,43 +115,52 @@ namespace RenderingEngine.Engine
 
         }
 
-        public List<Sprite> FilterOutSpritesOutsideSector(PortalPlayerSnapshot player, SectorSprites sectorSprites, Span<Sprite> rotatedSprites)
+        public List<Sprite> FilterOutSpritesOutsideDepth(SectorSprites sectorSprites, Span<Sprite> rotatedSprites, float[] depth, float[]? parentDepth)
         {
-            Sector sector = sectorSprites.Sector;
-            float yaw = player.Yaw;
-            float pz = player.Z;
-            float yCeil = sector.Ceil - pz;
-            float yFloor = sector.Floor - pz;
-
             List<Sprite> sprites = [];
 
             for (int i = 0; i < rotatedSprites.Length; i++)
             {
                 Sprite sprite = rotatedSprites[i];
 
-                if (sector.Id == sprite.SectorId)
+                if (WithinDepth(sprite, sectorSprites))
                 {
-                    CalculateSpritePlane(sprite, yCeil, yFloor, yaw);
-
-                    if (IntersectsView(sprite))
-                    {
-                        sprites.Add(sprite);
-                    }
+                    sprites.Add(sprite);
                 }
             }
 
-            sprites.Sort(new SpriteComparer());
-
             return sprites;
 
-            bool IntersectsView(Sprite s)
+
+            bool WithinDepth(Sprite sprite, SectorSprites sectorSprites)
             {
-                if (!s.IntersectsView)
+                ref Texture texture = ref TextureCache.GetTextureOrNullRef(sprite.TextureName);
+
+                if (Unsafe.IsNullRef(ref texture))
                 {
                     return false;
                 }
 
-                return ((sectorSprites.XLeft <= s.XLeft) && (s.XLeft <= sectorSprites.XRight)) || ((sectorSprites.XLeft <= s.XRight) && (s.XRight <= sectorSprites.XRight));
+                //int textureWidth = texture.Height;
+                int textureHeight = texture.Width;
+
+                //float rx1 = sprite.R1.X;
+                //float rx2 = sprite.R2.X;
+                float ry = sprite.Rotated.Y;
+
+                float d2x = textureHeight;
+                float t1 = -ry * d2x;
+                float fromToYDist = t1 / -textureHeight;
+
+                for (int x = sprite.XLeft; x <= sprite.XRight; x++)
+                {
+                    if (depth[x] >= fromToYDist && (parentDepth == null || parentDepth[x] <= fromToYDist))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
             }
         }
 
@@ -193,6 +220,39 @@ namespace RenderingEngine.Engine
             }
 
             rotatedSprites = rotatedSprites[..j];
+        }
+
+        public void FilterOutNonIntersectingSprites(ref Span<Sprite> rotatedSprites)
+        {
+            // in-place sort out sprites and trim the span
+
+            int j = 0;
+
+            for (int i = 0; i < rotatedSprites.Length; i++)
+            {
+                Sprite sprite = rotatedSprites[i];
+
+                if (!IntersectsView(sprite))
+                {
+                    continue;
+                }
+
+                rotatedSprites[j] = sprite;
+                j++;
+            }
+
+            rotatedSprites = rotatedSprites[..j];
+
+
+            bool IntersectsView(Sprite s)
+            {
+                if (!s.IntersectsView)
+                {
+                    return false;
+                }
+
+                return ((0 <= s.XLeft) && (s.XLeft <= this.width)) || ((0 <= s.XRight) && (s.XRight <= this.width));
+            }
         }
 
         public static bool IsPointInPolygon(ReadOnlySpan<Wall> walls, Point point)

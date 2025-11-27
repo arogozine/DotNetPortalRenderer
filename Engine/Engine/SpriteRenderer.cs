@@ -4,7 +4,7 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        private void DrawSprite(Span<BGRA> screen, Sprite sprite, SectorSprites renderableWall)
+        private void DrawSprite(Span<BGRA> screen, ReadOnlySpan<Sector> sectors, Sprite sprite, SectorSprites renderableWall)
         {
             ref Texture texture = ref TextureCache.GetTextureOrNullRef(sprite.TextureName);
 
@@ -23,7 +23,7 @@ namespace RenderingEngine.Engine
 
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
 
-            Sector sector = renderableWall.Sector;
+            Sector sector = sectors[sprite.SectorId];
             byte lightLevel = sector.LightLevel;
 
             float rx1 = sprite.R1.X;
@@ -65,7 +65,7 @@ namespace RenderingEngine.Engine
                    continue;
                 }
 
-                if (distance[x] < fromToYDist && distance[x] != 0)
+                if (distance[x] < fromToYDist)
                 {
                    continue;
                 }
