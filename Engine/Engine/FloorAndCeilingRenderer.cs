@@ -153,8 +153,10 @@ namespace RenderingEngine.Engine
 
                 for (int j = 0; j < Vector<int>.Count; j++)
                 {
-                    Unsafe.Add(ref incramentVectorPtr, j) = (halfHeightInt - floorFromY - j) * oneOverHeight + yaw;
+                    Unsafe.Add(ref incramentVectorPtr, j) = halfHeightInt - floorFromY - j;
                 }
+
+                incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
 
                 int rem = (floorToY - floorFromY) % Vector<int>.Count;
                 floorToY -= rem;
@@ -545,11 +547,11 @@ namespace RenderingEngine.Engine
                 int screenIndex = floorFromY * width + x;
                 float xMapPosMultiplier = (widthDiv2 - x) * xPosIncr;
                 Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
-
                 for (int j = 0; j < Vector<int>.Count; j++)
                 {
-                    Unsafe.Add(ref incramentVectorPtr, j) = (halfHeightInt - floorFromY - j) * oneOvervFov + yaw;
+                    Unsafe.Add(ref incramentVectorPtr, j) = halfHeightInt - floorFromY - j;
                 }
+                incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOvervFovV, yawV);
 
                 int rem = (floorToY - floorFromY) % Vector<int>.Count;
                 floorToY -= rem;

@@ -256,7 +256,7 @@ namespace RenderingEngine.Engine
         {
             ReadOnlySpan<Sector> sectors = Sectors;
 
-            Span<Sprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites, Sectors);
+            Span<Sprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites, sectors);
 
             // render transparent walls and sprites
             Span<RenderableSprite> transparentWallsSpan = CollectionsMarshal.AsSpan(transparentWalls);
@@ -270,11 +270,10 @@ namespace RenderingEngine.Engine
                 }
                 else if (renderableWall is SectorSprites sectorSprites)
                 {
-                    
                     float[] currentDistance = sectorSprites.Distance;
                     float[]? nextDistance = sectorSprites.RenderDepth > 1 ? spriteRenderableAreaCache[sectorSprites.RenderDepth - 1].ZBuffer : null;
 
-                    List<Sprite> sprites = this.SpriteHelper.FilterOutSpritesOutsideDepth(sectorSprites, playerVisibleSprites, currentDistance, nextDistance);
+                    List<Sprite> sprites = this.SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites, currentDistance, nextDistance);
 
                     foreach (Sprite s in sprites)
                     {

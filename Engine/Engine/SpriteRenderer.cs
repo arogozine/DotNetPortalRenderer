@@ -45,7 +45,7 @@ namespace RenderingEngine.Engine
 
             float d2x = textureHeight;
             float t1 = -ry * d2x;
-            float fromToYDist = t1 / -textureHeight;
+            float fromToYDist = sprite.Distance;
 
             float cameraRay = -1f * EngineConstants.CameraPlaneX;
             cameraRay += cameraWidthIncr * spriteFromX;
@@ -54,6 +54,8 @@ namespace RenderingEngine.Engine
 
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
             ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
+
+            float textureXIncr = (((float)textureWidth) / (spriteEndY - spriteStartY));
 
             for (int x = spriteFromX; x < spriteToX; x++, cameraRay += cameraWidthIncr)
             {
@@ -70,7 +72,7 @@ namespace RenderingEngine.Engine
                    continue;
                 }
 
-                int textureXLocation = CalculateTextureXPosition(sprite, cameraRay, t1, d2x);
+                int textureXLocation = CalculateTextureXPosition(cameraRay, t1, d2x);
 
                 int clamptedFromY = Math.Clamp(spriteStartY, ceilingStart, floorEnd);
                 int clamptedToY = Math.Clamp(spriteEndY, ceilingStart, floorEnd);
@@ -79,7 +81,6 @@ namespace RenderingEngine.Engine
                 ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
 
                 // Calculate Middle Texture Position
-                float textureXIncr = (((float)textureWidth) / (spriteEndY - spriteStartY));
                 int textureYPos = textureXLocation * textureWidth;
                 float textureXPos = (clamptedFromY - spriteStartY) * textureXIncr;
 
@@ -101,7 +102,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            int CalculateTextureXPosition(Sprite wall, float cameraRay, float t1, float d2x)
+            int CalculateTextureXPosition(float cameraRay, float t1, float d2x)
             {
                 float fromToXDist = fromToYDist * cameraRay;
                 float distX = rx1 - fromToXDist;
@@ -209,7 +210,7 @@ namespace RenderingEngine.Engine
                 // Calculate Middle Texture Position
                 float textureXIncr = (float)(sectorHeight / (wallEndY - wallStartY));
                 int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
-                float textureXPos = textureWidth + textureXIncr * offset;
+                float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, offset, textureWidth);
 
                 uint shaded = default;
                 int textureXPosIOld = -1;
@@ -260,7 +261,7 @@ namespace RenderingEngine.Engine
             bufferIndex = textureYPos;
 
             // avoid calculating if too far away (all black)
-            if (brightness <= 0)
+            if (brightness == byte.MinValue)
             {
                 spriteTexturePtr.Fill(Alpha);
                 return;
@@ -288,8 +289,6 @@ namespace RenderingEngine.Engine
 
                 columnPtr = ref Unsafe.Add(ref columnPtr, 1);
             }
-
-            return;
         }
     }
 }

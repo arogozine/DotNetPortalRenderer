@@ -2,7 +2,6 @@
 using RenderingEngine.DoomMapLoader;
 using RenderingEngine.Engine;
 using RenderingEngine.Models;
-using System.Text.Json;
 
 namespace RenderingEngine.MapGen
 {
@@ -102,6 +101,8 @@ namespace RenderingEngine.MapGen
             }
 
             var sectors = map.Sectors.Select(ParseMapSector).ToArray();
+            
+            SpriteHelper.AssignSectors(map.Sprites, sectors);
 
             return (map.Player, sectors, map.Sprites);
         }

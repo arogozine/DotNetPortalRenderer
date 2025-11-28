@@ -59,12 +59,11 @@ namespace RenderingEngine.Engine
             this.cameraPlaneX = cameraPlaneX;
         }
 
-        public Span<Sprite> GetSpritesForPlayer(PortalPlayerSnapshot player, Sprite[] sprites, Sector[] sectors)
+        public Span<Sprite> GetSpritesForPlayer(PortalPlayerSnapshot player, Span<Sprite> sprites, ReadOnlySpan<Sector> sectors)
         {
             Span<Sprite> rotatedSprites = RotateSprites(sprites, player);
 
             FilterOutSpritesBehindPlayer(ref rotatedSprites);
-            AssignSectors(rotatedSprites, sectors);
 
             float yaw = player.Yaw;
             float pz = player.Z;
@@ -88,7 +87,7 @@ namespace RenderingEngine.Engine
             return rotatedSprites;
         }
 
-        private static void AssignSectors(ReadOnlySpan<Sprite> sprites, ReadOnlySpan<Sector> sectors)
+        public static void AssignSectors(scoped ReadOnlySpan<Sprite> sprites, scoped ReadOnlySpan<Sector> sectors)
         {
             for (int j = 0; j < sprites.Length; j++)
             {
@@ -144,7 +143,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public List<Sprite> FilterOutSpritesOutsideDepth(SectorSprites sectorSprites, scoped Span<Sprite> rotatedSprites, float[] depth, float[]? parentDepth)
+        public List<Sprite> FilterOutSpritesOutsideDepth(scoped Span<Sprite> rotatedSprites, float[] depth, float[]? parentDepth)
         {
             List<Sprite> sprites = [];
 
@@ -177,7 +176,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static Span<Sprite> RotateSprites(Sprite[] sprites, PortalPlayerSnapshot player)
+        public static Span<Sprite> RotateSprites(scoped ReadOnlySpan<Sprite> sprites, PortalPlayerSnapshot player)
         {
             var rotatedSprites = new Sprite[sprites.Length];
 
@@ -205,7 +204,8 @@ namespace RenderingEngine.Engine
                     Angle = s.Angle,
                     Location = s.Location,
                     Rotated = new Point(rx1, ry1),
-                    TextureName = s.TextureName
+                    TextureName = s.TextureName,
+                    SectorId = s.SectorId
                 };
 
             }

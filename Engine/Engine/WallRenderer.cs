@@ -245,7 +245,7 @@ namespace RenderingEngine.Engine
                     int textureWidth = lowerTexture.Height;
                     int textureHeight = lowerTexture.Width;
                     int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
-                    float textureXPos = lowerTextureStart + textureXIncr * (portalToYClamped - portalToY);
+                    float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, (portalToYClamped - portalToY), lowerTextureStart);
                     textureXPos %= textureWidth;
 
                     uint shaded = default;
@@ -410,7 +410,7 @@ namespace RenderingEngine.Engine
             bufferIndex = textureYPos;
 
             // avoid calculating if too far away (all black)
-            if (brightness <= 0)
+            if (brightness == byte.MinValue)
             {
                 buffer.Fill(Alpha);
                 return;
