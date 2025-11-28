@@ -64,6 +64,7 @@ namespace RenderingEngine.Engine
             Span<Sprite> rotatedSprites = RotateSprites(sprites, player);
 
             FilterOutSpritesBehindPlayer(ref rotatedSprites);
+            FilterOutSpritesWithoutSector(ref rotatedSprites);
 
             float yaw = player.Yaw;
             float pz = player.Z;
@@ -106,7 +107,9 @@ namespace RenderingEngine.Engine
 
                 if (potentialSectors.Count == 0)
                 {
-                    throw new Exception();
+                    sprite.SectorId = -1;
+                    continue;
+                    //throw new Exception();
                 }
 
                 potentialSectors.Sort(new SectorInSectorComparer());
@@ -224,6 +227,28 @@ namespace RenderingEngine.Engine
                 Sprite sprite = rotatedSprites[i];
 
                 if (sprite.Rotated.Y <= 0f)
+                {
+                    continue;
+                }
+
+                rotatedSprites[j] = sprite;
+                j++;
+            }
+
+            rotatedSprites = rotatedSprites[..j];
+        }
+
+        public static void FilterOutSpritesWithoutSector(ref Span<Sprite> rotatedSprites)
+        {
+            // in-place sort out sprites and trim the span
+
+            int j = 0;
+
+            for (int i = 0; i < rotatedSprites.Length; i++)
+            {
+                Sprite sprite = rotatedSprites[i];
+
+                if (sprite.SectorId == -1)
                 {
                     continue;
                 }

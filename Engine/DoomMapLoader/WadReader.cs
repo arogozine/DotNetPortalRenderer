@@ -134,24 +134,19 @@ namespace RenderingEngine.DoomMapLoader
 
                     foreach (Post post in column)
                     {
-                        for (int s = 0; s < post.Length; s++)
-                        {
-                            int y = originY + post.TopDelta;
+                        int y = originY + post.TopDelta;
 
-                            for (int i = 0; i < post.Length; i++)
-                            {                                
-                                byte paletteIndex = post.Data[i];
-                                int destY = y + i;
+                        for (int i = 0; i < post.Length; i++)
+                        {                                
+                            byte paletteIndex = post.Data[i];
+                            int destY = y + i;
 
-                                BGRA color = palette[paletteIndex];
+                            BGRA color = palette[paletteIndex];
 
-                                int index = x + (destY) * header.Width;
+                            int index = x + (destY) * header.Width;
 
-                                Unsafe.Add(ref textureRef, index) = color;
-                            }
-
+                            Unsafe.Add(ref textureRef, index) = color;
                         }
-
                     }
 
                 }
@@ -225,26 +220,22 @@ namespace RenderingEngine.DoomMapLoader
 
                         foreach (Post post in column)
                         {
-                            for (int s = 0; s < post.Length; s++)
+                            int y = originY + post.TopDelta;
+
+                            for (int i = 0; i < post.Length; i++)
                             {
-                                int y = originY + post.TopDelta;
-
-                                for (int i = 0; i < post.Length; i++)
+                                if (y + i >= 0 && y + i < height)
                                 {
-                                    if (y + i >= 0 && y + i < height)
-                                    {
-                                        byte paletteIndex = post.Data[i];
+                                    byte paletteIndex = post.Data[i];
 
-                                        int destY = y + i;
+                                    int destY = y + i;
 
-                                        BGRA color = palette[paletteIndex];
+                                    BGRA color = palette[paletteIndex];
 
-                                        int index = x + (destY) * width;
+                                    int index = x + (destY) * width;
 
-                                        Unsafe.Add(ref textureRef, index) = color;
-                                    }
+                                    Unsafe.Add(ref textureRef, index) = color;
                                 }
-
                             }
 
                         }
@@ -452,6 +443,56 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
+        private static List<Sprite> ExtractSprites(ReadOnlySpan<UdmfThing> things)
+        {
+            List<Sprite> sprites = new List<Sprite>(things.Length);
+
+            for (int i = 0; i < things.Length; i++)
+            {
+                UdmfThing thing = things[i];
+
+                switch ((ThingType)thing.Type)
+                {
+                    case ThingType.DeathmatchStart:
+                    case ThingType.TeleportLanding:
+                    case ThingType.SpawnSpot:
+                    case ThingType.MonsterSpawner:
+                        continue;
+                }
+
+                sprites.Add(new Sprite
+                {
+                    Angle = thing.Angle,
+                    Location = new Point(thing.X, thing.Y),
+                    TextureName = GetTextureName((ThingType)thing.Type)
+                });
+            }
+
+            return sprites;
+
+            static string GetTextureName(ThingType type)
+            {
+                DescriptionAttribute descriptionAttribute = (typeof(ThingType).GetField(type.ToString()) ?? typeof(ThingType).GetField(nameof(ThingType.RadiationSuit)))
+                    !.GetCustomAttribute<DescriptionAttribute>()!;
+
+                string name = descriptionAttribute.Description;
+
+                if (TextureCache.TextureExists(name))
+                {
+                    return name;
+                }
+
+                name = descriptionAttribute.Description + "A0";
+
+                if (TextureCache.TextureExists(name))
+                {
+                    return name;
+                }
+
+                return descriptionAttribute.Description + "A1";
+            }
+        }
+
         private static List<Sprite> ExtractSprites(Span<Thing> things)
         {
             List<Sprite> sprites = new List<Sprite>(things.Length);
@@ -507,6 +548,7 @@ namespace RenderingEngine.DoomMapLoader
             ReadOnlySpan<UdmfLinedef> lineDefs = CollectionsMarshal.AsSpan(map.Linedefs);
             ReadOnlySpan<UdmfVertex> verticies = CollectionsMarshal.AsSpan(map.Vertices);
             ReadOnlySpan<UdmfThing> things = CollectionsMarshal.AsSpan(map.Things);
+            List<Sprite> sprites = ExtractSprites(things);
 
             UdmfThing? player1Start = null;
             for (int i = 0; i < things.Length; i++)
@@ -582,7 +624,7 @@ namespace RenderingEngine.DoomMapLoader
                     Angle = player1Start.Angle,
                     Where = (player1Start.X, player1Start.Y, 0f)
                 },
-                Sprites = [],
+                Sprites = sprites.ToArray(),
                 Sectors = sectors
             };
         }

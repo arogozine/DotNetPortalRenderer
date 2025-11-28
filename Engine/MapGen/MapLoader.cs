@@ -100,7 +100,7 @@ namespace RenderingEngine.MapGen
                 sector.Walls = SortMapWalls(sector.Walls);
             }
 
-            var sectors = map.Sectors.Select(ParseMapSector).ToArray();
+            Sector[] sectors = map.Sectors.Select(ParseMapSector).ToArray();
             
             SpriteHelper.AssignSectors(map.Sprites, sectors);
 
