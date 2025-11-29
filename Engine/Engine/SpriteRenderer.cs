@@ -127,6 +127,7 @@ namespace RenderingEngine.Engine
             float sectorHeight = sector.Ceil - sector.Floor;
             int yOffset = line.MiddleTexture!.YOffset;
             int xOffset = line.MiddleTexture!.XOffset;
+            bool renderFromTop = line.MiddleTexture.RenderingOptions.HasFlag(TextureRenderingOptions.FromTop);
             byte lightLevel = sector.LightLevel;
 
             Span<RenderWindow> window = renderableWall.RenderWindow!;
@@ -198,12 +199,15 @@ namespace RenderingEngine.Engine
                 float portalFromY = wallStartY - ceilPixelOffset;
                 float portalToY = wallEndY - floorPixelOffset;
 
-                float textureStartY = portalToY - texture.Height * pixelsPerUnit;
-
                 // clamp to view window
                 int portalFromYClamped = Math.Clamp((int)portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
                 int portalToYClamped = Math.Clamp((int)portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+
+                float textureStartY = renderFromTop ? portalFromY : (portalToY - texture.Height * pixelsPerUnit);
+                float textureEndY = renderFromTop ? (portalFromY + texture.Height * pixelsPerUnit) : portalToY;
+
                 int textureStartYClamped = Math.Clamp((int)textureStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int textureEndYClamped = Math.Clamp((int)textureEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);
 
                 float offset = textureStartYClamped - textureStartY;
 
@@ -218,7 +222,7 @@ namespace RenderingEngine.Engine
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * PixelWidth + x);
-                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, portalToYClamped * PixelWidth + x);
+                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, textureEndYClamped * PixelWidth + x);
 
                 for (;Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
                     textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth))

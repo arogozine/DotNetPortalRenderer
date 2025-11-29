@@ -125,6 +125,7 @@ namespace RenderingEngine.Engine
             int textureWidthMask = ceilingTexture.Width - 1;
             Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
+            Vector<int> textureWidthV = Vector.Create(textureWidth);
 
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
@@ -173,7 +174,7 @@ namespace RenderingEngine.Engine
 
                     Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos) & textureHeightMaskV;
                     Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos) & textureWidthMaskV;
-                    Vector<int> textureIndex = _y1 * textureWidth + _x1;
+                    Vector<int> textureIndex = _y1 * textureWidthV + _x1;
 
                     ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
 
@@ -526,6 +527,7 @@ namespace RenderingEngine.Engine
 
             Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
+            Vector<int> textureWidthV = Vector.Create(textureWidth);
 
             Vector<float> incramentVector = default;
             ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
@@ -563,13 +565,13 @@ namespace RenderingEngine.Engine
                 while (!Unsafe.AreSame(ref fromScalePtr, ref toScalePtr))
                 {
                     Vector<float> yMapPosR = yfloorV / incramentVector;
-                    Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
+                    Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV; 
 
                     (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
                     Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos) & textureHeightMaskV;
                     Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos) & textureWidthMaskV;
-                    Vector<int> textureIndex = _y1 * textureHeight + _x1;
+                    Vector<int> textureIndex = _y1 * textureWidthV + _x1;             
 
                     ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
 

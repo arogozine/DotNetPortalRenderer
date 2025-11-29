@@ -353,7 +353,7 @@ namespace RenderingEngine.DoomMapLoader
                         PointB = ToVector(vertex2),
                         SectorTo = lineInfo.ParentSectorId,
                         UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffset, lineInfo.YOffset, linedef.Flags.HasFlag(LinedefFlags.UpperUnpegged)),
-                        MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffset, lineInfo.YOffset, false),
+                        MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffset, lineInfo.YOffset, linedef.Flags.HasFlag(LinedefFlags.LowerUnpegged)),
                         LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffset, lineInfo.YOffset, linedef.Flags.HasFlag(LinedefFlags.LowerUnpegged))
                     };
 
@@ -438,6 +438,14 @@ namespace RenderingEngine.DoomMapLoader
                                 RenderingOptions = TextureRenderingOptions.Skybox
                             };
                         }
+                    }
+                    else
+                    {
+                        wall.MiddleTexture ??= new Models.TextureInfo
+                        {
+                            Name = skyTexture,
+                            RenderingOptions = TextureRenderingOptions.Skybox
+                        };
                     }
                 }
             }
