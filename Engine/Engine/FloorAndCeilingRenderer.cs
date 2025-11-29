@@ -39,7 +39,6 @@ namespace RenderingEngine.Engine
 
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
-            ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
             (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
@@ -134,7 +133,6 @@ namespace RenderingEngine.Engine
 
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
-            ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
             (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
@@ -167,10 +165,10 @@ namespace RenderingEngine.Engine
                 int rem = (floorToY - floorFromY) % Vector<int>.Count;
                 floorToY -= rem;
 
-                ref uint fromScalePtr = ref Unsafe.Add(ref scalePtr, floorFromY);
-                ref uint toScalePtr = ref Unsafe.Add(ref scalePtr, floorToY);
+                ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
+                ref BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
 
-                while (!Unsafe.AreSame(ref fromScalePtr, ref toScalePtr))
+                while (!Unsafe.AreSame(ref screenTex, ref toScalePtr))
                 {
                     Vector<float> yMapPosR = yCeilV / incramentVector;
                     Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
@@ -183,24 +181,18 @@ namespace RenderingEngine.Engine
 
                     ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
 
-                    for (int i = 0; i < Vector<int>.Count; i++, screenIndex += width)
+                    for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                     {
                         ref BGRA tex = ref Unsafe.Add(ref ceilingTexturePtr, Unsafe.Add(ref textureIndexPtr, i));
-                        ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-
-                        fromScalePtr = ref Unsafe.Add(ref fromScalePtr, 1);
                         ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
                     }
 
                     incramentVector -= ivIncrF;
                 }
 
-                floorFromY = floorToY;
-                floorToY += rem;
-
                 float ii = incramentVectorPtr;
 
-                for (int j = floorFromY; j < floorToY; j++, screenIndex += width, ii -= oneOverHeight)
+                for (int j = 0; j < rem; j++, screenTex = ref Unsafe.Add(ref screenTex, width), ii -= oneOverHeight)
                 {
                     float yMapPosR = yCeil / (ii + yaw);
                     float xMapPosR = yMapPosR * xMapPosMultiplier;
@@ -212,7 +204,6 @@ namespace RenderingEngine.Engine
                     int textureIndex = _y1 * textureWidth + _x1;
 
                     ref BGRA tex = ref Unsafe.Add(ref ceilingTexturePtr, textureIndex);
-                    ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
                     ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
                 }
 
@@ -435,7 +426,6 @@ namespace RenderingEngine.Engine
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
-            ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
             int textureWidth = floorTexture.Width;
             int textureHeightMask = floorTexture.Height - 1;
@@ -513,7 +503,6 @@ namespace RenderingEngine.Engine
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
-            ref uint scalePtr = ref MemoryMarshal.GetArrayDataReference(distanceMult);
 
             Vector<float> pxV = Vector.Create(px);
             Vector<float> pyV = Vector.Create(py);
@@ -564,11 +553,11 @@ namespace RenderingEngine.Engine
                 int rem = (floorToY - floorFromY) % Vector<int>.Count;
                 floorToY -= rem;
 
-                ref uint fromScalePtr = ref Unsafe.Add(ref scalePtr, floorFromY);
-                ref uint toScalePtr = ref Unsafe.Add(ref scalePtr, floorToY);
+                ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
+                ref BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
 
                 // from start of wall (buttom) to screen buttom
-                while (!Unsafe.AreSame(ref fromScalePtr, ref toScalePtr))
+                while (!Unsafe.AreSame(ref screenTex, ref toScalePtr))
                 {
                     Vector<float> yMapPosR = yfloorV / incramentVector;
                     Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV; 
@@ -581,18 +570,14 @@ namespace RenderingEngine.Engine
 
                     ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
 
-                    for (int j = 0; j < Vector<float>.Count; j++, screenIndex += width)
+                    for (int j = 0; j < Vector<float>.Count; j++, screenTex = ref Unsafe.Add(ref screenTex, width))
                     {
                         if (Unsafe.Add(ref incramentVectorPtr, j) == 0f)
                         {
-                            fromScalePtr = ref Unsafe.Add(ref fromScalePtr, 1);
                             continue;
                         }
 
                         ref BGRA tex = ref Unsafe.Add(ref floorTexturePtr, Unsafe.Add(ref textureIndexPtr, j));
-                        ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-
-                        fromScalePtr = ref Unsafe.Add(ref fromScalePtr, 1);
                         ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
                     }
 
@@ -600,10 +585,8 @@ namespace RenderingEngine.Engine
                 }
 
                 int increment = halfHeightInt - floorFromY - (floorToY - floorFromY);
-                floorFromY = floorToY;
-                floorToY += rem;
 
-                for (int i = floorFromY; i < floorToY; i++, screenIndex += width)
+                for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
                     float yMapPosR = yfloor / (increment * oneOvervFov + yaw);
                     float xMapPosR = yMapPosR * xMapPosMultiplier;
@@ -615,7 +598,6 @@ namespace RenderingEngine.Engine
                     int textureIndex = (_y1 * textureWidth) + _x1;
 
                     ref BGRA tex = ref Unsafe.Add(ref floorTexturePtr, textureIndex);
-                    ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
                     ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
 
                     increment -= 1;

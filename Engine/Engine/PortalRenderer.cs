@@ -19,10 +19,7 @@ namespace RenderingEngine.Engine
         private PortalPlayerSnapshot? Snapshot = null;
 
         private readonly float[] angleCache;
-        private readonly float[] distanceCache;
-        private readonly uint[] distanceMult;
         private readonly BGRA[] buffer;
-        private int? lastSectorDistanceCache = null;
 
         public PortalRenderer(int width, int height)
         {
@@ -31,8 +28,6 @@ namespace RenderingEngine.Engine
             SpriteHelper = new SpriteHelper(width, height, EngineConstants.CameraPlaneX);
             WallHelper = new WallHelper(width, height, EngineConstants.CameraPlaneX);
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
-            distanceCache = new float[height];
-            distanceMult = new uint[height];
             angleCache = new float[width];
 
             RenderWindowHelper = new RenderWindowHelper(width, height);
@@ -49,54 +44,6 @@ namespace RenderingEngine.Engine
             for (int x = 0; x < width; x++, cameraRay += cameraWidthIncr)
             {
                 angleCache[x] = MathF.Atan(cameraRay);
-            }
-        }
-
-        private void GenerateDistanceCache(PortalPlayerSnapshot player,
-                        NeighborsToRender sectorInfo,
-                        Sector sector)
-        {
-            if (lastSectorDistanceCache == sectorInfo.SectorId)
-            {
-                return;
-            }
-
-            lastSectorDistanceCache = sectorInfo.SectorId;
-
-            float[] distanceArray = distanceCache;
-
-            int height = PixelHeight;
-            int halfHeightInt = height / 2;
-            float oneOverHeight = 1f / height;
-            var yaw = player.Yaw;
-
-            float pz = player.Z;
-
-            float yfloor = sector.Floor - pz;
-            float yCeil = sector.Ceil - pz;
-
-            for (int i = 0; i < halfHeightInt; i++)
-            {
-                int j = halfHeightInt - i;
-
-                float yMopPosR = yCeil / (j * oneOverHeight + yaw);
-                float distance = yMopPosR + 1;
-                distanceArray[i] = distance;
-
-                float brightness = 1f - EngineConstants.OneOverLightFallOffDistance * distance;
-                distanceMult[i] = (uint)(brightness * 255f);
-            }
-
-            for (int i = halfHeightInt + 1; i < height; i++)
-            {
-                int j = halfHeightInt - i;
-
-                float yMopPosR = yfloor / (j * oneOverHeight + yaw);
-                float distance = yMopPosR + 1;
-                distanceArray[i] = distance;
-
-                float brightness = 1f - EngineConstants.OneOverLightFallOffDistance * distance;
-                distanceMult[i] = (uint)(brightness * 255f);
             }
         }
 

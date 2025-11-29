@@ -657,7 +657,7 @@ namespace RenderingEngine.DoomMapLoader
             {
                 return new Models.TextureInfo
                 {
-                    Name = sector.TextureFloor,
+                    Name = sector.TextureCeiling,
                     XOffset = ToInt32(sector.XPanningCeiling),
                     YOffset = ToInt32(sector.YPanningCeiling)
                 };
