@@ -71,34 +71,43 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            TextureInfo topTexture = line.UpperTexture!;
-            TextureInfo bottomTexture = line.LowerTexture!;
-            ref Texture upperTexture = ref TextureCache.GetTexture(topTexture);
-            ref Texture lowerTexture = ref TextureCache.GetTexture(bottomTexture);
+            TextureInfo upperTextureInfo = line.UpperTexture!;
+            TextureInfo lowerTextureInfo = line.LowerTexture!;
+            ref Texture upperTexture = ref TextureCache.GetTexture(upperTextureInfo);
+            ref Texture lowerTexture = ref TextureCache.GetTexture(lowerTextureInfo);
 
-            bool upperSkybox = topTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+            bool upperSkybox = upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
 
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
 
             ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
 
-            int lowerTextureStart = bottomTexture.YOffset + lowerTexture.Height;
+            /*
+            int lowerTextureStart = lowerTextureInfo.YOffset + lowerTexture.Height;
 
-            if (bottomTexture.RenderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
+            if (lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
             {
                 lowerTextureStart += (int)(sectorHeight - floorOffset);
                 lowerTextureStart %= lowerTexture.Height;
             }
+            */
 
-            int upperTextureStart = upperTexture.Height + bottomTexture.YOffset;
+            int lowerTextureStart = DetermineLowerTextureYOffset(sector, (int)floorOffset, (int)ceilOffset, lowerTextureInfo, ref lowerTexture);
+            int lowerXOffset = DetermineXOffset(lowerTextureInfo, ref lowerTexture);
 
-            if (!topTexture.RenderingOptions.HasFlag(TextureRenderingOptions.FromBottom)) {
+            /*
+            int upperTextureStart = upperTextureInfo.YOffset > 0 ? upperTexture.Height + upperTextureInfo.YOffset : upperTexture.Height - upperTextureInfo.YOffset;
+
+            if (!upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromBottom)) {
                 int sectorHeightI = (int)sectorHeight;
                 if (sectorHeightI < upperTexture.Height)
                     upperTextureStart = upperTextureStart - (int)sectorHeight % upperTexture.Height;
                 else
                     upperTextureStart = 0;
             }
+            */
+            int upperTextureStart = DetermineUpperTextureYOffset(sector, (int)ceilOffset, upperTextureInfo, ref upperTexture);
+            int upperXOffset = DetermineXOffset(upperTextureInfo, ref upperTexture);
 
             ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperSkybox ? upperTexture.Data : upperTexture.Rotated);
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
@@ -168,7 +177,7 @@ namespace RenderingEngine.Engine
                         // Calculate Upper  Texture Position
                         int textureWidth = upperTexture.Height;
                         int textureHeight = upperTexture.Width;
-                        int textureYPos = ((distance + topTexture.XOffset) % textureHeight) * textureWidth;
+                        int textureYPos = ((distance + upperXOffset) % textureHeight) * textureWidth;
                         float textureXPos = upperTextureStart - textureXIncr * (wallStartY - fromYClamped);
                         textureXPos %= textureWidth;
 
@@ -210,7 +219,7 @@ namespace RenderingEngine.Engine
 
                     int textureWidth = lowerTexture.Height;
                     int textureHeight = lowerTexture.Width;
-                    int textureYPos = ((distance + bottomTexture.XOffset) % textureHeight) * textureWidth;
+                    int textureYPos = ((distance + lowerXOffset) % textureHeight) * textureWidth;
                     float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, (portalToYClamped - portalToY), lowerTextureStart);
                     textureXPos %= textureWidth;
 
@@ -272,7 +281,12 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = line.MiddleTexture!;
             bool renderFromBottom = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromBottom);
-            bool skybox = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+
+            if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
+            {
+                return DrawBasicSkyboxWall(player, screen, renderableWall);
+            }
+
             byte lightLevel = sector.LightLevel;
 
             float oneOverSectorHeight = 1f / sectorHeight;
@@ -285,16 +299,11 @@ namespace RenderingEngine.Engine
             int textureWidth = wallTexture.Height;
             int textureHeight = wallTexture.Width;
 
-            int textureStart = textureInfo.YOffset + textureWidth;
-
-            if (renderFromBottom)
-            {
-                textureStart = textureWidth - (int)sectorHeight % textureWidth + textureInfo.YOffset;
-            }
+            int textureStart = DetermineTextureYOffset(sector, textureInfo, ref wallTexture);
+            int xOffset = DetermineXOffset(textureInfo, ref wallTexture);
 
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
             ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
-            ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
             
@@ -320,52 +329,38 @@ namespace RenderingEngine.Engine
 
                 (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
 
-                if (skybox)
+                // texture is rotated - y position is x position in texture
+                int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
+                float textureXIncr = sectorHeight / (wallEndY - wallStartY);
+                float textureXPos = textureStart - textureXIncr * (wallStartY - clamptedFromY);
+
+                CalculateAndCacheWallColumn(columnBuffer, ref columnABufferIndex, ref wallTexturePtr, textureYPos, lightLevel);
+
+                textureXPos %= textureWidth; // wrap the texture
+
+                int textureXPosI = (int)textureXPos;
+                int textureXPosIOld = textureXPosI;
+
+                for (uint shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
+                        Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                        textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width))
                 {
-                    RenderSkyboxLine(player,
-                        x,
-                        ref wallTexture,
-                        ref wallTextureUintPtr,
-                        ref angleCachePtr,
-                        ref renderWindow,
-                        ref screenIndexPtr,
-                        ref screenIndexPtrEnd);
-                }
-                else
-                {
-                    // texture is rotated - y position is x position in texture
-                    int textureYPos = ((distance + textureInfo.XOffset) % textureHeight) * textureWidth;
-                    float textureXIncr = sectorHeight / (wallEndY - wallStartY);
-                    float textureXPos = textureStart - textureXIncr * (wallStartY - clamptedFromY);
+                    textureXPosI = (int)textureXPos;
 
-                    CalculateAndCacheWallColumn(columnBuffer, ref columnABufferIndex, ref wallTexturePtr, textureYPos, lightLevel);
-
-                    textureXPos %= textureWidth; // wrap the texture
-
-                    int textureXPosI = (int)textureXPos;
-                    int textureXPosIOld = textureXPosI;
-
-                    for (uint shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
-                         Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
-                         textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width))
+                    if (textureXPosI != textureXPosIOld)
                     {
-                        textureXPosI = (int)textureXPos;
-
-                        if (textureXPosI != textureXPosIOld)
+                        // wrap the texture
+                        if (textureXPosI >= textureWidth)
                         {
-                            // wrap the texture
-                            if (textureXPosI >= textureWidth)
-                            {
-                                textureXPosI -= textureWidth;
-                                textureXPos -= textureWidth;
-                            }
-
-                            textureXPosIOld = textureXPosI;
-                            shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
+                            textureXPosI -= textureWidth;
+                            textureXPos -= textureWidth;
                         }
 
-                        screenIndexPtr = shaded;
+                        textureXPosIOld = textureXPosI;
+                        shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
                     }
+
+                    screenIndexPtr = shaded;
                 }
 
                 renderWindow.Distance = fromToYdist;
@@ -375,6 +370,65 @@ namespace RenderingEngine.Engine
             }
 
             columnABufferIndex = EngineConstants.Unset;
+
+            return true;
+        }
+
+        private bool DrawBasicSkyboxWall(
+            PortalPlayerSnapshot player,
+            Span<BGRA> screen,
+            RenderableWall renderableWall)
+        {
+            int width = PixelWidth;
+            var wall = renderableWall.Wall;
+            var line = wall.Line;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+
+            ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
+
+            ref Texture wallTexture = ref TextureCache.GetTexture(line.MiddleTexture);
+            ref uint wallTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetArrayDataReference(wallTexture.Data));
+            ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
+
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
+
+            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
+            {
+                ref RenderWindow renderWindow = ref RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
+
+                if (renderWindow.FloorEnd < renderWindow.CeilingStart)
+                {
+                    renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
+                    renderWindow.Calculated = false;
+                    continue;
+                }
+
+                int wallStartY = renderWindow.WallStart;
+                int wallEndY = renderWindow.WallEnd;
+
+                int clamptedFromY = Math.Clamp(wallStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int clamptedToY = Math.Clamp(wallEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+
+                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
+                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
+
+                float fromToYdist = CalculateDistance2(cameraRay, t1, d2y, d2x);
+
+                RenderSkyboxLine(player,
+                    x,
+                    ref wallTexture,
+                    ref wallTextureUintPtr,
+                    ref angleCachePtr,
+                    ref renderWindow,
+                    ref screenIndexPtr,
+                    ref screenIndexPtrEnd);
+
+                renderWindow.Distance = fromToYdist;
+                renderWindow.WallEnd = renderWindow.WallStart;
+                // renderWindow.FloorEnd = renderWindow.WallStart;
+                renderWindow.Calculated = false;
+            }
 
             return true;
         }
@@ -429,6 +483,121 @@ namespace RenderingEngine.Engine
             }
         }
 
+        private static int DetermineXOffset(TextureInfo textureInfo, ref Texture wallTexture)
+        {
+            int offset = textureInfo.XOffset;
+            int textureWidth = wallTexture.Width;
+
+            if (offset < 0)
+            {
+                offset = textureWidth - offset;
+            }
+
+            return offset;
+        }
+
+        private static int DetermineLowerTextureYOffset(
+            Sector sector,
+            int floorOffset,
+            int ceilingOffset,
+            TextureInfo textureInfo,
+            ref Texture wallTexture)
+        {
+            int offset = textureInfo.YOffset;
+            TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
+            int textureHeight = wallTexture.Height;
+            int sectorHeight = floorOffset; //(int)(sector.Ceil - sector.Floor);
+
+            if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
+            {
+                if (sectorHeight >= textureHeight)
+                {
+                    // texture fits into sector (possibly multiple times)
+                    // skip first (sectorHeight % textureHeight) rows
+                    offset = (sectorHeight % textureHeight) - offset;
+                }
+                else
+                {
+                    // texture can't fit into sector
+                    // skip first (textureHeight - sectorHeight) rows
+                    offset = (textureHeight - sectorHeight) - offset;
+                }
+            }
+
+            return textureHeight + offset;
+        }
+
+        private static int DetermineUpperTextureYOffset(
+            Sector sector,
+            int ceilingOffset,
+            TextureInfo textureInfo,
+            ref Texture wallTexture)
+        {
+            int offset = textureInfo.YOffset;
+            TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
+            int textureHeight = wallTexture.Height;
+            int sectorHeight = -ceilingOffset; //(int)(sector.Ceil - sector.Floor);
+
+            if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
+            {
+                if (sectorHeight >= textureHeight)
+                {
+                    // texture fits into sector (possibly multiple times)
+                    // skip first (sectorHeight % textureHeight) rows
+                    offset = (sectorHeight % textureHeight) - offset;
+                }
+                else
+                {
+                    // texture can't fit into sector
+                    // skip first (textureHeight - sectorHeight) rows
+                    offset = (textureHeight - sectorHeight) - offset;
+                }
+
+                if (offset < 0)
+                {
+                    offset = textureHeight % (-offset);
+                }
+
+                return textureHeight - offset;
+            }
+
+            if (offset < 0)
+            {
+                offset = textureHeight % (-offset);
+                return offset;
+            }
+
+            return textureHeight - offset;
+        }
+
+        private static int DetermineTextureYOffset(
+            Sector sector,
+            TextureInfo textureInfo,
+            ref Texture wallTexture)
+        {
+            int offset = textureInfo.YOffset;
+            TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
+            int textureHeight = wallTexture.Height;
+            int sectorHeight = (int)(sector.Ceil - sector.Floor);
+
+            if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom) || renderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
+            {
+                if (sectorHeight >= textureHeight)
+                {
+                    // texture fits into sector (possibly multiple times)
+                    // skip first (sectorHeight % textureHeight) rows
+                    offset = (sectorHeight % textureHeight) - offset;
+                }
+                else
+                {
+                    // texture can't fit into sector
+                    // skip first (textureHeight - sectorHeight) rows
+                    offset = (textureHeight - sectorHeight) - offset;
+                }
+            }
+
+            return textureHeight + offset;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void CalculateAndCacheWallColumn(scoped Span<uint> buffer, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, byte brightness)

@@ -125,10 +125,7 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
             Sector sector = renderableWall.Sector;
             float sectorHeight = sector.Ceil - sector.Floor;
-            int yOffset = line.MiddleTexture!.YOffset;
-            int xOffset = line.MiddleTexture!.XOffset;
-            bool renderFromTop = line.MiddleTexture.RenderingOptions.HasFlag(TextureRenderingOptions.FromTop);
-            byte lightLevel = sector.LightLevel;
+           
 
             Span<RenderWindow> window = renderableWall.RenderWindow!;
 
@@ -152,6 +149,12 @@ namespace RenderingEngine.Engine
 
             float oneOverSectorHeight = 1f / sectorHeight;
 
+            var textureInfo = line.MiddleTexture!;
+            int yOffset = textureInfo.YOffset;
+            int xOffset = textureInfo.XOffset;
+            bool renderFromTop = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromTop);
+            byte lightLevel = sector.LightLevel;
+
 
             if (floorOffset < 0f)
             {
@@ -162,6 +165,8 @@ namespace RenderingEngine.Engine
             {
                 ceilOffset = 0f;
             }
+
+            xOffset = DetermineXOffset(textureInfo, ref texture);
 
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
 
@@ -205,6 +210,13 @@ namespace RenderingEngine.Engine
 
                 float textureStartY = renderFromTop ? portalFromY : (portalToY - texture.Height * pixelsPerUnit);
                 float textureEndY = renderFromTop ? (portalFromY + texture.Height * pixelsPerUnit) : portalToY;
+
+                if (yOffset != 0)
+                {
+                    float yOffsetF = yOffset * pixelsPerUnit;
+                    textureStartY = renderFromTop ? textureStartY + yOffsetF : textureStartY - yOffsetF;
+                    textureEndY = renderFromTop ? textureEndY + yOffsetF : textureEndY - yOffsetF;
+                }
 
                 int textureStartYClamped = Math.Clamp((int)textureStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
                 int textureEndYClamped = Math.Clamp((int)textureEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);

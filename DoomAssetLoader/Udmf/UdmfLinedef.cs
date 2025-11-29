@@ -17,6 +17,7 @@
         public const string VERTEX_END = "v2";
         public const string SIDEDEF_FRONT = "sidefront";
         public const string SIDEDEF_BACK = "sideback";
+        public const string ALPHA = "alpha";
 
         public int? Id => GetValue<int>(ID);
 
@@ -25,6 +26,8 @@
 
         public int? SidedefFront => GetValue<int>(SIDEDEF_FRONT);
         public int? SidedefBack => GetValue<int>(SIDEDEF_BACK);
+
+        public float? Alpha => GetValue<float>(ALPHA);
 
         public bool DontPegBottom => GetValue<bool>(FLAG_UNPEG_BOTTOM) ?? false;
         public bool DontPegTop => GetValue<bool>(FLAG_UNPEG_TOP) ?? false;

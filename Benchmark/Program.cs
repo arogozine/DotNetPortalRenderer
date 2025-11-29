@@ -12,7 +12,7 @@ namespace Benchmark
             // How to run benchmark:
             // BenchmarkRunner.Run<BenchmarkClassName>();
 
-            BenchmarkRunner.Run<PointCalculations>();
+            BenchmarkRunner.Run<PointCalculations2>();
         }
     }
 }
