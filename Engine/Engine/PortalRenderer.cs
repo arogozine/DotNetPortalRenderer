@@ -202,7 +202,6 @@ namespace RenderingEngine.Engine
                     sectorRenderQueue.Enqueue(neighborToRender);
                 }
 
-                // DebugPortal(screen, RenderWindowHelper.RenderWindow);
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxRenderDepth);
 
@@ -318,12 +317,11 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors,
             Span<BGRA> screen)
         {
-            ref Texture groundTexture = ref TextureCache.GetTexture(sector.FloorTexture.Name);
             ref Texture ceilingTexture = ref TextureCache.GetTexture(sector.CeilTexture.Name);
 
             if (Vector.IsHardwareAccelerated)
             {
-                RenderFloorVector(player, sector, screen, ref groundTexture);
+                RenderFloorVector(player, sector, screen);
 
                 if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
                 {
@@ -331,12 +329,12 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    RenderCeilingVector(player, sector, screen, ref ceilingTexture);
+                    RenderCeilingVector(player, sector, screen);
                 }
             }
             else
             {
-                RenderFloor(player, sector, screen, ref groundTexture);
+                RenderFloor(player, sector, screen);
 
                 if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
                 {
@@ -344,7 +342,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    RenderCeiling(player, sector, screen, ref ceilingTexture);
+                    RenderCeiling(player, sector, screen);
                 }
             }
 
@@ -355,7 +353,7 @@ namespace RenderingEngine.Engine
 
                 bool wallDrawn = wall.IsPortal ?
                     DrawPortalWall(player, screen, sector, sectors, renderableWall) :
-                    DrawBasicWall(screen, sector, renderableWall);
+                    DrawBasicWall(player, screen, sector, renderableWall);
 
                 if (wallDrawn && wall.IsPortal)
                 {
@@ -453,15 +451,19 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow rendered = ref renderedArea[x];
 
-                /*
-                if (!rendered.Calculated)
-                    continue;
-                */
+                //if (!rendered.Calculated)
+                //    continue;
+
+                if (x % 2 == 0)
+                {
                 Render(screen, rendered.CeilingStart, x, BGRA.Red);
                 Render(screen, rendered.FloorEnd, x, BGRA.Blue);
+                }
+                else
+                {
                 Render(screen, rendered.WallStart, x, BGRA.Green);
                 Render(screen, rendered.WallEnd, x, BGRA.Yellow);
-
+                }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

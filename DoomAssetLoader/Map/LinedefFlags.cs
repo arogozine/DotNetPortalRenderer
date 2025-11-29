@@ -1,36 +1,15 @@
-﻿/*
-==========================================================================
-This file is part of Tools of Doom, a library providing a collection of
-classes to load/edit/save Doom maps and wad archives, created by @akaAgar
-(https://github.com/akaAgar/tools-of-doom).
-
-Tools of Doom is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-Tools of Doom is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with Tools of Doom. If not, see https://www.gnu.org/licenses/
-==========================================================================
-*/
-
-namespace DoomAssetLoader.Map
+﻿namespace DoomAssetLoader.Map
 {
     /// <summary>
-    /// Special flags for a Doom map linedef.
+    /// Linedefs contain a two-byte (16 bit) field reserved for various flags. 
     /// </summary>
     [Flags]
     public enum LinedefFlags : short
     {
         /// <summary>
-        /// Cannot be crossed.
+        /// Blocks players and monsters.
         /// </summary>
-        Impassible = 1,
+        Blocking = 1,
         /// <summary>
         /// Blocks monsters.
         /// </summary>
@@ -42,11 +21,11 @@ namespace DoomAssetLoader.Map
         /// <summary>
         /// Draw lower texture from the bottom.
         /// </summary>
-        UpperUnpegged = 8,
+        DontPegTop = 8,
         /// <summary>
         /// Draw upper texture from the top.
         /// </summary>
-        LowerUnpegged = 16,
+        DontPegBottom = 16,
         /// <summary>
         /// Show as a wall on the automap, used to hide secret passages.
         /// </summary>

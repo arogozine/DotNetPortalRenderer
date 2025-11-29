@@ -352,9 +352,9 @@ namespace RenderingEngine.DoomMapLoader
                         PointA = ToVector(vertex1),
                         PointB = ToVector(vertex2),
                         SectorTo = lineInfo.ParentSectorId,
-                        UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffset, lineInfo.YOffset, linedef.Flags.HasFlag(LinedefFlags.UpperUnpegged)),
-                        MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffset, lineInfo.YOffset, linedef.Flags.HasFlag(LinedefFlags.LowerUnpegged)),
-                        LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffset, lineInfo.YOffset, linedef.Flags.HasFlag(LinedefFlags.LowerUnpegged))
+                        UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, linedef.Flags.HasFlag(LinedefFlags.DontPegTop)),
+                        MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffsetMid, lineInfo.YOffsetMid, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom)),
+                        LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom))
                     };
 
                     mapSector.Walls.Add(line);
@@ -381,6 +381,11 @@ namespace RenderingEngine.DoomMapLoader
 
         private static void DetermineSkybox(List<MapSector> sectors, string mapName)
         {
+            var defaultTexture = new Models.TextureInfo
+            {
+                Name = "-"
+            };
+
             // This seems to be hard coded,
             // https://doomwiki.org/wiki/Sky
             _ = int.TryParse(mapName.ToUpperInvariant().Replace("MAP", string.Empty), out int mapNumber);
@@ -447,6 +452,18 @@ namespace RenderingEngine.DoomMapLoader
                             RenderingOptions = TextureRenderingOptions.Skybox
                         };
                     }
+                }
+            }
+
+
+            foreach (MapSector sector in sectors)
+            {
+                foreach (Line wall in sector.Walls)
+                {
+                    wall.UpperTexture ??= defaultTexture;
+                    if (wall.SectorTo is null)
+                    wall.MiddleTexture ??= defaultTexture;
+                    wall.LowerTexture ??= defaultTexture;
                 }
             }
         }
@@ -595,8 +612,8 @@ namespace RenderingEngine.DoomMapLoader
                     Id = i,
                     Ceiling = ceiling,
                     Floor = floor,
-                    FloorTexture = new Models.TextureInfo { Name = sector.TextureFloor },
-                    CeilingTexture = new Models.TextureInfo { Name = sector.TextureCeiling },
+                    FloorTexture = GetFloorTextureInfo(sector),
+                    CeilingTexture = GetCeilingTextureInfo(sector),
                     LightLevel = sector.LightLevel
                 };
 
@@ -612,9 +629,9 @@ namespace RenderingEngine.DoomMapLoader
                         PointA = ToVector(vertex1),
                         PointB = ToVector(vertex2),
                         SectorTo = lineInfo.ParentSectorId,
-                        UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffset, lineInfo.YOffset, lineInfo.LowerUnpegged),
-                        MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffset, lineInfo.YOffset, false),
-                        LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffset, lineInfo.YOffset, lineInfo.UpperUnpegged)
+                        UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, lineInfo.LowerUnpegged),
+                        MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffsetMid, lineInfo.YOffsetMid, lineInfo.LowerUnpegged),
+                        LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, lineInfo.UpperUnpegged)
                     };
 
                     mapSector.Walls.Add(line);
@@ -635,6 +652,28 @@ namespace RenderingEngine.DoomMapLoader
                 Sprites = sprites.ToArray(),
                 Sectors = sectors
             };
+
+            static Models.TextureInfo GetCeilingTextureInfo(UdmfSector sector)
+            {
+                return new Models.TextureInfo
+                {
+                    Name = sector.TextureFloor,
+                    XOffset = ToInt32(sector.XPanningCeiling),
+                    YOffset = ToInt32(sector.YPanningCeiling)
+                };
+            }
+
+            static Models.TextureInfo GetFloorTextureInfo(UdmfSector sector)
+            {
+                return new Models.TextureInfo
+                {
+                    Name = sector.TextureFloor,
+                    XOffset = ToInt32(sector.XPanningFloor),
+                    YOffset = ToInt32(sector.YPanningFloor)
+                };
+            }
+
+            static int ToInt32(float? value) => (int)(value ?? 0f);
         }
 
         internal sealed class LineInfo
@@ -644,8 +683,12 @@ namespace RenderingEngine.DoomMapLoader
             public required string? UpperTexture { get; init; }
             public required string? MiddleTexture { get; init; }
             public required string? LowerTexture { get; init; }
-            public required int XOffset { get; init; }
-            public required int YOffset { get; init; }
+            public required int XOffsetTop { get; init; }
+            public required int YOffsetTop { get; init; }
+            public required int XOffsetMid { get; init; }
+            public required int YOffsetMid { get; init; }
+            public required int XOffsetBottom { get; init; }
+            public required int YOffsetBottom { get; init; }
             public required bool LowerUnpegged { get; init; }
             public required bool UpperUnpegged { get; init; }
 
@@ -692,8 +735,12 @@ namespace RenderingEngine.DoomMapLoader
                     UpperTexture = sidedef.TextureTop,
                     MiddleTexture = sidedef.TextureMiddle,
                     LowerTexture = sidedef.TextureBottom,
-                    XOffset = sidedef.XOffset ?? 0,
-                    YOffset = sidedef.YOffset ?? 0,
+                    XOffsetTop = (int?)sidedef.XOffsetTop ?? sidedef.XOffset ?? 0,
+                    YOffsetTop = (int?)sidedef.YOffsetTop ?? sidedef.YOffset ?? 0,
+                    XOffsetMid = (int?)sidedef.XOffsetMid ?? sidedef.XOffset ?? 0,
+                    YOffsetMid = (int?)sidedef.YOffsetMid ?? sidedef.YOffset ?? 0,
+                    XOffsetBottom = (int?)sidedef.XOffsetBottom ?? sidedef.XOffset ?? 0,
+                    YOffsetBottom = (int?)sidedef.YOffsetBottom ?? sidedef.YOffset ?? 0,
                     LowerUnpegged = linedef.DontPegBottom,
                     UpperUnpegged = linedef.DontPegTop
                 });
@@ -744,10 +791,14 @@ namespace RenderingEngine.DoomMapLoader
                     UpperTexture = sidedef.UpperTextureNullable,
                     MiddleTexture = sidedef.MiddleTextureNullable,
                     LowerTexture = sidedef.LowerTextureNullable,
-                    XOffset = sidedef.XOffset,
-                    YOffset = sidedef.YOffset,
-                    LowerUnpegged = (linedef.Flags & LinedefFlags.LowerUnpegged) == LinedefFlags.LowerUnpegged,
-                    UpperUnpegged = (linedef.Flags & LinedefFlags.UpperUnpegged) == LinedefFlags.UpperUnpegged
+                    XOffsetTop = sidedef.XOffset,
+                    YOffsetTop = sidedef.YOffset,
+                    XOffsetMid = sidedef.XOffset,
+                    YOffsetMid = sidedef.YOffset,
+                    XOffsetBottom = sidedef.XOffset,
+                    YOffsetBottom = sidedef.YOffset,
+                    LowerUnpegged = (linedef.Flags & LinedefFlags.DontPegBottom) == LinedefFlags.DontPegBottom,
+                    UpperUnpegged = (linedef.Flags & LinedefFlags.DontPegTop) == LinedefFlags.DontPegTop
                 });
             }
         }
@@ -813,14 +864,14 @@ namespace RenderingEngine.DoomMapLoader
         }
 
         [return: NotNullIfNotNull(nameof(name))]
-        private static Models.TextureInfo? ToTextureInfo(string? name, int xOffset, int yOffset, bool unpegged)
+        private static Models.TextureInfo? ToTextureInfo(string? name, int xOffset, int yOffset, bool renderFromBottom)
         {
             if (name is null)
             {
                 return null;
             }
 
-            return new Models.TextureInfo { Name = name, XOffset = xOffset, YOffset = yOffset, RenderingOptions = unpegged ? TextureRenderingOptions.FromBottom : TextureRenderingOptions.FromTop };
+            return new Models.TextureInfo { Name = name, XOffset = xOffset, YOffset = yOffset, RenderingOptions = renderFromBottom ? TextureRenderingOptions.FromBottom : TextureRenderingOptions.FromTop };
         }
     }
 }

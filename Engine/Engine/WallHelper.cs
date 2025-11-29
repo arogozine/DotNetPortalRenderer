@@ -233,9 +233,9 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                if (wall.YLeftFloor < 0 || wall.YRightFloor < 0)
+                if (wall.YLeftFloor < 0 && wall.YRightFloor < 0)
                 {
-                    continue;
+                    //continue;
                 }
 
                 walls[j] = wall;
