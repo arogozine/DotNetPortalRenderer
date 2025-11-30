@@ -306,7 +306,7 @@ namespace RenderingEngine.Engine
             ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
-            
+
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
@@ -540,6 +540,13 @@ namespace RenderingEngine.Engine
 
             if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
             {
+                /*
+                if (offset < 0)
+                {
+                    offset = textureHeight % (-offset);
+                }
+                */
+
                 if (sectorHeight >= textureHeight)
                 {
                     // texture fits into sector (possibly multiple times)
@@ -550,15 +557,10 @@ namespace RenderingEngine.Engine
                 {
                     // texture can't fit into sector
                     // skip first (textureHeight - sectorHeight) rows
-                    offset = (textureHeight - sectorHeight) - offset;
+                    offset = (textureHeight - sectorHeight) + offset;
                 }
 
-                if (offset < 0)
-                {
-                    offset = textureHeight % (-offset);
-                }
-
-                return textureHeight - offset;
+                return textureHeight + offset;
             }
 
             if (offset < 0)
@@ -592,11 +594,18 @@ namespace RenderingEngine.Engine
                 {
                     // texture can't fit into sector
                     // skip first (textureHeight - sectorHeight) rows
-                    offset = (textureHeight - sectorHeight) - offset;
+                    offset = (textureHeight - sectorHeight) + offset;
                 }
+
+                return textureHeight + offset;
             }
 
-            return textureHeight + offset;
+            if (offset < 0)
+            {
+                offset = textureHeight % (-offset);
+            }
+
+            return offset;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -684,7 +693,7 @@ namespace RenderingEngine.Engine
             float fromToXDist = fromToYDist * cameraRay;
 
             float distX = (flipped ? wall.R2.X : wall.R1.X) - fromToXDist;
-            float distY = (flipped ? wall.R2.Y: wall.R1.Y) - fromToYDist;
+            float distY = (flipped ? wall.R2.Y : wall.R1.Y) - fromToYDist;
 
             float textureXLocation = MathF.Sqrt(distX * distX + distY * distY);
 

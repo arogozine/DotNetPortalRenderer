@@ -204,8 +204,17 @@ namespace RenderingEngine.Engine
                 if (yOffset != 0)
                 {
                     float yOffsetF = yOffset * pixelsPerUnit;
-                    textureStartY = renderFromTop ? textureStartY + yOffsetF : textureStartY - yOffsetF;
-                    textureEndY = renderFromTop ? textureEndY + yOffsetF : textureEndY - yOffsetF;
+
+                    if (yOffset > 0)
+                    {
+                        textureStartY = renderFromTop ? textureStartY + yOffsetF : textureStartY - yOffsetF;
+                        textureEndY = renderFromTop ? textureEndY + yOffsetF : textureEndY - yOffsetF;
+                    }
+                    else
+                    {
+                        textureStartY = renderFromTop ? textureStartY + yOffsetF : textureStartY - yOffsetF;
+                        textureEndY = renderFromTop ? textureEndY + yOffsetF : textureEndY - yOffsetF;
+                    }
                 }
 
                 int textureStartYClamped = Math.Clamp((int)textureStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);

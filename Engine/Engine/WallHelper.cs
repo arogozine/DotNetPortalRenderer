@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using System;
 
 namespace RenderingEngine.Engine
 {
@@ -43,7 +44,47 @@ namespace RenderingEngine.Engine
             Span<Wall> result = CullHiddenWallsAndCombineBunches(bunches, rotatedWalls, portalWallsToOcclude);
             result.Sort(wallComparer);
 
+            CullWallsBasedOnVisibility(ref result);
+
             return result;
+        }
+
+        private void CullWallsBasedOnVisibility(ref Span<Wall> walls)
+        {
+            Span<bool> visibility = this.visibility;
+            visibility.Fill(true);
+            ref bool visibilityPtr = ref MemoryMarshal.GetArrayDataReference(this.visibility);
+
+            int j = 0;
+            for (int i = 0; i < walls.Length; i++)
+            {
+                Wall wall = walls[i];
+                int xLeft = wall.XLeft;
+                int xRight = wall.XRight;
+
+                bool hidden = true;
+
+                for (ref bool startPtr = ref Unsafe.Add(ref visibilityPtr, xLeft), endPtr = ref Unsafe.Add(ref visibilityPtr, xRight);
+                     !Unsafe.IsAddressGreaterThan(ref startPtr, ref endPtr);
+                     startPtr = ref Unsafe.Add(ref startPtr, 1))
+                {
+                    if (startPtr)
+                    {
+                        hidden = false;
+                        startPtr = false;
+                    }
+                }
+
+                if (hidden)
+                {
+                    continue;
+                }
+
+                walls[j] = wall;
+                j++;
+            }
+
+            walls = walls[..j];
         }
 
         private Span<Wall> CacheRotatedWallsRelativeToPlayer(Sector sector, PortalPlayerSnapshot player)
@@ -78,13 +119,8 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        private static void FilterParentPortalWall(ref Span<Wall> rotatedWalls, Wall? parentSectorWall)
+        private static void FilterParentPortalWall(ref Span<Wall> rotatedWalls, Wall parentSectorWall)
         {
-            if (parentSectorWall is null)
-            {
-                return;
-            }
-
             for (int i = 0; i < rotatedWalls.Length; i++)
             {
                 Wall wall = rotatedWalls[i];
@@ -129,7 +165,7 @@ namespace RenderingEngine.Engine
             // we figure out the range of each bunch here
 
             int bunchLength = rotatedWalls.Length > 0 ? rotatedWalls.Length : 1;
-            Span <Range> bunches = new Range[bunchLength];
+            Span<Range> bunches = new Range[bunchLength];
 
             int bunchCount = 0;
             int subsetStart = 0;
@@ -266,7 +302,7 @@ namespace RenderingEngine.Engine
             return finalWalls[..i];
         }
 
-        public void CullWallsFromBunch(ref Span<Wall> walls, Span<Wall> parentPortalWallsToOcclude)
+        public static void CullWallsFromBunch(ref Span<Wall> walls, Span<Wall> parentPortalWallsToOcclude)
         {
             for (int i = 0; i < parentPortalWallsToOcclude.Length; i++)
             {
@@ -277,34 +313,6 @@ namespace RenderingEngine.Engine
             {
                 return;
             }
-
-            Span<bool> visibility = this.visibility;
-            visibility.Fill(true);
-
-            int j = 0;
-            for (int i = 0; i < walls.Length; i++)
-            {
-                Wall wall = walls[i];
-
-                bool hidden = true;
-                for (int v = wall.XLeft; v <= wall.XRight; v++)
-                {
-                    hidden &= !visibility[v];
-                    visibility[v] = true;
-                }
-
-                if (hidden)
-                {
-                    continue;
-                }
-
-                walls[j] = wall;
-                j++;
-            }
-
-            walls = walls[..j];
-
-            return;
         }
 
         public void CalculateWallPlane(Wall wall, float yCeil, float yFloor, float yaw)
@@ -316,7 +324,7 @@ namespace RenderingEngine.Engine
             float ry2 = wall.R2.Y;
 
             float xLeft, xRight, yLeftCeil, yLeftFloor, yRightCeil, yRightFloor;
-            float scale = width * -0.7575231f;
+            float scale = width * -EngineConstants.HeightToWidthRatio;
             float halfWidth = width / 2f;
             float halfHeight = height / 2f;
 

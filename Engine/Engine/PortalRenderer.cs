@@ -247,7 +247,6 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            GenerateDistanceCache(player, sectorInfo, sector);
             RenderWindowHelper.NewSector(sectorInfo);
 
             for (int s = 0; s < walls.Length; s++)
