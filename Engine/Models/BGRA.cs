@@ -72,10 +72,19 @@
                 return (int)Value;
             }
         }
+        public static bool operator ==(BGRA left, uint right)
+        {
+            return left.Value == right;
+        }
 
         public static bool operator ==(BGRA left, BGRA right)
         {
             return left.Value == right.Value;
+        }
+
+        public static bool operator !=(BGRA left, uint right)
+        {
+            return left.Value != right;
         }
 
         public static bool operator !=(BGRA left, BGRA right)

@@ -5,6 +5,7 @@
         public required string Name { get; set; }
         public int XOffset { get; set; }
         public int YOffset { get; set; }
+        public float Alpha { get; set; }
         public TextureRenderingOptions RenderingOptions { get; set; }
     }
 

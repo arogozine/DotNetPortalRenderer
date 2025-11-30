@@ -117,7 +117,6 @@ namespace RenderingEngine.Engine
             TransparentWall renderableWall)
         {
             int width = PixelWidth;
-            int height = PixelHeight;
             Wall wall = renderableWall.Wall;
             Line line = wall.Line;
             int wallFromXOffset = renderableWall.Offset;
@@ -129,6 +128,7 @@ namespace RenderingEngine.Engine
 
             Span<RenderWindow> window = renderableWall.RenderWindow!;
 
+            TextureInfo textureInfo = line.MiddleTexture!;
             ref Texture texture = ref TextureCache.GetTexture(line.MiddleTexture);
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
             int textureWidth = texture.Height;
@@ -149,12 +149,10 @@ namespace RenderingEngine.Engine
 
             float oneOverSectorHeight = 1f / sectorHeight;
 
-            var textureInfo = line.MiddleTexture!;
             int yOffset = textureInfo.YOffset;
-            int xOffset = textureInfo.XOffset;
             bool renderFromTop = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromTop);
             byte lightLevel = sector.LightLevel;
-
+            float alpha = Math.Clamp(textureInfo.Alpha, 0f, 1f);
 
             if (floorOffset < 0f)
             {
@@ -166,7 +164,7 @@ namespace RenderingEngine.Engine
                 ceilOffset = 0f;
             }
 
-            xOffset = DetermineXOffset(textureInfo, ref texture);
+            int xOffset = DetermineXOffset(textureInfo, ref texture);
 
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
 
@@ -194,19 +192,11 @@ namespace RenderingEngine.Engine
 
                 float pixelsPerUnit = (wallEndY - wallStartY) * oneOverSectorHeight;
 
-                // Wall Calculation
-                int fromYClamped = renderWindow.WallStart;
-                int toYClamped = renderWindow.WallEnd;
-
                 // Portal Calculation
                 float floorPixelOffset = pixelsPerUnit * floorOffset;
                 float ceilPixelOffset = pixelsPerUnit * ceilOffset;
                 float portalFromY = wallStartY - ceilPixelOffset;
                 float portalToY = wallEndY - floorPixelOffset;
-
-                // clamp to view window
-                int portalFromYClamped = Math.Clamp((int)portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int portalToYClamped = Math.Clamp((int)portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
 
                 float textureStartY = renderFromTop ? portalFromY : (portalToY - texture.Height * pixelsPerUnit);
                 float textureEndY = renderFromTop ? (portalFromY + texture.Height * pixelsPerUnit) : portalToY;
@@ -228,40 +218,154 @@ namespace RenderingEngine.Engine
                 int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
                 float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, offset, textureWidth);
 
-                uint shaded = default;
-                int textureXPosIOld = -1;
 
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel);
 
-                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * PixelWidth + x);
-                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, textureEndYClamped * PixelWidth + x);
-
-                for (;Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
-                    textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth))
+                if (alpha == 1f)
                 {
-                    int textureXPosI = (int)textureXPos;
-
-                    if (textureXPosI != textureXPosIOld)
-                    {
-                        if (textureXPosI >= textureWidth)
-                        {
-                            textureXPosI -= textureWidth;
-                        }
-
-                        textureXPosIOld = textureXPosI;
-                        shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
-                    }
-
-                    if (shaded != 0U)
-                    {
-                        screenIndexPtr = shaded;
-                    }
+                    DrawTransparentWallLine(textureWidth, ref columnBufferPtr, ref screenPtr, x, textureStartYClamped, textureEndYClamped, textureXIncr, ref textureXPos);
+                }
+                else
+                {
+                    DrawTransparentWallLineWithAlpha(textureWidth, ref columnBufferPtr, ref screenPtr, x, textureStartYClamped, textureEndYClamped, textureXIncr, ref textureXPos, alpha);
                 }
             }
 
             columnABufferIndex = EngineConstants.Unset;
         }
 
+        private void DrawTransparentWallLine(int textureWidth, ref uint columnBufferPtr, ref uint screenPtr, int x, int textureStartYClamped, int textureEndYClamped, float textureXIncr, ref float textureXPos)
+        {
+            uint shaded = default;
+            int textureXPosIOld = -1;
+
+            ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * PixelWidth + x);
+            ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, textureEndYClamped * PixelWidth + x);
+
+            for (; Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth))
+            {
+                int textureXPosI = (int)textureXPos;
+
+                if (textureXPosI != textureXPosIOld)
+                {
+                    if (textureXPosI >= textureWidth)
+                    {
+                        textureXPosI -= textureWidth;
+                    }
+
+                    textureXPosIOld = textureXPosI;
+                    shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
+                }
+
+                if (shaded != 0U)
+                {
+                    screenIndexPtr = shaded;
+                }
+            }
+        }
+
+        private void DrawTransparentWallLineWithAlpha(int textureWidth, ref uint columnBufferPtr, ref uint screenPtr, int x, int textureStartYClamped, int textureEndYClamped, float textureXIncr, ref float textureXPos, float alpha)
+        {
+            uint a = (uint)(alpha * byte.MaxValue);
+            uint aInv = byte.MaxValue - a;
+
+            BGRA shaded = default;
+            int textureXPosIOld = -1;
+
+            ref BGRA screenIndexPtrBgra = ref Unsafe.As<uint, BGRA>(ref screenPtr);
+            ref BGRA screenIndexPtr = ref Unsafe.Add(ref screenIndexPtrBgra, textureStartYClamped * PixelWidth + x);
+            ref BGRA screenIndexPtrEnd = ref Unsafe.Add(ref screenIndexPtrBgra, textureEndYClamped * PixelWidth + x);
+
+            for (; Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth))
+            {
+                int textureXPosI = (int)textureXPos;
+
+                if (textureXPosI != textureXPosIOld)
+                {
+                    if (textureXPosI >= textureWidth)
+                    {
+                        textureXPosI -= textureWidth;
+                    }
+
+                    textureXPosIOld = textureXPosI;
+                    shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
+                }
+
+                if (shaded != 0U)
+                {
+                    screenIndexPtr = BlendBGRA(ref screenIndexPtr, ref shaded, a, aInv);
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static uint BlendBGRA(ref BGRA bgraDst, ref BGRA bgraSrc, uint a, uint aInv)
+        {
+            const uint Alpha = (uint)byte.MaxValue << 24;
+
+            unchecked
+            {
+                // if (a == 0) return bgraDst.Value;
+                // if (a == 255) return bgraSrc.Value;
+
+                uint bDst = bgraDst.B;
+                uint gDst = bgraDst.G;
+                uint rDst = bgraDst.R;
+
+                uint bSrc = bgraSrc.B;
+                uint gSrc = bgraSrc.G;
+                uint rSrc = bgraSrc.R;
+
+                uint bOut = (bSrc * a + bDst * aInv) >> 8;
+                uint gOut = (gSrc * a + gDst * aInv) >> 8;
+                uint rOut = (rSrc * a + rDst * aInv) >> 8;
+
+                return (Alpha | (rOut << 16) | (gOut << 8) | bOut);
+            }
+        }
+
+        public static uint BlendBGRA(uint bgraDst, uint bgraSrc, float alpha)
+        {
+            unchecked
+            {
+                int a = (int)(alpha * byte.MaxValue);
+                int aInv = byte.MaxValue - a;
+
+                // Extract source alpha (0-255)
+                // int a = (int)((bgraSrc >> 24) & 0xFF);
+
+                // Fast path: fully transparent or fully opaque
+                if (a == 0) return bgraDst;
+                if (a == 255) return bgraSrc;
+
+                // Extract BGRA channels
+                int bDst = (int)(bgraDst & 0xFF);
+                int gDst = (int)((bgraDst >> 8) & 0xFF);
+                int rDst = (int)((bgraDst >> 16) & 0xFF);
+
+                int bSrc = (int)(bgraSrc & 0xFF);
+                int gSrc = (int)((bgraSrc >> 8) & 0xFF);
+                int rSrc = (int)((bgraSrc >> 16) & 0xFF);
+
+                // Approximate blend: (src * a + dst * (255 - a)) >> 8
+                // Using integer math for speed
+                // int bOut = (bSrc * a + bDst * (255 - a)) >> 8;
+                // int gOut = (gSrc * a + gDst * (255 - a)) >> 8;
+                // int rOut = (rSrc * a + rDst * (255 - a)) >> 8;
+
+                int bOut = (bSrc * a + bDst * aInv) >> 8;
+                int gOut = (gSrc * a + gDst * aInv) >> 8;
+                int rOut = (rSrc * a + rDst * aInv) >> 8;
+
+                // Result alpha: simple max (fast approximation)
+                int aOut = Math.Max((int)((bgraDst >> 24) & 0xFF), a);
+
+                // Pack back into BGRA
+                return (uint)((aOut << 24) | (rOut << 16) | (gOut << 8) | bOut);
+            }
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void CalculateSprite(scoped Span<uint> spriteTexturePtr, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, byte brightness)

@@ -623,6 +623,12 @@ namespace RenderingEngine.DoomMapLoader
                     UdmfVertex vertex1 = verticies[linedef.V1];
                     UdmfVertex vertex2 = verticies[linedef.V2];
 
+                    Models.TextureInfo? middleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffsetMid, lineInfo.YOffsetMid, lineInfo.LowerUnpegged);
+                    if (middleTexture is not null)
+                    {
+                        middleTexture.Alpha = linedef.Alpha ?? 1f;
+                    }
+
                     var line = new Line
                     {
                         Id = lineInfo.LineDefId,
@@ -630,7 +636,7 @@ namespace RenderingEngine.DoomMapLoader
                         PointB = ToVector(vertex2),
                         SectorTo = lineInfo.ParentSectorId,
                         UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, lineInfo.LowerUnpegged),
-                        MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffsetMid, lineInfo.YOffsetMid, lineInfo.LowerUnpegged),
+                        MiddleTexture = middleTexture,
                         LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, lineInfo.UpperUnpegged)
                     };
 
