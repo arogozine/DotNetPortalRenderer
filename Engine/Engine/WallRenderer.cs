@@ -49,6 +49,8 @@ namespace RenderingEngine.Engine
             float ceilOffset = neighborSector.Ceil - sector.Ceil;
             byte lightLevel = sector.LightLevel;
 
+            // ceiling and floor of the sector are the same
+            // so no wall is drawn
             if (floorOffset == 0 && ceilOffset == 0)
             {
                 CalculateDistance(renderableWall);
@@ -82,30 +84,9 @@ namespace RenderingEngine.Engine
 
             ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
 
-            /*
-            int lowerTextureStart = lowerTextureInfo.YOffset + lowerTexture.Height;
-
-            if (lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
-            {
-                lowerTextureStart += (int)(sectorHeight - floorOffset);
-                lowerTextureStart %= lowerTexture.Height;
-            }
-            */
-
             int lowerTextureStart = DetermineLowerTextureYOffset(sector, (int)floorOffset, (int)ceilOffset, lowerTextureInfo, ref lowerTexture);
             int lowerXOffset = DetermineXOffset(lowerTextureInfo, ref lowerTexture);
 
-            /*
-            int upperTextureStart = upperTextureInfo.YOffset > 0 ? upperTexture.Height + upperTextureInfo.YOffset : upperTexture.Height - upperTextureInfo.YOffset;
-
-            if (!upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromBottom)) {
-                int sectorHeightI = (int)sectorHeight;
-                if (sectorHeightI < upperTexture.Height)
-                    upperTextureStart = upperTextureStart - (int)sectorHeight % upperTexture.Height;
-                else
-                    upperTextureStart = 0;
-            }
-            */
             int upperTextureStart = DetermineUpperTextureYOffset(sector, (int)ceilOffset, upperTextureInfo, ref upperTexture);
             int upperXOffset = DetermineXOffset(upperTextureInfo, ref upperTexture);
 
@@ -214,7 +195,7 @@ namespace RenderingEngine.Engine
                 // draw lower wall
                 if (floorOffset != 0)
                 {
-                    ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * PixelWidth + x);
+                    ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * width + x);
                     ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, toYClamped * width + x);
 
                     int textureWidth = lowerTexture.Height;
@@ -263,7 +244,9 @@ namespace RenderingEngine.Engine
 
             columnABufferIndex = EngineConstants.Unset;
             columnBBufferIndex = EngineConstants.Unset;
-            return true;
+
+            // treat as a basic wall?
+            return sectorHeight != floorOffset;
         }
 
         private bool DrawBasicWall(

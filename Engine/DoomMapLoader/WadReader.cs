@@ -352,7 +352,7 @@ namespace RenderingEngine.DoomMapLoader
                         PointA = ToVector(vertex1),
                         PointB = ToVector(vertex2),
                         SectorTo = lineInfo.ParentSectorId,
-                        UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, linedef.Flags.HasFlag(LinedefFlags.DontPegTop)),
+                        UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, !linedef.Flags.HasFlag(LinedefFlags.DontPegTop)),
                         MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffsetMid, lineInfo.YOffsetMid, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom)),
                         LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom))
                     };
@@ -635,7 +635,7 @@ namespace RenderingEngine.DoomMapLoader
                         PointA = ToVector(vertex1),
                         PointB = ToVector(vertex2),
                         SectorTo = lineInfo.ParentSectorId,
-                        UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, lineInfo.LowerUnpegged),
+                        UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, !lineInfo.LowerUnpegged),
                         MiddleTexture = middleTexture,
                         LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, lineInfo.UpperUnpegged)
                     };
@@ -877,7 +877,13 @@ namespace RenderingEngine.DoomMapLoader
                 return null;
             }
 
-            return new Models.TextureInfo { Name = name, XOffset = xOffset, YOffset = yOffset, RenderingOptions = renderFromBottom ? TextureRenderingOptions.FromBottom : TextureRenderingOptions.FromTop };
+            return new Models.TextureInfo {
+                Name = name,
+                XOffset = xOffset,
+                YOffset = yOffset,
+                RenderingOptions = renderFromBottom ? TextureRenderingOptions.FromBottom : TextureRenderingOptions.FromTop,
+                Alpha = 1f
+            };
         }
     }
 }

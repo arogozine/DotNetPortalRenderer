@@ -19,14 +19,14 @@ namespace RenderingEngine.Engine
                 return 0;
             }
 
-            float xCX1 = x.C1.X;
-            float xCX2 = x.C2.X;
-            float xCY1 = x.C1.Y;
-            float xCY2 = x.C2.Y;
-            float yCX1 = y.C1.X;
-            float yCX2 = y.C2.X;
-            float yCY1 = y.C1.Y;
-            float yCY2 = y.C2.Y;
+            float xCX1 = x.R1.X;
+            float xCX2 = x.R2.X;
+            float xCY1 = x.R1.Y;
+            float xCY2 = x.R2.Y;
+            float yCX1 = y.R1.X;
+            float yCX2 = y.R2.X;
+            float yCY1 = y.R1.Y;
+            float yCY2 = y.R2.Y;
 
             return Compare(
                     (xCX1 + xCX2) / 2f,

@@ -88,6 +88,49 @@ namespace DoomAssetLoader
 
             Span<string> pNames = default;
 
+
+            // Try getting the PNAMES lump first
+            for (i = 0; i < lumpCount; i++)
+            {
+                fs.Seek(directoryOffset + 16 * i, SeekOrigin.Begin);
+
+                // a long integer, the file offset to the start of the lump
+                fs.ReadExactly(buffer4, 0, 4);
+                uint lumpOffset = BitConverter.ToUInt32(buffer4);
+
+                // a long integer, the size of the lump in bytes
+                fs.ReadExactly(buffer4, 0, 4);
+                uint lumpSize = BitConverter.ToUInt32(buffer4);
+
+                // 8-byte ASCII string, the name of the lump, padded with zeros
+                fs.ReadExactly(buffer8, 0, 8);
+                string lumpName = GetStringFromBytes(buffer8);
+
+                if (lumpName == LumpType.PNames)
+                {
+                    byte[] lumpbytes = new byte[lumpSize];
+
+                    if (lumpSize != 0)
+                    {
+                        fs.Seek(lumpOffset, SeekOrigin.Begin);
+                        fs.ReadExactly(lumpbytes, 0, (int)lumpSize);
+                    }
+
+                    var lump = new WadLump(lumpName, lumpbytes)
+                    {
+                        IsFlat = false,
+                        IsPatch = false,
+                        IsSprite = false,
+                        MapName = mapName,
+                        IsMap = false
+                    };
+
+                    pNames = WadLumpParser.ReadPNames(lump);
+
+                    break;
+                }
+            }
+
             for (i = 0; i < lumpCount; i++)
             {
                 fs.Seek(directoryOffset + 16 * i, SeekOrigin.Begin);
@@ -197,11 +240,6 @@ namespace DoomAssetLoader
                 };
 
                 wadFile.Lumps.Add(lump);
-
-                if (lumpName == LumpType.PNames)
-                {
-                    pNames = WadLumpParser.ReadPNames(lump);
-                }
             }
 
             return wadFile;

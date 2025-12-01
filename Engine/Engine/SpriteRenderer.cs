@@ -49,7 +49,7 @@ namespace RenderingEngine.Engine
 
             float cameraRay = -1f * EngineConstants.CameraPlaneX;
             cameraRay += cameraWidthIncr * spriteFromX;
-   
+
             float distIncr = texture.Width / (float)(xRight - xLeft);
 
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
@@ -64,18 +64,23 @@ namespace RenderingEngine.Engine
 
                 if (floorEnd <= ceilingStart)
                 {
-                   continue;
+                    continue;
                 }
 
                 if (distance[x] < fromToYDist)
                 {
-                   continue;
+                    continue;
                 }
-
-                int textureXLocation = CalculateTextureXPosition(cameraRay, t1, d2x);
 
                 int clamptedFromY = Math.Clamp(spriteStartY, ceilingStart, floorEnd);
                 int clamptedToY = Math.Clamp(spriteEndY, ceilingStart, floorEnd);
+
+                if (clamptedFromY >= clamptedToY)
+                {
+                    continue;
+                }
+
+                int textureXLocation = CalculateTextureXPosition(cameraRay, t1, d2x);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
                 ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
@@ -124,7 +129,7 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
             Sector sector = renderableWall.Sector;
             float sectorHeight = sector.Ceil - sector.Floor;
-           
+
 
             Span<RenderWindow> window = renderableWall.RenderWindow!;
 
@@ -332,47 +337,6 @@ namespace RenderingEngine.Engine
                 uint rOut = (rSrc * a + rDst * aInv) >> 8;
 
                 return (Alpha | (rOut << 16) | (gOut << 8) | bOut);
-            }
-        }
-
-        public static uint BlendBGRA(uint bgraDst, uint bgraSrc, float alpha)
-        {
-            unchecked
-            {
-                int a = (int)(alpha * byte.MaxValue);
-                int aInv = byte.MaxValue - a;
-
-                // Extract source alpha (0-255)
-                // int a = (int)((bgraSrc >> 24) & 0xFF);
-
-                // Fast path: fully transparent or fully opaque
-                if (a == 0) return bgraDst;
-                if (a == 255) return bgraSrc;
-
-                // Extract BGRA channels
-                int bDst = (int)(bgraDst & 0xFF);
-                int gDst = (int)((bgraDst >> 8) & 0xFF);
-                int rDst = (int)((bgraDst >> 16) & 0xFF);
-
-                int bSrc = (int)(bgraSrc & 0xFF);
-                int gSrc = (int)((bgraSrc >> 8) & 0xFF);
-                int rSrc = (int)((bgraSrc >> 16) & 0xFF);
-
-                // Approximate blend: (src * a + dst * (255 - a)) >> 8
-                // Using integer math for speed
-                // int bOut = (bSrc * a + bDst * (255 - a)) >> 8;
-                // int gOut = (gSrc * a + gDst * (255 - a)) >> 8;
-                // int rOut = (rSrc * a + rDst * (255 - a)) >> 8;
-
-                int bOut = (bSrc * a + bDst * aInv) >> 8;
-                int gOut = (gSrc * a + gDst * aInv) >> 8;
-                int rOut = (rSrc * a + rDst * aInv) >> 8;
-
-                // Result alpha: simple max (fast approximation)
-                int aOut = Math.Max((int)((bgraDst >> 24) & 0xFF), a);
-
-                // Pack back into BGRA
-                return (uint)((aOut << 24) | (rOut << 16) | (gOut << 8) | bOut);
             }
         }
 
