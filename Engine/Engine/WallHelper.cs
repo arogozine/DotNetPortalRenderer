@@ -7,7 +7,6 @@ namespace RenderingEngine.Engine
     {
         private readonly int width;
         private readonly int height;
-        private readonly float cameraPlaneX;
         private readonly bool[] visibility;
         private readonly WallComparer wallComparer;
         private PortalPlayerSnapshot? _player;
@@ -15,12 +14,10 @@ namespace RenderingEngine.Engine
 
         public WallHelper(
             int width,
-            int height,
-            float cameraPlaneX)
+            int height)
         {
             this.width = width;
             this.height = height;
-            this.cameraPlaneX = cameraPlaneX;
             this.visibility = new bool[width];
             wallComparer = new WallComparer();
         }
@@ -350,10 +347,10 @@ namespace RenderingEngine.Engine
                 float d2x = rx2 - rx1;
                 float d2y = ry2 - ry1;
 
-                bool intersectsL = TryGetSegmentIntersectionZero2(-cameraPlaneX, rx1, ry1, d2x, d2y,
+                bool intersectsL = TryGetSegmentIntersectionZero2(-EngineConstants.CameraPlaneX, rx1, ry1, d2x, d2y,
                     out float xDistanceL, out float yDistanceL);
 
-                bool intersectsR = TryGetSegmentIntersectionZero2(cameraPlaneX, rx1, ry1, d2x, d2y,
+                bool intersectsR = TryGetSegmentIntersectionZero2(EngineConstants.CameraPlaneX, rx1, ry1, d2x, d2y,
                     out float xDistanceR, out float yDistanceR);
 
                 // Clamp(ref xLeft, ref xRight);
@@ -459,15 +456,13 @@ namespace RenderingEngine.Engine
                 return false;
             }
 
-            float cameraPlaneX = this.cameraPlaneX;
-
             float cameraWidthIncr = 2.0f / width;
 
             float d2x = rx2 - rx1;
             float d2y = ry2 - ry1;
 
-            float rayDirLeft = cameraPlaneX * (cameraWidthIncr * xLeftInt - 1f);
-            float rayDirRight = cameraPlaneX * (cameraWidthIncr * xRightInt - 1f);
+            float rayDirLeft = EngineConstants.CameraPlaneX * (cameraWidthIncr * xLeftInt - 1f);
+            float rayDirRight = EngineConstants.CameraPlaneX * (cameraWidthIncr * xRightInt - 1f);
 
             bool intersectsL = TryGetSegmentIntersectionZero2(rayDirLeft, rx1, ry1, d2x, d2y,
                 out float xDistanceL, out float yDistanceL);
@@ -511,7 +506,7 @@ namespace RenderingEngine.Engine
 
                 for (int x = xLeftInt - 1; x <= xRightInt; x++, cameraX += cameraWidthIncr)
                 {
-                    float rayDirX = cameraPlaneX * cameraX;
+                    float rayDirX = EngineConstants.CameraPlaneX * cameraX;
 
                     bool intersects = TryGetSegmentIntersectionZero2(rayDirX, rx1, ry1, d2x, d2y,
                         out float xDistance, out float yDistance);
@@ -543,7 +538,7 @@ namespace RenderingEngine.Engine
 
                 for (int x = xRightInt; x >= xLeftInt; x--, cameraX -= cameraWidthIncr)
                 {
-                    float rayDirX = cameraPlaneX * cameraX;
+                    float rayDirX = EngineConstants.CameraPlaneX * cameraX;
 
                     bool intersects = TryGetSegmentIntersectionZero2(rayDirX, rx1, ry1, d2x, d2y,
                         out float xDistance, out float yDistance);

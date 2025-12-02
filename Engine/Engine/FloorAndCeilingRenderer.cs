@@ -309,14 +309,7 @@ namespace RenderingEngine.Engine
 
             Vector<float> ivIncrF = new(yTextureIncr * Vector<float>.Count);
 
-            Vector<float> incramentVector = default;
-            ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
-            float yTextureIncrSum = 0f;
-            for (int j = 0; j < Vector<int>.Count; j++)
-            {
-                Unsafe.Add(ref incramentVectorPtr, j) = yTextureIncrSum;
-                yTextureIncrSum += yTextureIncr;
-            }
+            Vector<float> incramentVector = Vector.CreateSequence(0f, yTextureIncr);
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
