@@ -67,6 +67,12 @@ namespace SoftwareRenderer
                 image = SKImage.FromPixels(info, (nint)bgraPtr, info.RowBytes);
             }
 
+            // prevent crash due to minimizing/maximizing window
+            if (image == null)
+            {
+                return;
+            }
+
             canvas.DrawImage(image, 0f, 0f, SKSamplingOptions.Default, null);
             canvas.Flush();
 
