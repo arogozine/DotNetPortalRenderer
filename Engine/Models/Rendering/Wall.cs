@@ -4,6 +4,8 @@ namespace RenderingEngine.Models
 {
     internal sealed class Wall : IEquatable<Wall?>
     {
+        public int Id => Line.Id;
+
         public Line Line { get; }
 
         public bool IntersectsView { get; set; }

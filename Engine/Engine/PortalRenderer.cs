@@ -35,9 +35,13 @@ namespace RenderingEngine.Engine
             GenerateAngleCache();
         }
 
+        /// <summary>
+        /// Precache Angle for Skybox Rendering
+        /// </summary>
         private void GenerateAngleCache()
         {
-            int width = this.PixelWidth;
+            int width = this.angleCache.Length;
+
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
             float cameraRay = -EngineConstants.CameraPlaneX;
 
@@ -48,10 +52,10 @@ namespace RenderingEngine.Engine
         }
 
         private sealed record RenderableAreaAndZBuffer(int[] CeilingStart, int[] FloorEnd, float[] ZBuffer);
+        private readonly RenderableAreaAndZBuffer[] spriteRenderableAreaCache = new RenderableAreaAndZBuffer[EngineConstants.MaxRenderDepth];
 
         private readonly List<RenderableSprite> transparentWalls = [];
         private readonly Queue<NeighborsToRender> sectorRenderQueue = [];
-        private readonly RenderableAreaAndZBuffer[] spriteRenderableAreaCache = new RenderableAreaAndZBuffer[EngineConstants.MaxRenderDepth];
 
         public void DrawScreen(Span<BGRA> screen, PortalPlayerSnapshot player)
         {
@@ -180,7 +184,7 @@ namespace RenderingEngine.Engine
                 Span<Wall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, player);
 
                 // 2. Determine where ceiling, floor, and walls start and end
-                CalculateRenderWindow(player, sectorInfo, sectors, sector, walls);
+                CalculateRenderWindow(sectorInfo, sectors, sector, walls);
 
                 // 3. Render Floors, Ceilings, and Walls
                 List<RenderableWall> neighbors = RenderSector(player, sector, sectors, screen);
@@ -216,6 +220,7 @@ namespace RenderingEngine.Engine
                 }
                 else if (renderableWall is SectorSprites sectorSprites)
                 {
+                    // filter sprites based on depth between this and next set of sectors
                     float[] currentDistance = sectorSprites.Distance;
                     float[]? nextDistance = sectorSprites.RenderDepth > 1 ? spriteRenderableAreaCache[sectorSprites.RenderDepth - 1].ZBuffer : null;
 
@@ -233,7 +238,6 @@ namespace RenderingEngine.Engine
         private readonly List<RenderableWall> renderableWalls = [];
 
         private void CalculateRenderWindow(
-            PortalPlayerSnapshot player,
             NeighborsToRender sectorInfo,
             ReadOnlySpan<Sector> sectors,
             Sector sector,

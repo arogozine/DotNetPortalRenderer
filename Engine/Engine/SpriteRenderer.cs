@@ -225,6 +225,11 @@ namespace RenderingEngine.Engine
                 int textureStartYClamped = Math.Clamp((int)textureStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
                 int textureEndYClamped = Math.Clamp((int)textureEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);
 
+                if (textureStartYClamped >= textureEndYClamped)
+                {
+                    continue;
+                }
+
                 float offset = textureStartYClamped - textureStartY;
 
                 // Calculate Middle Texture Position

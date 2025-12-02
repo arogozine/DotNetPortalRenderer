@@ -266,7 +266,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                if (wall.YLeftFloor < 0 && wall.YRightFloor < 0)
+                if (wall.YLeftFloor < 0 && wall.YRightFloor < 0 && wall.YLeftCeil < 0 && wall.YRightCeil < 0)
                 {
                     //continue;
                 }
@@ -350,7 +350,7 @@ namespace RenderingEngine.Engine
                 bool intersectsL = TryGetSegmentIntersectionZero2(-EngineConstants.CameraPlaneX, rx1, ry1, d2x, d2y,
                     out float xDistanceL, out float yDistanceL);
 
-                bool intersectsR = TryGetSegmentIntersectionZero2(EngineConstants.CameraPlaneX, rx1, ry1, d2x, d2y,
+                bool intersectsR = TryGetSegmentIntersectionZero2(EngineConstants.CameraPlaneX, rx2, ry2, -d2x, -d2y,
                     out float xDistanceR, out float yDistanceR);
 
                 // Clamp(ref xLeft, ref xRight);
@@ -417,7 +417,7 @@ namespace RenderingEngine.Engine
                 wall.Flipped = !wall.Flipped;
             }
 
-            wall.IntersectsView |= CalculatePlaneIntersectionsForWall(ref xLeft, ref xRight, ref rx1, ref ry1, ref rx2, ref ry2);
+            wall.IntersectsView |= CalculatePlaneIntersectionsForWall(xLeft, xRight, ref rx1, ref ry1, ref rx2, ref ry2);
 
             if (wall.IntersectsView)
             {
@@ -445,13 +445,10 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private bool CalculatePlaneIntersectionsForWall(ref float xLeft, ref float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
+        private bool CalculatePlaneIntersectionsForWall(float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
         {
-            int xLeftInt = (int)xLeft;
-            int xRightInt = (int)xRight;
-
             // Nothing To Render
-            if (xLeftInt == xRightInt)
+            if ((int)xLeft == (int)xRight)
             {
                 return false;
             }
@@ -461,13 +458,13 @@ namespace RenderingEngine.Engine
             float d2x = rx2 - rx1;
             float d2y = ry2 - ry1;
 
-            float rayDirLeft = EngineConstants.CameraPlaneX * (cameraWidthIncr * xLeftInt - 1f);
-            float rayDirRight = EngineConstants.CameraPlaneX * (cameraWidthIncr * xRightInt - 1f);
+            float rayDirLeft = EngineConstants.CameraPlaneX * (cameraWidthIncr * xLeft - 1f);
+            float rayDirRight = EngineConstants.CameraPlaneX * (cameraWidthIncr * xRight - 1f);
 
             bool intersectsL = TryGetSegmentIntersectionZero2(rayDirLeft, rx1, ry1, d2x, d2y,
                 out float xDistanceL, out float yDistanceL);
 
-            bool intersectsR = TryGetSegmentIntersectionZero2(rayDirRight, rx1, ry1, d2x, d2y,
+            bool intersectsR = TryGetSegmentIntersectionZero2(rayDirRight, rx2, ry2, -d2x, -d2y,
                 out float xDistanceR, out float yDistanceR);
 
             if (intersectsL && intersectsR)
@@ -491,83 +488,8 @@ namespace RenderingEngine.Engine
                 ry2 = yDistanceR;
             }
 
-            xLeft = xLeftInt;
-            xRight = xRightInt;
-
             return true;
-
-            // Debugging Code Below
-
-            float cameraX = -1f;
-
-            if (!intersectsL)
-            {
-                cameraX += (cameraWidthIncr * (xLeftInt - 1));
-
-                for (int x = xLeftInt - 1; x <= xRightInt; x++, cameraX += cameraWidthIncr)
-                {
-                    float rayDirX = EngineConstants.CameraPlaneX * cameraX;
-
-                    bool intersects = TryGetSegmentIntersectionZero2(rayDirX, rx1, ry1, d2x, d2y,
-                        out float xDistance, out float yDistance);
-
-                    if (intersects)
-                    {
-                        if (x != xLeftInt)
-                            Debug.WriteLine($"intersectsL {Math.Abs(x - xLeftInt)}");
-
-                        rx1 = xDistance;
-                        ry1 = yDistance;
-                        xLeftInt = x;
-                        intersectsL = true;
-
-                        break;
                     }
-                }
-
-                if (!intersectsL)
-                {
-                    return false;
-                }
-            }
-
-            if (!intersectsR)
-            {
-                cameraX = -1f;
-                cameraX += (cameraWidthIncr * xRightInt);
-
-                for (int x = xRightInt; x >= xLeftInt; x--, cameraX -= cameraWidthIncr)
-                {
-                    float rayDirX = EngineConstants.CameraPlaneX * cameraX;
-
-                    bool intersects = TryGetSegmentIntersectionZero2(rayDirX, rx1, ry1, d2x, d2y,
-                        out float xDistance, out float yDistance);
-
-                    if (intersects)
-                    {
-                        if (x != xRightInt)
-                            Debug.WriteLine($"intersectsR {Math.Abs(x - xRightInt)}");
-
-                        rx2 = xDistance;
-                        ry2 = yDistance;
-                        xRightInt = x;
-                        intersectsR = true;
-                        break;
-                    }
-                }
-
-                if (!intersectsR)
-                {
-                    return false;
-                }
-            }
-
-            xLeft = xLeftInt;
-            xRight = xRightInt;
-
-            return intersectsL || intersectsR;
-
-        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool TryGetSegmentIntersectionZero2(

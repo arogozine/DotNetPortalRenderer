@@ -2,7 +2,7 @@
 {
     internal static class EngineConstants
     {
-        public const int MaxRenderDepth = 16;
+        public const int MaxRenderDepth = 2048;
 
         public const int NullSector = -1;
         public const int Unset = -1;
