@@ -1,5 +1,4 @@
 ﻿using RenderingEngine.Models;
-using System;
 
 namespace RenderingEngine.Engine
 {

@@ -59,6 +59,7 @@ namespace RenderingEngine.Engine
 
         public void DrawScreen(Span<BGRA> screen, PortalPlayerSnapshot player)
         {
+            InitializeSharedVectors(player);
             this.WallHelper.SetSnapShot(player);
 
             RenderWindowHelper.NewRender();

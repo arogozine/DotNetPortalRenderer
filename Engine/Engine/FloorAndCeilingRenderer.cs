@@ -5,6 +5,36 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
+        private Vector<float> pxV = default;
+        private Vector<float> pyV = default;
+        private Vector<float> pSinV = default;
+        private Vector<float> pCosV = default;
+        private Vector<float> oneOvervFovV = default;
+        private Vector<float> ivIncrF = default;
+        private Vector<float> yawV = default;
+        private Vector<float> oneOverHeightV = default;
+
+        [SkipLocalsInit]
+        public void InitializeSharedVectors(PortalPlayerSnapshot player)
+        {
+            float px = player.X;
+            float py = player.Y;
+            float pSin = player.Sin;
+            float pCos = player.Cos;
+            float yaw = player.Yaw;
+
+            float oneOverHeight = 1f / PixelHeight;
+
+            pxV = Vector.Create(px);
+            pyV = Vector.Create(py);
+            pSinV = Vector.Create(pSin);
+            pCosV = Vector.Create(pCos);
+            oneOvervFovV = Vector.Create(oneOverHeight);
+            ivIncrF = new(oneOverHeight * Vector<float>.Count);
+            yawV = Vector.Create(yaw);
+            oneOverHeightV = Vector.Create(oneOverHeight);
+        }
+
         [SkipLocalsInit]
         private void RenderCeiling(
             PortalPlayerSnapshot player,
@@ -105,15 +135,7 @@ namespace RenderingEngine.Engine
             float yaw = player.Yaw;
             float yCeil = sector.Ceil - pz;
 
-            Vector<float> pxV = Vector.Create(px);
-            Vector<float> pyV = Vector.Create(py);
-            Vector<float> pSinV = Vector.Create(pSin);
-            Vector<float> pCosV = Vector.Create(pCos);
-            Vector<float> yawV = Vector.Create(yaw);
-
             Vector<float> yCeilV = Vector.Create(yCeil);
-            Vector<float> oneOverHeightV = Vector.Create(oneOverHeight);
-            Vector<float> ivIncrF = new(oneOverHeight * Vector<float>.Count);
 
             Vector<float> incramentVector = default;
             ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
@@ -155,11 +177,7 @@ namespace RenderingEngine.Engine
                 Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
                 Vector<int> halfHeightIntV = Vector.Create(halfHeightInt);
 
-                for (int j = 0; j < Vector<int>.Count; j++)
-                {
-                    Unsafe.Add(ref incramentVectorPtr, j) = halfHeightInt - floorFromY - j;
-                }
-
+                incramentVector = Vector.CreateSequence(halfHeightInt - floorFromY, -1f);
                 incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
 
                 int rem = (floorToY - floorFromY) % Vector<int>.Count;
@@ -304,7 +322,6 @@ namespace RenderingEngine.Engine
             float textureWidth4 = textureWidth * 4f * oneOverTwoPi;
             float yTextureIncr = (1f / height) * textureHeight;
 
-            Vector<int> zeroV = Vector.Create(0);
             Vector<int> textureWidthV = Vector.Create(ceilingTexture.Width);
 
             Vector<float> ivIncrF = new(yTextureIncr * Vector<float>.Count);
@@ -349,20 +366,13 @@ namespace RenderingEngine.Engine
 
                 for (; !Unsafe.AreSame(ref screenColumnPtr, ref screenEndColumnPtr); vScreenV += ivIncrF)
                 {
-                    Vector<int> texY = Vector.ConvertToInt32Native(vScreenV);
+                    Vector<int> texY = Vector.ConvertToInt32Native(vScreenV) * textureWidthV;
 
                     ref int texYPtr = ref Unsafe.As<Vector<int>, int>(ref texY);
 
                     for (int j = 0; j < Vector<int>.Count; j++)
                     {
                         int index = Unsafe.Add(ref texYPtr, j);
-
-                        if (index >= textureHeight)
-                        {
-                            index -= textureHeight;
-                        }
-
-                        index *= textureWidth;
 
                         screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
                         screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
@@ -373,12 +383,7 @@ namespace RenderingEngine.Engine
 
                 for (int y = 0; y < rem; y++)
                 {
-                    int index = vScreenVInt[y];
-                    if (index >= textureHeight)
-                    {
-                        index -= textureHeight;
-                    }
-                    index *= textureWidth;
+                    int index = vScreenVInt[y] * textureWidth;
 
                     screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
                     screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
@@ -497,14 +502,7 @@ namespace RenderingEngine.Engine
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
 
-            Vector<float> pxV = Vector.Create(px);
-            Vector<float> pyV = Vector.Create(py);
-            Vector<float> pSinV = Vector.Create(pSin);
-            Vector<float> pCosV = Vector.Create(pCos);
-            Vector<float> yawV = Vector.Create(yaw);
             Vector<float> yfloorV = Vector.Create(yfloor);
-            Vector<float> oneOvervFovV = Vector.Create(oneOvervFov);
-            Vector<float> ivIncrF = new(oneOvervFov * Vector<float>.Count);
             Vector<int> xOffSetV = Vector.Create(textureInfo.XOffset);
             Vector<int> yOffSetV = Vector.Create(textureInfo.YOffset);
 
@@ -537,10 +535,8 @@ namespace RenderingEngine.Engine
                 int screenIndex = floorFromY * width + x;
                 float xMapPosMultiplier = (widthDiv2 - x) * xPosIncr;
                 Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
-                for (int j = 0; j < Vector<int>.Count; j++)
-                {
-                    Unsafe.Add(ref incramentVectorPtr, j) = halfHeightInt - floorFromY - j;
-                }
+
+                incramentVector = Vector.CreateSequence(halfHeightInt - floorFromY, -1f);
                 incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOvervFovV, yawV);
 
                 int rem = (floorToY - floorFromY) % Vector<int>.Count;
