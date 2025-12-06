@@ -13,13 +13,12 @@ namespace RenderingEngine.Engine
             ArgumentNullException.ThrowIfNull(x);
             ArgumentNullException.ThrowIfNull(y);
 
-
-
             bool r1eqr1 = x.R1 == y.R1;
             bool r2eqr2 = x.R2 == y.R2;
             bool r1eqr2 = x.R1 == y.R2;
             bool r2eqr1 = x.R2 == y.R1;
 
+            // Same line
             if ((r1eqr1 && r2eqr2) || (r1eqr2 && r2eqr1))
             {
                 return 0;
@@ -30,7 +29,6 @@ namespace RenderingEngine.Engine
             Point yC1 = y.C1;
             Point yC2 = y.C2;
 
-         
            // the two line share a point, compare the other point
            if (r1eqr1)
            {

@@ -75,8 +75,25 @@ namespace RenderingEngine.Engine
             Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
             Vector<int> textureWidthV = Vector.Create(textureWidth);
-            Vector<int> yOffSetV = Vector.Create(textureInfo.YOffset);
-            Vector<int> xOffSetV = Vector.Create(textureInfo.XOffset);
+
+            bool rotated = sector.RotationFloor != 0f;
+
+            int xOffset = -textureInfo.XOffset;
+            int yOffset = textureInfo.YOffset;
+            Vector<int> xOffSetV = Vector.Create(xOffset);
+            Vector<int> yOffSetV = Vector.Create(yOffset);
+
+            Unsafe.SkipInit(out Vector<float> rSinV);
+            Unsafe.SkipInit(out Vector<float> rCosV);
+            Unsafe.SkipInit(out float rCos);
+            Unsafe.SkipInit(out float rSin);
+
+            if (rotated)
+            {
+                (rSin, rCos) = MathF.SinCos(sector.RotationFloor + MathF.PI);
+                rSinV = Vector.Create(rSin);
+                rCosV = Vector.Create(rCos);
+            }
 
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
@@ -85,9 +102,9 @@ namespace RenderingEngine.Engine
 
             for (int x = sectroFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.GetCeilingDimensions(x);
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 
-                if (Unsafe.IsNullRef(ref renderWindow) || renderWindow.CeilingStart >= renderWindow.WallStart)
+                if (!renderWindow.CanRenderCeiling)
                 {
                     continue;
                 }
@@ -118,6 +135,16 @@ namespace RenderingEngine.Engine
 
                     (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
+                    if (rotated)
+                    {
+                        Vector<float> xMapPosSR, yMapPosSR;
+                        xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
+                        yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
+
+                        xMapPos = xMapPosSR;
+                        yMapPos = yMapPosSR;
+                    }
+
                     Vector<int> _y1 = (Vector.ConvertToInt32Native(yMapPos) + yOffSetV) & textureHeightMaskV;
                     Vector<int> _x1 = (Vector.ConvertToInt32Native(xMapPos) + xOffSetV) & textureWidthMaskV;
                     Vector<int> textureIndex = _y1 * textureWidthV + _x1;
@@ -141,6 +168,16 @@ namespace RenderingEngine.Engine
                     float xMapPosR = yMapPosR * xMapPosMultiplier;
 
                     (float xMapPos, float yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
+
+                    if (rotated)
+                    {
+                        float xMapPosSR, yMapPosSR;
+                        xMapPosSR = xMapPos * rCos - yMapPos * rSin;
+                        yMapPosSR = xMapPos * rSin + yMapPos * rCos;
+
+                        xMapPos = xMapPosSR;
+                        yMapPos = yMapPosSR;
+                    }
 
                     int _y1 = ((int)(yMapPos) + textureInfo.YOffset) & textureHeightMask;
                     int _x1 = ((int)(xMapPos) + textureInfo.XOffset) & textureWidthMask;
@@ -185,9 +222,9 @@ namespace RenderingEngine.Engine
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.GetCeilingDimensions(x);
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 
-                if (Unsafe.IsNullRef(ref renderWindow) || renderWindow.CeilingStart >= renderWindow.WallStart)
+                if (!renderWindow.CanRenderCeiling)
                 {
                     continue;
                 }
@@ -280,8 +317,6 @@ namespace RenderingEngine.Engine
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
 
             Vector<float> yfloorV = Vector.Create(yfloor);
-            Vector<int> xOffSetV = Vector.Create(textureInfo.XOffset);
-            Vector<int> yOffSetV = Vector.Create(textureInfo.YOffset);
 
             int textureHeight = floorTexture.Height;
             int textureWidth = floorTexture.Width;
@@ -292,6 +327,26 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
             Vector<int> textureWidthV = Vector.Create(textureWidth);
 
+
+            bool rotated = sector.RotationFloor != 0f;
+
+            int xOffset = -textureInfo.XOffset;
+            int yOffset = textureInfo.YOffset;
+            Vector<int> xOffSetV = Vector.Create(xOffset);
+            Vector<int> yOffSetV = Vector.Create(yOffset);
+
+            Unsafe.SkipInit(out Vector<float> rSinV);
+            Unsafe.SkipInit(out Vector<float> rCosV);
+            Unsafe.SkipInit(out float rCos);
+            Unsafe.SkipInit(out float rSin);
+
+            if (rotated)
+            {
+                (rSin, rCos) = MathF.SinCos(sector.RotationFloor + MathF.PI);
+                rSinV = Vector.Create(rSin);
+                rCosV = Vector.Create(rCos);
+            }
+
             Vector<float> incramentVector = default;
             ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
@@ -299,9 +354,9 @@ namespace RenderingEngine.Engine
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.GetFloorCeilDimensions2(x);
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 
-                if (Unsafe.IsNullRef(ref renderWindow) || renderWindow.CeilingStart >= renderWindow.FloorEnd || renderWindow.WallEnd >= renderWindow.FloorEnd)
+                if (!renderWindow.CanRenderFloor)
                 {
                     continue;
                 }
@@ -329,6 +384,16 @@ namespace RenderingEngine.Engine
                     Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV; 
 
                     (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
+
+                    if (rotated)
+                    {
+                        Vector<float> xMapPosSR, yMapPosSR;
+                        xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
+                        yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
+
+                        xMapPos = xMapPosSR;
+                        yMapPos = yMapPosSR;
+                    }
 
                     Vector<int> _y1 = (Vector.ConvertToInt32Native(yMapPos) + yOffSetV) & textureHeightMaskV;
                     Vector<int> _x1 = (Vector.ConvertToInt32Native(xMapPos) + xOffSetV) & textureWidthMaskV;
@@ -359,8 +424,18 @@ namespace RenderingEngine.Engine
 
                     (float xMapPos, float yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
 
-                    int _y1 = ((int)(yMapPos) + textureInfo.YOffset) & textureHeightMask;
-                    int _x1 = ((int)(xMapPos) + textureInfo.XOffset) & textureWidthMask;
+                    if (rotated)
+                    {
+                        float xMapPosSR, yMapPosSR;
+                        xMapPosSR = xMapPos * rCos - yMapPos * rSin;
+                        yMapPosSR = xMapPos * rSin + yMapPos * rCos;
+
+                        xMapPos = xMapPosSR;
+                        yMapPos = yMapPosSR;
+                    }
+
+                    int _y1 = ((int)(yMapPos) + yOffset) & textureHeightMask;
+                    int _x1 = ((int)(xMapPos) + xOffset) & textureWidthMask;
                     int textureIndex = (_y1 * textureWidth) + _x1;
 
                     ref BGRA tex = ref Unsafe.Add(ref floorTexturePtr, textureIndex);

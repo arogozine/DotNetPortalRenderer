@@ -127,8 +127,10 @@ namespace RenderingEngine.MapGen
                 CeilTexture = x.CeilingTexture,
                 Ceil = x.Ceiling,
                 Floor = x.Floor,
-                LightLevel = (byte)x.LightLevel,
-                Walls = vertex
+                LightLevel = (byte)(x.LightLevel == 256 ? byte.MaxValue : x.LightLevel),
+                Walls = vertex,
+                RotationCeiling = x.RotationCeiling ?? 0f,
+                RotationFloor = x.RotationFloor ?? 0f
             };
 
             return sector;

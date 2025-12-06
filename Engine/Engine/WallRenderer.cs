@@ -21,7 +21,7 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x]; //.GetWallDimensions(x);
 
                 if (!renderWindow.Calculated)
                 {
@@ -119,9 +119,9 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 
-                if (renderWindow.FloorEnd < renderWindow.CeilingStart)
+                if (!renderWindow.CanRenderWall)
                 {
                     renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
                     renderWindow.WallEnd = renderWindow.WallStart;
@@ -303,12 +303,11 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 
-                if (renderWindow.FloorEnd < renderWindow.CeilingStart)
+                if (!renderWindow.CanRenderWall)
                 {
-                    renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
-                    renderWindow.WallEnd = renderWindow.WallStart;
+                    renderWindow.SetFinished(CalculateDistance2(cameraRay, t1, d2y, d2x));
                     continue;
                 }
 
@@ -320,8 +319,7 @@ namespace RenderingEngine.Engine
 
                 if (clamptedFromY >= clamptedToY)
                 {
-                    renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
-                    renderWindow.WallEnd = renderWindow.WallStart;
+                    renderWindow.SetFinished(CalculateDistance2(cameraRay, t1, d2y, d2x));
                     continue;
                 }
 
@@ -364,10 +362,7 @@ namespace RenderingEngine.Engine
                     screenIndexPtr = shaded;
                 }
 
-                renderWindow.Distance = fromToYdist;
-                renderWindow.WallEnd = 0;
-                renderWindow.WallStart = 0;
-
+                renderWindow.SetFinished(fromToYdist);
             }
 
             columnABufferIndex = EngineConstants.Unset;
@@ -396,12 +391,11 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.TryGetRenderableDimensionsForX2(x);
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 
-                if (renderWindow.FloorEnd < renderWindow.CeilingStart)
+                if (!renderWindow.CanRenderWall)
                 {
-                    renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
-                    renderWindow.WallEnd = renderWindow.WallStart;
+                    renderWindow.SetFinished(CalculateDistance2(cameraRay, t1, d2y, d2x));
                     continue;
                 }
 
@@ -425,8 +419,7 @@ namespace RenderingEngine.Engine
                     ref screenIndexPtr,
                     ref screenIndexPtrEnd);
 
-                renderWindow.Distance = fromToYdist;
-                renderWindow.WallEnd = renderWindow.WallStart;
+                renderWindow.SetFinished(fromToYdist);
             }
 
             return true;
@@ -490,7 +483,7 @@ namespace RenderingEngine.Engine
 
             if (offset < 0)
             {
-                offset = textureWidth - offset;
+                offset = textureWidth + offset;
             }
 
             return offset;
@@ -506,25 +499,17 @@ namespace RenderingEngine.Engine
             int offset = textureInfo.YOffset;
             TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
             int textureHeight = wallTexture.Height;
-            int sectorHeight = floorOffset; //(int)(sector.Ceil - sector.Floor);
+            int sectorHeight = floorOffset;
+
+            offset = EnsureOffsetIsPositive(textureHeight, offset);
 
             if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
             {
-                if (sectorHeight >= textureHeight)
-                {
-                    // texture fits into sector (possibly multiple times)
-                    // skip first (sectorHeight % textureHeight) rows
-                    offset = (sectorHeight % textureHeight) - offset;
-                }
-                else
-                {
-                    // texture can't fit into sector
-                    // skip first (textureHeight - sectorHeight) rows
-                    offset = (textureHeight - sectorHeight) - offset;
-                }
+                int offsetFromBottom = DetermineTextureOffsetFromBottom(textureHeight, sectorHeight);
+                offset = offsetFromBottom - offset;
             }
 
-            return textureHeight + offset;
+            return EnsureOffsetIsPositive(textureHeight, offset);
         }
 
         private static int DetermineUpperTextureYOffset(
@@ -536,41 +521,17 @@ namespace RenderingEngine.Engine
             int offset = textureInfo.YOffset;
             TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
             int textureHeight = wallTexture.Height;
-            int sectorHeight = -ceilingOffset; //(int)(sector.Ceil - sector.Floor);
+            int sectorHeight = -ceilingOffset;
+
+            offset = EnsureOffsetIsPositive(textureHeight, offset);
 
             if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
             {
-                offset = offset % textureHeight;
-                /*
-                if (offset < 0)
-                {
-                    offset = textureHeight % (-offset);
-                }
-                */
-
-                if (sectorHeight >= textureHeight)
-                {
-                    // texture fits into sector (possibly multiple times)
-                    // skip first (sectorHeight % textureHeight) rows
-                    offset = (sectorHeight % textureHeight) - offset;
-                }
-                else
-                {
-                    // texture can't fit into sector
-                    // skip first (textureHeight - sectorHeight) rows
-                    offset = (textureHeight - sectorHeight) + offset;
-                }
-
-                return textureHeight + offset;
+                int offsetFromBottom = DetermineTextureOffsetFromBottom(textureHeight, sectorHeight);
+                offset = offsetFromBottom + offset;
             }
 
-            if (offset < 0)
-            {
-                offset = textureHeight % (-offset);
-                return offset;
-            }
-
-            return textureHeight - offset;
+            return EnsureOffsetIsPositive(textureHeight, offset);
         }
 
         private static int DetermineTextureYOffset(
@@ -583,32 +544,39 @@ namespace RenderingEngine.Engine
             int textureHeight = wallTexture.Height;
             int sectorHeight = (int)(sector.Ceil - sector.Floor);
 
+            offset = EnsureOffsetIsPositive(textureHeight, offset);
+
             if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom) || renderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
             {
-                offset = offset % textureHeight;
-
-                if (sectorHeight >= textureHeight)
-                {
-                    // texture fits into sector (possibly multiple times)
-                    // skip first (sectorHeight % textureHeight) rows
-                    offset = (sectorHeight % textureHeight) - offset;
-                }
-                else
-                {
-                    // texture can't fit into sector
-                    // skip first (textureHeight - sectorHeight) rows
-                    offset = (textureHeight - sectorHeight) + offset;
-                }
-
-                return textureHeight + offset;
+                int offsetFromBottom = DetermineTextureOffsetFromBottom(textureHeight, sectorHeight);
+                offset = offsetFromBottom + offset;
             }
+
+            return EnsureOffsetIsPositive(textureHeight, offset);
+        }
+
+        private static int EnsureOffsetIsPositive(int textureHeight, int offset)
+        {
+            offset = offset % textureHeight;
 
             if (offset < 0)
             {
-                offset = textureHeight % (-offset);
+                offset = textureHeight + offset;
             }
 
             return offset;
+        }
+
+        private static int DetermineTextureOffsetFromBottom(int textureHeight, int sectorHeight)
+        {
+            if (sectorHeight >= textureHeight)
+            {
+                return sectorHeight % textureHeight;
+            }
+            else
+            {
+                return textureHeight - sectorHeight;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

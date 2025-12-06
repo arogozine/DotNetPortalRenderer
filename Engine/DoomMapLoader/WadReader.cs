@@ -58,13 +58,13 @@ namespace RenderingEngine.DoomMapLoader
 
         public static void ExtractAllTextures(WadFile wad)
         {
-            Dictionary<string, BGRA[]> floorTextures = ExtractFloorTextures(wad);
+            Dictionary<string, TextureInfo> floorTextures = ExtractFloorTextures(wad);
             Dictionary<string, TextureInfo> textures = ExtractTextures(wad);
             Dictionary<string, TextureInfo> sprites = ExtractSprites(wad);
 
-            foreach ((string name, BGRA[] image) in floorTextures)
+            foreach ((string name, var info) in floorTextures)
             {
-                TextureCache.Add(name, 64, 64, image);
+                TextureCache.Add(name, info.Width, info.Height, info.Data);
             }
 
             foreach ((string name, var info) in textures)
@@ -94,6 +94,25 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
+        private static bool TryDecodeImage(byte[] lumpBytes, out BGRA[] bgra, out int width, out int height)
+        {
+            SKImage image = SKImage.FromEncodedData(lumpBytes);
+
+            width = image.Width;
+            height = image.Height;
+            SKImageInfo info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+
+            unsafe
+            {
+                bgra = new BGRA[info.BytesSize / sizeof(BGRA)];
+
+                fixed (BGRA* ptr = bgra)
+                {
+                    return image.ReadPixels(info, (IntPtr)ptr, info.RowBytes, 0, 0);
+                }
+            }
+        }
+
         public static unsafe Dictionary<string, TextureInfo> ExtractSprites(WadFile wad)
         {
             Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
@@ -112,9 +131,15 @@ namespace RenderingEngine.DoomMapLoader
                     continue;
                 }
 
-                if (WadLumpParser.IsPng(wadLump))
+                // PNG
+                if (WadLumpParser.IsPng(wadLump) && TryDecodeImage(wadLump.Bytes, out BGRA[] png, out int width, out int height))
                 {
-                    Debug.WriteLine(wadLump.Name);
+                    textures[wadLump.Name] = new TextureInfo(width, height, png)
+                    {
+                        LeftOffset = 0,
+                        TopOffset = 0
+                    };
+
                     continue;
                 }
 
@@ -247,7 +272,7 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
-        public static unsafe Dictionary<string, BGRA[]> ExtractFloorTextures(WadFile wad)
+        public static unsafe Dictionary<string, TextureInfo> ExtractFloorTextures(WadFile wad)
         {
             Dictionary<int, byte[]> colorMaps = WadLumpParser.ReadColorMap(wad[LumpType.ColorMap]);
             Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
@@ -257,7 +282,7 @@ namespace RenderingEngine.DoomMapLoader
             ReadOnlySpan<BGRA> palette = ToBGRA(playPal[normalPalette]);
             ReadOnlySpan<byte> colorMap = colorMaps[brightestColormap];
 
-            Dictionary<string, BGRA[]> flats = [];
+            Dictionary<string, TextureInfo> flats = [];
 
             // pallette 0 is used in most situations
             // byte 0 will have the number of the palette color
@@ -267,6 +292,13 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (!wadLump.IsFlat || wadLump.Bytes.Length == 0)
                 {
+                    continue;
+                }
+
+                // PNG
+                if (WadLumpParser.IsPng(wadLump) && TryDecodeImage(wadLump.Bytes, out BGRA[] png, out int width, out int height))
+                {
+                    flats[wadLump.Name] = new TextureInfo(width, height, png);
                     continue;
                 }
 
@@ -282,7 +314,7 @@ namespace RenderingEngine.DoomMapLoader
                     Unsafe.Add(ref textureRef, c) = color;
                 }
 
-                flats[wadLump.Name] = texture;
+                flats[wadLump.Name] = new TextureInfo(64, 64, texture);
             }
 
             return flats;
@@ -614,7 +646,9 @@ namespace RenderingEngine.DoomMapLoader
                     Floor = floor,
                     FloorTexture = GetFloorTextureInfo(sector),
                     CeilingTexture = GetCeilingTextureInfo(sector),
-                    LightLevel = sector.LightLevel
+                    LightLevel = sector.LightLevel,
+                    RotationCeiling = ToRadians(sector.RotationCeiling),
+                    RotationFloor = ToRadians(sector.RotationFloor)
                 };
 
                 foreach (LineInfo lineInfo in lines)
@@ -677,6 +711,17 @@ namespace RenderingEngine.DoomMapLoader
                     XOffset = ToInt32(sector.XPanningFloor),
                     YOffset = ToInt32(sector.YPanningFloor)
                 };
+            }
+
+            [return: NotNullIfNotNull(nameof(angle))]
+            static float? ToRadians(float? angle)
+            {
+                if (angle is null || angle == 0f)
+                {
+                    return null;
+                }
+
+                return MathF.PI * (angle / 180f);
             }
 
             static int ToInt32(float? value) => (int)(value ?? 0f);

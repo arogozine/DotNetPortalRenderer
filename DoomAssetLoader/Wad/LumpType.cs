@@ -22,6 +22,10 @@
         /// Lists of wall texture names used in SIDEDEFS lumps
         /// </summary>
         public const string Texture2 = "TEXTURE2";
+
+        public const string TXStart = "TX_START";
+        public const string TXEnd = "TX_END";
+
         public const string EnDoom = "ENDOOM";
         /// <summary>
         /// Patch names

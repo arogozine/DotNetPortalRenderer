@@ -174,12 +174,14 @@ namespace DoomAssetLoader
                         break;
                     case LumpType.FStart:
                     case LumpType.FFStart:
+                    case LumpType.TXStart:
                         isFlats = true;
                         isMap = false;
                         mapName = null;
                         break;
                     case LumpType.FEnd:
                     case LumpType.FFEnd:
+                    case LumpType.TXEnd:
                         isFlats = false;
                         isMap = false;
                         mapName = null;

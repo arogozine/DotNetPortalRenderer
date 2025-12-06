@@ -15,6 +15,9 @@
         public const string XPANNING_CEILING = "xpanningceiling";
         public const string YPANNING_CEILING = "ypanningceiling";
 
+        public const string ROTATION_FLOOR = "rotationfloor";
+        public const string ROTATION_CEILING = "rotationceiling";
+
         public string TextureCeiling => properties[TEXTURE_CEILING];
         public string TextureFloor => properties[TEXTURE_FLOOR];
         public int HeightFloor => GetValue<int>(HEIGHT_FLOOR) ?? 0;
@@ -25,5 +28,8 @@
         public float? YPanningFloor => GetValue<float>(YPANNING_FLOOR);
         public float? XPanningCeiling => GetValue<float>(XPANNING_CEILING);
         public float? YPanningCeiling => GetValue<float>(YPANNING_CEILING);
+
+        public float? RotationFloor => GetValue<float>(ROTATION_FLOOR);
+        public float? RotationCeiling => GetValue<float>(ROTATION_CEILING);
     }
 }

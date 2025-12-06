@@ -2,6 +2,10 @@ THE UNOFFICIAL DOOM SPECS
 By Matthew S Fell
 https://www.gamers.org/dhs/helpdocs/dmsp1666.html
 
+https://eternity.youfailit.net/wiki/UDMF
+
+Doom Wiki
+
 Tools of Doom (GNU General Public License v3.0)
 By Ambroise Garel
 https://github.com/akaAgar/tools-of-doom/tree/master

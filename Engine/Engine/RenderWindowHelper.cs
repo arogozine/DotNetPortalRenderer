@@ -162,37 +162,5 @@ namespace RenderingEngine.Engine
 
             return (wallFromXOffset, wallFromX, wallToX);
         }
-
-        [SkipLocalsInit]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref RenderWindow TryGetRenderableDimensionsForX2(int x) // wall
-        {
-            // window.WallStart >= window.WallEnd
-            return ref this.renderWindow[x];
-        }
-
-        [SkipLocalsInit]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref RenderWindow GetFloorCeilDimensions2(int x)
-        {
-            ref RenderWindow window = ref this.renderWindow[x];
-
-            if (!window.Calculated || window.WallStart >= window.WallEnd)
-                return ref Unsafe.NullRef<RenderWindow>();
-
-            return ref window;
-        }
-
-        [SkipLocalsInit]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref RenderWindow GetCeilingDimensions(int x)
-        {
-            ref RenderWindow window = ref this.renderWindow[x];
-
-            if (!window.Calculated || window.CeilingStart >= window.WallEnd || window.WallStart >= window.WallEnd)
-                return ref Unsafe.NullRef<RenderWindow>();
-
-            return ref window;
-        }
     }
 }

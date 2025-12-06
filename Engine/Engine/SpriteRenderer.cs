@@ -179,7 +179,7 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow renderWindow = ref window[x];
 
-                if (renderWindow.FloorEnd <= renderWindow.CeilingStart)
+                if (renderWindow.CanRenderMiddleWall)
                 {
                     continue;
                 }
@@ -217,8 +217,8 @@ namespace RenderingEngine.Engine
                     }
                     else
                     {
-                        textureStartY = renderFromTop ? textureStartY + yOffsetF : textureStartY - yOffsetF;
-                        textureEndY = renderFromTop ? textureEndY + yOffsetF : textureEndY - yOffsetF;
+                        textureStartY = renderFromTop ? textureStartY - yOffsetF : textureStartY - yOffsetF;
+                        textureEndY = renderFromTop ? textureEndY - yOffsetF : textureEndY - yOffsetF;
                     }
                 }
 
@@ -357,13 +357,6 @@ namespace RenderingEngine.Engine
             const uint Alpha = (uint)byte.MaxValue << 24;
 
             bufferIndex = textureYPos;
-
-            // avoid calculating if too far away (all black)
-            if (brightness == byte.MinValue)
-            {
-                spriteTexturePtr.Fill(Alpha);
-                return;
-            }
 
             ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
             uint scale = (uint)brightness;
