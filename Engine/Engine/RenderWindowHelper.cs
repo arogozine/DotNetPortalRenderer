@@ -41,6 +41,38 @@ namespace RenderingEngine.Engine
             });
         }
 
+        public void NewDepth()
+        {
+            for (int i = 0; i < renderWindow.Length; i++)
+            {
+                ref RenderWindow render = ref renderWindow[i];
+
+                if (render.Calculated)
+                {
+                    render.Calculated = false;
+                    render.WallStart = render.CeilingStart;
+                    render.WallEnd = render.FloorEnd;
+
+                    if (render.WallStart > render.WallEnd)
+                    {
+                        render.WallEnd = render.WallStart;
+                    }
+
+                    if (render.CeilingStart > render.FloorEnd)
+                    {
+                        render.CeilingStart = render.FloorEnd;
+                    }
+                }
+                else
+                {
+                    render.CeilingStart = 0;
+                    render.WallStart = 0;
+                    render.WallEnd = 0;
+                    render.FloorEnd = 0;
+                }
+            }
+        }
+
         public void NewSector(NeighborsToRender sectorInfo)
         {
             if (sectorInfo.RenderableWall is RenderableWall renderableWall)
@@ -157,7 +189,7 @@ namespace RenderingEngine.Engine
         {
             ref RenderWindow window = ref this.renderWindow[x];
 
-            if (!window.Calculated || window.CeilingStart >= window.WallEnd)
+            if (!window.Calculated || window.CeilingStart >= window.WallEnd || window.WallStart >= window.WallEnd)
                 return ref Unsafe.NullRef<RenderWindow>();
 
             return ref window;

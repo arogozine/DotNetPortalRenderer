@@ -270,8 +270,6 @@ namespace RenderingEngine.Engine
         {
             ref Texture ceilingTexture = ref TextureCache.GetTexture(sector.CeilTexture.Name);
 
-            if (Vector.IsHardwareAccelerated)
-            {
                 RenderFloorVector(player, sector, screen);
 
                 if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
@@ -282,20 +280,6 @@ namespace RenderingEngine.Engine
                 {
                     RenderCeilingVector(player, sector, screen);
                 }
-            }
-            else
-            {
-                RenderFloor(player, sector, screen);
-
-                if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
-                {
-                    RenderSkybox(player, screen, ref ceilingTexture);
-                }
-                else
-                {
-                    RenderCeiling(player, sector, screen);
-                }
-            }
 
             for (int s = 0; s < renderableWalls.Count; s++)
             {
@@ -471,6 +455,9 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow renderedAreaX = ref renderedArea[x];
 
+                int wallStartYInt = (int)wallStartY;
+                int wallEndYInt = (int)wallEndY;
+
                 if (renderedAreaX.Calculated || wallStartY >= wallEndY || renderedAreaX.CeilingStart >= renderedAreaX.FloorEnd)
                 {
                     if (x - 1 > renderableFromX)
@@ -490,11 +477,14 @@ namespace RenderingEngine.Engine
                     renderableFromX = x;
                     wallStartY += ceilDistIncr;
                     wallEndY += floorDistIncr;
+
+                    if (!renderedAreaX.Calculated)
+                    {
+                        renderedAreaX.Calculated = true;
+                    }
+
                     continue;
                 }
-
-                int wallStartYInt = (int)wallStartY;
-                int wallEndYInt = (int)wallEndY;
 
                 renderedAreaX.Calculated = true;
                 renderedAreaX.WallStart = wallStartYInt;

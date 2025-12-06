@@ -179,7 +179,7 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow renderWindow = ref window[x];
 
-                if (renderWindow.Calculated || renderWindow.FloorEnd <= renderWindow.CeilingStart)
+                if (renderWindow.FloorEnd <= renderWindow.CeilingStart)
                 {
                     continue;
                 }

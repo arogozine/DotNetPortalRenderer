@@ -10,7 +10,7 @@ namespace RenderingEngine.Engine
         private int columnBBufferIndex = -1;
         private readonly uint[] columnB = new uint[256];
 
-        private void CalculateDistance(RenderableWall renderableWall)
+        private void CalculateDistance(RenderableWall renderableWall, float oneOverSectorHeight, float floorOffset, float ceilOffset)
         {
             int width = PixelWidth;
             var wall = renderableWall.Wall;
@@ -28,8 +28,22 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
+                float wallStartY = renderWindow.WallStart;
+                float wallEndY = renderWindow.WallEnd;
+
+                // Portal Calculation
+                float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
+                float floorPixelOffset = pixelsPerHeight * floorOffset;
+                float ceilPixelOffset = pixelsPerHeight * ceilOffset;
+                float portalFromY = wallStartY - ceilPixelOffset;
+                float portalToY = wallEndY - floorPixelOffset;
+                int portalFromYClamped = Math.Clamp((int)portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int portalToYClamped = Math.Clamp((int)portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+
                 renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
-                renderWindow.Calculated = false;
+                renderWindow.CeilingStart = portalFromYClamped;
+                renderWindow.FloorEnd = portalToYClamped;
+                renderWindow.WallEnd = renderWindow.WallStart;
             }
         }
 
@@ -53,7 +67,7 @@ namespace RenderingEngine.Engine
             // so no wall is drawn
             if (floorOffset == 0 && ceilOffset == 0)
             {
-                CalculateDistance(renderableWall);
+                CalculateDistance(renderableWall, oneOverSectorHeight, floorOffset, ceilOffset);
                 return true;
             }
 
@@ -110,7 +124,7 @@ namespace RenderingEngine.Engine
                 if (renderWindow.FloorEnd < renderWindow.CeilingStart)
                 {
                     renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
-                    renderWindow.Calculated = false;
+                    renderWindow.WallEnd = renderWindow.WallStart;
                     continue;
                 }
 
@@ -136,7 +150,7 @@ namespace RenderingEngine.Engine
                 float textureXIncr = (float)(sectorHeight / (wallEndY - wallStartY));
 
                 // draw upper wall / upper skybox
-                if (ceilOffset != 0)
+                if (ceilOffset != 0 && fromYClamped < portalFromYClamped)
                 {
                     int ceilingStart = fromYClamped * width + x;
                     ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, ceilingStart);
@@ -193,7 +207,7 @@ namespace RenderingEngine.Engine
                 }
 
                 // draw lower wall
-                if (floorOffset != 0)
+                if (floorOffset != 0 && portalToYClamped < toYClamped)
                 {
                     ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * width + x);
                     ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, toYClamped * width + x);
@@ -235,18 +249,15 @@ namespace RenderingEngine.Engine
                 }
 
                 renderWindow.Distance = fromToYdist;
-                renderWindow.Calculated = false;
                 renderWindow.CeilingStart = portalFromYClamped;
                 renderWindow.FloorEnd = portalToYClamped;
-                renderWindow.WallStart = portalFromYClamped;
-                renderWindow.WallEnd = portalToYClamped;
             }
 
             columnABufferIndex = EngineConstants.Unset;
             columnBBufferIndex = EngineConstants.Unset;
 
             // treat as a basic wall?
-            return sectorHeight != floorOffset;
+            return sectorHeight != floorOffset && sectorHeight != -ceilOffset;
         }
 
         private bool DrawBasicWall(
@@ -297,7 +308,7 @@ namespace RenderingEngine.Engine
                 if (renderWindow.FloorEnd < renderWindow.CeilingStart)
                 {
                     renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
-                    renderWindow.Calculated = false;
+                    renderWindow.WallEnd = renderWindow.WallStart;
                     continue;
                 }
 
@@ -306,6 +317,13 @@ namespace RenderingEngine.Engine
 
                 int clamptedFromY = Math.Clamp(wallStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
                 int clamptedToY = Math.Clamp(wallEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+
+                if (clamptedFromY >= clamptedToY)
+                {
+                    renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
+                    renderWindow.WallEnd = renderWindow.WallStart;
+                    continue;
+                }
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
                 ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
@@ -347,9 +365,9 @@ namespace RenderingEngine.Engine
                 }
 
                 renderWindow.Distance = fromToYdist;
-                renderWindow.WallEnd = renderWindow.WallStart;
-                // renderWindow.FloorEnd = renderWindow.WallStart;
-                renderWindow.Calculated = false;
+                renderWindow.WallEnd = 0;
+                renderWindow.WallStart = 0;
+
             }
 
             columnABufferIndex = EngineConstants.Unset;
@@ -383,7 +401,7 @@ namespace RenderingEngine.Engine
                 if (renderWindow.FloorEnd < renderWindow.CeilingStart)
                 {
                     renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
-                    renderWindow.Calculated = false;
+                    renderWindow.WallEnd = renderWindow.WallStart;
                     continue;
                 }
 
@@ -409,8 +427,6 @@ namespace RenderingEngine.Engine
 
                 renderWindow.Distance = fromToYdist;
                 renderWindow.WallEnd = renderWindow.WallStart;
-                // renderWindow.FloorEnd = renderWindow.WallStart;
-                renderWindow.Calculated = false;
             }
 
             return true;
@@ -452,7 +468,8 @@ namespace RenderingEngine.Engine
 
             int texX = (int)(textureWidth4 * angleX) % textureWidth;
 
-            float vScreen = (float)renderWindow.CeilingStart * yTextureIncr;
+            int fromYClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
+            float vScreen = (float)fromYClamped * yTextureIncr;
 
             ref uint textureColumnPtr = ref Unsafe.Add(ref upperTextureUintPtr, texX);
 
@@ -523,6 +540,7 @@ namespace RenderingEngine.Engine
 
             if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
             {
+                offset = offset % textureHeight;
                 /*
                 if (offset < 0)
                 {
@@ -567,6 +585,8 @@ namespace RenderingEngine.Engine
 
             if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom) || renderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
             {
+                offset = offset % textureHeight;
+
                 if (sectorHeight >= textureHeight)
                 {
                     // texture fits into sector (possibly multiple times)
