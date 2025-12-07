@@ -74,8 +74,8 @@ namespace RenderingEngine.Engine
                 Sprite sprite = rotatedSprites[i];
 
                 Sector sector = sectors[sprite.SectorId];
-                float yCeil = sector.Ceil - pz;
-                float yFloor = sector.Floor - pz;
+                float yCeil = sector.Ceil - pz + sprite.Height;
+                float yFloor = sector.Floor - pz + sprite.Height;
 
                 CalculateSpritePlane(sprite, yCeil, yFloor, yaw);
             }
@@ -207,6 +207,7 @@ namespace RenderingEngine.Engine
                     Angle = s.Angle,
                     Location = s.Location,
                     Rotated = new Point(rx1, ry1),
+                    Height = s.Height,
                     TextureName = s.TextureName,
                     SectorId = s.SectorId
                 };

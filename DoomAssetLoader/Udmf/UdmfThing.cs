@@ -7,6 +7,7 @@ namespace DoomAssetLoader.Udmf
         public const string ID = "id";
         public const string POSITION_X = "x";
         public const string POSITION_Y = "y";
+        public const string HEIGHT = "height";
         public const string ANGLE = "angle";
         public const string TYPE = "type";
         public const string FLAG_SKILL1 = "skill1";
@@ -34,6 +35,11 @@ namespace DoomAssetLoader.Udmf
         /// Y coordinate
         /// </summary>
         public float Y => GetRequiredValue<float>(POSITION_Y);
+
+        /// <summary>
+        /// Z Height
+        /// </summary>
+        public float? Height => GetValue<float>(HEIGHT);
 
         /// <summary>
         /// DoomedNum

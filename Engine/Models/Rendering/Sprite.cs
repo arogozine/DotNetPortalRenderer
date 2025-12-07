@@ -11,6 +11,7 @@
         public Point R2 { get; set; }
 
         public required float Angle { get; init; }
+        public required float Height { get; init; }
         public required string TextureName { get; init; }
 
         public bool IntersectsView { get; set; }
