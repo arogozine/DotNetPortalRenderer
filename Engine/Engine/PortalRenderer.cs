@@ -444,6 +444,9 @@ namespace RenderingEngine.Engine
             float wallEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
+            bool upperWallIsSkybox = sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox) &&
+                !wall.IsPortal && wall.Line.MiddleTexture!.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+
             if (wallToX <= wallFromX)
             {
                 return;
@@ -484,7 +487,7 @@ namespace RenderingEngine.Engine
                 int wallEndYInt = (int)wallEndY;
 
                 renderedAreaX.Calculated = true;
-                renderedAreaX.WallStart = wallStartYInt;
+                renderedAreaX.WallStart = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
                 renderedAreaX.WallEnd = wallEndYInt;
 
                 wallStartY += ceilDistIncr;

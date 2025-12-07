@@ -32,19 +32,19 @@ namespace RenderingEngine.Engine
            // the two line share a point, compare the other point
            if (r1eqr1)
            {
-               return Compare(x.C2.X, x.C2.Y, y.C2.X, y.C2.Y);
+               return Compare(xC2.X, xC2.Y, yC2.X, yC2.Y);
            }
            else if (r2eqr2)
            {
-               return Compare(x.C1.X, x.C1.Y, y.C1.X, y.C1.Y);
+               return Compare(xC1.X, xC1.Y, yC1.X, yC1.Y);
            }
            else if (r1eqr2)
            {
-               return Compare(x.C2.X, x.C2.Y, y.C1.X, y.C1.Y);
+               return Compare(xC2.X, xC2.Y, yC1.X, yC1.Y);
            }
            else if (r2eqr1)
            {
-               return Compare(x.C1.X, x.C1.Y, y.C2.X, y.C2.Y);
+               return Compare(xC1.X, xC1.Y, yC2.X, yC2.Y);
            }
 
            /*

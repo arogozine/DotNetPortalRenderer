@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
 {
@@ -191,7 +192,7 @@ namespace RenderingEngine.Engine
                             textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
                             )
                         {
-                            textureXPosI = (int)textureXPos;
+                            textureXPosI = FastToInt(textureXPos);
 
                             if (textureXPosI != textureXPosIOld)
                             {
@@ -233,7 +234,7 @@ namespace RenderingEngine.Engine
                         textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
                         )
                     {
-                        textureXPosI = (int)textureXPos;
+                        textureXPosI = FastToInt(textureXPos);
 
                         if (textureXPosI != textureXPosIOld)
                         {
@@ -349,7 +350,7 @@ namespace RenderingEngine.Engine
                         Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
                         textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width))
                 {
-                    textureXPosI = (int)textureXPos;
+                    textureXPosI = FastToInt(textureXPos);
 
                     if (textureXPosI != textureXPosIOld)
                     {
@@ -683,6 +684,28 @@ namespace RenderingEngine.Engine
             float fromToYDist = t1 / denominator;
 
             return fromToYDist;
+        }
+
+        // Only valid for -8388608.0f <= f < +8388608.0f
+        // truncates toward zero
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int FastToInt(float f)
+        {
+            if (Sse.IsSupported)
+            {
+                // Found from https://www.cs.uaf.edu/2009/fall/cs301/lecture/12_09_float_to_int.html
+                // https://medium.com/@ryan_forrester_/c-float-to-int-conversion-how-to-guide-aea5be6d3d4b
+
+                // For any |f| < 2^23
+                // the integer part of the original f is now in the 23-bit mantissa
+                const float magic = 8388608.0f;
+                float biased = f + magic;
+                ref int result = ref Unsafe.As<float, int>(ref biased);
+                // remove the added offset
+                return result - 0x4B000000;
+            }
+
+            return (int)f;
         }
     }
 }
