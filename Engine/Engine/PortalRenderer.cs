@@ -269,13 +269,18 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors,
             Span<BGRA> screen)
         {
-            ref Texture ceilingTexture = ref TextureCache.GetTexture(sector.CeilTexture.Name);
-
-            RenderFloorVector(player, sector, screen);
+            if (sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
+            {
+                RenderSkyboxFloorVector(player, screen, sector);
+            }
+            else
+            {
+                RenderFloorVector(player, sector, screen);
+            }
 
             if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
             {
-                RenderSkyboxVector(player, screen, ref ceilingTexture);
+                RenderSkyboxVector(player, screen, sector);
             }
             else
             {

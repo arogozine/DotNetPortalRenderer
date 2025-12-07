@@ -100,7 +100,7 @@ namespace RenderingEngine.Engine
 
             (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            for (int x = sectroFromX; x <= sectorToX; x++)
+            for (int x = sectroFromX; x < sectorToX; x++)
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 
@@ -192,7 +192,7 @@ namespace RenderingEngine.Engine
         private void RenderSkyboxVector(
             PortalPlayerSnapshot player,
             Span<BGRA> screen,
-            ref Texture ceilingTexture
+            Sector sector
             )
         {
             const float twoPi = 2 * MathF.PI;
@@ -202,19 +202,21 @@ namespace RenderingEngine.Engine
             int height = PixelHeight;
             float viewAngle = player.Angle;
 
-            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
+            TextureInfo textureInfo = sector.CeilTexture;
+            ref Texture texture = ref TextureCache.GetTexture(textureInfo.Name);
+            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Data);
             ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            int textureWidth = ceilingTexture.Width;
-            int textureHeight = ceilingTexture.Height;
+            int textureWidth = texture.Width;
+            int textureHeight = texture.Height;
 
             float textureWidth4 = textureWidth * 4f * oneOverTwoPi;
             float yTextureIncr = (1f / height) * textureHeight;
 
-            Vector<int> textureWidthV = Vector.Create(ceilingTexture.Width);
+            Vector<int> textureWidthV = Vector.Create(texture.Width);
 
             Vector<float> ivIncrF = new(yTextureIncr * Vector<float>.Count);
 
@@ -254,6 +256,103 @@ namespace RenderingEngine.Engine
                 ref BGRA textureColumnPtr = ref Unsafe.Add(ref ceilingTexturePtr, texX);
 
                 float vScreen = ceilingStart * yTextureIncr;
+                Vector<float> vScreenV = Vector.Create(vScreen) + incramentVector;
+
+                for (; !Unsafe.AreSame(ref screenColumnPtr, ref screenEndColumnPtr); vScreenV += ivIncrF)
+                {
+                    Vector<int> texY = Vector.ConvertToInt32Native(vScreenV) * textureWidthV;
+
+                    ref int texYPtr = ref Unsafe.As<Vector<int>, int>(ref texY);
+
+                    for (int j = 0; j < Vector<int>.Count; j++)
+                    {
+                        int index = Unsafe.Add(ref texYPtr, j);
+
+                        screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
+                        screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
+                    }
+                }
+
+                Vector<int> vScreenVInt = Vector.ConvertToInt32Native(vScreenV);
+
+                for (int y = 0; y < rem; y++)
+                {
+                    int index = vScreenVInt[y] * textureWidth;
+
+                    screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
+                    screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
+                }
+            }
+
+        }
+
+        private void RenderSkyboxFloorVector(
+            PortalPlayerSnapshot player,
+            Span<BGRA> screen,
+            Sector sector
+            )
+        {
+            const float twoPi = 2 * MathF.PI;
+            const float oneOverTwoPi = 1f / (2 * MathF.PI);
+
+            int width = PixelWidth;
+            int height = PixelHeight;
+            float viewAngle = player.Angle;
+
+            TextureInfo textureInfo = sector.FloorTexture;
+            ref Texture texture = ref TextureCache.GetTexture(textureInfo.Name);
+            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Data);
+            ref BGRA screenPtr = ref MemoryMarshal.GetReference(screen);
+            ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
+
+            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
+            int textureWidth = texture.Width;
+            int textureHeight = texture.Height;
+
+            float textureWidth4 = textureWidth * 4f * oneOverTwoPi;
+            float yTextureIncr = (1f / height) * textureHeight;
+
+            Vector<int> textureWidthV = Vector.Create(texture.Width);
+
+            Vector<float> ivIncrF = new(yTextureIncr * Vector<float>.Count);
+
+            Vector<float> incramentVector = Vector.CreateSequence(0f, yTextureIncr);
+
+            for (int x = sectorFromX; x <= sectorToX; x++)
+            {
+                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+
+                if (!renderWindow.CanRenderFloor)
+                {
+                    continue;
+                }
+
+                // calculate angle between 0 to 2 PI
+                float angleX = Unsafe.Add(ref angleCachePtr, x) - viewAngle;
+
+                if (angleX > twoPi)
+                {
+                    angleX -= twoPi;
+                }
+                else if (angleX < 0f)
+                {
+                    angleX = twoPi + angleX;
+                }
+
+                int texX = (int)(textureWidth4 * angleX) % textureWidth;
+
+                int wallStartClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int floorEnd = renderWindow.FloorEnd;
+
+                int rem = (floorEnd - wallStartClamped) % Vector<int>.Count;
+                floorEnd -= rem;
+
+                ref BGRA screenColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * wallStartClamped);
+                ref BGRA screenEndColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * floorEnd);
+                ref BGRA textureColumnPtr = ref Unsafe.Add(ref ceilingTexturePtr, texX);
+
+                float vScreen = wallStartClamped * yTextureIncr;
                 Vector<float> vScreenV = Vector.Create(vScreen) + incramentVector;
 
                 for (; !Unsafe.AreSame(ref screenColumnPtr, ref screenEndColumnPtr); vScreenV += ivIncrF)
@@ -352,7 +451,7 @@ namespace RenderingEngine.Engine
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            for (int x = sectorFromX; x <= sectorToX; x++)
+            for (int x = sectorFromX; x < sectorToX; x++)
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 

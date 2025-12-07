@@ -438,11 +438,10 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (hasFloorBox)
                 {
-                    sector.CeilingTexture.Name = skyTexture;
+                    sector.FloorTexture.Name = skyTexture;
                     sector.FloorTexture.RenderingOptions |= TextureRenderingOptions.Skybox;
                 }
             }
-
 
             foreach (MapSector sector in sectors)
             {
@@ -494,7 +493,7 @@ namespace RenderingEngine.DoomMapLoader
                 {
                     wall.UpperTexture ??= defaultTexture;
                     if (wall.SectorTo is null)
-                    wall.MiddleTexture ??= defaultTexture;
+                        wall.MiddleTexture ??= defaultTexture;
                     wall.LowerTexture ??= defaultTexture;
                 }
             }
