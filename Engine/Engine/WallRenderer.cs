@@ -81,6 +81,12 @@ namespace RenderingEngine.Engine
                 ceilOffset = 0f;
             }
 
+            // don't draw beyong the bounds
+            if (ceilOffset < -sectorHeight)
+            {
+                ceilOffset = -sectorHeight;
+            }
+
             int width = PixelWidth;
             int height = PixelHeight;
             var line = wall.Line;
@@ -123,8 +129,7 @@ namespace RenderingEngine.Engine
 
                 if (!renderWindow.CanRenderWall)
                 {
-                    renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
-                    renderWindow.WallEnd = renderWindow.WallStart;
+                    renderWindow.SetFinished(CalculateDistance2(cameraRay, t1, d2y, d2x));
                     continue;
                 }
 

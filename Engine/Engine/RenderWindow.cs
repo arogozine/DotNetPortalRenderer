@@ -21,9 +21,9 @@
         }
 
         public readonly bool CanRender => CanRenderCeiling || CanRenderFloor || CanRenderWall;
-        public readonly bool CanRenderCeiling => Calculated && CeilingStart < WallStart;
+        public readonly bool CanRenderCeiling => Calculated && CeilingStart < WallStart && CeilingStart < FloorEnd;
         public readonly bool CanRenderFloor => Calculated && WallEnd < FloorEnd;
-        public readonly bool CanRenderWall => Calculated && WallStart < WallEnd;
+        public readonly bool CanRenderWall => Calculated && WallStart < WallEnd && CeilingStart < FloorEnd;
         public readonly bool CanRenderMiddleWall => Calculated && FloorEnd <= CeilingStart;
 
         public override readonly string ToString()

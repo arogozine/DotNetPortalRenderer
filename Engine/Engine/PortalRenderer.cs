@@ -456,6 +456,7 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow renderedAreaX = ref renderedArea[x];
 
+                // we already have a different wall rendering in front of this one
                 if (renderedAreaX.Calculated)
                 {
                     if (x - 1 > renderableFromX)
