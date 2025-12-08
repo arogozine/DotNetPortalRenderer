@@ -64,14 +64,6 @@ namespace RenderingEngine.Engine
             float ceilOffset = neighborSector.Ceil - sector.Ceil;
             byte lightLevel = sector.LightLevel;
 
-            // ceiling and floor of the sector are the same
-            // so no wall is drawn
-            if (floorOffset == 0 && ceilOffset == 0)
-            {
-                CalculateDistance(renderableWall, oneOverSectorHeight, floorOffset, ceilOffset);
-                return true;
-            }
-
             if (floorOffset < 0f)
             {
                 floorOffset = 0f;
@@ -82,10 +74,23 @@ namespace RenderingEngine.Engine
                 ceilOffset = 0f;
             }
 
-            // don't draw beyong the bounds
+            // don't draw beyond the bounds
             if (ceilOffset < -sectorHeight)
             {
                 ceilOffset = -sectorHeight;
+            }
+
+            if (floorOffset > sectorHeight)
+            {
+                floorOffset = sectorHeight;
+            }
+
+            // ceiling and floor of the sector are the same
+            // so no wall is drawn
+            if (floorOffset == 0 && ceilOffset == 0)
+            {
+                CalculateDistance(renderableWall, oneOverSectorHeight, floorOffset, ceilOffset);
+                return true;
             }
 
             int width = PixelWidth;
@@ -100,6 +105,7 @@ namespace RenderingEngine.Engine
             ref Texture lowerTexture = ref TextureCache.GetTexture(lowerTextureInfo);
 
             bool upperSkybox = upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+            bool lowerSkybox = lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
 
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
 
@@ -180,7 +186,8 @@ namespace RenderingEngine.Engine
                         int textureHeight = upperTexture.Width;
                         int textureYPos = ((distance + upperXOffset) % textureHeight) * textureWidth;
                         float textureXPos = upperTextureStart - textureXIncr * (wallStartY - fromYClamped);
-                        textureXPos %= textureWidth;
+
+                        textureXPos = EnsureOffsetIsPositive(textureWidth, textureXPos);
 
                         uint shaded = default;
 
@@ -192,12 +199,12 @@ namespace RenderingEngine.Engine
                             textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
                             )
                         {
-                            textureXPosI = FastToInt(textureXPos);
+                            textureXPosI = MathFormulas.FastPositiveFloatToInt(textureXPos);
 
                             if (textureXPosI != textureXPosIOld)
                             {
                                 // wrap the texture
-                                if (textureXPosI >= textureWidth)
+                                if (textureXPos >= textureWidth)
                                 {
                                     textureXPosI -= textureWidth;
                                     textureXPos -= textureWidth;
@@ -218,39 +225,54 @@ namespace RenderingEngine.Engine
                     ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * width + x);
                     ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, toYClamped * width + x);
 
-                    int textureWidth = lowerTexture.Height;
-                    int textureHeight = lowerTexture.Width;
-                    int textureYPos = ((distance + lowerXOffset) % textureHeight) * textureWidth;
-                    float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, (portalToYClamped - portalToY), lowerTextureStart);
-                    textureXPos %= textureWidth;
-
-                    uint shaded = default;
-
-                    CalculateAndCacheWallColumn(lowerTextureBuffer, ref columnBBufferIndex, ref lowerTexturePtr, textureYPos, lightLevel);
-
-                    for (
-                        int textureXPosI = 0, textureXPosIOld = -1;
-                        Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
-                        textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
-                        )
+                    if (lowerSkybox)
                     {
-                        textureXPosI = FastToInt(textureXPos);
+                        RenderSkyboxLine(player,
+                            x,
+                            ref upperTexture,
+                            ref upperTextureUintPtr,
+                            ref angleCachePtr,
+                            ref renderWindow,
+                            ref screenIndexPtr,
+                            ref screenIndexPtrEnd);
+                    }
+                    else
+                    {
+                        int textureWidth = lowerTexture.Height;
+                        int textureHeight = lowerTexture.Width;
+                        int textureYPos = ((distance + lowerXOffset) % textureHeight) * textureWidth;
+                        float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, (portalToYClamped - portalToY), lowerTextureStart);
 
-                        if (textureXPosI != textureXPosIOld)
+                        textureXPos = EnsureOffsetIsPositive(textureWidth, textureXPos);
+
+                        uint shaded = default;
+
+                        CalculateAndCacheWallColumn(lowerTextureBuffer, ref columnBBufferIndex, ref lowerTexturePtr, textureYPos, lightLevel);
+
+                        for (
+                            int textureXPosI = 0, textureXPosIOld = -1;
+                            Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                            textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
+                            )
                         {
-                            // wrap the texture
-                            if (textureXPosI >= textureWidth)
+                            textureXPosI = MathFormulas.FastPositiveFloatToInt(textureXPos);
+
+                            if (textureXPosI != textureXPosIOld)
                             {
-                                textureXPosI -= textureWidth;
-                                textureXPos -= textureWidth;
+                                // wrap the texture
+                                if (textureXPos >= textureWidth)
+                                {
+                                    textureXPosI -= textureWidth;
+                                    textureXPos -= textureWidth;
+                                }
+
+                                textureXPosIOld = textureXPosI;
+
+                                shaded = Unsafe.Add(ref lowerTextureBufferPtr, textureXPosI);
                             }
 
-                            textureXPosIOld = textureXPosI;
-
-                            shaded = Unsafe.Add(ref lowerTextureBufferPtr, textureXPosI);
+                            screenIndexPtr = shaded;
                         }
-
-                        screenIndexPtr = shaded;
                     }
                 }
 
@@ -262,8 +284,9 @@ namespace RenderingEngine.Engine
             columnABufferIndex = EngineConstants.Unset;
             columnBBufferIndex = EngineConstants.Unset;
 
-            // treat as a basic wall?
-            return sectorHeight != floorOffset && sectorHeight != -ceilOffset;
+            // if sector height matches top or bottom offset only top or bottom texture was drawn
+            // no middle texture is possible, thus we can treat this as basic wall
+            return !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
         }
 
         private bool DrawBasicWall(
@@ -341,21 +364,21 @@ namespace RenderingEngine.Engine
 
                 CalculateAndCacheWallColumn(columnBuffer, ref columnABufferIndex, ref wallTexturePtr, textureYPos, lightLevel);
 
-                textureXPos %= textureWidth; // wrap the texture
+                textureXPos = EnsureOffsetIsPositive(textureWidth, textureXPos);
 
-                int textureXPosI = (int)textureXPos;
+                int textureXPosI = MathFormulas.FastPositiveFloatToInt(textureXPos);
                 int textureXPosIOld = textureXPosI;
 
                 for (uint shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
                         Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
                         textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width))
                 {
-                    textureXPosI = FastToInt(textureXPos);
+                    textureXPosI = MathFormulas.FastPositiveFloatToInt(textureXPos);
 
                     if (textureXPosI != textureXPosIOld)
                     {
                         // wrap the texture
-                        if (textureXPosI >= textureWidth)
+                        if (textureXPos >= textureWidth)
                         {
                             textureXPosI -= textureWidth;
                             textureXPos -= textureWidth;
@@ -573,6 +596,19 @@ namespace RenderingEngine.Engine
             return offset;
         }
 
+        private static float EnsureOffsetIsPositive(float textureHeight, float offset)
+        {
+            offset = offset % textureHeight;
+
+            if (offset < 0)
+            {
+                offset = textureHeight + offset;
+            }
+
+            return offset;
+        }
+
+
         private static int DetermineTextureOffsetFromBottom(int textureHeight, int sectorHeight)
         {
             if (sectorHeight >= textureHeight)
@@ -684,28 +720,6 @@ namespace RenderingEngine.Engine
             float fromToYDist = t1 / denominator;
 
             return fromToYDist;
-        }
-
-        // Only valid for -8388608.0f <= f < +8388608.0f
-        // truncates toward zero
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int FastToInt(float f)
-        {
-            if (Sse.IsSupported)
-            {
-                // Found from https://www.cs.uaf.edu/2009/fall/cs301/lecture/12_09_float_to_int.html
-                // https://medium.com/@ryan_forrester_/c-float-to-int-conversion-how-to-guide-aea5be6d3d4b
-
-                // For any |f| < 2^23
-                // the integer part of the original f is now in the 23-bit mantissa
-                const float magic = 8388608.0f;
-                float biased = f + magic;
-                ref int result = ref Unsafe.As<float, int>(ref biased);
-                // remove the added offset
-                return result - 0x4B000000;
-            }
-
-            return (int)f;
         }
     }
 }

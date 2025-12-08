@@ -8,3 +8,4 @@ global using System.Runtime.InteropServices;
 
 [module: SkipLocalsInit]
 [assembly: InternalsVisibleTo("Tests")]
+[assembly: InternalsVisibleTo("Benchmark")]
