@@ -366,7 +366,7 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow renderWindow = ref window[x];
                 float value = renderWindow.Distance;
-                uint val = (uint) Math.Clamp((int)(value * range), 0, byte.MaxValue);
+                uint val = (uint) Math.Clamp(float.ConvertToIntegerNative<int>(value * range), 0, byte.MaxValue);
 
                 const uint Alpha = (uint)byte.MaxValue << 24;
                 uint b = val;
@@ -488,8 +488,8 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int wallStartYInt = (int)wallStartY;
-                int wallEndYInt = (int)wallEndY;
+                int wallStartYInt = float.ConvertToIntegerNative<int>(wallStartY);
+                int wallEndYInt = float.ConvertToIntegerNative<int>(wallEndY);
 
                 renderedAreaX.Calculated = true;
                 renderedAreaX.WallStart = upperWallIsSkybox ? wallEndYInt : wallStartYInt;

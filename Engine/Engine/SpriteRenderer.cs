@@ -97,7 +97,7 @@ namespace RenderingEngine.Engine
                      Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
                      textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width))
                 {
-                    textureXPosI = (int)textureXPos;
+                    textureXPosI = float.ConvertToIntegerNative<int>(textureXPos);
                     shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
 
                     if (shaded != 0U)
@@ -112,7 +112,7 @@ namespace RenderingEngine.Engine
                 float fromToXDist = fromToYDist * cameraRay;
                 float distX = rx1 - fromToXDist;
 
-                return (int)MathF.Abs(distX);
+                return float.ConvertToIntegerNative<int>(MathF.Abs(distX));
             }
         }
 
@@ -222,8 +222,8 @@ namespace RenderingEngine.Engine
                     }
                 }
 
-                int textureStartYClamped = Math.Clamp((int)textureStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int textureEndYClamped = Math.Clamp((int)textureEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int textureStartYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(textureStartY), renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int textureEndYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(textureEndY), renderWindow.CeilingStart, renderWindow.FloorEnd);
 
                 if (textureStartYClamped >= textureEndYClamped)
                 {
@@ -264,7 +264,7 @@ namespace RenderingEngine.Engine
             for (; Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
                 textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth))
             {
-                int textureXPosI = (int)textureXPos;
+                int textureXPosI = float.ConvertToIntegerNative<int>(textureXPos);
 
                 if (textureXPosI != textureXPosIOld)
                 {
@@ -299,7 +299,7 @@ namespace RenderingEngine.Engine
             for (; Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
                 textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth))
             {
-                int textureXPosI = (int)textureXPos;
+                int textureXPosI = float.ConvertToIntegerNative<int>(textureXPos);
 
                 if (textureXPosI != textureXPosIOld)
                 {

@@ -38,8 +38,8 @@ namespace RenderingEngine.Engine
                 float ceilPixelOffset = pixelsPerHeight * ceilOffset;
                 float portalFromY = wallStartY - ceilPixelOffset;
                 float portalToY = wallEndY - floorPixelOffset;
-                int portalFromYClamped = Math.Clamp((int)portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int portalToYClamped = Math.Clamp((int)portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int portalFromYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(portalFromY), renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int portalToYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(portalToY), renderWindow.CeilingStart, renderWindow.FloorEnd);
 
                 renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
                 renderWindow.CeilingStart = portalFromYClamped;
@@ -111,10 +111,10 @@ namespace RenderingEngine.Engine
 
             ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
 
-            int lowerTextureStart = DetermineLowerTextureYOffset(sector, (int)floorOffset, (int)ceilOffset, lowerTextureInfo, ref lowerTexture);
+            int lowerTextureStart = DetermineLowerTextureYOffset(sector, float.ConvertToIntegerNative<int>(floorOffset), float.ConvertToIntegerNative<int>(ceilOffset), lowerTextureInfo, ref lowerTexture);
             int lowerXOffset = DetermineXOffset(lowerTextureInfo, ref lowerTexture);
 
-            int upperTextureStart = DetermineUpperTextureYOffset(sector, (int)ceilOffset, upperTextureInfo, ref upperTexture);
+            int upperTextureStart = DetermineUpperTextureYOffset(sector, float.ConvertToIntegerNative<int>(ceilOffset), upperTextureInfo, ref upperTexture);
             int upperXOffset = DetermineXOffset(upperTextureInfo, ref upperTexture);
 
             ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperSkybox ? upperTexture.Data : upperTexture.Rotated);
@@ -156,8 +156,8 @@ namespace RenderingEngine.Engine
                 float ceilPixelOffset = pixelsPerHeight * ceilOffset;
                 float portalFromY = wallStartY - ceilPixelOffset;
                 float portalToY = wallEndY - floorPixelOffset;
-                int portalFromYClamped = Math.Clamp((int)portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int portalToYClamped = Math.Clamp((int)portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int portalFromYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(portalFromY), renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int portalToYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(portalToY), renderWindow.CeilingStart, renderWindow.FloorEnd);
 
                 float textureXIncr = (float)(sectorHeight / (wallEndY - wallStartY));
 
@@ -199,7 +199,7 @@ namespace RenderingEngine.Engine
                             textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
                             )
                         {
-                            textureXPosI = MathFormulas.FastPositiveFloatToInt(textureXPos);
+                            textureXPosI = float.ConvertToIntegerNative<int>(textureXPos);
 
                             if (textureXPosI != textureXPosIOld)
                             {
@@ -255,7 +255,7 @@ namespace RenderingEngine.Engine
                             textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
                             )
                         {
-                            textureXPosI = MathFormulas.FastPositiveFloatToInt(textureXPos);
+                            textureXPosI = float.ConvertToIntegerNative<int>(textureXPos);
 
                             if (textureXPosI != textureXPosIOld)
                             {
@@ -366,14 +366,14 @@ namespace RenderingEngine.Engine
 
                 textureXPos = EnsureOffsetIsPositive(textureWidth, textureXPos);
 
-                int textureXPosI = MathFormulas.FastPositiveFloatToInt(textureXPos);
+                int textureXPosI = float.ConvertToIntegerNative<int>(textureXPos);
                 int textureXPosIOld = textureXPosI;
 
                 for (uint shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
                         Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
                         textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width))
                 {
-                    textureXPosI = MathFormulas.FastPositiveFloatToInt(textureXPos);
+                    textureXPosI = float.ConvertToIntegerNative<int>(textureXPos);
 
                     if (textureXPosI != textureXPosIOld)
                     {
@@ -488,7 +488,7 @@ namespace RenderingEngine.Engine
                 angleX = twoPi + angleX;
             }
 
-            int texX = (int)(textureWidth4 * angleX) % textureWidth;
+            int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
             int fromYClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
             float vScreen = (float)fromYClamped * yTextureIncr;
@@ -500,7 +500,7 @@ namespace RenderingEngine.Engine
                     vScreen += yTextureIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
                 )
             {
-                int index = textureWidth * (int)(vScreen);
+                int index = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
                 screenIndexPtr = Unsafe.Add(ref textureColumnPtr, index);
             }
         }
@@ -571,7 +571,7 @@ namespace RenderingEngine.Engine
             int offset = textureInfo.YOffset;
             TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
             int textureHeight = wallTexture.Height;
-            int sectorHeight = (int)(sector.Ceil - sector.Floor);
+            int sectorHeight = float.ConvertToIntegerNative<int>(sector.Ceil - sector.Floor);
 
             offset = EnsureOffsetIsPositive(textureHeight, offset);
 
@@ -710,7 +710,7 @@ namespace RenderingEngine.Engine
 
             float textureXLocation = MathF.Sqrt(distX * distX + distY * distY);
 
-            return ((int)textureXLocation, fromToYDist);
+            return (float.ConvertToIntegerNative<int>(textureXLocation), fromToYDist);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

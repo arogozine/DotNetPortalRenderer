@@ -428,12 +428,12 @@ namespace RenderingEngine.Engine
                 wall.C1 = new(rx1, ry1);
                 wall.C2 = new(rx2, ry2);
 
-                wall.XLeft = (int)xLeft;
-                wall.XRight = (int)xRight;
-                wall.YLeftCeil = (int)yLeftCeil;
-                wall.YLeftFloor = (int)yLeftFloor;
-                wall.YRightCeil = (int)yRightCeil;
-                wall.YRightFloor = (int)yRightFloor;
+                wall.XLeft = float.ConvertToIntegerNative<int>(xLeft);
+                wall.XRight = float.ConvertToIntegerNative<int>(xRight);
+                wall.YLeftCeil = float.ConvertToIntegerNative<int>(yLeftCeil);
+                wall.YLeftFloor = float.ConvertToIntegerNative<int>(yLeftFloor);
+                wall.YRightCeil = float.ConvertToIntegerNative<int>(yRightCeil);
+                wall.YRightFloor = float.ConvertToIntegerNative<int>(yRightFloor);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -447,7 +447,7 @@ namespace RenderingEngine.Engine
         private bool CalculatePlaneIntersectionsForWall(float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
         {
             // Nothing To Render
-            if ((int)xLeft == (int)xRight)
+            if (float.ConvertToIntegerNative<int>(xLeft) == float.ConvertToIntegerNative<int>(xRight))
             {
                 return false;
             }

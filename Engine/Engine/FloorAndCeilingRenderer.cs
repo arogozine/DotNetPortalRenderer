@@ -179,8 +179,8 @@ namespace RenderingEngine.Engine
                         yMapPos = yMapPosSR;
                     }
 
-                    int _y1 = ((int)(yMapPos) + textureInfo.YOffset) & textureHeightMask;
-                    int _x1 = ((int)(xMapPos) + textureInfo.XOffset) & textureWidthMask;
+                    int _y1 = float.ConvertToIntegerNative<int>(yMapPos + textureInfo.YOffset) & textureHeightMask;
+                    int _x1 = float.ConvertToIntegerNative<int>(xMapPos + textureInfo.XOffset) & textureWidthMask;
                     int textureIndex = _y1 * textureWidth + _x1;
 
                     ref BGRA tex = ref Unsafe.Add(ref ceilingTexturePtr, textureIndex);
@@ -243,7 +243,7 @@ namespace RenderingEngine.Engine
                     angleX = twoPi + angleX;
                 }
 
-                int texX = (int)(textureWidth4 * angleX) % textureWidth;
+                int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
                 int ceilingStart = renderWindow.CeilingStart;
                 int wallStartClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
@@ -340,7 +340,7 @@ namespace RenderingEngine.Engine
                     angleX = twoPi + angleX;
                 }
 
-                int texX = (int)(textureWidth4 * angleX) % textureWidth;
+                int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
                 int wallStartClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
                 int floorEnd = renderWindow.FloorEnd;
@@ -533,8 +533,8 @@ namespace RenderingEngine.Engine
                         yMapPos = yMapPosSR;
                     }
 
-                    int _y1 = ((int)(yMapPos) + yOffset) & textureHeightMask;
-                    int _x1 = ((int)(xMapPos) + xOffset) & textureWidthMask;
+                    int _y1 = (float.ConvertToIntegerNative<int>(yMapPos) + yOffset) & textureHeightMask;
+                    int _x1 = (float.ConvertToIntegerNative<int>(xMapPos) + xOffset) & textureWidthMask;
                     int textureIndex = (_y1 * textureWidth) + _x1;
 
                     ref BGRA tex = ref Unsafe.Add(ref floorTexturePtr, textureIndex);
