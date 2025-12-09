@@ -50,8 +50,6 @@ namespace RenderingEngine.Engine
                 if (render.Calculated)
                 {
                     render.Calculated = false;
-                    render.WallStart = render.CeilingStart;
-                    render.WallEnd = render.FloorEnd;
 
                     if (render.WallStart > render.WallEnd)
                     {
@@ -60,7 +58,20 @@ namespace RenderingEngine.Engine
 
                     if (render.CeilingStart > render.FloorEnd)
                     {
-                        render.CeilingStart = render.FloorEnd;
+                        render.FloorEnd = render.CeilingStart;
+                    }
+
+                    if (render.CeilingStart >= render.FloorEnd)
+                    {
+                        render.CeilingStart = 0;
+                        render.WallStart = 0;
+                        render.WallEnd = 0;
+                        render.FloorEnd = 0;
+                    }
+                    else
+                    {
+                        render.WallStart = render.CeilingStart;
+                        render.WallEnd = render.FloorEnd;
                     }
                 }
                 else

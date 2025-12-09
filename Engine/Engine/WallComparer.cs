@@ -48,33 +48,33 @@ namespace RenderingEngine.Engine
            }
 
            /*
-             // the two lines intersect, compare intersection
-             Point player = default;
-             bool intersectsX1 = TryGetSegmentIntersection(player, xC1, y.R1, y.R2, out Point intersection1);
-             bool intersectsX2 = TryGetSegmentIntersection(player, xC2, y.R1, y.R2, out Point intersection2);
-             bool intersectsY1 = TryGetSegmentIntersection(player, yC1, x.R1, x.R2, out Point intersection3);
-             bool intersectsY2 = TryGetSegmentIntersection(player, yC2, x.R1, x.R2, out Point intersection4);
+            // the two lines intersect, compare intersection
+            bool intersectsX1 = TryGetSegmentIntersectionFromZero(xC1, y.R1, y.R2, out Point intersection1);
+            bool intersectsX2 = TryGetSegmentIntersectionFromZero(xC2, y.R1, y.R2, out Point intersection2);
+            bool intersectsY1 = TryGetSegmentIntersectionFromZero(yC1, x.R1, x.R2, out Point intersection3);
+            bool intersectsY2 = TryGetSegmentIntersectionFromZero(yC2, x.R1, x.R2, out Point intersection4);
 
-             if (intersectsX1)
-             {
-                 yC1 = intersection1;
-             }
+            if (intersectsX1)
+            {
+                yC1 = intersection1;
+            }
 
-             if (intersectsX2)
-             {
-                 yC2 = intersection2;
-             }
+            if (intersectsX2)
+            {
+                yC2 = intersection2;
+            }
 
-             if (intersectsY1 && !intersectsX1)
-             {
-                 xC1 = intersection3;
-             }
+            if (intersectsY1 && !intersectsX1)
+            {
+                xC1 = intersection3;
+            }
 
-             if (intersectsY2 && !intersectsX2)
-             {
-                 xC2 = intersection4;
-             }
-             */
+            if (intersectsY2 && !intersectsX2)
+            {
+                xC2 = intersection4;
+            }
+            */
+
 
             float xCX1 = xC1.X;
             float xCX2 = xC2.X;
@@ -96,13 +96,6 @@ namespace RenderingEngine.Engine
 
             int compare = xd < yd ? -1 : 1;
 
-            /*
-            if (x.Id == 405 || y.Id == 405)
-            {
-                Debug.WriteLine($"Compare {x.Id} vs {y.Id}: {(compare == -1 ? x.Id : y.Id)}");
-            }
-            */
-
             return compare;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -118,6 +111,47 @@ namespace RenderingEngine.Engine
 
                 return xd < yd ? -1 : 1;
             }
+        }
+
+        public static bool TryGetSegmentIntersectionFromZero(
+            Point p2,
+            Point p3,
+            Point p4,
+            out Point intersection)
+        {
+            intersection = default;
+
+            float d1x = p2.X;
+            float d1y = p2.Y;
+            float d2x = p4.X - p3.X;
+            float d2y = p4.Y - p3.Y;
+
+            float denominator = d1x * d2y - d1y * d2x;
+
+            if (MathF.Abs(denominator) < float.Epsilon)
+            {
+                return false;
+            }
+
+            float d3x = p3.X;
+            float d3y = p3.Y;
+
+            float u = (d3x * d1y - d3y * d1x) / denominator;
+
+            if (u < 0 || u > 1)
+                return false;
+
+            float t = (d3x * d2y - d3y * d2x) / denominator;
+
+            if (t < 0)
+                return false;
+
+            intersection = new Point(
+                t * d1x,
+                t * d1y
+            );
+
+            return true;
         }
 
         public static bool TryGetSegmentIntersection(

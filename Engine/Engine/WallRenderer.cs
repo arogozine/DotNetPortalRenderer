@@ -29,6 +29,12 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
+                if (renderWindow.CeilingStart >= renderWindow.FloorEnd)
+                {
+                    renderWindow.SetFinished(CalculateDistance2(cameraRay, t1, d2y, d2x));
+                    continue;
+                }
+
                 float wallStartY = renderWindow.WallStart;
                 float wallEndY = renderWindow.WallEnd;
 

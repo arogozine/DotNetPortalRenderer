@@ -298,7 +298,7 @@ namespace RenderingEngine.Engine
             return finalWalls[..i];
         }
 
-        public static void CullWallsFromBunch(ref Span<Wall> walls, Span<Wall> parentPortalWallsToOcclude)
+        public void CullWallsFromBunch(ref Span<Wall> walls, Span<Wall> parentPortalWallsToOcclude)
         {
             for (int i = 0; i < parentPortalWallsToOcclude.Length; i++)
             {
@@ -309,6 +309,9 @@ namespace RenderingEngine.Engine
             {
                 return;
             }
+
+            walls.Sort(wallComparer);
+            CullWallsBasedOnVisibility(ref walls);
         }
 
         public void CalculateWallPlane(Wall wall, float yCeil, float yFloor, float yaw)
@@ -498,8 +501,8 @@ namespace RenderingEngine.Engine
             out float distanceX,
             out float distanceY)
         {
-            distanceY = default;
-            distanceX = default;
+            Unsafe.SkipInit(out distanceX);
+            Unsafe.SkipInit(out distanceY);
 
             float denominator = rayDirX * d2y - d2x;
 
