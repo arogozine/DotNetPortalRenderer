@@ -7,6 +7,7 @@
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PublishTrimmed>true</PublishTrimmed>
     <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
   </PropertyGroup>
   
   <ItemGroup>

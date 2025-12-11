@@ -491,7 +491,7 @@ namespace RenderingEngine.Engine
             }
 
             return true;
-                    }
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool TryGetSegmentIntersectionZero2(

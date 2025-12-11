@@ -17,9 +17,7 @@ namespace RenderingEngine.Engine
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
 
             int width = PixelWidth;
-            int height = PixelHeight;
             int textureWidth = texture.Height;
-            int textureHeight = texture.Width;
 
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
 
@@ -27,8 +25,6 @@ namespace RenderingEngine.Engine
             byte lightLevel = sector.LightLevel;
 
             float rx1 = sprite.R1.X;
-            float rx2 = sprite.R2.X;
-            float ry = sprite.Rotated.Y;
 
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;
@@ -43,14 +39,10 @@ namespace RenderingEngine.Engine
             Span<int> ceilingStartArray = renderableWall.CeilingStart;
             Span<float> distance = renderableWall.Distance;
 
-            float d2x = textureHeight;
-            float t1 = -ry * d2x;
             float fromToYDist = sprite.Distance;
 
             float cameraRay = -1f * EngineConstants.CameraPlaneX;
             cameraRay += cameraWidthIncr * spriteFromX;
-
-            float distIncr = texture.Width / (float)(xRight - xLeft);
 
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
             ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
@@ -62,12 +54,7 @@ namespace RenderingEngine.Engine
                 int ceilingStart = ceilingStartArray[x];
                 int floorEnd = floorEndArray[x];
 
-                if (floorEnd <= ceilingStart)
-                {
-                    continue;
-                }
-
-                if (distance[x] < fromToYDist)
+                if (floorEnd <= ceilingStart || distance[x] < fromToYDist)
                 {
                     continue;
                 }
@@ -80,10 +67,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int textureXLocation = CalculateTextureXPosition(cameraRay, t1, d2x);
-
-                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
-                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
+                int textureXLocation = CalculateTextureXPosition(cameraRay);
 
                 // Calculate Middle Texture Position
                 int textureYPos = textureXLocation * textureWidth;
@@ -91,23 +75,11 @@ namespace RenderingEngine.Engine
 
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel);
 
-                int textureXPosI = 0;
-
-                for (uint shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
-                     Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
-                     textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width))
-                {
-                    textureXPosI = float.ConvertToIntegerNative<int>(textureXPos);
-                    shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
-
-                    if (shaded != 0U)
-                    {
-                        screenIndexPtr = shaded;
-                    }
-                }
+                DrawSpriteLine(width, x, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
+                    ref screenPtr, ref columnBufferPtr);
             }
 
-            int CalculateTextureXPosition(float cameraRay, float t1, float d2x)
+            int CalculateTextureXPosition(float cameraRay)
             {
                 float fromToXDist = fromToYDist * cameraRay;
                 float distX = rx1 - fromToXDist;
@@ -242,80 +214,120 @@ namespace RenderingEngine.Engine
 
                 if (alpha == 1f)
                 {
-                    DrawTransparentWallLine(textureWidth, ref columnBufferPtr, ref screenPtr, x, textureStartYClamped, textureEndYClamped, textureXIncr, ref textureXPos);
+                    DrawTransparentWallLine(width, x,
+                        textureStartYClamped, textureEndYClamped,
+                        textureWidth,
+                        textureXPos, textureXIncr,
+                        ref screenPtr, ref columnBufferPtr);
                 }
                 else
                 {
-                    DrawTransparentWallLineWithAlpha(textureWidth, ref columnBufferPtr, ref screenPtr, x, textureStartYClamped, textureEndYClamped, textureXIncr, ref textureXPos, alpha);
+                    DrawTransparentWallLineWithAlpha(width, x,
+                        textureStartYClamped, textureEndYClamped,
+                        textureWidth,
+                        textureXPos, textureXIncr,
+                        ref screenPtr, ref columnBufferPtr,
+                        alpha);
                 }
             }
 
             columnABufferIndex = EngineConstants.Unset;
         }
 
-        private void DrawTransparentWallLine(int textureWidth, ref uint columnBufferPtr, ref uint screenPtr, int x, int textureStartYClamped, int textureEndYClamped, float textureXIncr, ref float textureXPos)
+        private static void DrawTransparentWallLine(
+            int width,
+            int x,
+            int textureStartYClamped, int textureEndYClamped,
+            int textureHeight,
+            float textureXPos,
+            float textureXIncr,
+            scoped ref uint screenPtr,
+            scoped ref uint textureBuffer
+            )
         {
-            uint shaded = default;
-            int textureXPosIOld = -1;
+            ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * width + x);
+            ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, textureEndYClamped * width + x);
+            uint textureXPos_u = float.ConvertToIntegerNative<uint>(textureXPos * (1 << 16));
+            uint textureXIncr_u = float.ConvertToIntegerNative<uint>(textureXIncr * (1 << 16));
+            uint textureHeight_u = (uint)textureHeight;
 
-            ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * PixelWidth + x);
-            ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, textureEndYClamped * PixelWidth + x);
-
-            for (; Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
-                textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth))
+            while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
             {
-                int textureXPosI = float.ConvertToIntegerNative<int>(textureXPos);
-
-                if (textureXPosI != textureXPosIOld)
-                {
-                    if (textureXPosI >= textureWidth)
-                    {
-                        textureXPosI -= textureWidth;
-                    }
-
-                    textureXPosIOld = textureXPosI;
-                    shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
-                }
+                uint texelIndex = (textureXPos_u >> 16) % textureHeight_u;
+                uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
 
                 if (shaded != 0U)
-                {
                     screenIndexPtr = shaded;
-                }
+
+                screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                textureXPos_u += textureXIncr_u;
             }
         }
 
-        private void DrawTransparentWallLineWithAlpha(int textureWidth, ref uint columnBufferPtr, ref uint screenPtr, int x, int textureStartYClamped, int textureEndYClamped, float textureXIncr, ref float textureXPos, float alpha)
+        private static void DrawTransparentWallLineWithAlpha(
+            int width,
+            int x,
+            int textureStartYClamped, int textureEndYClamped,
+            int textureHeight,
+            float textureXPos,
+            float textureXIncr,
+            scoped ref uint screenPtr,
+            scoped ref uint textureBuffer,
+            float alpha
+            )
         {
-            uint a = (uint)(alpha * byte.MaxValue);
+            uint a = float.ConvertToIntegerNative<uint>(alpha * byte.MaxValue);
             uint aInv = byte.MaxValue - a;
 
-            BGRA shaded = default;
-            int textureXPosIOld = -1;
-
             ref BGRA screenIndexPtrBgra = ref Unsafe.As<uint, BGRA>(ref screenPtr);
-            ref BGRA screenIndexPtr = ref Unsafe.Add(ref screenIndexPtrBgra, textureStartYClamped * PixelWidth + x);
-            ref BGRA screenIndexPtrEnd = ref Unsafe.Add(ref screenIndexPtrBgra, textureEndYClamped * PixelWidth + x);
+            ref BGRA screenIndexPtr = ref Unsafe.Add(ref screenIndexPtrBgra, textureStartYClamped * width + x);
+            ref BGRA screenIndexPtrEnd = ref Unsafe.Add(ref screenIndexPtrBgra, textureEndYClamped * width + x);
 
-            for (; Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
-                textureXPos += textureXIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, PixelWidth))
+            uint textureXPos_u = float.ConvertToIntegerNative<uint>(textureXPos * (1 << 16));
+            uint textureXIncr_u = float.ConvertToIntegerNative<uint>(textureXIncr * (1 << 16));
+            uint textureHeight_u = (uint)textureHeight;
+
+            while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
             {
-                int textureXPosI = float.ConvertToIntegerNative<int>(textureXPos);
-
-                if (textureXPosI != textureXPosIOld)
-                {
-                    if (textureXPosI >= textureWidth)
-                    {
-                        textureXPosI -= textureWidth;
-                    }
-
-                    textureXPosIOld = textureXPosI;
-                    shaded = Unsafe.Add(ref columnBufferPtr, textureXPosI);
-                }
+                uint texelIndex = (textureXPos_u >> 16) % textureHeight_u;
+                BGRA shaded = Unsafe.Add(ref textureBuffer, texelIndex);
 
                 if (shaded != 0U)
                 {
                     screenIndexPtr = BlendBGRA(ref screenIndexPtr, ref shaded, a, aInv);
                 }
+
+                screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                textureXPos_u += textureXIncr_u;
+            }
+        }
+
+
+        private static void DrawSpriteLine(
+                int width,
+                int x,
+                int textureStartYClamped, int textureEndYClamped,
+                float textureXPos,
+                float textureXIncr,
+                scoped ref uint screenPtr,
+                scoped ref uint textureBuffer
+                )
+        {
+            ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * width + x);
+            ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, textureEndYClamped * width + x);
+            uint textureXPos_u = float.ConvertToIntegerNative<uint>(textureXPos * (1 << 16));
+            uint textureXIncr_u = float.ConvertToIntegerNative<uint>(textureXIncr * (1 << 16));
+
+            while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
+            {
+                uint texelIndex = textureXPos_u >> 16;
+                uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+
+                if (shaded != 0U)
+                    screenIndexPtr = shaded;
+
+                screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                textureXPos_u += textureXIncr_u;
             }
         }
 
@@ -326,9 +338,6 @@ namespace RenderingEngine.Engine
 
             unchecked
             {
-                // if (a == 0) return bgraDst.Value;
-                // if (a == 255) return bgraSrc.Value;
-
                 uint bDst = bgraDst.B;
                 uint gDst = bgraDst.G;
                 uint rDst = bgraDst.R;

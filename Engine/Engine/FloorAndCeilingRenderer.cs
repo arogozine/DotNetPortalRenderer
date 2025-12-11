@@ -62,7 +62,7 @@ namespace RenderingEngine.Engine
 
             Vector<float> yCeilV = Vector.Create(yCeil);
 
-            Vector<float> incramentVector = default;
+            Unsafe.SkipInit(out Vector<float> incramentVector);
             ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
             TextureInfo textureInfo = sector.CeilTexture;
@@ -214,13 +214,13 @@ namespace RenderingEngine.Engine
             int textureHeight = texture.Height;
 
             float textureWidth4 = textureWidth * 4f * oneOverTwoPi;
-            float yTextureIncr = (1f / height) * textureHeight;
+
+            int yTextureIncr = float.ConvertToInteger<int>((1f / height) * (textureHeight << 16));
 
             Vector<int> textureWidthV = Vector.Create(texture.Width);
+            Vector<int> ivIncrF = new(yTextureIncr * Vector<float>.Count);
 
-            Vector<float> ivIncrF = new(yTextureIncr * Vector<float>.Count);
-
-            Vector<float> incramentVector = Vector.CreateSequence(0f, yTextureIncr);
+            Vector<int> incramentVector = Vector.CreateSequence(0, yTextureIncr);
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
@@ -255,12 +255,12 @@ namespace RenderingEngine.Engine
                 ref BGRA screenEndColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * wallStartClamped);
                 ref BGRA textureColumnPtr = ref Unsafe.Add(ref ceilingTexturePtr, texX);
 
-                float vScreen = ceilingStart * yTextureIncr;
-                Vector<float> vScreenV = Vector.Create(vScreen) + incramentVector;
+                int vScreen = ceilingStart * yTextureIncr;
+                Vector<int> vScreenV = Vector.Create(vScreen) + incramentVector;
 
                 for (; !Unsafe.AreSame(ref screenColumnPtr, ref screenEndColumnPtr); vScreenV += ivIncrF)
                 {
-                    Vector<int> texY = Vector.ConvertToInt32Native(vScreenV) * textureWidthV;
+                    Vector<int> texY = (vScreenV >> 16) * textureWidthV;
 
                     ref int texYPtr = ref Unsafe.As<Vector<int>, int>(ref texY);
 
@@ -273,17 +273,15 @@ namespace RenderingEngine.Engine
                     }
                 }
 
-                Vector<int> vScreenVInt = Vector.ConvertToInt32Native(vScreenV);
+                Vector<int> vScreenVInt = textureWidthV * (vScreenV >> 16);
 
                 for (int y = 0; y < rem; y++)
                 {
-                    int index = vScreenVInt[y] * textureWidth;
-
+                    int index = vScreenVInt[y];
                     screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
                     screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
                 }
             }
-
         }
 
         private void RenderSkyboxFloorVector(
@@ -446,7 +444,7 @@ namespace RenderingEngine.Engine
                 rCosV = Vector.Create(rCos);
             }
 
-            Vector<float> incramentVector = default;
+            Unsafe.SkipInit(out Vector<float> incramentVector);
             ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
