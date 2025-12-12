@@ -340,7 +340,7 @@ namespace RenderingEngine.Engine
 
                 (wall.R1, wall.R2) = (wall.R2, wall.R1);
 
-                wall.Flipped = true;
+                // wall.Flipped = true;
             }
 
             // part of the wall is in the back
@@ -369,6 +369,7 @@ namespace RenderingEngine.Engine
                     xRight = width - 1;
 
                     wall.IntersectsView = true;
+                    wall.Flipped = true;
                 }
                 else if (intersectsL || intersectsR)
                 {
@@ -387,6 +388,8 @@ namespace RenderingEngine.Engine
                         ry2 = yDistance;
                         xRight = halfWidth - rx2 / ry2 * scale;
                     }
+
+                    wall.Flipped = true;
                 }
                 else
                 {

@@ -753,8 +753,8 @@ namespace RenderingEngine.Engine
             float fromToYDist = t1 / denominator;
             float fromToXDist = fromToYDist * cameraRay;
 
-            float distX = (flipped ? wall.R2.X : wall.R1.X) - fromToXDist;
-            float distY = (flipped ? wall.R2.Y : wall.R1.Y) - fromToYDist;
+            float distX = flipped ? (wall.R2.X - fromToXDist) : (fromToXDist - wall.R1.X);
+            float distY = flipped ? (wall.R2.Y - fromToYDist) : (fromToYDist - wall.R1.Y);
 
             float textureXLocation = MathF.Sqrt(distX * distX + distY * distY);
 
