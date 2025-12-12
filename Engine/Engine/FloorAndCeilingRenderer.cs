@@ -46,18 +46,12 @@ namespace RenderingEngine.Engine
             int height = PixelHeight;
             int width = PixelWidth;
             int halfHeightInt = height / 2;
-            float oneOverHeight = 1f / height;
             int widthDiv2 = width / 2;
 
-            float px = player.X;
-            float py = player.Y;
             float pz = player.Z;
-            float pSin = player.Sin;
-            float pCos = player.Cos;
 
             float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
 
-            float yaw = player.Yaw;
             float yCeil = sector.Ceil - pz;
 
             Vector<float> yCeilV = Vector.Create(yCeil);
@@ -68,7 +62,6 @@ namespace RenderingEngine.Engine
             TextureInfo textureInfo = sector.CeilTexture;
             ref Texture ceilingTexture = ref TextureCache.GetTexture(textureInfo.Name);
 
-            int textureHeight = ceilingTexture.Height;
             int textureWidth = ceilingTexture.Width;
             int textureHeightMask = ceilingTexture.Height - 1;
             int textureWidthMask = ceilingTexture.Width - 1;
@@ -85,12 +78,10 @@ namespace RenderingEngine.Engine
 
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
-            Unsafe.SkipInit(out float rCos);
-            Unsafe.SkipInit(out float rSin);
 
             if (rotated)
             {
-                (rSin, rCos) = MathF.SinCos(sector.RotationFloor + MathF.PI);
+                (float rSin, float rCos) = MathF.SinCos(sector.RotationFloor + MathF.PI);
                 rSinV = Vector.Create(rSin);
                 rCosV = Vector.Create(rCos);
             }
@@ -116,76 +107,12 @@ namespace RenderingEngine.Engine
 
                 float xMapPosMultiplier = (widthDiv2 - x) * xPosIncr;
 
-                Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
-                Vector<int> halfHeightIntV = Vector.Create(halfHeightInt);
-
                 incramentVector = Vector.CreateSequence(halfHeightInt - floorFromY, -1f);
                 incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
 
-                int rem = (floorToY - floorFromY) % Vector<int>.Count;
-                floorToY -= rem;
-
-                ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-                ref BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
-
-                while (!Unsafe.AreSame(ref screenTex, ref toScalePtr))
-                {
-                    Vector<float> yMapPosR = yCeilV / incramentVector;
-                    Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
-
-                    (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
-
-                    if (rotated)
-                    {
-                        Vector<float> xMapPosSR, yMapPosSR;
-                        xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
-                        yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
-
-                        xMapPos = xMapPosSR;
-                        yMapPos = yMapPosSR;
-                    }
-
-                    Vector<int> _y1 = (Vector.ConvertToInt32Native(yMapPos) + yOffSetV) & textureHeightMaskV;
-                    Vector<int> _x1 = (Vector.ConvertToInt32Native(xMapPos) + xOffSetV) & textureWidthMaskV;
-                    Vector<int> textureIndex = _y1 * textureWidthV + _x1;
-
-                    ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
-
-                    for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
-                    {
-                        ref BGRA tex = ref Unsafe.Add(ref ceilingTexturePtr, Unsafe.Add(ref textureIndexPtr, i));
-                        ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
-                    }
-
-                    incramentVector -= ivIncrF;
-                }
-
-                float ii = incramentVectorPtr;
-
-                for (int j = 0; j < rem; j++, screenTex = ref Unsafe.Add(ref screenTex, width), ii -= oneOverHeight)
-                {
-                    float yMapPosR = yCeil / (ii + yaw);
-                    float xMapPosR = yMapPosR * xMapPosMultiplier;
-
-                    (float xMapPos, float yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
-
-                    if (rotated)
-                    {
-                        float xMapPosSR, yMapPosSR;
-                        xMapPosSR = xMapPos * rCos - yMapPos * rSin;
-                        yMapPosSR = xMapPos * rSin + yMapPos * rCos;
-
-                        xMapPos = xMapPosSR;
-                        yMapPos = yMapPosSR;
-                    }
-
-                    int _y1 = float.ConvertToIntegerNative<int>(yMapPos + textureInfo.YOffset) & textureHeightMask;
-                    int _x1 = float.ConvertToIntegerNative<int>(xMapPos + textureInfo.XOffset) & textureWidthMask;
-                    int textureIndex = _y1 * textureWidth + _x1;
-
-                    ref BGRA tex = ref Unsafe.Add(ref ceilingTexturePtr, textureIndex);
-                    ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
-                }
+                RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, floorFromY, width,
+                    x, lightLevel, yCeilV, ref incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV);
             }
         }
 
@@ -392,18 +319,10 @@ namespace RenderingEngine.Engine
             int height = PixelHeight;
             int width = PixelWidth;
 
-            float px = player.X;
-            float py = player.Y;
-            float pz = player.Z;
-            float pSin = player.Sin;
-            float pCos = player.Cos;
-
-            float yfloor = sector.Floor - pz;
-            float yaw = player.Yaw;
+            float yfloor = sector.Floor - player.Z;
 
             float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
 
-            float oneOvervFov = 1f / height;
             int halfHeightInt = height / 2;
             int widthDiv2 = width / 2;
 
@@ -415,7 +334,6 @@ namespace RenderingEngine.Engine
 
             Vector<float> yfloorV = Vector.Create(yfloor);
 
-            int textureHeight = floorTexture.Height;
             int textureWidth = floorTexture.Width;
             int textureHeightMask = floorTexture.Height - 1;
             int textureWidthMask = floorTexture.Width - 1;
@@ -423,7 +341,6 @@ namespace RenderingEngine.Engine
             Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
             Vector<int> textureWidthV = Vector.Create(textureWidth);
-
 
             bool rotated = sector.RotationFloor != 0f;
 
@@ -434,12 +351,10 @@ namespace RenderingEngine.Engine
 
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
-            Unsafe.SkipInit(out float rCos);
-            Unsafe.SkipInit(out float rSin);
 
             if (rotated)
             {
-                (rSin, rCos) = MathF.SinCos(sector.RotationFloor + MathF.PI);
+                (float rSin, float rCos) = MathF.SinCos(sector.RotationFloor + MathF.PI);
                 rSinV = Vector.Create(rSin);
                 rCosV = Vector.Create(rCos);
             }
@@ -463,82 +378,107 @@ namespace RenderingEngine.Engine
 
                 int screenIndex = floorFromY * width + x;
                 float xMapPosMultiplier = (widthDiv2 - x) * xPosIncr;
-                Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
 
                 incramentVector = Vector.CreateSequence(halfHeightInt - floorFromY, -1f);
                 incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOvervFovV, yawV);
 
-                int rem = (floorToY - floorFromY) % Vector<int>.Count;
-                floorToY -= rem;
+                RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
+                    x, lightLevel, yfloorV, ref incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV);
+            }
+        }
 
-                ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-                ref BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
+        private void RenderFloorOrCeilingColumn(
+            scoped ref BGRA screenPtr,
+            scoped ref BGRA texturePtr,
+            int screenIndex,
+            int floorToY,
+            int floorFromY,
+            int width,
+            int x,
+            uint lightLevel,
+            in Vector<float> yCeilV,
+            ref Vector<float> incramentVector,
+            float xMapPosMultiplier,
+            in Vector<int> yOffSetV,
+            in Vector<int> xOffSetV,
+            in Vector<int> textureWidthV,
+            in Vector<int> textureHeightMaskV,
+            in Vector<int> textureWidthMaskV,
+            bool rotated,
+            in Vector<float> rSinV,
+            in Vector<float> rCosV
+        )
+        {
+            int rem = (floorToY - floorFromY) % Vector<int>.Count;
+            floorToY -= rem;
 
-                // from start of wall (buttom) to screen buttom
-                while (!Unsafe.AreSame(ref screenTex, ref toScalePtr))
+            Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
+
+            ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
+            ref BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
+
+            ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
+
+            while (!Unsafe.AreSame(ref screenTex, ref toScalePtr))
+            {
+                Vector<float> yMapPosR = yCeilV / incramentVector;
+                Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
+
+                (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
+
+                if (rotated)
                 {
-                    Vector<float> yMapPosR = yfloorV / incramentVector;
-                    Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV; 
+                    Vector<float> xMapPosSR, yMapPosSR;
+                    xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
+                    yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
 
-                    (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
-
-                    if (rotated)
-                    {
-                        Vector<float> xMapPosSR, yMapPosSR;
-                        xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
-                        yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
-
-                        xMapPos = xMapPosSR;
-                        yMapPos = yMapPosSR;
-                    }
-
-                    Vector<int> _y1 = (Vector.ConvertToInt32Native(yMapPos) + yOffSetV) & textureHeightMaskV;
-                    Vector<int> _x1 = (Vector.ConvertToInt32Native(xMapPos) + xOffSetV) & textureWidthMaskV;
-                    Vector<int> textureIndex = _y1 * textureWidthV + _x1;             
-
-                    ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
-
-                    for (int j = 0; j < Vector<float>.Count; j++, screenTex = ref Unsafe.Add(ref screenTex, width))
-                    {
-                        if (Unsafe.Add(ref incramentVectorPtr, j) == 0f)
-                        {
-                            continue;
-                        }
-
-                        ref BGRA tex = ref Unsafe.Add(ref floorTexturePtr, Unsafe.Add(ref textureIndexPtr, j));
-                        ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
-                    }
-
-                    incramentVector -= ivIncrF;
+                    xMapPos = xMapPosSR;
+                    yMapPos = yMapPosSR;
                 }
 
-                int increment = halfHeightInt - floorFromY - (floorToY - floorFromY);
+                Vector<int> _y1 = (Vector.ConvertToInt32Native(yMapPos) + yOffSetV) & textureHeightMaskV;
+                Vector<int> _x1 = (Vector.ConvertToInt32Native(xMapPos) + xOffSetV) & textureWidthMaskV;
+                Vector<int> textureIndex = _y1 * textureWidthV + _x1;
+
+                ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
+
+                for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                {
+                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
+                    ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
+                }
+
+                incramentVector -= ivIncrF;
+            }
+
+            if (rem > 0)
+            {
+                Vector<float> yMapPosR = yCeilV / incramentVector;
+                Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
+
+                (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
+
+                if (rotated)
+                {
+                    Vector<float> xMapPosSR, yMapPosSR;
+                    xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
+                    yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
+
+                    xMapPos = xMapPosSR;
+                    yMapPos = yMapPosSR;
+                }
+
+                Vector<int> _y1 = (Vector.ConvertToInt32Native(yMapPos) + yOffSetV) & textureHeightMaskV;
+                Vector<int> _x1 = (Vector.ConvertToInt32Native(xMapPos) + xOffSetV) & textureWidthMaskV;
+                Vector<int> textureIndex = _y1 * textureWidthV + _x1;
+
+                ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
 
                 for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
-                    float yMapPosR = yfloor / (increment * oneOvervFov + yaw);
-                    float xMapPosR = yMapPosR * xMapPosMultiplier;
-
-                    (float xMapPos, float yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
-
-                    if (rotated)
-                    {
-                        float xMapPosSR, yMapPosSR;
-                        xMapPosSR = xMapPos * rCos - yMapPos * rSin;
-                        yMapPosSR = xMapPos * rSin + yMapPos * rCos;
-
-                        xMapPos = xMapPosSR;
-                        yMapPos = yMapPosSR;
-                    }
-
-                    int _y1 = (float.ConvertToIntegerNative<int>(yMapPos) + yOffset) & textureHeightMask;
-                    int _x1 = (float.ConvertToIntegerNative<int>(xMapPos) + xOffset) & textureWidthMask;
-                    int textureIndex = (_y1 * textureWidth) + _x1;
-
-                    ref BGRA tex = ref Unsafe.Add(ref floorTexturePtr, textureIndex);
+                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
                     ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
-
-                    increment -= 1;
                 }
             }
         }
@@ -554,19 +494,6 @@ namespace RenderingEngine.Engine
 
             return (rx1 + px, ry1 + py);
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static (float rx1, float ry1) RotateVertexBack(
-            float x, float y,
-            float psin, float pcos,
-            float px, float py)
-        {
-            float rx1 = y * pcos + x * psin;
-            float ry1 = y * psin - x * pcos;
-
-            return (rx1 + px, ry1 + py);
-        }
-
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ShadeByPrecalc(ref BGRA inColor, ref BGRA outColor, uint scale)

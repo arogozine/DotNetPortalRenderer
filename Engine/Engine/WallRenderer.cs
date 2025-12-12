@@ -503,11 +503,11 @@ namespace RenderingEngine.Engine
 
             int numberOfLines = (endY - startY);
 
-            if ((numberOfLines << 8) >= (Vector<uint>.Count << 8))
+            if (numberOfLines >= (Vector<uint>.Count << 4))
             {
-                int offset = numberOfLines % Vector<uint>.Count;
+                int rem = numberOfLines % Vector<uint>.Count;
 
-                ref uint screenIndexPtrEndV = ref Unsafe.Subtract(ref screenIndexPtrEnd, offset * width);
+                ref uint screenIndexPtrEndV = ref Unsafe.Subtract(ref screenIndexPtrEnd, rem * width);
 
                 Vector<uint> textureMaskV = Vector.Create(textureMask);
                 Vector<uint> textureXIncr_uV = Vector.Create(textureXIncr_u  * (uint)Vector<uint>.Count);
@@ -527,17 +527,30 @@ namespace RenderingEngine.Engine
                     textureXPos_uV += textureXIncr_uV;
                 }
 
-                textureXPos_u = textureXPos_uV[0];
+                if (rem > 0)
+                {
+                    Vector<uint> texelIndexV = (textureXPos_uV >> 16) & textureMaskV;
+
+                    for (int i = 0; i < rem; i++)
+                    {
+                        uint texelIndex = texelIndexV[i];
+                        uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                        screenIndexPtr = shaded;
+                        screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                    }
+                }
             }
-
-            while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
+            else
             {
-                uint texelIndex = (textureXPos_u >> 16) & textureMask;
-                uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                while (!Unsafe.AreSame(ref screenIndexPtr, ref screenIndexPtrEnd))
+                {
+                    uint texelIndex = (textureXPos_u >> 16) & textureMask;
+                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
 
-                screenIndexPtr = shaded;
-                screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
-                textureXPos_u += textureXIncr_u;
+                    screenIndexPtr = shaded;
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                    textureXPos_u += textureXIncr_u;
+                }
             }
         }
 
