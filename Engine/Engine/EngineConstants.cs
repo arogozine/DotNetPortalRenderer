@@ -16,5 +16,7 @@
         public const int PlayerHeight = 56;
 
         public const float HeightToWidthRatio = 0.5f / CameraPlaneX;
+
+        public const float NinetyDegrees = MathF.PI * (90f / 180f);
     }
 }

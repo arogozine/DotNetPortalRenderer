@@ -6,6 +6,12 @@ namespace RenderingEngine.Engine
     internal static class MathFormulas
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsPowerOfTwo(int n)
+        {
+            return n > 0 && (n & (n - 1)) == 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int FastPositiveFloatToInt(float value)
         {
             if (Sse.IsSupported) // Ensure x86, x64

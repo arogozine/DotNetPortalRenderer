@@ -117,7 +117,7 @@ namespace RenderingEngine.Engine
             ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
 
             int lowerTextureStart = DetermineLowerTextureYOffset(sector, float.ConvertToIntegerNative<int>(floorOffset), float.ConvertToIntegerNative<int>(ceilOffset), lowerTextureInfo, ref lowerTexture);
-            int lowerXOffset = DetermineXOffset(lowerTextureInfo, i lowerTexture);
+            int lowerXOffset = DetermineXOffset(lowerTextureInfo, in lowerTexture);
 
             int upperTextureStart = DetermineUpperTextureYOffset(sector, float.ConvertToIntegerNative<int>(ceilOffset), upperTextureInfo, ref upperTexture);
             int upperXOffset = DetermineXOffset(upperTextureInfo, in upperTexture);
@@ -461,11 +461,6 @@ namespace RenderingEngine.Engine
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static bool IsPowerOfTwo(int n)
-        {
-            return n > 0 && (n & (n - 1)) == 0;
-        }
 
         private static void RenderWallLine(
             int width,
@@ -485,7 +480,7 @@ namespace RenderingEngine.Engine
             uint textureXIncr_u = float.ConvertToIntegerNative<uint>(textureXIncr * (1 << 16));
             uint textureHeight_u = (uint)textureHeight;
 
-            if (!IsPowerOfTwo(textureHeight))
+            if (!MathFormulas.IsPowerOfTwo(textureHeight))
             {
                 while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
                 {
