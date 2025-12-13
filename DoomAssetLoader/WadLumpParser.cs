@@ -233,7 +233,7 @@ namespace DoomAssetLoader
         {
             WadLumpCheck(lineDefLump, LumpType.LineDefs, divisor: sizeof(Linedef));
 
-            return MemoryMarshal.Cast<byte, Linedef>(lineDefLump.Bytes);
+            return MemoryMarshal.Cast<byte, Linedef>((Span<byte>)lineDefLump.Bytes);
         }
 
         public static Span<Sector> ReadSectors([NotNull] WadLump? sectorLump)
@@ -267,7 +267,7 @@ namespace DoomAssetLoader
         {
             WadLumpCheck(thingsLump, LumpType.Things, divisor: sizeof(Thing));
 
-            return MemoryMarshal.Cast<byte, Thing>(thingsLump.Bytes);
+            return MemoryMarshal.Cast<byte, Thing>((Span<byte>)thingsLump.Bytes);
         }
 
         private static void WadLumpCheck([NotNull] WadLump? wadLump, string wadName, int? fixedSize = null, int? divisor = null)
