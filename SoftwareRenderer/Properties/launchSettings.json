@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Raycaster2": {
+      "commandName": "Project",
+      "commandLineArgs": "--iwad=\"C:\\Users\\Alexa\\Downloads\\New folder\\doom2.wad\"\r\n--pwad=\"C:\\Users\\Alexa\\Downloads\\New folder\\myhouse.wad\"\r\n--map=MAP01"
+    }
+  }
+}

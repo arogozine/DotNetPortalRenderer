@@ -14,9 +14,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{D0979230-893A-4B06-BEBD-17A3BE4A447F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SoftwareRenderer", "Raycaster2\SoftwareRenderer.csproj", "{6E24253F-093E-417F-81EA-C928697FA6D5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SoftwareRenderer", "SoftwareRenderer\SoftwareRenderer.csproj", "{6E24253F-093E-417F-81EA-C928697FA6D5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DoomAssetLoader", "DoomAssetLoader\DoomAssetLoader.csproj", "{25C12750-7E48-3688-EB74-5851E8F54DF4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildAssetLoader", "BuildAssetLoader\BuildAssetLoader.csproj", "{0DDA5F06-B4F8-4275-BE3B-A2EA1EEC8DD3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -44,6 +46,10 @@ Global
 		{25C12750-7E48-3688-EB74-5851E8F54DF4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{25C12750-7E48-3688-EB74-5851E8F54DF4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{25C12750-7E48-3688-EB74-5851E8F54DF4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0DDA5F06-B4F8-4275-BE3B-A2EA1EEC8DD3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0DDA5F06-B4F8-4275-BE3B-A2EA1EEC8DD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0DDA5F06-B4F8-4275-BE3B-A2EA1EEC8DD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0DDA5F06-B4F8-4275-BE3B-A2EA1EEC8DD3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
