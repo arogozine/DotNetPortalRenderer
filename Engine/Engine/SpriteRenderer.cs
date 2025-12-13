@@ -141,7 +141,7 @@ namespace RenderingEngine.Engine
                 ceilOffset = 0f;
             }
 
-            int xOffset = DetermineXOffset(textureInfo, ref texture);
+            int xOffset = DetermineXOffset(textureInfo, in texture);
 
             ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
 

@@ -117,10 +117,10 @@ namespace RenderingEngine.Engine
             ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
 
             int lowerTextureStart = DetermineLowerTextureYOffset(sector, float.ConvertToIntegerNative<int>(floorOffset), float.ConvertToIntegerNative<int>(ceilOffset), lowerTextureInfo, ref lowerTexture);
-            int lowerXOffset = DetermineXOffset(lowerTextureInfo, ref lowerTexture);
+            int lowerXOffset = DetermineXOffset(lowerTextureInfo, i lowerTexture);
 
             int upperTextureStart = DetermineUpperTextureYOffset(sector, float.ConvertToIntegerNative<int>(ceilOffset), upperTextureInfo, ref upperTexture);
-            int upperXOffset = DetermineXOffset(upperTextureInfo, ref upperTexture);
+            int upperXOffset = DetermineXOffset(upperTextureInfo, in upperTexture);
 
             ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperSkybox ? upperTexture.Data : upperTexture.Rotated);
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
@@ -176,10 +176,10 @@ namespace RenderingEngine.Engine
 
                         RenderSkyboxLine(player,
                             x,
-                            ref upperTexture,
+                            in upperTexture,
                             ref upperTextureUintPtr,
                             ref angleCachePtr,
-                            ref renderWindow,
+                            in renderWindow,
                             ref screenIndexPtr,
                             ref screenIndexPtrEnd);
                     }
@@ -219,10 +219,10 @@ namespace RenderingEngine.Engine
 
                         RenderSkyboxLine(player,
                             x,
-                            ref upperTexture,
+                            in upperTexture,
                             ref upperTextureUintPtr,
                             ref angleCachePtr,
-                            ref renderWindow,
+                            in renderWindow,
                             ref screenIndexPtr,
                             ref screenIndexPtrEnd);
                     }
@@ -294,8 +294,8 @@ namespace RenderingEngine.Engine
             int textureWidth = wallTexture.Height;
             int textureHeight = wallTexture.Width;
 
-            int textureStart = DetermineTextureYOffset(sector, textureInfo, ref wallTexture);
-            int xOffset = DetermineXOffset(textureInfo, ref wallTexture);
+            int textureStart = DetermineTextureYOffset(sector, textureInfo, in wallTexture);
+            int xOffset = DetermineXOffset(textureInfo, in wallTexture);
 
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
             ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
@@ -397,10 +397,10 @@ namespace RenderingEngine.Engine
 
                 RenderSkyboxLine(player,
                     x,
-                    ref wallTexture,
+                    in wallTexture,
                     ref wallTextureUintPtr,
                     ref angleCachePtr,
-                    ref renderWindow,
+                    in renderWindow,
                     ref screenIndexPtr,
                     ref screenIndexPtrEnd);
 
@@ -412,10 +412,10 @@ namespace RenderingEngine.Engine
 
         private void RenderSkyboxLine(PortalPlayerSnapshot player,
             int x,
-            ref Texture upperTexture,
+            in Texture upperTexture,
             ref uint upperTextureUintPtr,
             ref float angleCachePtr,
-            ref RenderWindow renderWindow,
+            in RenderWindow renderWindow,
             ref uint screenIndexPtr,
             ref uint screenIndexPtrEnd)
         {
@@ -471,7 +471,8 @@ namespace RenderingEngine.Engine
             int width,
             int x,
             int textureHeight,
-            int startY, int endY,
+            int startY,
+            int endY,
             float textureXPos,
             float textureXIncr,
             scoped ref uint screenPtr,
@@ -554,7 +555,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private static int DetermineXOffset(TextureInfo textureInfo, ref Texture wallTexture)
+        private static int DetermineXOffset(TextureInfo textureInfo, in Texture wallTexture)
         {
             int offset = textureInfo.XOffset;
             int textureWidth = wallTexture.Width;
@@ -615,7 +616,7 @@ namespace RenderingEngine.Engine
         private static int DetermineTextureYOffset(
             Sector sector,
             TextureInfo textureInfo,
-            ref Texture wallTexture)
+            in Texture wallTexture)
         {
             int offset = textureInfo.YOffset;
             TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;

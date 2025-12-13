@@ -446,7 +446,7 @@ namespace RenderingEngine.Engine
                 for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
                     ref BGRA tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
-                    ShadeByPrecalc(ref tex, ref screenTex, lightLevel);
+                    ShadeByPrecalc(in tex, ref screenTex, lightLevel);
                 }
 
                 incramentVector -= ivIncrF;
