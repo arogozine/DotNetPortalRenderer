@@ -52,29 +52,36 @@ namespace RenderingEngine.Engine
             bool intersectsX1 = TryGetSegmentIntersectionFromZero(xC1, y.R1, y.R2, out Point intersection1);
             bool intersectsX2 = TryGetSegmentIntersectionFromZero(xC2, y.R1, y.R2, out Point intersection2);
             bool intersectsY1 = TryGetSegmentIntersectionFromZero(yC1, x.R1, x.R2, out Point intersection3);
+            
             bool intersectsY2 = TryGetSegmentIntersectionFromZero(yC2, x.R1, x.R2, out Point intersection4);
 
             if (intersectsX1)
             {
-                yC1 = intersection1;
+                return Compare(xC1.X, xC1.Y, intersection1.X, intersection1.Y);
+                //yC1 = intersection1;
             }
 
             if (intersectsX2)
             {
-                yC2 = intersection2;
+                return Compare(xC2.X, xC2.Y, intersection2.X, intersection2.Y);
+
+                // yC2 = intersection2;
             }
 
-            if (intersectsY1 && !intersectsX1)
+            if (intersectsY1)
             {
-                xC1 = intersection3;
+                return Compare(yC1.X, yC1.Y, intersection3.X, intersection3.Y);
+
+                // xC1 = intersection3;
             }
 
-            if (intersectsY2 && !intersectsX2)
+            if (intersectsY2)
             {
-                xC2 = intersection4;
+                return Compare(yC2.X, yC2.Y, intersection4.X, intersection4.Y);
+
+                // xC2 = intersection4;
             }
             */
-
 
             float xCX1 = xC1.X;
             float xCX2 = xC2.X;
@@ -90,6 +97,16 @@ namespace RenderingEngine.Engine
 
             float yd1 = yCX1 * yCX1 + yCY1 * yCY1;
             float yd2 = yCX2 * yCX2 + yCY2 * yCY2;
+
+            if (xd1 < yd1 && xd1 < yd2 && xd2 < yd1 && xd1 < yd2)
+            {
+                return -1;
+            }
+
+            if (xd1 > yd1 && xd1 > yd2 && xd2 > yd1 && xd1 > yd2)
+            {
+                return 1;
+            }
 
             float xd = MathF.Max(xd1, xd2);
             float yd = MathF.Max(yd1, yd2);

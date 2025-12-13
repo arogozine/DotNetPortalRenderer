@@ -3,8 +3,8 @@
     internal sealed class Line : IEquatable<Line>
     {
         public required int Id { get; init; }
-        public required Point PointA { get; set; }
-        public required Point PointB { get; set; }
+        public required LineVector PointA { get; set; }
+        public required LineVector PointB { get; set; }
         public required int? SectorTo { get; set; }
 
         public required TextureInfo? UpperTexture { get; set; }

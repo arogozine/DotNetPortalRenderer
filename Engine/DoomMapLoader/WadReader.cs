@@ -381,8 +381,8 @@ namespace RenderingEngine.DoomMapLoader
                     var line = new Line
                     {
                         Id = lineInfo.LineDefId,
-                        PointA = ToVector(vertex1),
-                        PointB = ToVector(vertex2),
+                        PointA = ToVector(vertex1, linedef.Vertex1),
+                        PointB = ToVector(vertex2, linedef.Vertex1),
                         SectorTo = lineInfo.ParentSectorId,
                         UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, !linedef.Flags.HasFlag(LinedefFlags.DontPegTop)),
                         MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffsetMid, lineInfo.YOffsetMid, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom)),
@@ -667,8 +667,8 @@ namespace RenderingEngine.DoomMapLoader
                     var line = new Line
                     {
                         Id = lineInfo.LineDefId,
-                        PointA = ToVector(vertex1),
-                        PointB = ToVector(vertex2),
+                        PointA = ToVector(vertex1, linedef.V1),
+                        PointB = ToVector(vertex2, linedef.V2),
                         SectorTo = lineInfo.ParentSectorId,
                         UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, !lineInfo.LowerUnpegged),
                         MiddleTexture = middleTexture,
@@ -905,14 +905,14 @@ namespace RenderingEngine.DoomMapLoader
             return bgra;
         }
 
-        private static Point ToVector(UdmfVertex vertex)
+        private static LineVector ToVector(UdmfVertex vertex, int id)
         {
-            return new Point(vertex.X, vertex.Y);
+            return new LineVector(id, new Point(vertex.X, vertex.Y));
         }
 
-        private static Point ToVector(Vertex vertex)
+        private static LineVector ToVector(Vertex vertex, int id)
         {
-            return new Point(vertex.X, vertex.Y);
+            return new LineVector(id, new Point(vertex.X, vertex.Y));
         }
 
         [return: NotNullIfNotNull(nameof(name))]
