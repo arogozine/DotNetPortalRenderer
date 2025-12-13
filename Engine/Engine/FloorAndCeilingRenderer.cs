@@ -171,11 +171,10 @@ namespace RenderingEngine.Engine
 
             int xOffset = -textureInfo.XOffset;
             int yOffset = textureInfo.YOffset;
-            Vector<int> xOffSetV = Vector.Create(xOffset >> 16);
-            Vector<int> yOffSetV = Vector.Create(yOffset >> 16);
+            Vector<int> xOffSetV = Vector.Create(xOffset << 16);
+            Vector<int> yOffSetV = Vector.Create(yOffset << 16);
 
             Unsafe.SkipInit(out Vector<float> incramentVector);
-            ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
@@ -521,11 +520,10 @@ namespace RenderingEngine.Engine
 
             int xOffset = -textureInfo.XOffset;
             int yOffset = textureInfo.YOffset;
-            Vector<int> xOffSetV = Vector.Create(xOffset >> 16);
-            Vector<int> yOffSetV = Vector.Create(yOffset >> 16);
+            Vector<int> xOffSetV = Vector.Create(xOffset << 16);
+            Vector<int> yOffSetV = Vector.Create(yOffset << 16);
 
             Unsafe.SkipInit(out Vector<float> incramentVector);
-            ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
@@ -580,8 +578,6 @@ namespace RenderingEngine.Engine
 
             ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
             ref BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
-
-            ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
             while (!Unsafe.AreSame(ref screenTex, ref toScalePtr))
             {
@@ -663,8 +659,6 @@ namespace RenderingEngine.Engine
 
             ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
             ref BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
-
-            ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
             while (!Unsafe.AreSame(ref screenTex, ref toScalePtr))
             {

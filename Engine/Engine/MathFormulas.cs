@@ -1,10 +1,18 @@
-﻿using System;
+﻿using System.Numerics;
 using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
 {
     internal static class MathFormulas
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector<int> SetAllZerosToOne(Vector<int> input)
+        {
+            Vector<int> zeroMask = Vector.Equals(input, Vector<int>.Zero);
+            Vector<int> onesVector = Vector<int>.One;
+            return Vector.ConditionalSelect(zeroMask, onesVector, input);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsPowerOfTwo(int n)
         {
