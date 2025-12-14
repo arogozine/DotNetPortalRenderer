@@ -13,6 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BuildAssetLoader\BuildAssetLoader.csproj" />
     <ProjectReference Include="..\Engine\RenderingEngine.csproj" />
   </ItemGroup>
 

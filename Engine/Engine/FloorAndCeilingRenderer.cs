@@ -129,7 +129,7 @@ namespace RenderingEngine.Engine
                 incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, floorFromY, width,
-                    x, lightLevel, yCeilV, ref incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    x, lightLevel, yCeilV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV);
             }
         }
@@ -198,7 +198,7 @@ namespace RenderingEngine.Engine
                 incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOvervFovV, yawV);
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
-                    x, lightLevel, yCeliningV, ref incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    x, lightLevel, yCeliningV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV);
             }
         }
@@ -478,7 +478,7 @@ namespace RenderingEngine.Engine
                 incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOvervFovV, yawV);
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
-                    x, lightLevel, yfloorV, ref incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    x, lightLevel, yfloorV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV);
             }
         }
@@ -523,7 +523,7 @@ namespace RenderingEngine.Engine
             Vector<int> xOffSetV = Vector.Create(xOffset << 16);
             Vector<int> yOffSetV = Vector.Create(yOffset << 16);
 
-            Unsafe.SkipInit(out Vector<float> incramentVector);
+            Vector<float> incramentVector;
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
@@ -546,7 +546,7 @@ namespace RenderingEngine.Engine
                 incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOvervFovV, yawV);
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
-                    x, lightLevel, yfloorV, ref incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    x, lightLevel, yfloorV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV);
             }
         }
@@ -561,11 +561,11 @@ namespace RenderingEngine.Engine
             int width,
             int x,
             uint lightLevel,
-            Vector<float> yCeilV, // (1 << 8)
-            ref Vector<float> incramentVector, // 1 << 8
-            int xMapPosMultiplier, // (1 << 8)
-            Vector<int> yOffSetV, // (1 << 16)
-            Vector<int> xOffSetV, // (1 << 16)
+            Vector<float> yCeilV, // 1 << 8
+            Vector<float> incramentVector, // 1 << 8
+            int xMapPosMultiplier, // 1 << 10
+            Vector<int> yOffSetV, // 1 << 16
+            Vector<int> xOffSetV, // 1 << 16
             Vector<int> textureWidthV,
             Vector<int> textureHeightMaskV,
             Vector<int> textureWidthMaskV
@@ -584,7 +584,7 @@ namespace RenderingEngine.Engine
                 Vector<int> yMapPosR = Vector.ConvertToInt32Native(yCeilV / incramentVector);
                 Vector<int> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
-                (Vector<int> xMapPos, Vector<int> yMapPos) = RotateVertexBack(
+                (Vector<int> xMapPos, Vector<int> yMapPos) = MathFormulas.RotateVertexBack(
                     xMapPosR >> 10,
                     yMapPosR,
                     pSinVI, pCosVI, pxVI, pyVI);
@@ -609,7 +609,7 @@ namespace RenderingEngine.Engine
                 Vector<int> yMapPosR = Vector.ConvertToInt32Native(yCeilV / incramentVector);
                 Vector<int> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
-                (Vector<int> xMapPos, Vector<int> yMapPos) = RotateVertexBack(
+                (Vector<int> xMapPos, Vector<int> yMapPos) = MathFormulas.RotateVertexBack(
                     xMapPosR >> 10,
                     yMapPosR,
                     pSinVI, pCosVI, pxVI, pyVI);
@@ -640,7 +640,7 @@ namespace RenderingEngine.Engine
             int x,
             uint lightLevel,
             Vector<float> yCeilV,
-            ref Vector<float> incramentVector,
+            Vector<float> incramentVector,
             float xMapPosMultiplier,
             Vector<int> yOffSetV,
             Vector<int> xOffSetV,
@@ -665,7 +665,7 @@ namespace RenderingEngine.Engine
                 Vector<float> yMapPosR = yCeilV / incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
-                (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
+                (Vector<float> xMapPos, Vector<float> yMapPos) = MathFormulas.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
                 if (rotated)
                 {
@@ -697,7 +697,7 @@ namespace RenderingEngine.Engine
                 Vector<float> yMapPosR = yCeilV / incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
-                (Vector<float> xMapPos, Vector<float> yMapPos) = RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
+                (Vector<float> xMapPos, Vector<float> yMapPos) = MathFormulas.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
                 if (rotated)
                 {
@@ -721,31 +721,6 @@ namespace RenderingEngine.Engine
                     ShadeByPrecalc(in tex, ref screenTex, lightLevel);
                 }
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static (Vector<int> rx1, Vector<int> ry1) RotateVertexBack(
-            Vector<int> x, Vector<int> y,
-            Vector<int> psin, Vector<int> pcos,
-            Vector<int> px, Vector<int> py)
-        {
-            Vector<int> rx1 = y * pcos + x * psin;
-            Vector<int> ry1 = y * psin - x * pcos;
-
-            return (rx1 + px, ry1 + py);
-        }
-
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static (Vector<float> rx1, Vector<float> ry1) RotateVertexBack(
-            Vector<float> x, Vector<float> y,
-            Vector<float> psin, Vector<float> pcos,
-            Vector<float> px, Vector<float> py)
-        {
-            Vector<float> rx1 = y * pcos + x * psin;
-            Vector<float> ry1 = y * psin - x * pcos;
-
-            return (rx1 + px, ry1 + py);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
