@@ -16,6 +16,7 @@
   </ItemGroup>
   
   <ItemGroup>
+    <ProjectReference Include="..\BuildAssetLoader\BuildAssetLoader.csproj" />
     <ProjectReference Include="..\DoomAssetLoader\DoomAssetLoader.csproj" />
   </ItemGroup>
 

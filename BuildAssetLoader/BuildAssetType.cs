@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace BuildAssetLoader
+﻿namespace BuildAssetLoader
 {
     internal enum BuildAssetType
     {
-        Art
+        Art,
+        Map
     }
 }

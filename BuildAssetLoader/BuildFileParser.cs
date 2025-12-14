@@ -1,57 +1,67 @@
-﻿using System.ComponentModel;
+﻿using BuildAssetLoader.Map;
+using BuildAssetLoader.Texture;
 
 namespace BuildAssetLoader
 {
-    [StructLayout(LayoutKind.Sequential)]
-    public struct PropType
-    {
-        public byte AnimType;
-        public byte OffsetX;
-        public byte OffsetY;
-        public byte AnimSpeed;
-    }
 
-    public readonly struct TileType
+    public static class BuildFileParser
     {
-        public readonly short XSize;
-        public readonly short YSize;
-        public readonly PropType Properties;
-        public readonly byte[] Pixels;
-
-        public TileType(short xSize, short ySize, PropType properties, byte[] pixels)
+        public static unsafe List<MapFile> ExtractMapFiles(GrpFile grpFile)
         {
-            XSize = xSize;
-            YSize = ySize;
-            Properties = properties;
-            Pixels = pixels;
+            List<MapFile> mapFiles = [];
+
+            foreach (var fileAndBinary in grpFile.Files.Where(IsMapFile))
+            {
+                string fileName = fileAndBinary.Key;
+                Span<byte> binary = fileAndBinary.Value;
+
+                uint mapVersion = BitConverter.ToUInt32(binary);
+                if (mapVersion != 7)
+                {
+                    throw new NotSupportedException("We only support v7 maps");
+                }
+                binary = binary[sizeof(uint)..];
+
+                StartingPosition mapHeader = MemoryMarshal.Read<StartingPosition>(binary);
+                binary = binary[sizeof(StartingPosition)..];
+
+                // load all sectors
+                ushort numSectors = BitConverter.ToUInt16(binary);
+                binary = binary[sizeof(ushort)..];
+                int sectorSizeInBytes = numSectors * sizeof(SectorType);
+                SectorType[] sectors = MemoryMarshal.Cast<byte, SectorType>(binary[..sectorSizeInBytes])
+                    .ToArray();
+                binary = binary[sectorSizeInBytes..];
+
+                // load all walls
+                ushort numWalls = BitConverter.ToUInt16(binary);
+                binary = binary[sizeof(ushort)..];
+                int wallSizeInBytes = numSectors * sizeof(WallType);
+                WallType[] walls = MemoryMarshal.Cast<byte, WallType>(binary[..wallSizeInBytes])
+                    .ToArray();
+                binary = binary[wallSizeInBytes..];
+
+                // load all sprites
+                ushort numSprites = BitConverter.ToUInt16(binary);
+                binary = binary[sizeof(ushort)..];
+                int spriteSizeInBytes = numSectors * sizeof(SpriteType);
+                SpriteType[] sprites = MemoryMarshal.Cast<byte, SpriteType>(binary[..spriteSizeInBytes])
+                    .ToArray();
+                binary = binary[spriteSizeInBytes..];
+
+                mapFiles.Add(new MapFile
+                {
+                    Version = mapVersion,
+                    StartingPosition = mapHeader,
+                    Sectors = sectors,
+                    Sprites = sprites,
+                    Walls = walls
+                });
+            }
+
+            return mapFiles;
         }
-    }
 
-    internal class ArtFile
-    {
-        public required int ArtNum { get; init; }
-
-        /// <summary>
-        /// Art Version
-        /// </summary>
-        [DefaultValue(1U)]
-        public required uint ArtVersion { get; init; }
-
-        /// <summary>
-        /// Start Tile
-        /// </summary>
-        public required uint LocalTileStart { get; init; }
-
-        /// <summary>
-        /// End Tile
-        /// </summary>
-        public required uint LocalTileEnd { get; init; }
-
-        public required TileType[] Tiles { get; init; }
-    }
-
-    internal static class BuildFileParser
-    {
         public static List<ArtFile> ExtractArtFiles(GrpFile grpFile)
         {
             List<ArtFile> artFiles = [];
@@ -118,6 +128,11 @@ namespace BuildAssetLoader
         private static bool IsArtFile(KeyValuePair<string, byte[]> fileName)
         {
             return fileName.Key.EndsWith(".ART", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsMapFile(KeyValuePair<string, byte[]> fileName)
+        {
+            return fileName.Key.EndsWith(".MAP", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace BuildAssetLoader
+﻿namespace BuildAssetLoader.Texture
 {
     [StructLayout(LayoutKind.Sequential)]
     public readonly struct RGB
