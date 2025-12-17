@@ -8,6 +8,8 @@ namespace RenderingEngine.Models
 
         public Line Line { get; }
 
+        public Sector Sector { get; }
+
         public bool IntersectsView { get; set; }
         public bool Flipped { get; set; }
 
@@ -29,11 +31,12 @@ namespace RenderingEngine.Models
 
         public bool IsPortal => Neighbor != EngineConstants.NullSector;
 
-        public Wall(Line line, Point r1, Point r2, int? neighbor)
+        public Wall(Line line, Point r1, Point r2, Sector sector, int? neighbor)
         {
             Line = line;
             R1 = r1;
             R2 = r2;
+            Sector = sector;
             Neighbor = neighbor ?? -1;
         }
 

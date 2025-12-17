@@ -10,7 +10,6 @@ namespace RenderingEngine.Models
         public required int XLeft { get; set; }
         public required int XRight { get; set; }
         public required int Offset { get; set; }
-        public required Sector Sector { get; set; }
         public RenderWindow[]? RenderWindow { get; set; }
         public Wall[]? ParentWalls { get; set; }
 

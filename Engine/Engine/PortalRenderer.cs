@@ -134,7 +134,6 @@ namespace RenderingEngine.Engine
                             XLeft = renderableWall.XLeft,
                             XRight = renderableWall.XRight,
                             RenderWindow = renderableArea,
-                            Sector = renderableWall.Sector,
                             Wall = renderableWall.Wall
                         });
                     }
@@ -153,7 +152,7 @@ namespace RenderingEngine.Engine
                     sectorRenderQueue.Enqueue(neighborToRender);
                 }
 
-                RenderWindowHelper.NewDepth();
+                RenderWindowHelper.NewDepth();    
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxRenderDepth);
 
@@ -185,7 +184,7 @@ namespace RenderingEngine.Engine
                 Span<Wall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, player);
 
                 // 2. Determine where ceiling, floor, and walls start and end
-                CalculateRenderWindow(sectorInfo, sectors, sector, walls);
+                CalculateRenderWindow(sectorInfo, sector, walls);
 
                 // 3. Render Floors, Ceilings, and Walls
                 List<RenderableWall> neighbors = RenderSector(player, sector, sectors, screen);
@@ -240,7 +239,6 @@ namespace RenderingEngine.Engine
 
         private void CalculateRenderWindow(
             NeighborsToRender sectorInfo,
-            ReadOnlySpan<Sector> sectors,
             Sector sector,
             Span<Wall> walls)
         {
@@ -258,7 +256,7 @@ namespace RenderingEngine.Engine
             {
                 Wall wall = walls[s];
 
-                CalculateRenderWindow(wall, sector, renderableWalls, sectors);
+                CalculateRenderWindow(wall, sector, renderableWalls);
             }
         }
 
@@ -304,133 +302,8 @@ namespace RenderingEngine.Engine
             return neightbors;
         }
 
-        private void Meh(Span<BGRA> screen, SectorSprites sectorSprites)
-        {
-            var floorEnd = sectorSprites.FloorEnd;
-            var ceilingStart = sectorSprites.CeilingStart;
 
-            for (int x = 0; x < PixelWidth; x++)
-            {
-                int floor = floorEnd[x];
-                int ceiling = ceilingStart[x];
-
-                Render(screen, ceiling, x, BGRA.Green);
-                Render(screen, floor, x, BGRA.White);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            void Render(Span<BGRA> screen, int y, int x, BGRA color)
-            {
-                int index = (y - 1) * PixelWidth + x;
-
-                if (index > 0 && index < screen.Length)
-                {
-                    screen[index] = color;
-                }
-
-                index += PixelWidth;
-                if (index > 0 && index < screen.Length)
-                {
-                    screen[index] = color;
-                }
-
-                index += PixelWidth;
-                if (index > 0 && index < screen.Length)
-                {
-                    screen[index] = color;
-                }
-            }
-        }
-
-        private void DebugZBuffer(Span<BGRA> screen, Span<RenderWindow> window)
-        {
-            int height = Math.Min(PixelHeight, 20);
-            ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
-
-
-            float min = float.MaxValue;
-            float max = float.MinValue;
-            for (int x = 0; x < PixelWidth; x++)
-            {
-                ref RenderWindow renderWindow = ref window[x];
-                float value = renderWindow.Distance;
-
-                min = MathF.Min(value, min);
-                max = MathF.Max(value, max);
-            }
-
-            float range = byte.MaxValue / max;
-
-            for (int x = 0; x < PixelWidth; x++)
-            {
-                ref RenderWindow renderWindow = ref window[x];
-                float value = renderWindow.Distance;
-                uint val = (uint) Math.Clamp(float.ConvertToIntegerNative<int>(value * range), 0, byte.MaxValue);
-
-                const uint Alpha = (uint)byte.MaxValue << 24;
-                uint b = val;
-                uint g = val << 8;
-                uint r = val << 16;
-
-                val = b | g | r | Alpha;
-
-
-                for (int y = 0; y < height; y++)
-                {
-                    int index = y * PixelWidth + x;
-                    Unsafe.Add(ref screenPtr, index) = val;
-                }
-            }
-        }
-
-        private void DebugPortal(
-            Span<BGRA> screen,
-            Span<RenderWindow> renderedArea)
-        {
-            for (int x = 0; x < PixelWidth; x++)
-            {
-                ref RenderWindow rendered = ref renderedArea[x];
-
-                //if (!rendered.Calculated)
-                //    continue;
-
-                if (x % 2 == 0)
-                {
-                Render(screen, rendered.CeilingStart, x, BGRA.Red);
-                Render(screen, rendered.FloorEnd, x, BGRA.Blue);
-                }
-                else
-                {
-                Render(screen, rendered.WallStart, x, BGRA.Green);
-                Render(screen, rendered.WallEnd, x, BGRA.Yellow);
-                }
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            void Render(Span<BGRA> screen, int y, int x, BGRA color)
-            {
-                int index = (y - 1) * PixelWidth + x;
-
-                if (index > 0 && index < screen.Length)
-                {
-                    screen[index] = color;
-                }
-
-                index += PixelWidth;
-                if (index > 0 && index < screen.Length)
-                {
-                    screen[index] = color;
-                }
-
-                index += PixelWidth;
-                if (index > 0 && index < screen.Length)
-                {
-                    screen[index] = color;
-                }
-            }
-        }
-
-        private void CalculateRenderWindow(Wall wall, Sector sector, List<RenderableWall> renderableWalls, ReadOnlySpan<Sector> sectors)
+        private void CalculateRenderWindow(Wall wall, Sector sector, List<RenderableWall> renderableWalls)
         {
             Span<RenderWindow> renderedArea = RenderWindowHelper.RenderWindow;
 
@@ -475,8 +348,7 @@ namespace RenderingEngine.Engine
                             Wall = wall,
                             XLeft = renderableFromX,
                             XRight = x,
-                            Offset = offset,
-                            Sector = sector
+                            Offset = offset
                         });
                     }
 
@@ -506,8 +378,7 @@ namespace RenderingEngine.Engine
                     Wall = wall,
                     XLeft = renderableFromX,
                     XRight = renderableToX,
-                    Offset = offset,
-                    Sector = sector
+                    Offset = offset
                 });
             }
         }

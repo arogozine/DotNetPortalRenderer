@@ -18,7 +18,7 @@ namespace RenderingEngine.Engine
             this.width = width;
             this.height = height;
             this.visibility = new bool[width];
-            wallComparer = new WallComparer();
+            wallComparer = new WallComparer(width);
         }
 
         [MemberNotNull(nameof(_player))]
@@ -139,7 +139,7 @@ namespace RenderingEngine.Engine
         {
             return (a.R1 == b.R1 && a.R2 == b.R2) ||
                 (a.R2 == b.R1 && a.R1 == b.R2);
-        }
+            }
 
         public static Wall[] RotateSectorWallsRelativeToPlayer(Sector sector, float pSin, float pCos, float px, float py)
         {
@@ -557,7 +557,7 @@ namespace RenderingEngine.Engine
             float rx2 = tx2 * psin - ty2 * pcos;
             float ry2 = tx2 * pcos + ty2 * psin;
 
-            return new Wall(wall.Line, new Point(rx1, ry1), new Point(rx2, ry2), wall.Neighbor);
+            return new Wall(wall.Line, new Point(rx1, ry1), new Point(rx2, ry2), wall.Sector, wall.Neighbor);
         }
     }
 }

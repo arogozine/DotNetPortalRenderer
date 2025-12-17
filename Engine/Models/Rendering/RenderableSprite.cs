@@ -12,7 +12,6 @@ namespace RenderingEngine.Models
     {
         public required int Offset { get; init; }
         public required Wall Wall { get; set; }
-        public required Sector Sector { get; init; }
         public required RenderWindow[] RenderWindow { get; init; }
     }
 

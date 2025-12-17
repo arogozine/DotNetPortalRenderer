@@ -111,15 +111,6 @@ namespace RenderingEngine.MapGen
         {
             Wall[] vertex = new Wall[x.Walls.Count];
 
-            for (int i = 0; i < x.Walls.Count; i++)
-            {
-                Line v = x.Walls[i];
-                vertex[i] = new Wall(v,
-                    v.PointA, v.PointB,
-                    v.SectorTo
-                );
-            }
-
             var sector = new Sector
             {
                 Id = x.Id,
@@ -132,6 +123,16 @@ namespace RenderingEngine.MapGen
                 RotationCeiling = x.RotationCeiling ?? 0f,
                 RotationFloor = x.RotationFloor ?? 0f
             };
+
+            for (int i = 0; i < x.Walls.Count; i++)
+            {
+                Line v = x.Walls[i];
+                vertex[i] = new Wall(v,
+                    v.PointA, v.PointB,
+                    sector,
+                    v.SectorTo
+                );
+            }
 
             return sector;
 

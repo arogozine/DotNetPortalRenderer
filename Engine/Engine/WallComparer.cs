@@ -8,6 +8,13 @@ namespace RenderingEngine.Engine
     [SkipLocalsInit]
     internal sealed class WallComparer : IComparer<Wall>
     {
+        public readonly float cameraWidthIncr;
+
+        public WallComparer(int width)
+        {
+            cameraWidthIncr = 2.0f / width;
+        }
+
         public int Compare(Wall? x, Wall? y)
         {
             ArgumentNullException.ThrowIfNull(x);
@@ -29,59 +36,23 @@ namespace RenderingEngine.Engine
             Point yC1 = y.C1;
             Point yC2 = y.C2;
 
-           // the two line share a point, compare the other point
-           if (r1eqr1)
-           {
-               return Compare(xC2.X, xC2.Y, yC2.X, yC2.Y);
-           }
-           else if (r2eqr2)
-           {
-               return Compare(xC1.X, xC1.Y, yC1.X, yC1.Y);
-           }
-           else if (r1eqr2)
-           {
-               return Compare(xC2.X, xC2.Y, yC1.X, yC1.Y);
-           }
-           else if (r2eqr1)
-           {
-               return Compare(xC1.X, xC1.Y, yC2.X, yC2.Y);
-           }
-
-           /*
-            // the two lines intersect, compare intersection
-            bool intersectsX1 = TryGetSegmentIntersectionFromZero(xC1, y.R1, y.R2, out Point intersection1);
-            bool intersectsX2 = TryGetSegmentIntersectionFromZero(xC2, y.R1, y.R2, out Point intersection2);
-            bool intersectsY1 = TryGetSegmentIntersectionFromZero(yC1, x.R1, x.R2, out Point intersection3);
-            
-            bool intersectsY2 = TryGetSegmentIntersectionFromZero(yC2, x.R1, x.R2, out Point intersection4);
-
-            if (intersectsX1)
+            // the two line share a point, compare the other point
+            if (r1eqr1)
             {
-                return Compare(xC1.X, xC1.Y, intersection1.X, intersection1.Y);
-                //yC1 = intersection1;
+                return Compare(xC2.X, xC2.Y, yC2.X, yC2.Y);
             }
-
-            if (intersectsX2)
+            else if (r2eqr2)
             {
-                return Compare(xC2.X, xC2.Y, intersection2.X, intersection2.Y);
-
-                // yC2 = intersection2;
+                return Compare(xC1.X, xC1.Y, yC1.X, yC1.Y);
             }
-
-            if (intersectsY1)
+            else if (r1eqr2)
             {
-                return Compare(yC1.X, yC1.Y, intersection3.X, intersection3.Y);
-
-                // xC1 = intersection3;
+                return Compare(xC2.X, xC2.Y, yC1.X, yC1.Y);
             }
-
-            if (intersectsY2)
+            else if (r2eqr1)
             {
-                return Compare(yC2.X, yC2.Y, intersection4.X, intersection4.Y);
-
-                // xC2 = intersection4;
+                return Compare(xC1.X, xC1.Y, yC2.X, yC2.Y);
             }
-            */
 
             float xCX1 = xC1.X;
             float xCX2 = xC2.X;
@@ -92,21 +63,21 @@ namespace RenderingEngine.Engine
             float yCY1 = yC1.Y;
             float yCY2 = yC2.Y;
 
+            if (Within(x.XLeft, y.XLeft, y.XRight) || Within(x.XRight, y.XLeft, y.XRight))
+            {
+                CalculatePlaneIntersectionsForWall(y.XLeft, y.XRight, ref xCX1, ref xCY1, ref xCX2, ref xCY2);
+            }
+
+            if (Within(y.XLeft, x.XLeft, x.XRight) || Within(y.XRight, x.XLeft, x.XRight))
+            {
+                CalculatePlaneIntersectionsForWall(x.XLeft, x.XRight, ref yCX1, ref yCY1, ref yCX2, ref yCY2);
+            }
+
             float xd1 = xCX1 * xCX1 + xCY1 * xCY1;
             float xd2 = xCX2 * xCX2 + xCY2 * xCY2;
 
             float yd1 = yCX1 * yCX1 + yCY1 * yCY1;
             float yd2 = yCX2 * yCX2 + yCY2 * yCY2;
-
-            if (xd1 < yd1 && xd1 < yd2 && xd2 < yd1 && xd1 < yd2)
-            {
-                return -1;
-            }
-
-            if (xd1 > yd1 && xd1 > yd2 && xd2 > yd1 && xd1 > yd2)
-            {
-                return 1;
-            }
 
             float xd = MathF.Max(xd1, xd2);
             float yd = MathF.Max(yd1, yd2);
@@ -115,103 +86,112 @@ namespace RenderingEngine.Engine
 
             return compare;
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static int Compare(float xcx, float xcy, float ycx, float ycy)
-            {
-                float xd = xcx * xcx + xcy * xcy;
-                float yd = ycx * ycx + ycy * ycy;
-
-                if (xd == yd)
-                {
-                    return 0;
-                }
-
-                return xd < yd ? -1 : 1;
-            }
+            // midpoint actuall needs div by 2, but we can skip it here (values will be 4 times bigger that's all)
+            return Compare(
+                xCX1 + xCX2,
+                xCY1 + xCY2,
+                yCX1 + yCX2,
+                yCY1 + yCY2
+            );
         }
 
-        public static bool TryGetSegmentIntersectionFromZero(
-            Point p2,
-            Point p3,
-            Point p4,
-            out Point intersection)
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int Compare(float xcx, float xcy, float ycx, float ycy)
         {
-            intersection = default;
+            float xd = xcx * xcx + xcy * xcy;
+            float yd = ycx * ycx + ycy * ycy;
 
-            float d1x = p2.X;
-            float d1y = p2.Y;
-            float d2x = p4.X - p3.X;
-            float d2y = p4.Y - p3.Y;
+            if (xd == yd)
+            {
+                return 0;
+            }
 
-            float denominator = d1x * d2y - d1y * d2x;
+            return xd < yd ? -1 : 1;
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool Within(int value, int from, int to)
+        {
+            return value > from && value < to;
+        }
+
+        private bool CalculatePlaneIntersectionsForWall(float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
+        {
+            float d2x = rx2 - rx1;
+            float d2y = ry2 - ry1;
+
+            float rayDirLeft = EngineConstants.CameraPlaneX * (cameraWidthIncr * xLeft - 1f);
+            float rayDirRight = EngineConstants.CameraPlaneX * (cameraWidthIncr * xRight - 1f);
+
+            bool intersectsL = TryGetSegmentIntersectionZero2(rayDirLeft, rx1, ry1, d2x, d2y,
+                out float xDistanceL, out float yDistanceL);
+
+            bool intersectsR = TryGetSegmentIntersectionZero2(rayDirRight, rx2, ry2, -d2x, -d2y,
+                out float xDistanceR, out float yDistanceR);
+
+            if (intersectsL && intersectsR)
+            {
+                rx1 = xDistanceL;
+                ry1 = yDistanceL;
+
+                rx2 = xDistanceR;
+                ry2 = yDistanceR;
+
+                return true;
+            }
+            else if (intersectsL)
+            {
+                rx1 = xDistanceL;
+                ry1 = yDistanceL;
+            }
+            else if (intersectsR)
+            {
+                rx2 = xDistanceR;
+                ry2 = yDistanceR;
+            }
+
+            return true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool TryGetSegmentIntersectionZero2(
+            float rayDirX,
+            float rx1, float ry1,
+            float d2x, float d2y,
+            out float distanceX,
+            out float distanceY)
+        {
+            Unsafe.SkipInit(out distanceX);
+            Unsafe.SkipInit(out distanceY);
+
+            float denominator = rayDirX * d2y - d2x;
 
             if (MathF.Abs(denominator) < float.Epsilon)
             {
                 return false;
             }
 
-            float d3x = p3.X;
-            float d3y = p3.Y;
+            float u = (rx1 - ry1 * rayDirX) / denominator;
 
-            float u = (d3x * d1y - d3y * d1x) / denominator;
-
-            if (u < 0 || u > 1)
-                return false;
-
-            float t = (d3x * d2y - d3y * d2x) / denominator;
-
-            if (t < 0)
-                return false;
-
-            intersection = new Point(
-                t * d1x,
-                t * d1y
-            );
-
-            return true;
-        }
-
-        public static bool TryGetSegmentIntersection(
-    Point p1,
-    Point p2,
-    Point p3,
-    Point p4,
-    out Point intersection)
-        {
-            intersection = default;
-
-            float d1x = p2.X - p1.X;
-            float d1y = p2.Y - p1.Y;
-            float d2x = p4.X - p3.X;
-            float d2y = p4.Y - p3.Y;
-
-            float denominator = d1x * d2y - d1y * d2x;
-
-            if (MathF.Abs(denominator) < float.Epsilon)
+            if (u < 0f || u > 1f)
             {
                 return false;
             }
 
-            float d3x = p3.X - p1.X;
-            float d3y = p3.Y - p1.Y;
+            float t = (rx1 * d2y - ry1 * d2x) / denominator;
 
-            float u = (d3x * d1y - d3y * d1x) / denominator;
-
-            if (u < 0 || u > 1)
+            if (t < 0f)
+            {
                 return false;
+            }
 
-            float t = (d3x * d2y - d3y * d2x) / denominator;
-
-            if (t < 0)
-                return false;
-
-            intersection = new Point(
-                t * d1x + p1.X,
-                t * d1y + p1.Y
-            );
-            //Vector128.FusedMultiplyAdd(Vector128.Create(t), d1, p1);
+            distanceY = t;
+            distanceX = t * rayDirX;
 
             return true;
         }
+
     }
 }

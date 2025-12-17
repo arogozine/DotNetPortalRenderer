@@ -109,7 +109,7 @@ namespace RenderingEngine.Engine
 
             (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            for (int x = sectroFromX; x < sectorToX; x++)
+            for (int x = sectroFromX; x <= sectorToX; x++)
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 
@@ -178,7 +178,7 @@ namespace RenderingEngine.Engine
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            for (int x = sectorFromX; x < sectorToX; x++)
+            for (int x = sectorFromX; x <= sectorToX; x++)
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 
@@ -459,7 +459,7 @@ namespace RenderingEngine.Engine
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            for (int x = sectorFromX; x < sectorToX; x++)
+            for (int x = sectorFromX; x <= sectorToX; x++)
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 
@@ -527,7 +527,7 @@ namespace RenderingEngine.Engine
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            for (int x = sectorFromX; x < sectorToX; x++)
+            for (int x = sectorFromX; x <= sectorToX; x++)
             {
                 ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
 

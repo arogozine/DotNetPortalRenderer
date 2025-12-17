@@ -88,17 +88,11 @@ namespace RenderingEngine.Engine
         {
             if (sectorInfo.RenderableWall is RenderableWall renderableWall)
             {
-                (sectorFromX, sectorToX) = (renderableWall.XLeft, renderableWall.XRight);
+                (sectorFromX, sectorToX) = (renderableWall.XLeft, Math.Min(renderableWall.XRight, width - 1));
             }
             else
             {
                 (sectorFromX, sectorToX) = (0, width - 1);
-            }
-
-            for (int i = sectorFromX; i <= sectorToX; i++)
-            {
-                ref RenderWindow render = ref renderWindow[i];
-                render.Calculated = render.CeilingStart == render.FloorEnd;
             }
         }
 
@@ -138,10 +132,11 @@ namespace RenderingEngine.Engine
             wallFromX = Math.Max(sectorFromX, wall.XLeft);
             wallToX = Math.Min(sectorToX, wall.XRight);
 
-            // skip calculated areas
-            for (; wallFromX <= wallToX; wallFromX++)
+            int i, j;
+
+            for (i = wallFromX; i <= wallToX; i++)
             {
-                ref RenderWindow window = ref renderWindow[wallFromX];
+                ref RenderWindow window = ref renderWindow[i];
 
                 if (!window.Calculated)
                 {
@@ -149,15 +144,17 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            for (; wallToX > wallFromX; wallToX--)
+            for (j = wallToX; j >= wallFromX; j--)
             {
-                ref RenderWindow window = ref renderWindow[wallToX];
+                ref RenderWindow window = ref renderWindow[j];
 
                 if (!window.Calculated)
                 {
                     break;
                 }
             }
+
+            (wallFromX, wallToX) = (i, j);
 
             // wall has been rendered over for this sector
             return wallFromX < wallToX;

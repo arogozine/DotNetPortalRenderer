@@ -99,7 +99,7 @@ namespace RenderingEngine.Engine
             int wallFromXOffset = renderableWall.Offset;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
-            Sector sector = renderableWall.Sector;
+            Sector sector = wall.Sector;
             float sectorHeight = sector.Ceil - sector.Floor;
 
 
