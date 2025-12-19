@@ -1,4 +1,5 @@
-﻿using RenderingEngine.Models;
+﻿using BuildAssetLoader.Map;
+using RenderingEngine.Models;
 
 namespace RenderingEngine.Engine
 {
@@ -37,51 +38,84 @@ namespace RenderingEngine.Engine
                 CeilingStart = 0,
                 FloorEnd = height - 1,
                 WallEnd = height - 1,
-                Distance = float.MaxValue
+                Distance = float.MaxValue,
+                Status = RenderColumnStatus.NewRender
             });
         }
 
-        public void NewDepth()
+        public RenderColumnStatus NewDepth()
         {
+            RenderColumnStatus renderColumnStatus = default;
+
             for (int i = 0; i < renderWindow.Length; i++)
             {
                 ref RenderWindow render = ref renderWindow[i];
 
-                if (render.Calculated)
+                if (render.Finished)
                 {
-                    render.Calculated = false;
-
-                    if (render.WallStart > render.WallEnd)
-                    {
-                        render.WallEnd = render.WallStart;
-                    }
-
-                    if (render.CeilingStart > render.FloorEnd)
-                    {
-                        render.FloorEnd = render.CeilingStart;
-                    }
-
-                    if (render.CeilingStart >= render.FloorEnd)
-                    {
-                        render.CeilingStart = 0;
-                        render.WallStart = 0;
-                        render.WallEnd = 0;
-                        render.FloorEnd = 0;
-                    }
-                    else
-                    {
-                        render.WallStart = render.CeilingStart;
-                        render.WallEnd = render.FloorEnd;
-                    }
+                    continue;
+                }
+                else if (render.Calculated)
+                {
+                    RecalculateRenderWindow(ref render, false);
                 }
                 else
                 {
-                    render.CeilingStart = 0;
-                    render.WallStart = 0;
-                    render.WallEnd = 0;
-                    render.FloorEnd = 0;
+                    render.Status = RenderColumnStatus.FinishedRendering;
+                }
+
+                renderColumnStatus |= render.Status;
+            }
+
+            return renderColumnStatus;
+        }
+
+        public static void RecalculateRenderWindow(ref RenderWindow render, bool calculated)
+        {
+            bool windowExists = render.CeilingStart < render.FloorEnd;
+
+            bool canRenderCeiling = windowExists && render.CeilingStart < render.WallStart && render.CeilingStart < render.FloorEnd;
+            bool canRenderFloor = windowExists && render.WallEnd < render.FloorEnd;
+            bool canRenderWall = windowExists && render.WallStart < render.WallEnd && render.CeilingStart < render.FloorEnd;
+            bool canRenderPortal = windowExists && render.FloorEnd < render.CeilingStart && render.WallStart < render.FloorEnd;
+
+            RenderColumnStatus startingStatus = calculated ? RenderColumnStatus.Calculated : default;
+
+            if (!windowExists || !(canRenderCeiling || canRenderFloor || canRenderWall || canRenderPortal))
+            {
+                render.Status = RenderColumnStatus.FinishedRendering;
+            }
+            else
+            {
+                render.Status = startingStatus;
+
+                if (canRenderCeiling)
+                {
+                    render.Status |= RenderColumnStatus.CanRenderCeiling;
+                }
+
+                if (canRenderFloor)
+                {
+                    render.Status |= RenderColumnStatus.CanRenderFloor;
+                }
+
+                if (canRenderWall)
+                {
+                    render.Status |= RenderColumnStatus.CanRenderWall;
+                }
+
+                if (canRenderPortal)
+                {
+                    render.Status |= RenderColumnStatus.CanRenderPortal;
                 }
             }
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool Within(int value, int from, int to)
+        {
+            return value > from && value < to;
         }
 
         public void NewSector(NeighborsToRender sectorInfo)
@@ -138,7 +172,7 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow window = ref renderWindow[i];
 
-                if (!window.Calculated)
+                if (!window.Finished && !window.Calculated)
                 {
                     break;
                 }
@@ -148,7 +182,7 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow window = ref renderWindow[j];
 
-                if (!window.Calculated)
+                if (!window.Finished && !window.Calculated)
                 {
                     break;
                 }

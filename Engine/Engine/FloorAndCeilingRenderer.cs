@@ -187,7 +187,6 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-
                 int floorFromY = renderWindow.CeilingStart;
                 int floorToY = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
 
@@ -202,7 +201,6 @@ namespace RenderingEngine.Engine
                     textureHeightMaskV, textureWidthMaskV);
             }
         }
-
 
         private void RenderSkyboxVector(
             PortalPlayerSnapshot player,

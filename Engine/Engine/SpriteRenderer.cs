@@ -151,7 +151,7 @@ namespace RenderingEngine.Engine
             {
                 ref RenderWindow renderWindow = ref window[x];
 
-                if (renderWindow.CanRenderMiddleWall)
+                if (renderWindow.CanRenderPortal)
                 {
                     continue;
                 }

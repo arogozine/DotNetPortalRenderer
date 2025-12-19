@@ -13,9 +13,7 @@ namespace RenderingEngine.DoomMapLoader
         {
             var map = BuildFileParser.ExtractMapFiles(grp);
 
-            var test =ExtractBuildMap(map[0], mapName);
-
-            throw new NotImplementedException();
+            return ExtractBuildMap(map[0], mapName);
         }
 
         public static void ExtractAllTextures(GrpFile grp, PaletteFile paletteFile)
@@ -31,16 +29,18 @@ namespace RenderingEngine.DoomMapLoader
 
         private static Map ExtractBuildMap(MapFile mapFile, string mapName)
         {
-            Span<SectorType> sectors = mapFile.Sectors;
+            StartingPosition startingPosition = mapFile.StartingPosition;
+            Span<SectorType> grpSectors = mapFile.Sectors;
             Span<WallType> walls = mapFile.Walls;
+            Span<SpriteType> sprites = mapFile.Sprites;
 
             int ij = 0;
 
-            for (int i = 0; i < sectors.Length; i++)
-            {
-                ref SectorType sector = ref sectors[i];
+            var sectors = new List<MapSector>(grpSectors.Length);
 
-                Span<WallType> sectorWalls = sector.GetSectorWalls(walls);
+            for (int i = 0; i < grpSectors.Length; i++)
+            {
+                ref SectorType sector = ref grpSectors[i];
 
                 float ceiling = sector.CeilingZ;
                 float floor = sector.FloorZ;
@@ -53,33 +53,77 @@ namespace RenderingEngine.DoomMapLoader
                     Id = i,
                     Ceiling = ceiling,
                     Floor = floor,
-                    FloorTexture = new Models.TextureInfo { Name = floorTexture },
-                    CeilingTexture = new Models.TextureInfo { Name = ceilingTexture },
+                    FloorTexture = new Models.TextureInfo { Name = floorTexture, XOffset = sector.FloorXPanning, YOffset = sector.FloorYPanning },
+                    CeilingTexture = new Models.TextureInfo { Name = ceilingTexture, XOffset = sector.CeilingXPanning, YOffset = sector.CeilingYPanning },
                     LightLevel = byte.MaxValue
                 };
 
-                for (int j = 0; j < sectorWalls.Length; j++)
-                {
-                    ref WallType wallType = ref sectorWalls[j];
+                int wallStart = sector.WallPtr;
+                int wallEnd = wallStart + sector.WallNum;
 
-                    /*
+                for (int j = wallStart; j < wallEnd; j++)
+                {
+                    ref WallType wall = ref walls[j];
+                    ref WallType nextWall = ref walls[wall.Point2];
+
+                    string texture = $"TILE_{wall.PicNum}";
+
                     var line = new Line {
                         Id = ij,
-                        a
+                        PointA = new LineVector(j, new Point(wall.X, wall.Y)),
+                        PointB = new LineVector(wall.Point2, new Point(nextWall.X, nextWall.Y)),
+                        LowerTexture = new Models.TextureInfo { Name = texture, XOffset = wall.XRepeat, YOffset = wall.YRepeat },
+                        MiddleTexture = new Models.TextureInfo { Name = texture, XOffset = wall.XRepeat, YOffset = wall.YRepeat },
+                        SectorTo = wall.NextSector,
+                        UpperTexture = new Models.TextureInfo { Name = texture, XOffset = wall.XRepeat, YOffset = wall.YRepeat },
                     };
-                    */
+
                     ij++;
+
+                    mapSector.Walls.Add(line);
                 }
+
+                sectors.Add(mapSector);
+
             }
 
-            throw new NotImplementedException();
+            float radians = MathF.PI * (startingPosition.Angle / 2048f);
+
+            return new Map
+            {
+                Player = new Player
+                {
+                    Angle = radians,
+                    Where = (startingPosition.PosX, startingPosition.PosY, startingPosition.PosZ)
+                },
+                Sprites = ExtractSprites(sprites),
+                Sectors = sectors
+            };
         }
 
-        private static Span<WallType> GetSectorWalls(ref this SectorType sector, Span<WallType> walls)
+        private static Sprite[] ExtractSprites(Span<SpriteType> spritesTypes)
         {
-            return walls[sector.WallPtr..(sector.WallPtr + sector.WallNum)];
-        }
+            Sprite[] sprites = new Sprite[spritesTypes.Length];
 
+            for (int i = 0; i < spritesTypes.Length; i++)
+            {
+                ref SpriteType thing = ref spritesTypes[i];
+
+                float angle = MathF.PI * (thing.Angle / 2048f);
+
+                string texture = $"TILE_{thing.PicNum}";
+
+                sprites[i] = new Sprite
+                {
+                    Angle = angle,
+                    Location = new Point(thing.X, thing.Y),
+                    Height = thing.Z,
+                    TextureName = texture
+                };
+            }
+
+            return sprites;
+        }
 
         private static Dictionary<string, TextureInfo> ExtractTextures(List<ArtFile> artFiles, PaletteFile paletteFile)
         {

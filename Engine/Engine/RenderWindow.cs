@@ -2,7 +2,7 @@
 {
     internal struct RenderWindow
     {
-        public bool Calculated;
+        public RenderColumnStatus Status;
         public int CeilingStart;
         public int WallStart;
         public int WallEnd;
@@ -11,24 +11,20 @@
 
         public void SetFinished(float distance)
         {
-            Calculated = false;
-
+            Status = RenderColumnStatus.FinishedRendering;
             Distance = distance;
-            CeilingStart = 0;
-            WallStart = 0;
-            WallEnd = 0;
-            FloorEnd = 0;
         }
 
-        public readonly bool CanRender => CanRenderCeiling || CanRenderFloor || CanRenderWall;
-        public readonly bool CanRenderCeiling => Calculated && CeilingStart < WallStart && CeilingStart < FloorEnd;
-        public readonly bool CanRenderFloor => Calculated && WallEnd < FloorEnd;
-        public readonly bool CanRenderWall => Calculated && WallStart < WallEnd && CeilingStart < FloorEnd;
-        public readonly bool CanRenderMiddleWall => Calculated && FloorEnd <= CeilingStart;
+        public readonly bool Finished => Status.HasFlag(RenderColumnStatus.FinishedRendering);
+        public readonly bool Calculated => Status.HasFlag(RenderColumnStatus.Calculated);
+        public readonly bool CanRenderCeiling => Calculated && Status.HasFlag(RenderColumnStatus.CanRenderCeiling);
+        public readonly bool CanRenderFloor => Calculated && Status.HasFlag(RenderColumnStatus.CanRenderFloor);
+        public readonly bool CanRenderWall => Calculated && Status.HasFlag(RenderColumnStatus.CanRenderWall);
+        public readonly bool CanRenderPortal => Calculated && Status.HasFlag(RenderColumnStatus.CanRenderPortal);
 
         public override readonly string ToString()
         {
-            return $"C: {Calculated}, Ceil: {CeilingStart}, WallStart: {WallStart} WallEnd: {WallEnd}, FloorEnd: {FloorEnd}";
+            return $"S: {Status}, Ceil: {CeilingStart}, WallStart: {WallStart} WallEnd: {WallEnd}, FloorEnd: {FloorEnd}";
         }
     }
 }

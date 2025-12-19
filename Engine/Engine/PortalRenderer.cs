@@ -152,7 +152,10 @@ namespace RenderingEngine.Engine
                     sectorRenderQueue.Enqueue(neighborToRender);
                 }
 
-                RenderWindowHelper.NewDepth();    
+                if (RenderWindowHelper.NewDepth() == RenderColumnStatus.FinishedRendering)
+                {
+                    break;
+                }
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxRenderDepth);
 
@@ -362,9 +365,10 @@ namespace RenderingEngine.Engine
                 int wallStartYInt = float.ConvertToIntegerNative<int>(wallStartY);
                 int wallEndYInt = float.ConvertToIntegerNative<int>(wallEndY);
 
-                renderedAreaX.Calculated = true;
                 renderedAreaX.WallStart = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
                 renderedAreaX.WallEnd = wallEndYInt;
+
+                RenderWindowHelper.RecalculateRenderWindow(ref renderedAreaX, true);
 
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;

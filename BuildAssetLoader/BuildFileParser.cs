@@ -36,7 +36,7 @@ namespace BuildAssetLoader
                 // load all walls
                 ushort numWalls = BitConverter.ToUInt16(binary);
                 binary = binary[sizeof(ushort)..];
-                int wallSizeInBytes = numSectors * sizeof(WallType);
+                int wallSizeInBytes = numWalls * sizeof(WallType);
                 WallType[] walls = MemoryMarshal.Cast<byte, WallType>(binary[..wallSizeInBytes])
                     .ToArray();
                 binary = binary[wallSizeInBytes..];

@@ -36,78 +36,119 @@ namespace RenderingEngine.Engine
             Point yC1 = y.C1;
             Point yC2 = y.C2;
 
-            // the two line share a point, compare the other point
-            if (r1eqr1)
-            {
-                return Compare(xC2.X, xC2.Y, yC2.X, yC2.Y);
-            }
-            else if (r2eqr2)
-            {
-                return Compare(xC1.X, xC1.Y, yC1.X, yC1.Y);
-            }
-            else if (r1eqr2)
-            {
-                return Compare(xC2.X, xC2.Y, yC1.X, yC1.Y);
-            }
-            else if (r2eqr1)
-            {
-                return Compare(xC1.X, xC1.Y, yC2.X, yC2.Y);
-            }
-
-            float xCX1 = xC1.X;
-            float xCX2 = xC2.X;
             float xCY1 = xC1.Y;
             float xCY2 = xC2.Y;
-            float yCX1 = yC1.X;
-            float yCX2 = yC2.X;
             float yCY1 = yC1.Y;
             float yCY2 = yC2.Y;
 
+            // the two line share a point, compare the other point
+            if (r1eqr1)
+            {
+                return Compare(xCY2, yCY2);
+            }
+            else if (r2eqr2)
+            {
+                return Compare(xCY1, yCY1);
+            }
+            else if (r1eqr2)
+            {
+                return Compare(xCY2, yCY1);
+            }
+            else if (r2eqr1)
+            {
+                return Compare(xCY1, yCY2);
+            }
+
             if (Within(x.XLeft, y.XLeft, y.XRight) || Within(x.XRight, y.XLeft, y.XRight))
             {
-                CalculatePlaneIntersectionsForWall(y.XLeft, y.XRight, ref xCX1, ref xCY1, ref xCX2, ref xCY2);
+                float yRX1 = y.R1.X;
+                float yRX2 = y.R2.X;
+                float yRY1 = y.R1.Y;
+                float yRY2 = y.R2.Y;
+
+                (bool left, bool right) = CalculatePlaneIntersectionsForWall(x.XLeft, x.XRight, ref yRX1, ref yRY1, ref yRX2, ref yRY2);
+
+                if (left)
+                {
+                    yCY1 = yRY1;
+                }
+
+                if (right)
+                {
+                    yCY2 = yRY2;
+                }
+
+                if (left && right)
+                {
+                    return CompareFurtherst(xCY1, xCY2, yCY1, yCY2);
+                }
+                else if (left)
+                {
+                    return Compare(xCY1, yCY1);
+                }
+                else if (right)
+                {
+                    return Compare(
+                        xCY2,
+                        yCY2
+                    );
+                }
             }
 
             if (Within(y.XLeft, x.XLeft, x.XRight) || Within(y.XRight, x.XLeft, x.XRight))
             {
-                CalculatePlaneIntersectionsForWall(x.XLeft, x.XRight, ref yCX1, ref yCY1, ref yCX2, ref yCY2);
+                float xRX1 = x.R1.X;
+                float xRX2 = x.R2.X;
+                float xRY1 = x.R1.Y;
+                float xRY2 = x.R2.Y;
+
+                (bool left, bool right) = CalculatePlaneIntersectionsForWall(y.XLeft, y.XRight, ref xRX1, ref xRY1, ref xRX2, ref xRY2);
+
+                if (left)
+                {
+                    xCY1 = xRY1;
+                }
+
+                if (right)
+                {
+                    xCY2 = xRY2;
+                }
+
+                if (left && right)
+                {
+                    return CompareFurtherst(xCY1, xCY2, yCY1, yCY2);
+                }
+                else if (left)
+                {
+                    return Compare(xCY1, yCY1);
+
+                }
+                else if (right)
+                {
+                    return Compare(xCY2, yCY2);
+                }
             }
 
-            float xd1 = xCX1 * xCX1 + xCY1 * xCY1;
-            float xd2 = xCX2 * xCX2 + xCY2 * xCY2;
-
-            float yd1 = yCX1 * yCX1 + yCY1 * yCY1;
-            float yd2 = yCX2 * yCX2 + yCY2 * yCY2;
-
-            float xd = MathF.Max(xd1, xd2);
-            float yd = MathF.Max(yd1, yd2);
-
-            int compare = xd < yd ? -1 : 1;
-
-            return compare;
-
-            // midpoint actuall needs div by 2, but we can skip it here (values will be 4 times bigger that's all)
-            return Compare(
-                xCX1 + xCX2,
-                xCY1 + xCY2,
-                yCX1 + yCX2,
-                yCY1 + yCY2
-            );
+            return CompareFurtherst(xCY1, xCY2, yCY1, yCY2);
         }
 
+        private static int CompareFurtherst(float xCY1, float xCY2, float yCY1, float yCY2)
+        {
+            float xd = MathF.Max(xCY1, xCY2);
+            float yd = MathF.Max(yCY1, yCY2);
+
+            return Compare(xd, yd);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int Compare(float xcx, float xcy, float ycx, float ycy)
+        private static int Compare(float xcy, float ycy)
         {
-            float xd = xcx * xcx + xcy * xcy;
-            float yd = ycx * ycx + ycy * ycy;
-
-            if (xd == yd)
+            if (xcy == ycy)
             {
                 return 0;
             }
 
-            return xd < yd ? -1 : 1;
+            return xcy < ycy ? -1 : 1;
         }
 
 
@@ -117,7 +158,7 @@ namespace RenderingEngine.Engine
             return value > from && value < to;
         }
 
-        private bool CalculatePlaneIntersectionsForWall(float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
+        private (bool left, bool right) CalculatePlaneIntersectionsForWall(float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
         {
             float d2x = rx2 - rx1;
             float d2y = ry2 - ry1;
@@ -138,8 +179,6 @@ namespace RenderingEngine.Engine
 
                 rx2 = xDistanceR;
                 ry2 = yDistanceR;
-
-                return true;
             }
             else if (intersectsL)
             {
@@ -152,7 +191,7 @@ namespace RenderingEngine.Engine
                 ry2 = yDistanceR;
             }
 
-            return true;
+            return (intersectsL, intersectsR);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

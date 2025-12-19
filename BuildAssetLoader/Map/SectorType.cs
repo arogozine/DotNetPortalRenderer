@@ -18,12 +18,12 @@
         /// <summary>
         /// Z-coordinate (height) of ceiling at first point of sector
         /// </summary>
-        public readonly uint CeilingZ;
+        public readonly int CeilingZ;
 
         /// <summary>
         /// Z-coordinate (height) of floor at first point of sector
         /// </summary>
-        public readonly uint FloorZ;
+        public readonly int FloorZ;
 
         public readonly Stat CeilingStat;
         public readonly Stat FloorStat;
