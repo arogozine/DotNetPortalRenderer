@@ -8,12 +8,12 @@
         /// <summary>
         /// X-coordinate of left side of wall (right side coordinate is obtained from the next wall's left side)
         /// </summary>
-        public readonly uint X;
+        public readonly int X;
 
         /// <summary>
         /// Y-coordinate of left side of wall (right side coordinate is obtained from the next wall's left side)
         /// </summary>
-        public readonly uint Y;
+        public readonly int Y;
 
         /// <summary>
         /// Index to next wall on the right (always in the same sector)

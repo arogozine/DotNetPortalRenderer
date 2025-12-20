@@ -63,7 +63,7 @@ namespace RenderingEngine
 
         public BGRA[]? RenderFrame()
         {
-            StartRenderingSemaphore.Release();
+            _ = StartRenderingSemaphore.Release();
             RenderedFrameSemaphore.Wait();
             return currentFrame;
         }

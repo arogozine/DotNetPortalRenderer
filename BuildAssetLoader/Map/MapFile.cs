@@ -2,6 +2,7 @@
 {
     public sealed class MapFile
     {
+        public required string MapName { get; set; }
         public required uint Version { get; init; }
         public required StartingPosition StartingPosition { get; init; }
         public required SectorType[] Sectors { get; init; }

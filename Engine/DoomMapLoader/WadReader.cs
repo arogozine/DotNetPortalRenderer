@@ -100,7 +100,7 @@ namespace RenderingEngine.DoomMapLoader
 
             width = image.Width;
             height = image.Height;
-            SKImageInfo info = new SKImageInfo(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
+            SKImageInfo info = new(width, height, SKColorType.Rgba8888, SKAlphaType.Unpremul);
 
             unsafe
             {
@@ -362,7 +362,7 @@ namespace RenderingEngine.DoomMapLoader
                 float ceiling = sector.CeilingHeight;
                 float floor = sector.FloorHeight;
 
-                MapSector mapSector = new MapSector
+                MapSector mapSector = new()
                 {
                     Id = i,
                     Ceiling = ceiling,
@@ -501,7 +501,7 @@ namespace RenderingEngine.DoomMapLoader
 
         private static List<Sprite> ExtractSprites(ReadOnlySpan<UdmfThing> things)
         {
-            List<Sprite> sprites = new List<Sprite>(things.Length);
+            List<Sprite> sprites = new(things.Length);
 
             for (int i = 0; i < things.Length; i++)
             {
@@ -552,7 +552,7 @@ namespace RenderingEngine.DoomMapLoader
 
         private static List<Sprite> ExtractSprites(Span<Thing> things)
         {
-            List<Sprite> sprites = new List<Sprite>(things.Length);
+            List<Sprite> sprites = new(things.Length);
 
             for (int i = 0; i < things.Length; i++)
             {
@@ -641,7 +641,8 @@ namespace RenderingEngine.DoomMapLoader
                 float ceiling = sector.HeightCeiling;
                 float floor = sector.HeightFloor;
 
-                MapSector mapSector = new MapSector {
+                MapSector mapSector = new()
+                {
                     Id = i,
                     Ceiling = ceiling,
                     Floor = floor,

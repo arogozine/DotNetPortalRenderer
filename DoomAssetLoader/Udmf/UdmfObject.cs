@@ -9,7 +9,7 @@
         [DisallowNull]
         public string? this[string key] {
             get {
-                properties.TryGetValue(key, out string? value);
+                _ = properties.TryGetValue(key, out string? value);
                 return value;
             }
             set => properties[key] = value;

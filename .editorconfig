@@ -2,3 +2,19 @@
 
 # IDE0290: Use primary constructor
 csharp_style_prefer_primary_constructors = false
+
+csharp_prefer_static_local_function = true
+csharp_style_unused_value_assignment_preference = true:suggestion
+csharp_prefer_braces = true:silent
+csharp_prefer_simple_using_statement = true:suggestion
+dotnet_style_prefer_simplified_boolean_expressions = true:suggestion
+
+[*.{cs,csx,cake,vb,vbx}]
+dotnet_code_quality_unused_parameters = all:warning
+dotnet_remove_unnecessary_suppression_exclusions = none:warning
+
+[*.{cs,csx,cake}]
+csharp_style_unused_value_expression_statement_preference = discard_variable:suggestion
+dotnet_diagnostic.IDE0058.severity = suggestion
+csharp_style_unused_value_assignment_preference = discard_variable:suggestion
+dotnet_diagnostic.IDE0059.severity = suggestion

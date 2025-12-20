@@ -1,8 +1,5 @@
 ﻿using RenderingEngine.Models;
-using System;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace SoftwareRenderer
@@ -12,26 +9,28 @@ namespace SoftwareRenderer
         [STAThread]
         static void Main(string[] args)
         {
-            if (!TryParseArgs(args, out var iwadPath, out var pwadPath, out var mapName))
+            if (!TryParseArgs(args, out var parsedArgs))
             {
                 PrintUsage();
                 return;
             }
 
-            var app = new SilkSkiaApp(new Arguments { IWad = iwadPath, PWad = pwadPath, Map = mapName });
+            var app = new SilkSkiaApp(parsedArgs);
             app.Run();
         }
 
-        private static bool TryParseArgs(string[] args,
-            [NotNullWhen(true)] out string? iwad,
-            out string? pwad,
-            [NotNullWhen(true)] out string? map)
+        private static bool TryParseArgs(Span<string> args,
+            [NotNullWhen(true)] out Arguments? parsed)
         {
-            iwad = null;
-            pwad = null;
-            map = null;
+            parsed = null;
 
-            foreach (var raw in args ?? [])
+            string? iwad = null;
+            string? pwad = null;
+            string? map = null;
+            string? palette = null;
+            string? grp = null;
+
+            foreach (var raw in args)
             {
                 if (string.IsNullOrWhiteSpace(raw))
                     continue;
@@ -110,25 +109,63 @@ namespace SoftwareRenderer
                     case "map":
                         map = value;
                         break;
+                    case "palette":
+                        palette = value;
+                        break;
+                    case "grp":
+                        grp = value;
+                        break;
                 }
             }
 
-            // Validate required file paths
-            if (string.IsNullOrEmpty(iwad))
+            // Mutually exclusive: (iwad/pwad) vs (palette/grp)
+            var usingPaletteGrp = !string.IsNullOrEmpty(palette) || !string.IsNullOrEmpty(grp);
+            var usingWads = !string.IsNullOrEmpty(iwad) || !string.IsNullOrEmpty(pwad);
+            if (usingPaletteGrp && usingWads)
             {
-                Console.Error.WriteLine("Missing required argument: iwad");
-                return false;
-            }
-            if (!File.Exists(iwad))
-            {
-                Console.Error.WriteLine($"iwad file not found: {iwad}");
+                Console.Error.WriteLine("Cannot mix iwad/pwad with palette/grp. Choose one set of arguments.");
                 return false;
             }
 
-            if (!string.IsNullOrEmpty(pwad) && !File.Exists(pwad))
+            // Validate required file paths for wad mode
+            if (!usingPaletteGrp)
             {
-                Console.Error.WriteLine($"pwad file not found: {pwad}");
-                return false;
+                if (string.IsNullOrEmpty(iwad))
+                {
+                    Console.Error.WriteLine("Missing required argument: iwad");
+                    return false;
+                }
+                if (!File.Exists(iwad))
+                {
+                    Console.Error.WriteLine($"iwad file not found: {iwad}");
+                    return false;
+                }
+
+                if (!string.IsNullOrEmpty(pwad) && !File.Exists(pwad))
+                {
+                    Console.Error.WriteLine($"pwad file not found: {pwad}");
+                    return false;
+                }
+            }
+            else
+            {
+                // palette/grp mode: both palette and grp must be provided
+                if (string.IsNullOrEmpty(palette) || string.IsNullOrEmpty(grp))
+                {
+                    Console.Error.WriteLine("When using palette/grp mode both --palette and --grp must be provided.");
+                    return false;
+                }
+
+                if (!File.Exists(palette))
+                {
+                    Console.Error.WriteLine($"palette file not found: {palette}");
+                    return false;
+                }
+                if (!File.Exists(grp))
+                {
+                    Console.Error.WriteLine($"grp file not found: {grp}");
+                    return false;
+                }
             }
 
             // Validate map: short string, 1..32 chars, only letters, digits, underscore or hyphen
@@ -145,6 +182,15 @@ namespace SoftwareRenderer
                 return false;
             }
 
+            parsed = new Arguments
+            {
+                IWad = iwad,
+                PWad = pwad,
+                Map = map,
+                Palette = palette,
+                Grp = grp,
+            };
+
             return true;
         }
 
@@ -153,9 +199,11 @@ namespace SoftwareRenderer
             Console.WriteLine("Usage examples:");
             Console.WriteLine("  --iwad=path/to/iwad.wad --pwad=path/to/pwad.wad --map=MAP01");
             Console.WriteLine("  /iwad:C:\\iwads\\doom.wad /pwad:C:\\mods\\my.wad /map:MAP01");
+            Console.WriteLine("  --palette=path/to/palette.pal --grp=path/to/resources.grp --map=MAP01");
             Console.WriteLine();
             Console.WriteLine("Notes:");
-            Console.WriteLine("  - iwad and pwad must be paths to existing files.");
+            Console.WriteLine("  - iwad and pwad must be paths to existing files, unless using --palette and --grp instead.");
+            Console.WriteLine("  - palette and grp are alternative inputs; when provided they replace iwad/pwad.");
             Console.WriteLine("  - map must be a short identifier (1..32 chars; letters, digits, '_' or '-').");
         }
 

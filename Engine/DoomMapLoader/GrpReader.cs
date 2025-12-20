@@ -13,7 +13,7 @@ namespace RenderingEngine.DoomMapLoader
         {
             var map = BuildFileParser.ExtractMapFiles(grp);
 
-            return ExtractBuildMap(map[0], mapName);
+            return ExtractBuildMap(map.Single(x => x.MapName == mapName), mapName);
         }
 
         public static void ExtractAllTextures(GrpFile grp, PaletteFile paletteFile)
@@ -25,6 +25,18 @@ namespace RenderingEngine.DoomMapLoader
             {
                 TextureCache.Add(name, info.Width, info.Height, info.Data);
             }
+        }
+
+        private static TextureRenderingOptions ToTextureRenderingOptions(Stat stat)
+        {
+            TextureRenderingOptions options = default;
+
+            if (stat.HasFlag(Stat.Parallaxing))
+            {
+                options |= TextureRenderingOptions.Skybox;
+            }
+
+            return options;
         }
 
         private static Map ExtractBuildMap(MapFile mapFile, string mapName)
@@ -42,19 +54,29 @@ namespace RenderingEngine.DoomMapLoader
             {
                 ref SectorType sector = ref grpSectors[i];
 
-                float ceiling = sector.CeilingZ;
-                float floor = sector.FloorZ;
+                float ceiling = (sector.CeilingZ >> 4) * -1f;
+                float floor = (sector.FloorZ >> 4) * -1f;
 
                 string floorTexture = $"TILE_{sector.FloorPicNum}";
                 string ceilingTexture = $"TILE_{sector.CeilingPicNum}";
 
-                MapSector mapSector = new MapSector
+                MapSector mapSector = new()
                 {
                     Id = i,
                     Ceiling = ceiling,
                     Floor = floor,
-                    FloorTexture = new Models.TextureInfo { Name = floorTexture, XOffset = sector.FloorXPanning, YOffset = sector.FloorYPanning },
-                    CeilingTexture = new Models.TextureInfo { Name = ceilingTexture, XOffset = sector.CeilingXPanning, YOffset = sector.CeilingYPanning },
+                    FloorTexture = new Models.TextureInfo {
+                        Name = floorTexture,
+                        XOffset = sector.FloorXPanning,
+                        YOffset = sector.FloorYPanning,
+                        RenderingOptions = ToTextureRenderingOptions(sector.FloorStat)
+                    },
+                    CeilingTexture = new Models.TextureInfo {
+                        Name = ceilingTexture,
+                        XOffset = sector.CeilingXPanning,
+                        YOffset = sector.CeilingYPanning,
+                        RenderingOptions = ToTextureRenderingOptions(sector.CeilingStat)
+                    },
                     LightLevel = byte.MaxValue
                 };
 
@@ -70,12 +92,24 @@ namespace RenderingEngine.DoomMapLoader
 
                     var line = new Line {
                         Id = ij,
-                        PointA = new LineVector(j, new Point(wall.X, wall.Y)),
-                        PointB = new LineVector(wall.Point2, new Point(nextWall.X, nextWall.Y)),
-                        LowerTexture = new Models.TextureInfo { Name = texture, XOffset = wall.XRepeat, YOffset = wall.YRepeat },
-                        MiddleTexture = new Models.TextureInfo { Name = texture, XOffset = wall.XRepeat, YOffset = wall.YRepeat },
+                        PointA = new LineVector(j, new Point(wall.X >> 4, wall.Y >> 4)),
+                        PointB = new LineVector(wall.Point2, new Point(nextWall.X >> 4, nextWall.Y >> 4)),
+                        LowerTexture = new Models.TextureInfo {
+                            Name = texture,
+                            XOffset = wall.XRepeat,
+                            YOffset = wall.YRepeat
+                        },
+                        MiddleTexture = new Models.TextureInfo {
+                            Name = texture,
+                            XOffset = wall.XRepeat,
+                            YOffset = wall.YRepeat
+                        },
                         SectorTo = wall.NextSector,
-                        UpperTexture = new Models.TextureInfo { Name = texture, XOffset = wall.XRepeat, YOffset = wall.YRepeat },
+                        UpperTexture = new Models.TextureInfo {
+                            Name = texture,
+                            XOffset = wall.XRepeat,
+                            YOffset = wall.YRepeat
+                        },
                     };
 
                     ij++;
@@ -94,7 +128,8 @@ namespace RenderingEngine.DoomMapLoader
                 Player = new Player
                 {
                     Angle = radians,
-                    Where = (startingPosition.PosX, startingPosition.PosY, startingPosition.PosZ)
+                    Where = (startingPosition.PosX >> 4, startingPosition.PosY >> 4, (startingPosition.PosZ >> 4) * -1f),
+                    Sector = startingPosition.SectorNumber
                 },
                 Sprites = ExtractSprites(sprites),
                 Sectors = sectors
@@ -116,7 +151,7 @@ namespace RenderingEngine.DoomMapLoader
                 sprites[i] = new Sprite
                 {
                     Angle = angle,
-                    Location = new Point(thing.X, thing.Y),
+                    Location = new Point(thing.X >> 4, thing.Y >> 4),
                     Height = thing.Z,
                     TextureName = texture
                 };

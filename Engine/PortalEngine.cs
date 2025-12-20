@@ -38,14 +38,14 @@ namespace RenderingEngine
         {
             if (!PressedKeys.Add(key))
             {
-                PressedKeys.Remove(key);
+                _ = PressedKeys.Remove(key);
                 return;
             }
         }
 
         public void OnKeyUp(Key key)
         {
-            PressedKeys.Remove(key);
+            _ = PressedKeys.Remove(key);
         }
 
         private void OnKey(Key key)

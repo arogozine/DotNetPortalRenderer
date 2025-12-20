@@ -1,4 +1,6 @@
-﻿using DoomAssetLoader.Wad;
+﻿using BuildAssetLoader;
+using BuildAssetLoader.Texture;
+using DoomAssetLoader.Wad;
 using RenderingEngine.DoomMapLoader;
 using RenderingEngine.Engine;
 using RenderingEngine.Models;
@@ -68,28 +70,47 @@ namespace RenderingEngine.MapGen
             return walls;
         }
 
-        internal static (Player player, Sector[] sectors, Sprite[] sprites) LoadData(Arguments arguments)
+        internal static Map LoadDoomEngineMap(string mapName, string iwad, string? pwad)
         {
-            Map map;
-
-            string mapName = arguments.Map ?? "MAP01";
-
-            bool loadMapsFromIWad = arguments.PWad is null;
-            WadFile wadFile = WadReader.LoadWad(arguments.IWad, loadMaps: loadMapsFromIWad, loadTextures: true, mapName: mapName);
+            WadFile wadFile = WadReader.LoadWad(iwad, loadMaps: pwad is null, loadTextures: true, mapName: mapName);
             WadReader.ExtractAllTextures(wadFile);
 
-            if (arguments.PWad is string pwad)
+            if (pwad is not null)
             {
                 WadFile wadFile2 = WadReader.LoadWad(pwad, loadMaps: true, loadTextures: true, mapName: mapName);
-                wadFile2.LoadRequired(wadFile);
+                _ = wadFile2.LoadRequired(wadFile);
                 WadReader.ExtractAllTextures(wadFile2);
 
-                map = WadReader.LoadDoomMap(wadFile2, mapName);
+                return WadReader.LoadDoomMap(wadFile2, mapName);
 
             }
             else
             {
-                map = WadReader.LoadDoomMap(wadFile, mapName);
+                return WadReader.LoadDoomMap(wadFile, mapName);
+            }
+        }
+
+        internal static Map LoadBuildEngineMap(string mapName, string grpPath, string palettePath)
+        {
+            PaletteFile pal = BuildFileLoader.LoadPalFile(palettePath);
+            GrpFile grp = BuildFileLoader.LoadGrpFile(grpPath);
+
+            GrpReader.ExtractAllTextures(grp, pal);
+
+            return GrpReader.LoadBuildMap(grp, mapName);
+        }
+
+        internal static (Player player, Sector[] sectors, Sprite[] sprites) LoadData(Arguments arguments)
+        {
+            Map map;
+
+            if (arguments.IWad is not null)
+            {
+                map = LoadDoomEngineMap(arguments.Map, arguments.IWad, arguments.PWad);
+            }
+            else
+            {
+                map = LoadBuildEngineMap(arguments.Map, arguments.Grp!, arguments.Palette!);
             }
 
             StripInvalidNeighbors(map);

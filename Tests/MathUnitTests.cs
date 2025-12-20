@@ -8,7 +8,7 @@ namespace Tests
         [Fact]
         public void FastConvertionFloatToIntAccurate()
         {
-            Random r = new Random();
+            Random r = new();
 
             for (int i = 0; i < 512; i++)
             {
@@ -27,7 +27,7 @@ namespace Tests
         [Fact]
         public void FastConvertionFloatToIntNative()
         {
-            Random r = new Random();
+            Random r = new();
 
             for (int i = 0; i < 512; i++)
             {

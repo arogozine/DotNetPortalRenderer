@@ -11,7 +11,7 @@ namespace RenderingEngine.Engine
         private int columnBBufferIndex = -1;
         private readonly uint[] columnB = new uint[256];
 
-        private void CalculateDistance(RenderableWall renderableWall, float oneOverSectorHeight, float floorOffset, float ceilOffset)
+        private void CalculateDistance(RenderableWall renderableWall)
         {
             int width = PixelWidth;
             var wall = renderableWall.Wall;
@@ -80,7 +80,7 @@ namespace RenderingEngine.Engine
             // so no wall is drawn
             if (floorOffset == 0 && ceilOffset == 0)
             {
-                CalculateDistance(renderableWall, oneOverSectorHeight, floorOffset, ceilOffset);
+                CalculateDistance(renderableWall);
                 return true;
             }
 
@@ -101,10 +101,10 @@ namespace RenderingEngine.Engine
 
             ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
 
-            int lowerTextureStart = DetermineLowerTextureYOffset(sector, floorOffset, ceilOffset, lowerTextureInfo, ref lowerTexture);
+            int lowerTextureStart = DetermineLowerTextureYOffset(floorOffset, lowerTextureInfo, ref lowerTexture);
             int lowerXOffset = DetermineXOffset(lowerTextureInfo, in lowerTexture);
 
-            int upperTextureStart = DetermineUpperTextureYOffset(sector, ceilOffset, upperTextureInfo, ref upperTexture);
+            int upperTextureStart = DetermineUpperTextureYOffset(ceilOffset, upperTextureInfo, ref upperTexture);
             int upperXOffset = DetermineXOffset(upperTextureInfo, in upperTexture);
 
             ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperSkybox ? upperTexture.Data : upperTexture.Rotated);
@@ -419,7 +419,7 @@ namespace RenderingEngine.Engine
             float angleX = Unsafe.Add(ref angleCachePtr, x) - viewAngle;
             if (angleX > twoPi)
             {
-                angleX = angleX - twoPi;
+                angleX -= twoPi;
             }
             else if (angleX < 0f)
             {
@@ -544,9 +544,7 @@ namespace RenderingEngine.Engine
         }
 
         private static int DetermineLowerTextureYOffset(
-            Sector sector,
             int floorOffset,
-            int ceilingOffset,
             TextureInfo textureInfo,
             ref Texture wallTexture)
         {
@@ -567,7 +565,6 @@ namespace RenderingEngine.Engine
         }
 
         private static int DetermineUpperTextureYOffset(
-            Sector sector,
             int ceilingOffset,
             TextureInfo textureInfo,
             ref Texture wallTexture)
@@ -611,7 +608,7 @@ namespace RenderingEngine.Engine
 
         private static int EnsureOffsetIsPositive(int textureHeight, int offset)
         {
-            offset = offset % textureHeight;
+            offset %= textureHeight;
 
             if (offset < 0)
             {

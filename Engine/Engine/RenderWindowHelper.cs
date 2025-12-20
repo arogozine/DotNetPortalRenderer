@@ -1,5 +1,4 @@
-﻿using BuildAssetLoader.Map;
-using RenderingEngine.Models;
+﻿using RenderingEngine.Models;
 
 namespace RenderingEngine.Engine
 {
@@ -109,13 +108,6 @@ namespace RenderingEngine.Engine
                     render.Status |= RenderColumnStatus.CanRenderPortal;
                 }
             }
-        }
-
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool Within(int value, int from, int to)
-        {
-            return value > from && value < to;
         }
 
         public void NewSector(NeighborsToRender sectorInfo)

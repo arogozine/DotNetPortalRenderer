@@ -51,6 +51,7 @@ namespace BuildAssetLoader
 
                 mapFiles.Add(new MapFile
                 {
+                    MapName = Path.GetFileNameWithoutExtension(fileName),
                     Version = mapVersion,
                     StartingPosition = mapHeader,
                     Sectors = sectors,

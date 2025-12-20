@@ -53,9 +53,9 @@ namespace DoomAssetLoader
 
             int i;
 
-            using FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using FileStream fs = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-            fs.Seek(0, SeekOrigin.Begin);
+            _ = fs.Seek(0, SeekOrigin.Begin);
 
             // Bytes 0-3 (ASCII string): IWAD or PWAD
             fs.ReadExactly(buffer4, 0, buffer4.Length);
@@ -92,7 +92,7 @@ namespace DoomAssetLoader
             // Try getting the PNAMES lump first
             for (i = 0; i < lumpCount; i++)
             {
-                fs.Seek(directoryOffset + 16 * i, SeekOrigin.Begin);
+                _ = fs.Seek(directoryOffset + 16 * i, SeekOrigin.Begin);
 
                 // a long integer, the file offset to the start of the lump
                 fs.ReadExactly(buffer4, 0, 4);
@@ -112,7 +112,7 @@ namespace DoomAssetLoader
 
                     if (lumpSize != 0)
                     {
-                        fs.Seek(lumpOffset, SeekOrigin.Begin);
+                        _ = fs.Seek(lumpOffset, SeekOrigin.Begin);
                         fs.ReadExactly(lumpbytes, 0, (int)lumpSize);
                     }
 

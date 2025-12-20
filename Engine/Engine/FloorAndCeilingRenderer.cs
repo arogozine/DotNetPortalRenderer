@@ -452,8 +452,7 @@ namespace RenderingEngine.Engine
                 rCosV = Vector.Create(rCos);
             }
 
-            Unsafe.SkipInit(out Vector<float> incramentVector);
-            ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
+            Vector<float> incramentVector;
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 

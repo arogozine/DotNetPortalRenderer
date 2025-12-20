@@ -14,7 +14,7 @@ namespace BuildAssetLoader
                 throw new ArgumentException("Not Found", nameof(filePath));
             }
 
-            using FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using FileStream fs = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
             byte[] buffer4 = new byte[4];
             byte[] buffer12 = new byte[12];
@@ -71,7 +71,7 @@ namespace BuildAssetLoader
 
             byte[] buffer2 = new byte[2];
 
-            using FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using FileStream fs = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
             // The format is: Red0, Green0, Blue0, Red1, Green1, Blue1, ..., Blue255
             // The colors are based on the VGA 262,144 color palette.  The values range from
