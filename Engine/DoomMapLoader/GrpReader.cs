@@ -54,8 +54,8 @@ namespace RenderingEngine.DoomMapLoader
             {
                 ref SectorType sector = ref grpSectors[i];
 
-                float ceiling = (sector.CeilingZ >> 4) * -1f;
-                float floor = (sector.FloorZ >> 4) * -1f;
+                float ceiling = (sector.CeilingZ >> 6) * -1f;
+                float floor = (sector.FloorZ >> 6) * -1f;
 
                 string floorTexture = $"TILE_{sector.FloorPicNum}";
                 string ceilingTexture = $"TILE_{sector.CeilingPicNum}";
@@ -77,7 +77,7 @@ namespace RenderingEngine.DoomMapLoader
                         YOffset = sector.CeilingYPanning,
                         RenderingOptions = ToTextureRenderingOptions(sector.CeilingStat)
                     },
-                    LightLevel = byte.MaxValue
+                    LightLevel = (short)(byte.MaxValue - sector.FloorShade)
                 };
 
                 int wallStart = sector.WallPtr;
@@ -128,7 +128,7 @@ namespace RenderingEngine.DoomMapLoader
                 Player = new Player
                 {
                     Angle = radians,
-                    Where = (startingPosition.PosX >> 4, startingPosition.PosY >> 4, (startingPosition.PosZ >> 4) * -1f),
+                    Where = (startingPosition.PosX >> 4, startingPosition.PosY >> 4, (startingPosition.PosZ >> 6) * -1f),
                     Sector = startingPosition.SectorNumber
                 },
                 Sprites = ExtractSprites(sprites),
@@ -208,11 +208,10 @@ namespace RenderingEngine.DoomMapLoader
                             LeftOffset = tile.Properties.OffsetX,
                             TopOffset = tile.Properties.OffsetY,
                         });
-
-                        localTileNum++;
-
-                        // DebugTexture(tile.XSize, tile.YSize, texture, $"ART_{localTileNum}");
                     }
+
+                    localTileNum++;
+
                 }
             }
 
