@@ -13,7 +13,7 @@ namespace RenderingEngine.DoomMapLoader
         {
             var map = BuildFileParser.ExtractMapFiles(grp);
 
-            return ExtractBuildMap(map.Single(x => x.MapName == mapName), mapName);
+            return ExtractBuildMap(map.Single(x => x.MapName == mapName));
         }
 
         public static void ExtractAllTextures(GrpFile grp, PaletteFile paletteFile)
@@ -36,10 +36,42 @@ namespace RenderingEngine.DoomMapLoader
                 options |= TextureRenderingOptions.Skybox;
             }
 
+            if (stat.HasFlag(Stat.XFlip))
+            {
+                options |= TextureRenderingOptions.FlipX;
+            }
+
+            if (stat.HasFlag(Stat.YFlip))
+            {
+                options |= TextureRenderingOptions.FlipY;
+            }
+
             return options;
         }
 
-        private static Map ExtractBuildMap(MapFile mapFile, string mapName)
+        private static TextureRenderingOptions ToTextureRenderingOptions(WallCStat stat)
+        {
+            TextureRenderingOptions options = default;
+
+            if (stat.HasFlag(WallCStat.AlignPictureOnBottom))
+            {
+                options |= TextureRenderingOptions.FromBottom;
+            }
+
+            if (stat.HasFlag(WallCStat.XFlipped))
+            {
+                options |= TextureRenderingOptions.FlipX;
+            }
+
+            if (stat.HasFlag(WallCStat.YFlipped))
+            {
+                options |= TextureRenderingOptions.FlipY;
+            }
+
+            return options;
+        }
+
+        private static Map ExtractBuildMap(MapFile mapFile)
         {
             StartingPosition startingPosition = mapFile.StartingPosition;
             Span<SectorType> grpSectors = mapFile.Sectors;
@@ -54,11 +86,11 @@ namespace RenderingEngine.DoomMapLoader
             {
                 ref SectorType sector = ref grpSectors[i];
 
-                float ceiling = (sector.CeilingZ >> 6) * -1f;
-                float floor = (sector.FloorZ >> 6) * -1f;
+                float ceiling = DetermineZLocation(sector.CeilingZ);
+                float floor = DetermineZLocation(sector.FloorZ);
 
-                string floorTexture = $"TILE_{sector.FloorPicNum}";
-                string ceilingTexture = $"TILE_{sector.CeilingPicNum}";
+                string floorTexture = ToTile(sector.FloorPicNum);
+                string ceilingTexture = ToTile(sector.CeilingPicNum);
 
                 MapSector mapSector = new()
                 {
@@ -77,7 +109,7 @@ namespace RenderingEngine.DoomMapLoader
                         YOffset = sector.CeilingYPanning,
                         RenderingOptions = ToTextureRenderingOptions(sector.CeilingStat)
                     },
-                    LightLevel = (short)(byte.MaxValue - sector.FloorShade)
+                    LightLevel = DetermineShade(sector.FloorShade)
                 };
 
                 int wallStart = sector.WallPtr;
@@ -88,27 +120,33 @@ namespace RenderingEngine.DoomMapLoader
                     ref WallType wall = ref walls[j];
                     ref WallType nextWall = ref walls[wall.Point2];
 
-                    string texture = $"TILE_{wall.PicNum}";
+                    string texture = ToTile(wall.PicNum);
+
+                    int panningX = wall.XPanning;
+                    int panningY = wall.YPanning;
 
                     var line = new Line {
                         Id = ij,
-                        PointA = new LineVector(j, new Point(wall.X >> 4, wall.Y >> 4)),
-                        PointB = new LineVector(wall.Point2, new Point(nextWall.X >> 4, nextWall.Y >> 4)),
+                        PointA = new LineVector(j, GetPoint(ref wall)),
+                        PointB = new LineVector(wall.Point2, GetPoint(ref nextWall)),
                         LowerTexture = new Models.TextureInfo {
                             Name = texture,
-                            XOffset = wall.XRepeat,
-                            YOffset = wall.YRepeat
+                            XOffset = panningX,
+                            YOffset = panningY,
+                            RenderingOptions = ToTextureRenderingOptions(wall.CStat)
                         },
                         MiddleTexture = new Models.TextureInfo {
                             Name = texture,
-                            XOffset = wall.XRepeat,
-                            YOffset = wall.YRepeat
+                            XOffset = panningX,
+                            YOffset = panningY,
+                            RenderingOptions = ToTextureRenderingOptions(wall.CStat)
                         },
                         SectorTo = wall.NextSector,
                         UpperTexture = new Models.TextureInfo {
                             Name = texture,
-                            XOffset = wall.XRepeat,
-                            YOffset = wall.YRepeat
+                            XOffset = panningX,
+                            YOffset = panningY,
+                            RenderingOptions = ToTextureRenderingOptions(wall.CStat)
                         },
                     };
 
@@ -128,12 +166,20 @@ namespace RenderingEngine.DoomMapLoader
                 Player = new Player
                 {
                     Angle = radians,
-                    Where = (startingPosition.PosX >> 4, startingPosition.PosY >> 4, (startingPosition.PosZ >> 6) * -1f),
+                    Where = (DetermineXLocation(startingPosition.PosX), DetermineYLocation(startingPosition.PosY), (startingPosition.PosZ >> 6) * -1f),
                     Sector = startingPosition.SectorNumber
                 },
                 Sprites = ExtractSprites(sprites),
                 Sectors = sectors
             };
+
+            static Point GetPoint(ref WallType wall)
+            {
+                int x = DetermineXLocation(wall.X);
+                int y = DetermineYLocation(wall.Y);
+
+                return new Point(x, y);
+            }
         }
 
         private static Sprite[] ExtractSprites(Span<SpriteType> spritesTypes)
@@ -144,15 +190,17 @@ namespace RenderingEngine.DoomMapLoader
             {
                 ref SpriteType thing = ref spritesTypes[i];
 
+                // no wall support for now
+
                 float angle = MathF.PI * (thing.Angle / 2048f);
 
-                string texture = $"TILE_{thing.PicNum}";
+                string texture = ToTile(thing.PicNum);
 
                 sprites[i] = new Sprite
                 {
                     Angle = angle,
-                    Location = new Point(thing.X >> 4, thing.Y >> 4),
-                    Height = thing.Z,
+                    Location = new Point(DetermineXLocation(thing.X), DetermineYLocation(thing.Y)),
+                    Height = DetermineZLocation(thing.Z),
                     TextureName = texture
                 };
             }
@@ -172,7 +220,7 @@ namespace RenderingEngine.DoomMapLoader
             {
                 ArtFile artFile = artFileSpan[s];
 
-                uint localTileNum = artFile.LocalTileStart;
+                short localTileNum = (short)artFile.LocalTileStart;
 
                 for (int j = 0; j < artFile.Tiles.Length; j++)
                 {
@@ -201,7 +249,7 @@ namespace RenderingEngine.DoomMapLoader
                             }
                         }
 
-                        string name = $"TILE_{localTileNum}";
+                        string name = ToTile(localTileNum);
 
                         textures.Add(name, new TextureInfo(tile.XSize, tile.YSize, texture)
                         {
@@ -265,6 +313,33 @@ namespace RenderingEngine.DoomMapLoader
             }
 
             return bgra;
+        }
+
+        private static string ToTile(short tileNumber) => $"TILE_{tileNumber}";
+
+        private static short DetermineShade(sbyte floorShade)
+        {
+            int upped = floorShade << 3;
+            return (short)(byte.MaxValue - upped);
+        }
+
+        private static int DetermineYLocation(int coordinate)
+        {
+            coordinate >>= 4;
+            return coordinate;
+        }
+
+        private static int DetermineXLocation(int coordinate)
+        {
+            coordinate >>= 4;
+            return coordinate * -1;
+        }
+
+        private static int DetermineZLocation(int coordinate)
+        {
+            coordinate >>= 6;
+            // build engine coordinates are upside down
+            return coordinate * -1;
         }
 
         private unsafe static void DebugTexture(int width, int height, Span<BGRA> texture, string textureName)

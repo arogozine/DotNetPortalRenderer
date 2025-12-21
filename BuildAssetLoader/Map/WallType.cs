@@ -53,14 +53,24 @@
         public readonly byte Pal;
 
         /// <summary>
-        /// Offset for aligning textures
+        /// Used to change the size of pixels (stretch textures)
         /// </summary>
         public readonly byte XRepeat;
 
         /// <summary>
-        /// Offset for aligning textures
+        /// Used to change the size of pixels (stretch textures)
         /// </summary>
         public readonly byte YRepeat;
+
+        /// <summary>
+        /// Offset for aligning textures
+        /// </summary>
+        public readonly byte XPanning;
+
+        /// <summary>
+        /// Offset for aligning textures
+        /// </summary>
+        public readonly byte YPanning;
 
         /// <summary>
         /// Significance is game-specific (Triggers, etc.)
