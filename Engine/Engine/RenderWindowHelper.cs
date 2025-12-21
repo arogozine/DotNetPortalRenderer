@@ -2,7 +2,6 @@
 
 namespace RenderingEngine.Engine
 {
-
     internal sealed class RenderWindowHelper
     {
         private readonly int width;
@@ -67,6 +66,14 @@ namespace RenderingEngine.Engine
             }
 
             return renderColumnStatus;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static (int ClampedWallStart, int ClampedWallEnd) GetClampedWallFromTo(ref RenderWindow renderWindow)
+        {
+            int portalFromYClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
+            int portalToYClamped = Math.Clamp(renderWindow.WallEnd, renderWindow.CeilingStart, renderWindow.FloorEnd);
+            return (portalFromYClamped, portalToYClamped);
         }
 
         public static void RecalculateRenderWindow(ref RenderWindow render, bool calculated)

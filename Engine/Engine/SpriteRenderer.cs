@@ -4,7 +4,7 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        private void DrawSprite(Span<BGRA> screen, ReadOnlySpan<Sector> sectors, Sprite sprite, SectorSprites renderableWall)
+        private void DrawSprite(ReadOnlySpan<Sector> sectors, Sprite sprite, SectorSprites renderableWall)
         {
             ref Texture texture = ref TextureCache.GetTextureOrNullRef(sprite.TextureName);
 
@@ -13,7 +13,7 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
+            ref uint screenPtr = ref GetScreenPtr<uint>();
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
 
             int width = PixelWidth;
@@ -89,7 +89,6 @@ namespace RenderingEngine.Engine
         }
 
         private void DrawTransparentWall(
-            Span<BGRA> screen,
             ReadOnlySpan<Sector> sectors,
             TransparentWall renderableWall)
         {
@@ -143,7 +142,7 @@ namespace RenderingEngine.Engine
 
             int xOffset = DetermineXOffset(textureInfo, in texture);
 
-            ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
+            ref uint screenPtr = ref GetScreenPtr<uint>();
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
 

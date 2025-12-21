@@ -1,5 +1,4 @@
 ﻿using RenderingEngine.Models;
-using System.Numerics;
 
 namespace RenderingEngine.Engine
 {
@@ -10,6 +9,13 @@ namespace RenderingEngine.Engine
         private readonly uint[] columnA = new uint[256];
         private int columnBBufferIndex = -1;
         private readonly uint[] columnB = new uint[256];
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ref T GetScreenPtr<T>()
+            where T : struct
+        {
+            return ref Unsafe.As<BGRA, T>(ref MemoryMarshal.GetReference(this.buffer));
+        }
 
         private void CalculateDistance(RenderableWall renderableWall)
         {
@@ -29,8 +35,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int portalFromYClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int portalToYClamped = Math.Clamp(renderWindow.WallEnd, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                (int portalFromYClamped, int portalToYClamped) = RenderWindowHelper.GetClampedWallFromTo(ref renderWindow);
 
                 renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
                 renderWindow.CeilingStart = portalFromYClamped;
@@ -41,7 +46,6 @@ namespace RenderingEngine.Engine
 
         private bool DrawPortalWall(
             PortalPlayerSnapshot player,
-            Span<BGRA> screen,
             Sector sector,
             ReadOnlySpan<Sector> sectors,
             RenderableWall renderableWall)
@@ -97,7 +101,7 @@ namespace RenderingEngine.Engine
             bool upperSkybox = upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
             bool lowerSkybox = lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
 
-            ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
+            ref uint screenPtr = ref GetScreenPtr<uint>();
 
             ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
 
@@ -138,8 +142,7 @@ namespace RenderingEngine.Engine
                 float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
 
                 // Wall Calculation
-                int fromYClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int toYClamped = Math.Clamp(renderWindow.WallEnd, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                (int fromYClamped, int toYClamped) = RenderWindowHelper.GetClampedWallFromTo(ref renderWindow);
 
                 // Portal Calculation
                 int floorPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * floorOffset);
@@ -239,7 +242,7 @@ namespace RenderingEngine.Engine
                 renderWindow.Distance = fromToYdist;
                 renderWindow.CeilingStart = portalFromYClamped;
                 renderWindow.FloorEnd = portalToYClamped;
-                renderWindow.Status ^= RenderColumnStatus.CanRenderWall; 
+                renderWindow.Status ^= RenderColumnStatus.CanRenderWall;
             }
 
             columnABufferIndex = EngineConstants.Unset;
@@ -252,7 +255,6 @@ namespace RenderingEngine.Engine
 
         private bool DrawBasicWall(
             PortalPlayerSnapshot player,
-            Span<BGRA> screen,
             Sector sector,
             RenderableWall renderableWall)
         {
@@ -262,7 +264,7 @@ namespace RenderingEngine.Engine
 
             if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
             {
-                return DrawBasicSkyboxWall(player, screen, renderableWall);
+                return DrawBasicSkyboxWall(player, renderableWall);
             }
 
             int width = PixelWidth;
@@ -272,7 +274,7 @@ namespace RenderingEngine.Engine
 
             byte lightLevel = sector.LightLevel;
 
-            ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
+            ref uint screenPtr = ref GetScreenPtr<uint>();
 
             ref Texture wallTexture = ref TextureCache.GetTexture(line.MiddleTexture);
             ref BGRA wallTexturePtr = ref MemoryMarshal.GetArrayDataReference(wallTexture.Rotated);
@@ -305,8 +307,7 @@ namespace RenderingEngine.Engine
                 int wallStartY = renderWindow.WallStart;
                 int wallEndY = renderWindow.WallEnd;
 
-                int clamptedFromY = Math.Clamp(wallStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int clamptedToY = Math.Clamp(wallEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                (int clamptedFromY, int clamptedToY) = RenderWindowHelper.GetClampedWallFromTo(ref renderWindow);
 
                 // texture is rotated - y position is x position in texture
                 int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
@@ -339,7 +340,6 @@ namespace RenderingEngine.Engine
 
         private bool DrawBasicSkyboxWall(
             PortalPlayerSnapshot player,
-            Span<BGRA> screen,
             RenderableWall renderableWall)
         {
             int width = PixelWidth;
@@ -348,7 +348,7 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            ref uint screenPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(screen));
+            ref uint screenPtr = ref GetScreenPtr<uint>();
 
             ref Texture wallTexture = ref TextureCache.GetTexture(line.MiddleTexture);
             ref uint wallTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetArrayDataReference(wallTexture.Data));
@@ -366,11 +366,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int wallStartY = renderWindow.WallStart;
-                int wallEndY = renderWindow.WallEnd;
-
-                int clamptedFromY = Math.Clamp(wallStartY, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int clamptedToY = Math.Clamp(wallEndY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                (int clamptedFromY, int clamptedToY) = RenderWindowHelper.GetClampedWallFromTo(ref renderWindow);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
                 ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
@@ -458,69 +454,27 @@ namespace RenderingEngine.Engine
             ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, startY * width + x);
             ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, endY * width + x);
 
-            uint textureHeight_u = (uint)textureHeight;
-
-            if (!MathFormulas.IsPowerOfTwo(textureHeight))
+            if (MathFormulas.IsPowerOfTwo(textureHeight))
             {
-                while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
+                uint textureMask = (uint)(textureHeight - 1);
+
+                while (!Unsafe.AreSame(ref screenIndexPtr, ref screenIndexPtrEnd))
                 {
-                    uint texelIndex = (textureXPos_u >> 16) % textureHeight_u;
+                    uint texelIndex = (textureXPos_u >> 16) & textureMask;
                     uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
 
                     screenIndexPtr = shaded;
                     screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
                     textureXPos_u += textureXIncr_u;
                 }
-
-                return;
-            }
-
-            uint textureMask = (uint)(textureHeight - 1);
-
-            int numberOfLines = (endY - startY);
-
-            if (numberOfLines >= (Vector<uint>.Count << 4))
-            {
-                int rem = numberOfLines % Vector<uint>.Count;
-
-                ref uint screenIndexPtrEndV = ref Unsafe.Subtract(ref screenIndexPtrEnd, rem * width);
-
-                Vector<uint> textureMaskV = Vector.Create(textureMask);
-                Vector<uint> textureXIncr_uV = Vector.Create(textureXIncr_u * (uint)Vector<uint>.Count);
-                Vector<uint> textureXPos_uV = Vector.CreateSequence(textureXPos_u, textureXIncr_u);
-
-                while (!Unsafe.AreSame(ref screenIndexPtr, ref screenIndexPtrEndV))
-                {
-                    Vector<uint> texelIndexV = (textureXPos_uV >> 16) & textureMaskV;
-
-                    for (int i = 0; i < Vector<uint>.Count; i++)
-                    {
-                        uint shaded = Unsafe.Add(ref textureBuffer, texelIndexV[i]);
-                        screenIndexPtr = shaded;
-                        screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
-                    }
-
-                    textureXPos_uV += textureXIncr_uV;
-                }
-
-                if (rem > 0)
-                {
-                    Vector<uint> texelIndexV = (textureXPos_uV >> 16) & textureMaskV;
-
-                    for (int i = 0; i < rem; i++)
-                    {
-                        uint texelIndex = texelIndexV[i];
-                        uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
-                        screenIndexPtr = shaded;
-                        screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
-                    }
-                }
             }
             else
             {
-                while (!Unsafe.AreSame(ref screenIndexPtr, ref screenIndexPtrEnd))
+                uint textureHeight_u = (uint)textureHeight;
+
+                while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
                 {
-                    uint texelIndex = (textureXPos_u >> 16) & textureMask;
+                    uint texelIndex = (textureXPos_u >> 16) % textureHeight_u;
                     uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
 
                     screenIndexPtr = shaded;

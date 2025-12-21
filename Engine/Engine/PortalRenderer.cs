@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using System.Numerics;
 
 namespace RenderingEngine.Engine
 {
@@ -18,20 +19,26 @@ namespace RenderingEngine.Engine
         private PortalPlayerSnapshot? Snapshot = null;
 
         private readonly float[] angleCache;
+        private readonly float[] incrVectorCache;
+
         private readonly BGRA[] buffer;
 
         public PortalRenderer(int width, int height)
         {
+            int overflowBuffer = (Vector<float>.Count - width % Vector<float>.Count) + Vector<float>.Count;
+
             PixelWidth = width;
             PixelHeight = height;
             SpriteHelper = new SpriteHelper(width, height, EngineConstants.CameraPlaneX);
             WallHelper = new WallHelper(width, height);
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
-            angleCache = new float[width];
+            angleCache = new float[width + overflowBuffer];
+            incrVectorCache = new float[width + overflowBuffer];
 
             RenderWindowHelper = new RenderWindowHelper(width, height);
 
             GenerateAngleCache();
+            GenerateCache();
         }
 
         /// <summary>
@@ -50,13 +57,26 @@ namespace RenderingEngine.Engine
             }
         }
 
+        private void GenerateCache()
+        {
+            int width = this.PixelWidth;
+            int halfHeightInt = this.PixelHeight / 2;
+            float oneOverHeight = 1f / PixelHeight;
+
+            for (int x = 0; x < width; x++)
+            {
+                int upper = (halfHeightInt - x) << 8;
+                incrVectorCache[x] = 1f / (upper * oneOverHeight);
+            }
+        }
+
         private sealed record RenderableAreaAndZBuffer(int[] CeilingStart, int[] FloorEnd, float[] ZBuffer);
         private readonly RenderableAreaAndZBuffer[] spriteRenderableAreaCache = new RenderableAreaAndZBuffer[EngineConstants.MaxRenderDepth];
 
         private readonly List<RenderableSprite> transparentWalls = [];
         private readonly Queue<NeighborsToRender> sectorRenderQueue = [];
 
-        public void DrawScreen(Span<BGRA> screen, PortalPlayerSnapshot player)
+        public void DrawScreen(PortalPlayerSnapshot player)
         {
             InitializeSharedVectors(player);
             this.WallHelper.SetSnapShot(player);
@@ -100,7 +120,7 @@ namespace RenderingEngine.Engine
                 }
 
                 // 2. Render all sectors at current depth and calculate new z buffer and render window
-                List<RenderableWall> neighborsForDepth = DrawScreenStep(screen, player);
+                List<RenderableWall> neighborsForDepth = DrawScreenStep(player);
 
                 // 3. Cache z-buffer for sprite rendering
                 for (int i = 0; i < RenderWindowHelper.RenderWindow.Length; i++)
@@ -159,7 +179,7 @@ namespace RenderingEngine.Engine
             }
             while (sectorRenderQueue.Count > 0 && ++renderDepth < EngineConstants.MaxRenderDepth);
 
-            RenderSpritesAndTransparentWalls(screen, player);
+            RenderSpritesAndTransparentWalls(player);
 
             transparentWalls.Clear();
             sectorRenderQueue.Clear();
@@ -168,10 +188,9 @@ namespace RenderingEngine.Engine
         /// <summary>
         /// Draw all current sectors (one wall at a time) and return the next set of portal walls to drawn
         /// </summary>
-        /// <param name="screen">Screen to render things to</param>
         /// <param name="player">Player information</param>
         /// <returns>Set of portal walls to render nexts</returns>
-        public List<RenderableWall> DrawScreenStep(Span<BGRA> screen, PortalPlayerSnapshot player)
+        public List<RenderableWall> DrawScreenStep(PortalPlayerSnapshot player)
         {
             ReadOnlySpan<Sector> sectors = Sectors;
 
@@ -187,10 +206,15 @@ namespace RenderingEngine.Engine
                 Span<Wall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, player);
 
                 // 2. Determine where ceiling, floor, and walls start and end
-                CalculateRenderWindow(sectorInfo, sector, walls);
+                RenderColumnStatus sectorStatus = CalculateRenderWindow(sectorInfo, sector, walls);
+
+                if (sectorStatus == default || renderableWalls.Count == 0)
+                {
+                    continue;
+                }
 
                 // 3. Render Floors, Ceilings, and Walls
-                List<RenderableWall> neighbors = RenderSector(player, sector, sectors, screen);
+                List<RenderableWall> neighbors = RenderSector(player, sector, sectors, sectorStatus);
 
                 // 4. Keep track of parent walls to avoid rendering them again
                 Span<RenderableWall> neighborsSpan = CollectionsMarshal.AsSpan(neighbors);
@@ -205,7 +229,7 @@ namespace RenderingEngine.Engine
             return neighborsForDepth;
         }
 
-        public void RenderSpritesAndTransparentWalls(Span<BGRA> screen, PortalPlayerSnapshot player)
+        public void RenderSpritesAndTransparentWalls(PortalPlayerSnapshot player)
         {
             ReadOnlySpan<Sector> sectors = Sectors;
 
@@ -219,7 +243,7 @@ namespace RenderingEngine.Engine
 
                 if (renderableWall is TransparentWall transparentWall)
                 {
-                    DrawTransparentWall(screen, sectors, transparentWall);
+                    DrawTransparentWall(sectors, transparentWall);
                 }
                 else if (renderableWall is SectorSprites sectorSprites)
                 {
@@ -231,7 +255,7 @@ namespace RenderingEngine.Engine
 
                     foreach (Sprite s in sprites)
                     {
-                        DrawSprite(screen, sectors, s, sectorSprites);
+                        DrawSprite(sectors, s, sectorSprites);
                     }
                 }
             }
@@ -240,7 +264,7 @@ namespace RenderingEngine.Engine
         private readonly List<RenderableWall> neightbors = [];
         private readonly List<RenderableWall> renderableWalls = [];
 
-        private void CalculateRenderWindow(
+        private RenderColumnStatus CalculateRenderWindow(
             NeighborsToRender sectorInfo,
             Sector sector,
             Span<Wall> walls)
@@ -250,8 +274,10 @@ namespace RenderingEngine.Engine
 
             if (sector.Floor == sector.Ceil)
             {
-                return;
+                return default;
             }
+
+            RenderColumnStatus sectorStatus = default;
 
             RenderWindowHelper.NewSector(sectorInfo);
 
@@ -259,46 +285,62 @@ namespace RenderingEngine.Engine
             {
                 Wall wall = walls[s];
 
-                CalculateRenderWindow(wall, sector, renderableWalls);
+                RenderColumnStatus status = CalculateRenderWindow(wall, sector, renderableWalls);
+                sectorStatus |= status;
             }
+
+            return sectorStatus;
         }
 
         private List<RenderableWall> RenderSector(
             PortalPlayerSnapshot player,
             Sector sector,
             ReadOnlySpan<Sector> sectors,
-            Span<BGRA> screen)
+            RenderColumnStatus sectorStatus)
         {
-            if (sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
+            if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderFloor))
             {
-                RenderSkyboxFloorVector(player, screen, sector);
-            }
-            else
-            {
-                RenderFloorVector(player, sector, screen);
-            }
-
-            if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
-            {
-                RenderSkyboxVector(player, screen, sector);
-            }
-            else
-            {
-                RenderCeilingVector(player, sector, screen);
-            }
-
-            for (int s = 0; s < renderableWalls.Count; s++)
-            {
-                RenderableWall renderableWall = renderableWalls[s];
-                Wall wall = renderableWall.Wall;
-
-                bool wallDrawn = wall.IsPortal ?
-                    DrawPortalWall(player, screen, sector, sectors, renderableWall) :
-                    DrawBasicWall(player, screen, sector, renderableWall);
-
-                if (wallDrawn && wall.IsPortal)
+                if (sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
                 {
-                    neightbors.Add(renderableWall);
+                    RenderSkyboxFloorVector(player, sector);
+                }
+                else
+                {
+                    RenderFloorVector(player, sector);
+                }
+            }
+
+            if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderCeiling))
+            {
+                if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
+                {
+                    RenderSkyboxVector(player, sector);
+                }
+                else
+                {
+                    RenderCeilingVector(player, sector);
+                }
+            }
+
+            if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderWall))
+            {
+                for (int s = 0; s < renderableWalls.Count; s++)
+                {
+                    RenderableWall renderableWall = renderableWalls[s];
+
+                    if (renderableWall.RenderColumnStatus.HasFlag(RenderColumnStatus.CanRenderWall))
+                    {
+                        Wall wall = renderableWall.Wall;
+
+                        bool wallDrawn = wall.IsPortal ?
+                            DrawPortalWall(player, sector, sectors, renderableWall) :
+                            DrawBasicWall(player, sector, renderableWall);
+
+                        if (wallDrawn && wall.IsPortal)
+                        {
+                            neightbors.Add(renderableWall);
+                        }
+                    }
                 }
             }
 
@@ -306,14 +348,14 @@ namespace RenderingEngine.Engine
         }
 
 
-        private void CalculateRenderWindow(Wall wall, Sector sector, List<RenderableWall> renderableWalls)
+        private RenderColumnStatus CalculateRenderWindow(Wall wall, Sector sector, List<RenderableWall> renderableWalls)
         {
             Span<RenderWindow> renderedArea = RenderWindowHelper.RenderWindow;
 
             if (!RenderWindowHelper.SetWallToCalculate(wall))
             {
                 // don't render this wall, as its not within the window or is fully obscured by other walls
-                return;
+                return default;
             }
 
             (int offset, int wallFromX, int wallToX) = RenderWindowHelper.GetWallRenderWindowX();
@@ -329,8 +371,11 @@ namespace RenderingEngine.Engine
 
             if (wallToX <= wallFromX)
             {
-                return;
+                return default;
             }
+
+            RenderColumnStatus wallStatus = default;
+            RenderColumnStatus status = default;
 
             int renderableFromX = wallFromX;
             int renderableToX = wallToX;
@@ -340,7 +385,7 @@ namespace RenderingEngine.Engine
                 ref RenderWindow renderedAreaX = ref renderedArea[x];
 
                 // we already have a different wall rendering in front of this one
-                if (renderedAreaX.Calculated)
+                if (renderedAreaX.Calculated || renderedAreaX.Finished)
                 {
                     if (x - 1 > renderableFromX)
                     {
@@ -351,13 +396,16 @@ namespace RenderingEngine.Engine
                             Wall = wall,
                             XLeft = renderableFromX,
                             XRight = x,
-                            Offset = offset
+                            Offset = offset,
+                            RenderColumnStatus = status
                         });
                     }
 
                     renderableFromX = x;
                     wallStartY += ceilDistIncr;
                     wallEndY += floorDistIncr;
+                    wallStatus |= status;
+                    status = default;
 
                     continue;
                 }
@@ -369,10 +417,13 @@ namespace RenderingEngine.Engine
                 renderedAreaX.WallEnd = wallEndYInt;
 
                 RenderWindowHelper.RecalculateRenderWindow(ref renderedAreaX, true);
+                status |= renderedAreaX.Status;
 
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;
             }
+
+            wallStatus |= status;
 
             if (renderableToX > renderableFromX)
             {
@@ -382,9 +433,12 @@ namespace RenderingEngine.Engine
                     Wall = wall,
                     XLeft = renderableFromX,
                     XRight = renderableToX,
-                    Offset = offset
+                    Offset = offset,
+                    RenderColumnStatus = status
                 });
             }
+
+            return wallStatus;
         }
 
         [MemberNotNull(nameof(Snapshot))]
@@ -392,8 +446,7 @@ namespace RenderingEngine.Engine
         {
             Snapshot = snapShot;
 
-            Span<BGRA> currentBuffer = buffer;
-            DrawScreen(currentBuffer, snapShot);
+            DrawScreen(snapShot);
 
             return buffer;
         }

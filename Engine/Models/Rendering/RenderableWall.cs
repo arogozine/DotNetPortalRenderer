@@ -12,6 +12,7 @@ namespace RenderingEngine.Models
         public required int Offset { get; set; }
         public RenderWindow[]? RenderWindow { get; set; }
         public Wall[]? ParentWalls { get; set; }
+        public RenderColumnStatus RenderColumnStatus { get; set; }
 
 
         public bool IsPortalWithMiddleTexture => Wall.IsPortal && Wall.Line.MiddleTexture != null;
