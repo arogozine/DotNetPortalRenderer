@@ -12,51 +12,48 @@ namespace BuildAssetLoader
 
             foreach (var fileAndBinary in grpFile.Files.Where(IsMapFile))
             {
+                (int start, int length) sectors, walls, sprites;
+
                 string fileName = fileAndBinary.Key;
                 Span<byte> binary = fileAndBinary.Value;
+                int offset = 0;
 
-                uint mapVersion = BitConverter.ToUInt32(binary);
+                uint mapVersion = BitConverter.ToUInt32(binary[offset..]);
                 if (mapVersion != 7)
                 {
                     throw new NotSupportedException("We only support v7 maps");
                 }
-                binary = binary[sizeof(uint)..];
+                offset += sizeof(uint);
 
-                StartingPosition mapHeader = MemoryMarshal.Read<StartingPosition>(binary);
-                binary = binary[sizeof(StartingPosition)..];
+                StartingPosition mapHeader = MemoryMarshal.Read<StartingPosition>(binary[offset..]);
+                offset += sizeof(StartingPosition);
 
-                // load all sectors
-                ushort numSectors = BitConverter.ToUInt16(binary);
-                binary = binary[sizeof(ushort)..];
+                // sectors
+                ushort numSectors = BitConverter.ToUInt16(binary[offset..]);
+                offset += sizeof(ushort);
                 int sectorSizeInBytes = numSectors * sizeof(SectorType);
-                SectorType[] sectors = MemoryMarshal.Cast<byte, SectorType>(binary[..sectorSizeInBytes])
-                    .ToArray();
-                binary = binary[sectorSizeInBytes..];
+                sectors = (offset, sectorSizeInBytes);
+                offset += sectorSizeInBytes;
 
-                // load all walls
-                ushort numWalls = BitConverter.ToUInt16(binary);
-                binary = binary[sizeof(ushort)..];
+                // walls
+                ushort numWalls = BitConverter.ToUInt16(binary[offset..]);
+                offset += sizeof(ushort);
                 int wallSizeInBytes = numWalls * sizeof(WallType);
-                WallType[] walls = MemoryMarshal.Cast<byte, WallType>(binary[..wallSizeInBytes])
-                    .ToArray();
-                binary = binary[wallSizeInBytes..];
+                walls = (offset, wallSizeInBytes);
+                offset += wallSizeInBytes;
 
-                // load all sprites
-                ushort numSprites = BitConverter.ToUInt16(binary);
-                binary = binary[sizeof(ushort)..];
+                // sprites
+                ushort numSprites = BitConverter.ToUInt16(binary[offset..]);
+                offset += sizeof(ushort);
                 int spriteSizeInBytes = numSectors * sizeof(SpriteType);
-                SpriteType[] sprites = MemoryMarshal.Cast<byte, SpriteType>(binary[..spriteSizeInBytes])
-                    .ToArray();
-                binary = binary[spriteSizeInBytes..];
+                sprites = (offset, spriteSizeInBytes);
+                offset += spriteSizeInBytes;
 
-                mapFiles.Add(new MapFile
+                mapFiles.Add(new MapFile(fileAndBinary.Value, sectors, walls, sprites)
                 {
                     MapName = Path.GetFileNameWithoutExtension(fileName),
                     Version = mapVersion,
                     StartingPosition = mapHeader,
-                    Sectors = sectors,
-                    Sprites = sprites,
-                    Walls = walls
                 });
             }
 
@@ -71,6 +68,7 @@ namespace BuildAssetLoader
             {
                 string fileName = fileAndBinary.Key;
                 Span<byte> binary = fileAndBinary.Value;
+                int offset = 0;
 
                 int artNum = 0;
 
@@ -81,21 +79,21 @@ namespace BuildAssetLoader
                     _ = int.TryParse(lastThree, out artNum);
                 }
 
-                uint artVersion = BitConverter.ToUInt32(binary[0..]);
-                uint localTileStart = BitConverter.ToUInt32(binary[8..]);
-                uint localTileEnd = BitConverter.ToUInt32(binary[12..]);
+                uint artVersion = BitConverter.ToUInt32(binary[offset..]);
+                uint localTileStart = BitConverter.ToUInt32(binary[(offset + 8)..]);
+                uint localTileEnd = BitConverter.ToUInt32(binary[(offset + 12)..]);
 
-                binary = binary[16..];
+                offset += 16;
                 int numberOfTiles = unchecked((int)(localTileEnd - localTileStart + 1));
                 int numberOfTilesInt16 = numberOfTiles * sizeof(short);
                 int numberOfTilesInt32 = numberOfTiles * sizeof(int);
 
-                Span<short> tilesizx = MemoryMarshal.Cast<byte, short>(binary[..numberOfTilesInt16]);
-                binary = binary[numberOfTilesInt16..];
-                Span<short> tilesizy = MemoryMarshal.Cast<byte, short>(binary[..numberOfTilesInt16]);
-                binary = binary[numberOfTilesInt16..];
-                Span<PropType> picanm = MemoryMarshal.Cast<byte, PropType>(binary[..numberOfTilesInt32]);
-                binary = binary[numberOfTilesInt32..];
+                Span<short> tilesizx = MemoryMarshal.Cast<byte, short>(binary.Slice(offset, numberOfTilesInt16));
+                offset += numberOfTilesInt16;
+                Span<short> tilesizy = MemoryMarshal.Cast<byte, short>(binary.Slice(offset, numberOfTilesInt16));
+                offset += numberOfTilesInt16;
+                Span<PropType> picanm = MemoryMarshal.Cast<byte, PropType>(binary.Slice(offset, numberOfTilesInt32));
+                offset += numberOfTilesInt32;
 
                 var tiles = new TileType[numberOfTiles];
 
@@ -107,10 +105,10 @@ namespace BuildAssetLoader
                     PropType prop = picanm[i];
 
                     int length = xSize * ySize;
-                    byte[] pixels = binary[..length].ToArray();
-                    binary = binary[length..];
+                    
+                    tiles[i] = new TileType(fileAndBinary.Value, (offset, length), xSize, ySize, prop);
 
-                    tiles[i] = new TileType(xSize, ySize, prop, pixels);
+                    offset += length;
                 }
 
                 artFiles.Add(new ArtFile

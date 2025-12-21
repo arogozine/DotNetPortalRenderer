@@ -124,6 +124,8 @@ namespace RenderingEngine.DoomMapLoader
 
                     int panningX = wall.XPanning;
                     int panningY = wall.YPanning;
+                    int scaleX = wall.XRepeat;
+                    int scaleY = wall.YRepeat;
 
                     var line = new Line {
                         Id = ij,
@@ -133,12 +135,16 @@ namespace RenderingEngine.DoomMapLoader
                             Name = texture,
                             XOffset = panningX,
                             YOffset = panningY,
+                            XScale = scaleX,
+                            YScale = scaleY,
                             RenderingOptions = ToTextureRenderingOptions(wall.CStat)
                         },
                         MiddleTexture = new Models.TextureInfo {
                             Name = texture,
                             XOffset = panningX,
                             YOffset = panningY,
+                            XScale = scaleX,
+                            YScale = scaleY,
                             RenderingOptions = ToTextureRenderingOptions(wall.CStat)
                         },
                         SectorTo = wall.NextSector,
@@ -146,6 +152,8 @@ namespace RenderingEngine.DoomMapLoader
                             Name = texture,
                             XOffset = panningX,
                             YOffset = panningY,
+                            XScale = scaleX,
+                            YScale = scaleY,
                             RenderingOptions = ToTextureRenderingOptions(wall.CStat)
                         },
                     };
@@ -337,7 +345,7 @@ namespace RenderingEngine.DoomMapLoader
 
         private static int DetermineZLocation(int coordinate)
         {
-            coordinate >>= 6;
+            coordinate >>= 7;
             // build engine coordinates are upside down
             return coordinate * -1;
         }

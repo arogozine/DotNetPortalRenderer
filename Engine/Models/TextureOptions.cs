@@ -6,6 +6,8 @@
         public int XOffset { get; set; }
         public int YOffset { get; set; }
         public float Alpha { get; set; }
+        public int? XScale { get; set; }
+        public int? YScale { get; set; }
         public TextureRenderingOptions RenderingOptions { get; set; }
     }
 

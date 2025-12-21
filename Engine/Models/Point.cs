@@ -53,9 +53,10 @@
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static implicit operator (float X, float Y)(Point point)
+        public readonly void Deconstruct(out float item1, out float item2)
         {
-            return (point.X, point.Y);
+            item1 = X;
+            item2 = Y;
         }
     }
 }

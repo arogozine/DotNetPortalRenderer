@@ -9,7 +9,6 @@ namespace RenderingEngine.Engine
         private Vector<int> pyVI = default;
         private Vector<int> pSinVI = default;
         private Vector<int> pCosVI = default;
-        private Vector<float> ivIncrFI = default;
 
         private Vector<float> pxV = default;
         private Vector<float> pyV = default;
@@ -42,7 +41,6 @@ namespace RenderingEngine.Engine
             pyVI = Vector.Create(float.ConvertToIntegerNative<int>(py * (1 << 16)));
             pSinVI = Vector.Create(float.ConvertToIntegerNative<int>(pSin * (1 << 8)));
             pCosVI = Vector.Create(float.ConvertToIntegerNative<int>(pCos * (1 << 8)));
-            ivIncrFI = Vector.Create(oneOverHeight * (Vector<float>.Count << 8));
         }
 
         [SkipLocalsInit]
@@ -139,7 +137,6 @@ namespace RenderingEngine.Engine
         {
             byte lightLevel = sector.LightLevel;
 
-            int height = PixelHeight;
             int width = PixelWidth;
 
             int yCeiling = float.ConvertToIntegerNative<int>(sector.Ceil - player.Z);
@@ -150,6 +147,8 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = sector.CeilTexture;
             ref Texture ceilingTexture = ref TextureCache.GetTexture(textureInfo.Name);
+            bool flipY = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
+            bool flipX = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(rotated ? ceilingTexture.Rotated : ceilingTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
@@ -188,7 +187,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
                     x, lightLevel, yCeliningV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV);
+                    textureHeightMaskV, textureWidthMaskV, flipY, flipX);
             }
         }
 
@@ -473,7 +472,6 @@ namespace RenderingEngine.Engine
         {
             byte lightLevel = sector.LightLevel;
 
-            int height = PixelHeight;
             int width = PixelWidth;
 
             int yfloor = float.ConvertToIntegerNative<int>(sector.Floor - player.Z);
@@ -484,11 +482,13 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = sector.FloorTexture;
             ref Texture floorTexture = ref TextureCache.GetTexture(textureInfo.Name);
+            bool flipY = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
+            bool flipX = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(rotated ? floorTexture.Rotated : floorTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
-            Vector<int> yfloorV = Vector.Create<int>(yfloor);
+            Vector<int> yfloorV = Vector.Create(yfloor);
 
             int textureWidth = floorTexture.Width;
             int textureHeightMask = (rotated ? floorTexture.Width : floorTexture.Height) - 1;
@@ -522,7 +522,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
                     x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV);
+                    textureHeightMaskV, textureWidthMaskV, flipY, flipX);
             }
         }
 
@@ -542,7 +542,8 @@ namespace RenderingEngine.Engine
             Vector<int> xOffSetV, // 1 << 16
             Vector<int> textureWidthV,
             Vector<int> textureHeightMaskV,
-            Vector<int> textureWidthMaskV
+            Vector<int> textureWidthMaskV,
+            bool flipY, bool flipX
         )
         {
             Vector<int> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
@@ -567,6 +568,17 @@ namespace RenderingEngine.Engine
 
                 Vector<int> _y1 = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
                 Vector<int> _x1 = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
+
+                if (flipY)
+                {
+                    _y1 = textureHeightMaskV - _y1;
+                }
+
+                if (flipX)
+                {
+                    _x1 = textureHeightMaskV - _x1;
+                }
+
                 Vector<int> textureIndex = _y1 * textureWidthV + _x1;
 
                 ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
@@ -593,6 +605,17 @@ namespace RenderingEngine.Engine
 
                 Vector<int> _y1 = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
                 Vector<int> _x1 = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
+
+                if (flipY)
+                {
+                    _y1 = textureHeightMaskV - _y1;
+                }
+
+                if (flipX)
+                {
+                    _x1 = textureHeightMaskV - _x1;
+                }
+
                 Vector<int> textureIndex = _y1 * textureWidthV + _x1;
 
                 ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);

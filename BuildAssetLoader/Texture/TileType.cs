@@ -2,17 +2,26 @@
 {
     public sealed class TileType
     {
-        public readonly short XSize;
-        public readonly short YSize;
-        public readonly PropType Properties;
-        public readonly byte[] Pixels;
+        private readonly byte[] _binary;
+        private readonly (int Start, int Length) _pixels;
 
-        public TileType(short xSize, short ySize, PropType properties, byte[] pixels)
+        public short XSize { get; }
+        public short YSize { get; }
+        public PropType Properties { get; }
+        public Span<byte> Pixels => _binary.AsSpan().Slice(_pixels.Start, _pixels.Length);
+
+        public TileType(
+            byte[] binary,
+            (int Start, int Length) pixels,
+            short xSize,
+            short ySize,
+            PropType properties)
         {
+            _binary = binary;
+            _pixels = pixels;
             XSize = xSize;
             YSize = ySize;
             Properties = properties;
-            Pixels = pixels;
         }
     }
 }
