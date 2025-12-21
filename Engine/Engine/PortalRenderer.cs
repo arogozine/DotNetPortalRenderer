@@ -19,7 +19,7 @@ namespace RenderingEngine.Engine
         private PortalPlayerSnapshot? Snapshot = null;
 
         private readonly float[] angleCache;
-        private readonly float[] incrVectorCache;
+        private readonly int[] incrVectorCache;
 
         private readonly BGRA[] buffer;
 
@@ -33,7 +33,7 @@ namespace RenderingEngine.Engine
             WallHelper = new WallHelper(width, height);
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             angleCache = new float[width + overflowBuffer];
-            incrVectorCache = new float[width + overflowBuffer];
+            incrVectorCache = new int[width + overflowBuffer];
 
             RenderWindowHelper = new RenderWindowHelper(width, height);
 
@@ -62,11 +62,12 @@ namespace RenderingEngine.Engine
             int width = this.PixelWidth;
             int halfHeightInt = this.PixelHeight / 2;
             float oneOverHeight = 1f / PixelHeight;
+            const float div = 1 << 8;
 
             for (int x = 0; x < width; x++)
             {
-                int upper = (halfHeightInt - x) << 8;
-                incrVectorCache[x] = 1f / (upper * oneOverHeight);
+                int upper = halfHeightInt - x;
+                incrVectorCache[x] = float.ConvertToIntegerNative<int>(div / (upper * oneOverHeight));
             }
         }
 

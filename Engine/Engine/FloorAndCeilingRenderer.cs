@@ -146,7 +146,6 @@ namespace RenderingEngine.Engine
 
             float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
 
-            int halfHeightInt = height / 2;
             int widthDiv2 = width / 2;
 
             TextureInfo textureInfo = sector.CeilTexture;
@@ -155,7 +154,7 @@ namespace RenderingEngine.Engine
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(rotated ? ceilingTexture.Rotated : ceilingTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
-            Vector<float> yCeliningV = Vector.Create<float>(yCeiling << 16);
+            Vector<int> yCeliningV = Vector.Create<int>(yCeiling);
 
             int textureWidth = ceilingTexture.Width;
             int textureHeightMask = (rotated ? ceilingTexture.Width : ceilingTexture.Height) - 1;
@@ -481,7 +480,6 @@ namespace RenderingEngine.Engine
 
             float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
 
-            int halfHeightInt = height / 2;
             int widthDiv2 = width / 2;
 
             TextureInfo textureInfo = sector.FloorTexture;
@@ -490,7 +488,7 @@ namespace RenderingEngine.Engine
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(rotated ? floorTexture.Rotated : floorTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
-            Vector<float> yfloorV = Vector.Create<float>(yfloor << 16);
+            Vector<int> yfloorV = Vector.Create<int>(yfloor);
 
             int textureWidth = floorTexture.Width;
             int textureHeightMask = (rotated ? floorTexture.Width : floorTexture.Height) - 1;
@@ -538,7 +536,7 @@ namespace RenderingEngine.Engine
             int width,
             int x,
             uint lightLevel,
-            Vector<float> yCeilV, // 1 << 8
+            Vector<int> yCeilV, // 1 << 8
             int xMapPosMultiplier, // 1 << 10
             Vector<int> yOffSetV, // 1 << 16
             Vector<int> xOffSetV, // 1 << 16
@@ -547,7 +545,7 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthMaskV
         )
         {
-            Vector<float> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
+            Vector<int> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
 
             int rem = (floorToY - floorFromY) % Vector<int>.Count;
             floorToY -= rem;
@@ -559,7 +557,7 @@ namespace RenderingEngine.Engine
 
             while (!Unsafe.AreSame(ref screenTex, ref toScalePtr))
             {
-                Vector<int> yMapPosR = Vector.ConvertToInt32Native(yCeilV * incramentVector);
+                Vector<int> yMapPosR = yCeilV * incramentVector;
                 Vector<int> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 (Vector<int> xMapPos, Vector<int> yMapPos) = MathFormulas.RotateVertexBack(
@@ -581,12 +579,11 @@ namespace RenderingEngine.Engine
 
                 floorFromY += Vector<float>.Count;
                 incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
-                // incramentVector -= ivIncrFI;
             }
             
             if (rem > 0)
             {
-                Vector<int> yMapPosR = Vector.ConvertToInt32Native(yCeilV / incramentVector);
+                Vector<int> yMapPosR = yCeilV * incramentVector;
                 Vector<int> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 (Vector<int> xMapPos, Vector<int> yMapPos) = MathFormulas.RotateVertexBack(
