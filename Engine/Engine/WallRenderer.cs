@@ -105,11 +105,11 @@ namespace RenderingEngine.Engine
 
             ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
 
-            int lowerTextureStart = DetermineLowerTextureYOffset(floorOffset, lowerTextureInfo, ref lowerTexture);
-            int lowerXOffset = DetermineXOffset(lowerTextureInfo, in lowerTexture);
+            int lowerTextureStart = lowerTextureInfo.YOffset;
+            int lowerXOffset = lowerTextureInfo.XOffset;
 
-            int upperTextureStart = DetermineUpperTextureYOffset(ceilOffset, upperTextureInfo, ref upperTexture);
-            int upperXOffset = DetermineXOffset(upperTextureInfo, in upperTexture);
+            int upperTextureStart = upperTextureInfo.YOffset;
+            int upperXOffset = upperTextureInfo.XOffset;
 
             ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperSkybox ? upperTexture.Data : upperTexture.Rotated);
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
@@ -281,8 +281,8 @@ namespace RenderingEngine.Engine
             int textureWidth = wallTexture.Height;
             int textureHeight = wallTexture.Width;
 
-            int textureStart = DetermineTextureYOffset(sector, textureInfo, in wallTexture);
-            int xOffset = DetermineXOffset(textureInfo, in wallTexture);
+            int textureStart = textureInfo.YOffset;
+            int xOffset = textureInfo.XOffset;
 
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
             ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
@@ -482,82 +482,6 @@ namespace RenderingEngine.Engine
                     textureXPos_u += textureXIncr_u;
                 }
             }
-        }
-
-        private static int DetermineXOffset(TextureInfo textureInfo, in Texture wallTexture)
-        {
-            int offset = textureInfo.XOffset;
-            int textureWidth = wallTexture.Width;
-
-            if (offset < 0)
-            {
-                offset = textureWidth + offset;
-            }
-
-            return offset;
-        }
-
-        private static int DetermineLowerTextureYOffset(
-            int floorOffset,
-            TextureInfo textureInfo,
-            ref Texture wallTexture)
-        {
-            int offset = textureInfo.YOffset;
-            TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
-            int textureHeight = wallTexture.Height;
-            int sectorHeight = floorOffset;
-
-            offset = EnsureOffsetIsPositive(textureHeight, offset);
-
-            if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
-            {
-                int offsetFromBottom = DetermineTextureOffsetFromBottom(textureHeight, sectorHeight);
-                offset = offsetFromBottom - offset;
-            }
-
-            return EnsureOffsetIsPositive(textureHeight, offset);
-        }
-
-        private static int DetermineUpperTextureYOffset(
-            int ceilingOffset,
-            TextureInfo textureInfo,
-            ref Texture wallTexture)
-        {
-            int offset = textureInfo.YOffset;
-            TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
-            int textureHeight = wallTexture.Height;
-            int sectorHeight = -ceilingOffset;
-
-            offset = EnsureOffsetIsPositive(textureHeight, offset);
-
-            if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
-            {
-                int offsetFromBottom = DetermineTextureOffsetFromBottom(textureHeight, sectorHeight);
-                offset = offsetFromBottom + offset;
-            }
-
-            return EnsureOffsetIsPositive(textureHeight, offset);
-        }
-
-        private static int DetermineTextureYOffset(
-            Sector sector,
-            TextureInfo textureInfo,
-            in Texture wallTexture)
-        {
-            int offset = textureInfo.YOffset;
-            TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
-            int textureHeight = wallTexture.Height;
-            int sectorHeight = float.ConvertToIntegerNative<int>(sector.Ceil - sector.Floor);
-
-            offset = EnsureOffsetIsPositive(textureHeight, offset);
-
-            if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom) || renderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
-            {
-                int offsetFromBottom = DetermineTextureOffsetFromBottom(textureHeight, sectorHeight);
-                offset = offsetFromBottom + offset;
-            }
-
-            return EnsureOffsetIsPositive(textureHeight, offset);
         }
 
         private static int EnsureOffsetIsPositive(int textureHeight, int offset)

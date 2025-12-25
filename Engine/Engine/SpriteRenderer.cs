@@ -125,7 +125,7 @@ namespace RenderingEngine.Engine
 
             float oneOverSectorHeight = 1f / sectorHeight;
 
-            int yOffset = textureInfo.YOffset;
+            int yOffset = textureInfo.YOffset > sectorHeight ? textureInfo.YOffset - 65536 : textureInfo.YOffset;
             bool renderFromTop = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromTop);
             byte lightLevel = sector.LightLevel;
             float alpha = Math.Clamp(textureInfo.Alpha, 0f, 1f);
@@ -140,7 +140,7 @@ namespace RenderingEngine.Engine
                 ceilOffset = 0f;
             }
 
-            int xOffset = DetermineXOffset(textureInfo, in texture);
+            int xOffset = textureInfo.XOffset;
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
