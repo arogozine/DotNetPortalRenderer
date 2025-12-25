@@ -5,6 +5,36 @@ namespace RenderingEngine.Engine
 {
     internal static class MathFormulas
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe Span<T> AlignSpan<T>(Span<T> span)
+            where T : unmanaged 
+        {
+            int alignment = Vector<byte>.Count;
+
+            ref T r0 = ref MemoryMarshal.GetReference(span);
+            byte* ptr = (byte*)Unsafe.AsPointer(ref r0);
+
+            // Calculate misalignment
+            nuint misalignment = (nuint)ptr & (nuint)(alignment - 1);
+
+            if (misalignment == 0)
+            {
+                return span;
+            }
+
+            int offset = alignment - (int)misalignment;
+            (int quotient, int rem) = Math.DivRem(offset, sizeof(T));
+
+            if (rem != 0)
+            {
+                quotient ++;
+            }
+
+            // assume span is big enough
+
+            return span[quotient..];
+        }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (Vector<int> rx1, Vector<int> ry1) RotateVertexBack(

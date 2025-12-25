@@ -149,6 +149,7 @@ namespace RenderingEngine.Engine
             ref Texture ceilingTexture = ref TextureCache.GetTexture(textureInfo.Name);
             bool flipY = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
             bool flipX = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
+            bool swapXy = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.SwapXY);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(rotated ? ceilingTexture.Rotated : ceilingTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
@@ -187,7 +188,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
                     x, lightLevel, yCeliningV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, flipY, flipX);
+                    textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy);
             }
         }
 
@@ -484,6 +485,7 @@ namespace RenderingEngine.Engine
             ref Texture floorTexture = ref TextureCache.GetTexture(textureInfo.Name);
             bool flipY = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
             bool flipX = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
+            bool swapXy = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.SwapXY);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(rotated ? floorTexture.Rotated : floorTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
@@ -522,7 +524,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
                     x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, flipY, flipX);
+                    textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy);
             }
         }
 
@@ -543,9 +545,11 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthV,
             Vector<int> textureHeightMaskV,
             Vector<int> textureWidthMaskV,
-            bool flipY, bool flipX
+            bool flipY, bool flipX, bool swapXy
         )
         {
+            Span<int> incrVectorCache = MathFormulas.AlignSpan(this.incrVectorCache);
+
             Vector<int> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
 
             int rem = (floorToY - floorFromY) % Vector<int>.Count;
@@ -566,8 +570,19 @@ namespace RenderingEngine.Engine
                     yMapPosR,
                     pSinVI, pCosVI, pxVI, pyVI);
 
-                Vector<int> _y1 = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
-                Vector<int> _x1 = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
+                Vector<int> _y1; // = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
+                Vector<int> _x1; // = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
+
+                if (swapXy)
+                {
+                    _y1 = ((xMapPos + xOffSetV) >> 16) & textureHeightMaskV;
+                    _x1 = ((yMapPos + yOffSetV) >> 16) & textureWidthMaskV;
+                }
+                else
+                {
+                    _y1 = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
+                    _x1 = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
+                }
 
                 if (flipY)
                 {
@@ -603,8 +618,19 @@ namespace RenderingEngine.Engine
                     yMapPosR,
                     pSinVI, pCosVI, pxVI, pyVI);
 
-                Vector<int> _y1 = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
-                Vector<int> _x1 = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
+                Vector<int> _y1; // = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
+                Vector<int> _x1; // = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
+
+                if (swapXy)
+                {
+                    _y1 = ((xMapPos + xOffSetV) >> 16) & textureHeightMaskV;
+                    _x1 = ((yMapPos + yOffSetV) >> 16) & textureWidthMaskV;
+                }
+                else
+                {
+                    _y1 = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
+                    _x1 = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
+                }
 
                 if (flipY)
                 {

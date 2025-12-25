@@ -59,6 +59,8 @@ namespace RenderingEngine.Engine
 
         private void GenerateCache()
         {
+            Span<int> incrVectorCache = MathFormulas.AlignSpan(this.incrVectorCache);
+
             int width = this.PixelWidth;
             int halfHeightInt = this.PixelHeight / 2;
             float oneOverHeight = 1f / PixelHeight;
@@ -290,7 +292,7 @@ namespace RenderingEngine.Engine
                 sectorStatus |= status;
             }
 
-            return sectorStatus;
+            return sectorStatus & RenderColumnStatus.NewRender;
         }
 
         private List<RenderableWall> RenderSector(
