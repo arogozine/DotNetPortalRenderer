@@ -49,7 +49,6 @@ namespace RenderingEngine.Engine
         {
             Span<bool> visibility = this.visibility;
             visibility.Fill(true);
-            ref bool visibilityPtr = ref MemoryMarshal.GetArrayDataReference(this.visibility);
 
             int j = 0;
             for (int i = 0; i < walls.Length; i++)
@@ -58,26 +57,15 @@ namespace RenderingEngine.Engine
                 int xLeft = wall.XLeft;
                 int xRight = wall.XRight;
 
-                bool hidden = true;
+                Span<bool> subspan = visibility[xLeft..xRight];
+                bool visible = subspan.Contains(true);
+                subspan.Clear();
 
-                for (ref bool startPtr = ref Unsafe.Add(ref visibilityPtr, xLeft), endPtr = ref Unsafe.Add(ref visibilityPtr, xRight);
-                     !Unsafe.IsAddressGreaterThan(ref startPtr, ref endPtr);
-                     startPtr = ref Unsafe.Add(ref startPtr, 1))
+                if (visible)
                 {
-                    if (startPtr)
-                    {
-                        hidden = false;
-                        startPtr = false;
-                    }
+                    walls[j] = wall;
+                    j++;
                 }
-
-                if (hidden)
-                {
-                    continue;
-                }
-
-                walls[j] = wall;
-                j++;
             }
 
             walls = walls[..j];
@@ -251,11 +239,6 @@ namespace RenderingEngine.Engine
                 Wall wall = walls[i];
 
                 if (!wall.IntersectsView)
-                {
-                    continue;
-                }
-
-                if (wall.C1.Y <= 0f || wall.C2.Y <= 0f)
                 {
                     continue;
                 }

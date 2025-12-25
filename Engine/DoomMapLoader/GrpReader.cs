@@ -46,6 +46,11 @@ namespace RenderingEngine.DoomMapLoader
                 options |= TextureRenderingOptions.FlipY;
             }
 
+            if (stat.HasFlag(Stat.SwapXy))
+            {
+                options |= TextureRenderingOptions.SwapXY;
+            }
+
             return options;
         }
 
@@ -174,7 +179,7 @@ namespace RenderingEngine.DoomMapLoader
                 Player = new Player
                 {
                     Angle = radians,
-                    Where = (DetermineXLocation(startingPosition.PosX), DetermineYLocation(startingPosition.PosY), (startingPosition.PosZ >> 6) * -1f),
+                    Where = (DetermineXLocation(startingPosition.PosX), DetermineYLocation(startingPosition.PosY), DetermineZLocation(startingPosition.PosZ)),
                     Sector = startingPosition.SectorNumber
                 },
                 Sprites = ExtractSprites(sprites),
@@ -183,8 +188,8 @@ namespace RenderingEngine.DoomMapLoader
 
             static Point GetPoint(ref WallType wall)
             {
-                int x = DetermineXLocation(wall.X);
-                int y = DetermineYLocation(wall.Y);
+                float x = DetermineXLocation(wall.X);
+                float y = DetermineYLocation(wall.Y);
 
                 return new Point(x, y);
             }
@@ -331,21 +336,21 @@ namespace RenderingEngine.DoomMapLoader
             return (short)(byte.MaxValue - upped);
         }
 
-        private static int DetermineYLocation(int coordinate)
+        private static float DetermineYLocation(float coordinate)
         {
-            coordinate >>= 4;
+            coordinate /= 8f;
             return coordinate;
         }
 
-        private static int DetermineXLocation(int coordinate)
+        private static float DetermineXLocation(float coordinate)
         {
-            coordinate >>= 4;
+            coordinate /= 8f;
             return coordinate * -1;
         }
 
-        private static int DetermineZLocation(int coordinate)
+        private static float DetermineZLocation(float coordinate)
         {
-            coordinate >>= 7;
+            coordinate /= 128f;
             // build engine coordinates are upside down
             return coordinate * -1;
         }

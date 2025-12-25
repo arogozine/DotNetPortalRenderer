@@ -43,7 +43,7 @@ namespace RenderingEngine
                 {
                     StartRenderingSemaphore.Wait(cancellationToken);
                     currentFrame = renderer.DrawFrame(Engine.GetSnapshot());
-                    RenderedFrameSemaphore.Release();
+                    _ = RenderedFrameSemaphore.Release();
                 }
             }
         }

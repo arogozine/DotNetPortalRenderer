@@ -21,6 +21,7 @@
         FromSectorBottom = 8,
         Skybox = 16,
         FlipX = 32,
-        FlipY = 64
+        FlipY = 64,
+        SwapXY = 128
     }
 }

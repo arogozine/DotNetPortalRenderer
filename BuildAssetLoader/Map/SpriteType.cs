@@ -22,6 +22,11 @@
         public readonly SpriteCStat CStat;
 
         /// <summary>
+        /// Texture index into ART file
+        /// </summary>
+        public readonly short PicNum;
+
+        /// <summary>
         /// Shade offset of wall
         /// </summary>
         public readonly sbyte Shade;
@@ -36,6 +41,8 @@
         /// </summary>
         public readonly byte ClipDist;
 
+        public readonly byte Filler;
+
         /// <summary>
         /// Change pixel size to stretch/shrink textures
         /// </summary>
@@ -49,27 +56,12 @@
         /// <summary>
         /// Centre sprite animations
         /// </summary>
-        public readonly byte XOffset;
+        public readonly sbyte XOffset;
 
         /// <summary>
         /// Centre sprite animations
         /// </summary>
-        public readonly byte YOffset;
-
-        /// <summary>
-        /// Texture index into ART file
-        /// </summary>
-        public readonly short PicNum;
-
-        /// <summary>
-        /// Angle the sprite is facing
-        /// </summary>
-        public readonly short Angle;
-
-        public readonly short XVel;
-        public readonly short YVel;
-        public readonly short ZVel;
-        public readonly short Owner;
+        public readonly sbyte YOffset;
 
         /// <summary>
         /// Current sector of sprite's position
@@ -80,6 +72,16 @@
         /// Current status of the sprite (inactive, monster, bullet, etc)
         /// </summary>
         public readonly short StatNumber;
+
+        /// <summary>
+        /// Angle the sprite is facing
+        /// </summary>
+        public readonly short Angle;
+
+        public readonly short Owner;
+        public readonly short XVel;
+        public readonly short YVel;
+        public readonly short ZVel;
 
         /// <summary>
         /// Significance is game-specific
