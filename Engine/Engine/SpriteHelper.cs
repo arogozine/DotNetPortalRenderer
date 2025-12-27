@@ -28,12 +28,12 @@ namespace RenderingEngine.Engine
             {
                 Wall wall = a.Walls[i];
 
-                if (!SpriteHelper.IsPointInPolygon(b.Walls, wall.R1))
+                if (!MathFormulas.IsPointInPolygon(b.Walls, wall.R1))
                 {
                     return false;
                 }
 
-                if (!SpriteHelper.IsPointInPolygon(b.Walls, wall.R2))
+                if (!MathFormulas.IsPointInPolygon(b.Walls, wall.R2))
                 {
                     return false;
                 }
@@ -99,7 +99,7 @@ namespace RenderingEngine.Engine
                 {
                     Sector sector = sectors[i];
 
-                    if (IsPointInPolygon(sector.Walls, sprite.Location))
+                    if (MathFormulas.IsPointInPolygon(sector.Walls, sprite.Location))
                     {
                         potentialSectors.Add(sector);
                     }
@@ -292,40 +292,6 @@ namespace RenderingEngine.Engine
 
                 return ((0 <= s.XLeft) && (s.XLeft <= this.width)) || ((0 <= s.XRight) && (s.XRight <= this.width));
             }
-        }
-
-        public static bool IsPointInPolygon(scoped ReadOnlySpan<Wall> walls, Point point)
-        {
-            float x = point.X;
-            float y = point.Y;
-            bool inside = false;
-
-            for (int i = 0; i < walls.Length; i++)
-            {
-                Wall wall = walls[i];
-
-                float x1 = wall.R1.X;
-                float y1 = wall.R1.Y;
-                float x2 = wall.R2.X;
-                float y2 = wall.R2.Y;
-
-                if (MathF.Min(y1, y2) <= y && y < MathF.Max(y1, y2) && x <= MathF.Max(x1, x2))
-                {
-                    float xinters = default;
-
-                    if (y1 != y2)
-                    {
-                        xinters = (y - y1) * (x2 - x1) / (y2 - y1) + x1;
-                    }
-
-                    if (x1 == x2 || x <= xinters)
-                    {
-                        inside = !inside;
-                    }
-                }
-            }
-
-            return inside;
         }
 
         public void CalculateSpritePlane(Sprite sprite, float yCeil, float yFloor, float yaw)

@@ -720,15 +720,6 @@ namespace RenderingEngine.Engine
             return fromToYDist;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static (float? XScale, float? YScale) DetermineScale(TextureInfo textureInfo, in Texture wallTexture)
-        {
-            float? x = textureInfo.XScale is int xScale ? ((float)(xScale << 3) / wallTexture.Width) : null;
-            float? y = textureInfo.YScale is int yScale ? ((yScale / 16f) / wallTexture.Height) : null;
-
-            return (x, y);
-        }
-
         #endregion
     }
 }

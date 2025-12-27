@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using System.Buffers;
 
 namespace RenderingEngine.Engine
 {
@@ -46,52 +47,47 @@ namespace RenderingEngine.Engine
 
         public static int? GetNewSector(Player player, ReadOnlySpan<Sector> sectors, float dx, float dy)
         {
-            XyzTuple location = (player.Where.X + dx, player.Where.Y + dy, player.Where.Z);
+            Point location = new (player.Where.X + dx, player.Where.Y + dy);
 
+            Sector playerSector = sectors[player.Sector];
+
+            // only look at adjacent sectors
+            var childSectors = new HashSet<int> { player.Sector };
+
+            for (int i = 0; i < playerSector.Walls.Length; i++)
+            {
+                Wall wall = playerSector.Walls[i];
+
+                if (wall.IsPortal)
+                {
+                    _ = childSectors.Add(wall.Neighbor);
+                }
+            }
+
+            foreach (int s in childSectors)
+            {
+                Sector sector = sectors[s];
+                Wall[] walls = sector.Walls;
+
+                if (MathFormulas.IsPointInPolygon(walls, location))
+                {
+                    return s;
+                }
+            }
+
+            // expand search
             for (int s = 0; s < sectors.Length; s++)
             {
                 Sector sector = sectors[s];
                 Wall[] walls = sector.Walls;
 
-                if (IsPointInSector(walls, location))
+                if (MathFormulas.IsPointInPolygon(walls, location))
                 {
                     return s;
                 }
             }
 
             return null;
-        }
-
-        public static bool IsPointInSector(Span<Wall> walls, XyzTuple point)
-        {
-            int intersections = 0;
-
-            for (int i = 0; i < walls.Length; i++)
-            {
-                Wall wall = walls[i];
-
-                float pointA_X = wall.R1.X;
-                float pointA_Y = wall.R1.Y;
-                float pointB_X = wall.R2.X;
-                float pointB_Y = wall.R2.Y;
-
-                // Check if point is on the same horizontal level as the edge's y-coordinates
-                if (point.Y > MathF.Min(pointA_Y, pointB_Y) && point.Y <= MathF.Max(pointA_Y, pointB_Y))
-                {
-                    // Calculate the x-coordinate of the intersection of the ray with the edge
-                    if (point.Y != pointA_Y && point.Y != pointB_Y)
-                    {
-                        float intersectX = pointA_X + (point.Y - pointA_Y) * (pointB_X - pointA_X) / (pointB_Y - pointA_Y);
-                        if (intersectX > point.X)
-                        {
-                            intersections++;
-                        }
-                    }
-                }
-            }
-
-            // If the number of intersections is odd, the point is inside the polygon
-            return intersections % 2 != 0;
         }
     }
 }
