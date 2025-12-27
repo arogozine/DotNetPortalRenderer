@@ -122,8 +122,11 @@ namespace RenderingEngine.MapGen
             }
 
             Sector[] sectors = map.Sectors.Select(ParseMapSector).ToArray();
-            
-            SpriteHelper.AssignSectors(map.Sprites, sectors);
+
+            if (arguments.IWad is not null)
+            {
+                SpriteHelper.AssignSectors(map.Sprites, sectors);
+            }
 
             return (map.Player, sectors, map.Sprites);
         }

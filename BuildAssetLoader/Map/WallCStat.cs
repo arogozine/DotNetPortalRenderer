@@ -4,12 +4,12 @@
     public enum WallCStat : short
     {
         /// <summary>
-        /// Blocking wall (use with clipmove, getzrange)
+        /// Make wall blockable
         /// </summary>
         BlockingWallClipmove = 1,
 
         /// <summary>
-        /// bottoms of invisible walls swapped
+        /// Make bottoms of invisible walls swapped
         /// </summary>
         BottomsInvisibleWallsSwapped = 2,
 
@@ -19,12 +19,12 @@
         AlignPictureOnBottom = 4,
 
         /// <summary>
-        /// x-flipped
+        /// Flip wall around x-axis
         /// </summary>
         XFlipped = 8,
 
         /// <summary>
-        /// masking wall
+        /// Make wall masking, one-sided. However it also disables transparency on the masked wall.
         /// </summary>
         MaskingWall =  16,
 
@@ -34,23 +34,32 @@
         OneWayWall = 32,
 
         /// <summary>
-        /// Blocking wall (use with hitscan / cliptype 1)
+        /// Make wall able to be hit by weapons
         /// </summary>
         BlockingWallHitScan = 64,
 
         /// <summary>
-        /// Transluscence reversing
+        /// Make wall transparent
         /// </summary>
         Transluscence = 128,
 
         /// <summary>
-        /// y-flipped
+        /// Flip wall around y-axis
         /// </summary>
         YFlipped = 256,
 
         /// <summary>
-        /// Transluscence reversing,
+        /// Second transparency level (combine with cstat 128)
         /// </summary>
-        TransluscenceReversing = 521
+        TransluscenceReversing = 512,
+
+        YaxUpwall = 1024,
+
+        YaxDownwall = 2048,
+
+        /// <summary>
+        /// Rotate texture by 90 degrees counter-clockwise. (3D-mode hotkey 'R' in mapster32)
+        /// </summary>
+        Rotate90 = 4096,
     }
 }

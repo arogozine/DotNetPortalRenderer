@@ -28,6 +28,7 @@ namespace RenderingEngine.Models
         public int YLeftFloor { get; set; }
         public int YRightCeil { get; set; }
         public int YRightFloor { get; set; }
+        public float Length { get; set; }
 
         public bool IsPortal => Neighbor != EngineConstants.NullSector;
 

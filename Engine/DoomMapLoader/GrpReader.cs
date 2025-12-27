@@ -9,6 +9,22 @@ namespace RenderingEngine.DoomMapLoader
 {
     internal static class GrpReader
     {
+        // Shade
+        // Legal values are between -128 and 127 with 0 being default brightness
+        // For tiles displayed onscreen only values ranging from 0 to 32 are relevant.
+        // https://wiki.eduke32.com/wiki/Shade
+
+        // XPanning
+        // Values are normalized on a 0-255 scale, meaning that regardless of the sprite's size, a value of 128 will pan it 50%.
+        // https://wiki.eduke32.com/wiki/Xpanning
+
+        // Build Units
+        // The height scale is different. A z coordinate is 16 times that of x-y coordinates.
+        // In other words, a wall with 1024 of length equal in height for a value of 16384.
+        // Build engine uses a 2048-degree scale (as opposed to 360 degrees.)
+        // 90 degree angle is equal to 512 build units
+        // https://wiki.eduke32.com/wiki/Build_units
+
         public static Map LoadBuildMap(GrpFile grp, string mapName)
         {
             var map = BuildFileParser.ExtractMapFiles(grp);
@@ -27,8 +43,11 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
-        private static TextureRenderingOptions ToTextureRenderingOptions(Stat stat)
+        private static (TextureRenderingOptions, int XScale, int YScale) ToTextureRenderingOptions(Stat stat)
         {
+            int xScale = 1;
+            int yScale = 1;
+
             TextureRenderingOptions options = default;
 
             if (stat.HasFlag(Stat.Parallaxing))
@@ -51,7 +70,13 @@ namespace RenderingEngine.DoomMapLoader
                 options |= TextureRenderingOptions.SwapXY;
             }
 
-            return options;
+            if (!stat.HasFlag(Stat.DoubleSmooshiness))
+            {
+                xScale = 2;
+                yScale = 2;
+            }
+
+            return (options, xScale, yScale);
         }
 
         private static TextureRenderingOptions ToTextureRenderingOptions(WallCStat stat)
@@ -60,7 +85,11 @@ namespace RenderingEngine.DoomMapLoader
 
             if (stat.HasFlag(WallCStat.AlignPictureOnBottom))
             {
-                options |= TextureRenderingOptions.FromBottom;
+                options |= TextureRenderingOptions.FromSectorBottom;
+            }
+            else
+            {
+                options |= TextureRenderingOptions.FromSectorTop;
             }
 
             if (stat.HasFlag(WallCStat.XFlipped))
@@ -71,6 +100,11 @@ namespace RenderingEngine.DoomMapLoader
             if (stat.HasFlag(WallCStat.YFlipped))
             {
                 options |= TextureRenderingOptions.FlipY;
+            }
+
+            if (stat.HasFlag(WallCStat.Rotate90))
+            {
+                throw new NotImplementedException();
             }
 
             return options;
@@ -97,6 +131,13 @@ namespace RenderingEngine.DoomMapLoader
                 string floorTexture = ToTile(sector.FloorPicNum);
                 string ceilingTexture = ToTile(sector.CeilingPicNum);
 
+                (int cXoffset, int cYOffset) = CalculateCeilingOffset(in sector, ceilingTexture);
+                (int fXoffset, int fYOffset) = CalculateFloorOffset(in sector, floorTexture);
+
+
+                (TextureRenderingOptions floorRenderingOptions, int floorXScale, int floorYScale) = ToTextureRenderingOptions(sector.FloorStat);
+                (TextureRenderingOptions ceilingRenderingOptions, int ceilXScale, int ceilYScale) = ToTextureRenderingOptions(sector.CeilingStat);
+
                 MapSector mapSector = new()
                 {
                     Id = i,
@@ -104,15 +145,19 @@ namespace RenderingEngine.DoomMapLoader
                     Floor = floor,
                     FloorTexture = new Models.TextureInfo {
                         Name = floorTexture,
-                        XOffset = sector.FloorXPanning,
-                        YOffset = sector.FloorYPanning,
-                        RenderingOptions = ToTextureRenderingOptions(sector.FloorStat)
+                        XOffset = fXoffset,
+                        YOffset = fYOffset,
+                        XScale = floorXScale,
+                        YScale = floorYScale,
+                        RenderingOptions = floorRenderingOptions
                     },
                     CeilingTexture = new Models.TextureInfo {
                         Name = ceilingTexture,
-                        XOffset = sector.CeilingXPanning,
-                        YOffset = sector.CeilingYPanning,
-                        RenderingOptions = ToTextureRenderingOptions(sector.CeilingStat)
+                        XOffset = cXoffset,
+                        YOffset = cYOffset,
+                        XScale = ceilXScale,
+                        YScale = ceilYScale,
+                        RenderingOptions = ceilingRenderingOptions
                     },
                     LightLevel = DetermineShade(sector.FloorShade)
                 };
@@ -127,8 +172,8 @@ namespace RenderingEngine.DoomMapLoader
 
                     string texture = ToTile(wall.PicNum);
 
-                    int panningX = wall.XPanning;
-                    int panningY = wall.YPanning;
+                    (int xOffset, int yOffset) = CalculateOffset(in wall, texture);
+
                     int scaleX = wall.XRepeat;
                     int scaleY = wall.YRepeat;
 
@@ -136,31 +181,33 @@ namespace RenderingEngine.DoomMapLoader
                         Id = ij,
                         PointA = new LineVector(j, GetPoint(ref wall)),
                         PointB = new LineVector(wall.Point2, GetPoint(ref nextWall)),
-                        LowerTexture = new Models.TextureInfo {
+                        SectorTo = wall.NextSector,
+                        UpperTexture = new Models.TextureInfo
+                        {
                             Name = texture,
-                            XOffset = panningX,
-                            YOffset = panningY,
+                            XOffset = xOffset,
+                            YOffset = yOffset,
                             XScale = scaleX,
                             YScale = scaleY,
                             RenderingOptions = ToTextureRenderingOptions(wall.CStat)
                         },
                         MiddleTexture = new Models.TextureInfo {
                             Name = texture,
-                            XOffset = panningX,
-                            YOffset = panningY,
+                            XOffset = xOffset,
+                            YOffset = yOffset,
                             XScale = scaleX,
                             YScale = scaleY,
                             RenderingOptions = ToTextureRenderingOptions(wall.CStat)
                         },
-                        SectorTo = wall.NextSector,
-                        UpperTexture = new Models.TextureInfo {
+                        LowerTexture = new Models.TextureInfo
+                        {
                             Name = texture,
-                            XOffset = panningX,
-                            YOffset = panningY,
+                            XOffset = xOffset,
+                            YOffset = yOffset,
                             XScale = scaleX,
                             YScale = scaleY,
                             RenderingOptions = ToTextureRenderingOptions(wall.CStat)
-                        },
+                        }
                     };
 
                     ij++;
@@ -173,6 +220,8 @@ namespace RenderingEngine.DoomMapLoader
             }
 
             float radians = MathF.PI * (startingPosition.Angle / 2048f);
+
+            RecalculateOffsets(sectors);
 
             return new Map
             {
@@ -195,26 +244,262 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
+        private static void RecalculateOffsets(List<MapSector> sectorList)
+        {
+            Span<MapSector> sectors = CollectionsMarshal.AsSpan(sectorList);
+
+            foreach (MapSector sector in sectors)
+            {
+                foreach (Line line in sector.Walls)
+                {
+                    if (line.SectorTo is int sectorTo && sectorTo != -1)
+                    {
+                        float sectorHeight = sector.Ceiling - sector.Floor;
+
+                        MapSector neighborSector = sectors[sectorTo];
+                        float floorOffset = neighborSector.Floor - sector.Floor;
+                        float ceilOffset = neighborSector.Ceiling - sector.Ceiling;
+
+                        if (floorOffset < 0)
+                        {
+                            floorOffset = 0;
+                        }
+
+                        if (ceilOffset > 0)
+                        {
+                            ceilOffset = 0;
+                        }
+
+                        // don't draw beyond the bounds
+                        if (ceilOffset < -sectorHeight)
+                        {
+                            ceilOffset = -sectorHeight;
+                        }
+
+                        if (floorOffset > sectorHeight)
+                        {
+                            floorOffset = sectorHeight;
+                        }
+
+                        Models.TextureInfo lowerTextureInfo = line.LowerTexture!;
+
+                        Models.TextureInfo upperTextureInfo = line.UpperTexture!;
+
+                        ref Texture lowerTexture = ref TextureCache.GetTexture(lowerTextureInfo);
+                        ref Texture upperTexture = ref TextureCache.GetTexture(upperTextureInfo);
+
+                        (float xScale, float yScale) = DetermineScale(lowerTextureInfo, in lowerTexture);
+
+                        lowerTextureInfo.YScale = yScale;
+                        lowerTextureInfo.XScale = xScale;
+
+                        upperTextureInfo.YScale = yScale;
+                        upperTextureInfo.XScale = xScale;
+
+
+
+                        float windowEndY = sectorHeight - floorOffset;
+
+                        if (lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
+                        {
+                            float meh = yScale * windowEndY;
+                            meh = meh - MathF.Floor(meh);
+
+                            float potentialYOffset = upperTexture.Height - upperTexture.Height * meh;
+
+                            lowerTextureInfo.YOffset -= (int)potentialYOffset;
+                        }
+
+                        if (!upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
+                        {
+                            float meh = yScale * ceilOffset;
+                            meh = meh - MathF.Floor(meh);
+
+
+                            float potentialYOffset = upperTexture.Height - upperTexture.Height * meh;
+
+                            upperTextureInfo.YOffset -= (int)potentialYOffset;
+                        }
+                    }
+                    else
+                    {
+                        Models.TextureInfo middleTextureInfo = line.MiddleTexture!;
+                        ref Texture middleTexture = ref TextureCache.GetTexture(middleTextureInfo);
+                        float sectorHeight = sector.Ceiling - sector.Floor;
+                        // -64 to 3576 / 3640
+                        // -72 to 3576 / 3648
+
+                        if (sectorHeight == 0f)
+                        {
+                            continue;
+                        }
+
+                        (float xScale, float yScale) = DetermineScale(middleTextureInfo, in middleTexture);
+                        middleTextureInfo.YScale = yScale;
+                        middleTextureInfo.XScale = xScale;
+
+
+                        //float scaledHeight = yScale * middleTexture.Height; // 128 -> 64
+                        float amountOnSector = yScale * sectorHeight;       // 192
+
+                        // if 1:1 scaling with sector height, do nothing
+                        if (amountOnSector != 1f)
+                        {
+                            if (middleTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
+                            {
+                                /// float whatever = sectorHeight / (middleTexture.Height * scaledHeight);
+                                float whatever = amountOnSector - MathF.Floor(amountOnSector);
+                                // whatever -= MathF.Floor(whatever);
+                                if (whatever != 0f)
+                                {
+                                    // 100
+                                    float potentialYOffset = middleTexture.Height - middleTexture.Height * whatever;
+
+                                    middleTextureInfo.YOffset += (int)potentialYOffset; // DetermineTextureOffsetFromBottom(scaledHeight * middleTexture.Height, sectorHeight * amountOnSector);
+                                }
+                                else if (middleTextureInfo.YOffset != 0)
+                                {
+                                    middleTextureInfo.YOffset = middleTexture.Height - middleTextureInfo.YOffset;
+                                }
+                            }
+                        }
+
+                        // middleTextureInfo.XOffset = 0;
+                    }
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static (float XScale, float YScale) DetermineScale(Models.TextureInfo textureInfo, in Texture wallTexture)
+        {
+            int xScale = (int)textureInfo.XScale!;
+            int yScale = (int)textureInfo.YScale!;
+
+            float x = ((float)(xScale << 3) / wallTexture.Width);
+            float y = ((yScale / 16f) / wallTexture.Height);
+
+            return (x, y);
+        }
+
+        private static int DetermineTextureOffsetFromBottom(float textureHeight, float sectorHeight)
+        {
+            if (sectorHeight >= textureHeight)
+            {
+                return float.ConvertToIntegerNative<int>(sectorHeight % textureHeight);
+            }
+            else
+            {
+                return float.ConvertToIntegerNative<int>(textureHeight - sectorHeight);
+            }
+        }
+
+        private static (int XOffset, int YOffset) CalculateFloorOffset(in SectorType sector, string textureName)
+        {
+            // XPanning
+            // Values are normalized on a 0-255 scale, meaning that regardless of the sprite's size, a value of 128 will pan it 50%.
+            // https://wiki.eduke32.com/wiki/Xpanning
+
+            ref Texture texture = ref TextureCache.GetTexture(textureName);
+
+            int xOffset = 0;
+            int yOffset = 0;
+            byte xPanning = sector.FloorXPanning;
+            byte yPanning = sector.FloorYPanning;
+
+            if (xPanning != default)
+            {
+                int width = texture.Width;
+                xOffset = (width << 16) / 256;
+                xOffset = (xOffset * xPanning) >> 16;
+            }
+
+            if (yPanning != default)
+            {
+                int height = texture.Height;
+                yOffset = (height << 16) / 256;
+                yOffset = (yOffset * yPanning) >> 16;
+            }
+
+            return (xOffset, yOffset);
+        }
+
+        private static (int XOffset, int YOffset) CalculateCeilingOffset(in SectorType sector, string textureName)
+        {
+            // XPanning
+            // Values are normalized on a 0-255 scale, meaning that regardless of the sprite's size, a value of 128 will pan it 50%.
+            // https://wiki.eduke32.com/wiki/Xpanning
+
+            ref Texture texture = ref TextureCache.GetTexture(textureName);
+
+            int xOffset = 0;
+            int yOffset = 0;
+            byte xPanning = sector.CeilingXPanning;
+            byte yPanning = sector.CeilingYPanning;
+
+            if (xPanning != default)
+            {
+                int width = texture.Width;
+                xOffset = (width << 16) / 256;
+                xOffset = (xOffset * xPanning) >> 16;
+            }
+
+            if (yPanning != default)
+            {
+                int height = texture.Height;
+                yOffset = (height << 16) / 256;
+                yOffset = (yOffset * yPanning) >> 16;
+            }
+
+            return (xOffset, yOffset);
+        }
+
+        private static (int XOffset, int YOffset) CalculateOffset(in WallType wall, string textureName)
+        {
+            ref Texture texture = ref TextureCache.GetTexture(textureName);
+
+            if (texture.Height > 128)
+            {
+                return (wall.XPanning, wall.YPanning);
+            }
+
+            if (texture.Height > 64)
+            {
+                return (wall.XPanning, wall.YPanning >> 1);
+            }
+
+            return (wall.XPanning, wall.YPanning >> 2);
+        }
+
         private static Sprite[] ExtractSprites(Span<SpriteType> spritesTypes)
         {
             Sprite[] sprites = new Sprite[spritesTypes.Length];
 
             for (int i = 0; i < spritesTypes.Length; i++)
             {
-                ref SpriteType thing = ref spritesTypes[i];
+                ref SpriteType sprite = ref spritesTypes[i];
 
                 // no wall support for now
 
-                float angle = MathF.PI * (thing.Angle / 2048f);
+                float angle = MathF.PI * (sprite.Angle / 2048f);
 
-                string texture = ToTile(thing.PicNum);
+                string textureName = ToTile(sprite.PicNum);
+
+                ref Texture texture = ref TextureCache.GetTexture(textureName);
+
+                // On sprite Z location
+                // "This is the actor's current z coordinate in the map. Note that unless the sprite's cstat has bit 8 (128) set, this position refers to the base of the sprite, not the center."
+                // https://wiki.eduke32.com/wiki/Z
+                // int offset = sprite.CStat.HasFlag(SpriteCStat.RealCentered) ? texture.Height >> 1 : texture.Height;
+                int offset = sprite.CStat.HasFlag(SpriteCStat.RealCentered) ? sprite.YRepeat >> 1 : sprite.YRepeat;
 
                 sprites[i] = new Sprite
                 {
                     Angle = angle,
-                    Location = new Point(DetermineXLocation(thing.X), DetermineYLocation(thing.Y)),
-                    Height = DetermineZLocation(thing.Z),
-                    TextureName = texture
+                    Location = new Point(DetermineXLocation(sprite.X), DetermineYLocation(sprite.Y)),
+                    Height = DetermineZLocation(sprite.Z) + offset,
+                    TextureName = textureName,
+                    SectorId = sprite.SectorNumber
                 };
             }
 
@@ -330,10 +615,11 @@ namespace RenderingEngine.DoomMapLoader
 
         private static string ToTile(short tileNumber) => $"TILE_{tileNumber}";
 
-        private static short DetermineShade(sbyte floorShade)
+        private static short DetermineShade(int floorShade)
         {
-            int upped = floorShade << 3;
-            return (short)(byte.MaxValue - upped);
+            floorShade = ((floorShade << 16) / 32) * byte.MaxValue;
+
+            return (short)(byte.MaxValue - (floorShade >> 16));
         }
 
         private static float DetermineYLocation(float coordinate)

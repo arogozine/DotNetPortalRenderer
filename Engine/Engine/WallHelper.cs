@@ -517,8 +517,6 @@ namespace RenderingEngine.Engine
             return true;
         }
 
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Wall RotateWall(Wall wall, float psin, float pcos, float px, float py)
         {
             // Vertex Points (Wall)
@@ -540,7 +538,14 @@ namespace RenderingEngine.Engine
             float rx2 = tx2 * psin - ty2 * pcos;
             float ry2 = tx2 * pcos + ty2 * psin;
 
-            return new Wall(wall.Line, new Point(rx1, ry1), new Point(rx2, ry2), wall.Sector, wall.Neighbor);
+            float dx = vx1 - vx2;
+            float dy = vy1 - vy2;
+            float length = MathF.Sqrt((dx * dx) + (dy * dy));
+
+            return new Wall(wall.Line, new Point(rx1, ry1), new Point(rx2, ry2), wall.Sector, wall.Neighbor)
+            {
+                Length = length
+            };
         }
     }
 }

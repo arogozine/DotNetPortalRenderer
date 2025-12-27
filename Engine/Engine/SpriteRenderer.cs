@@ -157,7 +157,7 @@ namespace RenderingEngine.Engine
 
                 float buffer = renderWindow.Distance;
 
-                (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x);
+                (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, false);
 
                 if (fromToYdist > buffer)
                 {

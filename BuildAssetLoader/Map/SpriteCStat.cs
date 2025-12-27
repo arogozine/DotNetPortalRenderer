@@ -4,64 +4,63 @@
     public enum SpriteCStat : ushort
     {
         /// <summary>
-        /// Blocking sprite (use with clipmove, getzrange)
+        /// Make sprite blockable
         /// </summary>
         BlockingSpriteClipmove = 1,
 
         /// <summary>
-        /// Translucence
+        /// Make sprite transparent
         /// </summary>
-        Translucent = 1 << 1,
+        Translucent = 2,
 
         /// <summary>
-        /// x-flipped
+        /// Flip sprite around x-axis
         /// </summary>
-        XFlipped = 1 << 2,
+        XFlipped = 4,
 
         /// <summary>
-        /// y-flipped
+        /// Flip sprite around y-axis
         /// </summary>
-        YFlipped = 1 << 3,
+        YFlipped = 8,
 
         /// <summary>
-        /// Face sprite (default)
-        /// !Wall and !Floor
+        /// Draw sprite as vertically flat (wall aligned)
         /// </summary>
-        Face = 0,
+        Wall = 16,
 
         /// <summary>
-        /// Wall sprite (like masked walls)
+        /// Draw sprite as horizontally flat (floor aligned)
         /// </summary>
-        Wall = 1 << 4,
+        Floor = 32,
 
         /// <summary>
-        /// Floor sprite (parallel to ceilings & floors)
+        /// Make sprite one sided
         /// </summary>
-        Floor = 1 << 5,
+        OneSided = 64,
 
         /// <summary>
-        /// 1-sided sprite
+        /// Half submerged
         /// </summary>
-        OneSided = 1 << 7,
+        RealCentered = 128,
 
         /// <summary>
-        /// Real centered centering (vs foot center)
+        /// Make sprite able to be hit by weapons
         /// </summary>
-        RealCentered = 1 << 8,
+        BlockingSpriteHitScan = 256,
 
         /// <summary>
-        /// Blocking sprite (use with hitscan / cliptype 1)
+        /// Second Transparency Level
         /// </summary>
-        BlockingSpriteHitScan = 1 << 9,
+        TransFlip = 512,
 
         /// <summary>
-        /// Reserved bits 9-14
+        /// Sprite will not be forced to take shade of sector
         /// </summary>
-        ReservedMask = (0x3F << 9),
+        NoShade = 2048,
 
         /// <summary>
         /// Invisible sprite
         /// </summary>
-        Invisible = 1 << 15
+        Invisible = 32768
     }
 }

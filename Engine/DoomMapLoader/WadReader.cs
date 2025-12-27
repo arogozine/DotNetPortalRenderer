@@ -162,7 +162,7 @@ namespace RenderingEngine.DoomMapLoader
                         int y = originY + post.TopDelta;
 
                         for (int i = 0; i < post.Length; i++)
-                        {                                
+                        {
                             byte paletteIndex = post.Data[i];
                             int destY = y + i;
 
@@ -287,7 +287,8 @@ namespace RenderingEngine.DoomMapLoader
             // pallette 0 is used in most situations
             // byte 0 will have the number of the palette color
 
-            for (int i = 0; i < wad.Lumps.Count; i++) {
+            for (int i = 0; i < wad.Lumps.Count; i++)
+            {
                 WadLump wadLump = wad.Lumps[i];
 
                 if (!wadLump.IsFlat || wadLump.Bytes.Length == 0)
@@ -397,6 +398,8 @@ namespace RenderingEngine.DoomMapLoader
 
             DetermineSkybox(sectors, mapName);
 
+            RecalculateOffsets(sectors);
+
             float radians = MathF.PI * (player1Start.Value.Angle / 180f);
 
             return new Map
@@ -410,6 +413,183 @@ namespace RenderingEngine.DoomMapLoader
                 Sectors = sectors
             };
         }
+
+        #region Re-Calculate Offsets
+
+        // these can be positive, negative, and crazy big too
+        // we want to normalize them to [0, texture size - 1]
+
+        private static void RecalculateOffsets(List<MapSector> sectorList)
+        {
+            Span<MapSector> sectors = CollectionsMarshal.AsSpan(sectorList);
+
+            foreach (MapSector sector in sectors)
+            {
+                foreach (Line line in sector.Walls)
+                {
+                    Models.TextureInfo? middleTextureInfo = line.MiddleTexture;
+
+                    if (line.SectorTo is int sectorTo)
+                    {
+                        int sectorHeight = float.ConvertToIntegerNative<int>(sector.Ceiling - sector.Floor);
+
+                        MapSector neighborSector = sectors[sectorTo];
+                        int floorOffset = float.ConvertToIntegerNative<int>(neighborSector.Floor - sector.Floor);
+                        int ceilOffset = float.ConvertToIntegerNative<int>(neighborSector.Ceiling - sector.Ceiling);
+
+                        if (floorOffset < 0)
+                        {
+                            floorOffset = 0;
+                        }
+
+                        if (ceilOffset > 0)
+                        {
+                            ceilOffset = 0;
+                        }
+
+                        // don't draw beyond the bounds
+                        if (ceilOffset < -sectorHeight)
+                        {
+                            ceilOffset = -sectorHeight;
+                        }
+
+                        if (floorOffset > sectorHeight)
+                        {
+                            floorOffset = sectorHeight;
+                        }
+
+                        Models.TextureInfo lowerTextureInfo = line.LowerTexture!;
+
+                        Models.TextureInfo upperTextureInfo = line.UpperTexture!;
+
+                        ref Texture lowerTexture = ref TextureCache.GetTexture(lowerTextureInfo);
+                        ref Texture upperTexture = ref TextureCache.GetTexture(upperTextureInfo);
+
+                        lowerTextureInfo.XOffset = DetermineXOffset(lowerTextureInfo, in lowerTexture);
+                        upperTextureInfo.XOffset = DetermineXOffset(upperTextureInfo, in upperTexture);
+
+                        lowerTextureInfo.YOffset = DetermineLowerTextureYOffset(floorOffset, lowerTextureInfo, in lowerTexture);
+                        upperTextureInfo.YOffset = DetermineUpperTextureYOffset(ceilOffset, upperTextureInfo, in upperTexture);
+
+                        if (middleTextureInfo is not null)
+                        {
+                            ref Texture middleTexture = ref TextureCache.GetTexture(middleTextureInfo);
+                            middleTextureInfo.XOffset = DetermineXOffset(middleTextureInfo, in middleTexture);
+                            // middleTextureInfo.YOffset = DetermineTextureYOffset(sector, middleTextureInfo, in middleTexture);
+                        }
+                    }
+                    else if (middleTextureInfo is not null)
+                    {
+                        ref Texture middleTexture = ref TextureCache.GetTexture(middleTextureInfo);
+                        middleTextureInfo.XOffset = DetermineXOffset(middleTextureInfo, in middleTexture);
+                        middleTextureInfo.YOffset = DetermineTextureYOffset(sector, middleTextureInfo, in middleTexture);
+                    }
+                }
+            }
+        }
+
+        private static int DetermineLowerTextureYOffset(
+            int floorOffset,
+            Models.TextureInfo textureInfo,
+            in Texture wallTexture)
+        {
+            int offset = textureInfo.YOffset;
+            TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
+            int textureHeight = wallTexture.Height;
+            int sectorHeight = floorOffset;
+
+            offset = EnsureOffsetIsPositive(textureHeight, offset);
+
+            if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
+            {
+                int offsetFromBottom = DetermineTextureOffsetFromBottom(textureHeight, sectorHeight);
+                offset = offsetFromBottom - offset;
+            }
+
+            return EnsureOffsetIsPositive(textureHeight, offset);
+        }
+
+        private static int DetermineUpperTextureYOffset(
+            int ceilingOffset,
+            Models.TextureInfo textureInfo,
+            in Texture wallTexture)
+        {
+            int offset = textureInfo.YOffset;
+            TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
+            int textureHeight = wallTexture.Height;
+            int sectorHeight = -ceilingOffset;
+
+            offset = EnsureOffsetIsPositive(textureHeight, offset);
+
+            if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom))
+            {
+                int offsetFromBottom = DetermineTextureOffsetFromBottom(textureHeight, sectorHeight);
+                offset = offsetFromBottom + offset;
+            }
+
+            return EnsureOffsetIsPositive(textureHeight, offset);
+        }
+
+
+        private static int DetermineTextureYOffset(
+            MapSector sector,
+            Models.TextureInfo textureInfo,
+            in Texture wallTexture)
+        {
+            int offset = textureInfo.YOffset;
+            TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
+            int textureHeight = wallTexture.Height;
+            int sectorHeight = float.ConvertToIntegerNative<int>(sector.Ceiling - sector.Floor);
+
+            offset = EnsureOffsetIsPositive(textureHeight, offset);
+
+            if (renderingOptions.HasFlag(TextureRenderingOptions.FromBottom) || renderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
+            {
+                int offsetFromBottom = DetermineTextureOffsetFromBottom(textureHeight, sectorHeight);
+                offset = offsetFromBottom + offset;
+            }
+
+            return EnsureOffsetIsPositive(textureHeight, offset);
+        }
+
+        private static int DetermineTextureOffsetFromBottom(int textureHeight, int sectorHeight)
+        {
+            if (sectorHeight >= textureHeight)
+            {
+                return sectorHeight % textureHeight;
+            }
+            else
+            {
+                return textureHeight - sectorHeight;
+            }
+        }
+
+        private static int DetermineXOffset(Models.TextureInfo textureInfo, in Texture wallTexture)
+        {
+            int offset = textureInfo.XOffset;
+            int textureWidth = wallTexture.Width;
+
+            if (offset < 0)
+            {
+                offset = textureWidth + offset;
+            }
+
+            return EnsureOffsetIsPositive(wallTexture.Width, offset);
+        }
+
+        private static int EnsureOffsetIsPositive(int textureHeight, int offset)
+        {
+            offset %= textureHeight;
+
+            if (offset < 0)
+            {
+                offset = textureHeight + offset;
+            }
+
+            return offset;
+        }
+
+        #endregion
 
         private static void DetermineSkybox(List<MapSector> sectors, string mapName)
         {
@@ -578,7 +758,8 @@ namespace RenderingEngine.DoomMapLoader
 
             return sprites;
 
-            static string GetTextureName(ThingType type) {
+            static string GetTextureName(ThingType type)
+            {
                 DescriptionAttribute descriptionAttribute = typeof(ThingType).GetField(type.ToString())!.GetCustomAttribute<DescriptionAttribute>()!;
                 string name = descriptionAttribute.Description;
 
@@ -683,6 +864,7 @@ namespace RenderingEngine.DoomMapLoader
             }
 
             DetermineSkybox(sectors, mapName);
+            RecalculateOffsets(sectors);
 
             return new Map
             {
@@ -782,7 +964,8 @@ namespace RenderingEngine.DoomMapLoader
                     sectorToLineDefs[sectorId] = sectorLineDefs;
                 }
 
-                sectorLineDefs.Add(new LineInfo {
+                sectorLineDefs.Add(new LineInfo
+                {
                     ParentSectorId = parentSectorId,
                     LineDefId = linedefId,
                     UpperTexture = sidedef.TextureTop,
@@ -882,7 +1065,8 @@ namespace RenderingEngine.DoomMapLoader
         }
 
         [SkipLocalsInit]
-        private static ReadOnlySpan<BGRA> ToBGRA(ReadOnlySpan<RGB> rgb) {
+        private static ReadOnlySpan<BGRA> ToBGRA(ReadOnlySpan<RGB> rgb)
+        {
             ref RGB color = ref MemoryMarshal.GetReference(rgb);
 
             Span<BGRA> bgra = new BGRA[rgb.Length];
@@ -924,7 +1108,8 @@ namespace RenderingEngine.DoomMapLoader
                 return null;
             }
 
-            return new Models.TextureInfo {
+            return new Models.TextureInfo
+            {
                 Name = name,
                 XOffset = xOffset,
                 YOffset = yOffset,
