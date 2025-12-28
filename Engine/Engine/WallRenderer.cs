@@ -103,9 +103,9 @@ namespace RenderingEngine.Engine
 
             bool upperFlipY = upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
             bool lowerFlipY = lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
-
-
             bool upperFlipX = upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
+            bool lowerFlipX = lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
+            
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
@@ -125,10 +125,12 @@ namespace RenderingEngine.Engine
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
 
             float wallLength = wall.Length;
-            (float? xScale, float? yScale) = (upperTextureInfo.XScale, upperTextureInfo.YScale);
+
+            (float? upperXScale, float? upperYScale) = (upperTextureInfo.XScale, upperTextureInfo.YScale);
+            
+            (float? lowerXScale, float? lowerYScale) = (upperTextureInfo.XScale, upperTextureInfo.YScale);
 
             int lowerTextureStart, lowerXOffset, upperTextureStart, upperXOffset;
-
 
             lowerTextureStart = lowerTextureInfo.YOffset << 16;
             lowerXOffset = lowerTextureInfo.XOffset;
@@ -136,19 +138,32 @@ namespace RenderingEngine.Engine
             upperTextureStart = upperTextureInfo.YOffset << 16;
             upperXOffset = upperTextureInfo.XOffset;
 
-            float ys2;
-            if (yScale is float yS)
             {
-                ys2 = (sector.Ceil - sector.Floor) * yS;
-            }
-            else
-            {
-                ys2 = 0f;
+                if (upperYScale is float yS)
+                {
+                    upperYScale = (sector.Ceil - sector.Floor) * yS;
+                }
             }
 
-            if (xScale is float xs)
             {
-                xScale = xs / wallLength * upperTexture.Width;
+                if (upperXScale is float xs)
+                {
+                    upperXScale = xs / wallLength * upperTexture.Width;
+                }
+            }
+
+            {
+                if (lowerYScale is float yS2)
+                {
+                    lowerYScale = (sector.Ceil - sector.Floor) * yS2;
+                }
+            }
+
+            {
+                if (lowerXScale is float xs2)
+                {
+                    lowerXScale = xs2 / wallLength * lowerTexture.Width;
+                }
             }
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
@@ -160,8 +175,6 @@ namespace RenderingEngine.Engine
                     renderWindow.SetFinished(CalculateDistance2(cameraRay, t1, d2y, d2x));
                     continue;
                 }
-
-                (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, upperFlipX);
 
                 int wallStartY = renderWindow.WallStart;
                 int wallEndY = renderWindow.WallEnd;
@@ -178,21 +191,23 @@ namespace RenderingEngine.Engine
                 int portalToY = wallEndY - floorPixelOffset;
                 int portalFromYClamped = Math.Clamp(portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
                 int portalToYClamped = Math.Clamp(portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
-
-                int textureXIncr;
-
-                if (yScale is float)
-                {
-                    textureXIncr = float.ConvertToIntegerNative<int>(((lowerTexture.Height << 16) * ys2) / (wallEndY - wallStartY));
-                }
-                else
-                {
-                    textureXIncr = (sectorHeight << 16) / (wallEndY - wallStartY);
-                }
+                float fromToYdist = CalculateDistance2(cameraRay, t1, d2y, d2x);
 
                 // draw upper wall / upper skybox
                 if (ceilOffset != 0 && fromYClamped < portalFromYClamped)
                 {
+                    int textureXIncr;
+
+                    if (upperYScale is float ys3)
+                    {
+                        textureXIncr = float.ConvertToIntegerNative<int>(((lowerTexture.Height << 16) * ys3) / (wallEndY - wallStartY));
+                    }
+                    else
+                    {
+                        textureXIncr = (sectorHeight << 16) / (wallEndY - wallStartY);
+                    }
+
+
                     if (upperSkybox)
                     {
                         ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, fromYClamped * width + x);
@@ -209,13 +224,14 @@ namespace RenderingEngine.Engine
                     }
                     else
                     {
+                        (int distance, fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, upperFlipX);
+
                         // Calculate Upper  Texture Position
                         int textureWidth = upperTexture.Height;
                         int textureHeight = upperTexture.Width;
 
                         int textureYPos;
-
-                        if (xScale is float scale)
+                        if (upperXScale is float scale)
                         {
                             textureYPos = float.ConvertToIntegerNative<int>(distance * scale);
                         }
@@ -248,6 +264,18 @@ namespace RenderingEngine.Engine
                 // draw lower wall
                 if (floorOffset != 0 && portalToYClamped < toYClamped)
                 {
+                    int textureXIncr;
+
+                    if (lowerYScale is float ys3)
+                    {
+                        textureXIncr = float.ConvertToIntegerNative<int>(((lowerTexture.Height << 16) * ys3) / (wallEndY - wallStartY));
+                    }
+                    else
+                    {
+                        textureXIncr = (sectorHeight << 16) / (wallEndY - wallStartY);
+                    }
+
+
                     if (lowerSkybox)
                     {
                         ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * width + x);
@@ -264,12 +292,15 @@ namespace RenderingEngine.Engine
                     }
                     else
                     {
+                        (int distance, fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, lowerFlipX);
+
+
                         int textureWidth = lowerTexture.Height;
                         int textureHeight = lowerTexture.Width;
 
                         int textureYPos;
 
-                        if (xScale is float scale)
+                        if (lowerXScale is float scale)
                         {
                             textureYPos = float.ConvertToIntegerNative<int>(distance * scale);
                         }
@@ -628,7 +659,7 @@ namespace RenderingEngine.Engine
 
             if (flipY)
             {
-                for (int i = buffer.Length - 1; i <= 0; i--)
+                for (int i = buffer.Length - 1; i >= 0; i--)
                 {
                     unchecked
                     {

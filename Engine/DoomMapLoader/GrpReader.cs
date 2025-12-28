@@ -149,7 +149,8 @@ namespace RenderingEngine.DoomMapLoader
                         YOffset = fYOffset,
                         XScale = floorXScale,
                         YScale = floorYScale,
-                        RenderingOptions = floorRenderingOptions
+                        RenderingOptions = floorRenderingOptions,
+                        Alpha = 1f
                     },
                     CeilingTexture = new Models.TextureInfo {
                         Name = ceilingTexture,
@@ -157,7 +158,8 @@ namespace RenderingEngine.DoomMapLoader
                         YOffset = cYOffset,
                         XScale = ceilXScale,
                         YScale = ceilYScale,
-                        RenderingOptions = ceilingRenderingOptions
+                        RenderingOptions = ceilingRenderingOptions,
+                        Alpha = 1f
                     },
                     LightLevel = DetermineShade(sector.FloorShade)
                 };
@@ -168,46 +170,24 @@ namespace RenderingEngine.DoomMapLoader
                 for (int j = wallStart; j < wallEnd; j++)
                 {
                     ref WallType wall = ref walls[j];
-                    ref WallType nextWall = ref walls[wall.Point2];
+                    ref WallType point2Wall = ref walls[wall.Point2];
+                    ref WallType nextWall = ref wall;
 
-                    string texture = ToTile(wall.PicNum);
-
-                    (int xOffset, int yOffset) = CalculateOffset(in wall, texture);
-
-                    int scaleX = wall.XRepeat;
-                    int scaleY = wall.YRepeat;
+                    // If the wall has cstat 2 applied to it (CSTAT_WALL_BOTTOM_SWAP) than the bottom half's attributes are applied to the current wall's nextwall
+                    // https://wiki.eduke32.com/wiki/Cstat_(wall)
+                    if (wall.CStat.HasFlag(WallCStat.BottomsInvisibleWallsSwapped) && wall.NextWall != -1)
+                    {
+                        nextWall = ref walls[wall.NextWall];
+                    }
 
                     var line = new Line {
                         Id = ij,
                         PointA = new LineVector(j, GetPoint(ref wall)),
-                        PointB = new LineVector(wall.Point2, GetPoint(ref nextWall)),
+                        PointB = new LineVector(wall.Point2, GetPoint(ref point2Wall)),
                         SectorTo = wall.NextSector,
-                        UpperTexture = new Models.TextureInfo
-                        {
-                            Name = texture,
-                            XOffset = xOffset,
-                            YOffset = yOffset,
-                            XScale = scaleX,
-                            YScale = scaleY,
-                            RenderingOptions = ToTextureRenderingOptions(wall.CStat)
-                        },
-                        MiddleTexture = new Models.TextureInfo {
-                            Name = texture,
-                            XOffset = xOffset,
-                            YOffset = yOffset,
-                            XScale = scaleX,
-                            YScale = scaleY,
-                            RenderingOptions = ToTextureRenderingOptions(wall.CStat)
-                        },
-                        LowerTexture = new Models.TextureInfo
-                        {
-                            Name = texture,
-                            XOffset = xOffset,
-                            YOffset = yOffset,
-                            XScale = scaleX,
-                            YScale = scaleY,
-                            RenderingOptions = ToTextureRenderingOptions(wall.CStat)
-                        }
+                        UpperTexture = GetTextureInfo(wall, false),
+                        MiddleTexture = GetTextureInfo(wall, true),
+                        LowerTexture = GetTextureInfo(nextWall, false)
                     };
 
                     ij++;
@@ -222,6 +202,7 @@ namespace RenderingEngine.DoomMapLoader
             float radians = MathF.PI * (startingPosition.Angle / 2048f);
 
             RecalculateOffsets(sectors);
+            DetermineSkyboxWalls(sectors);
 
             return new Map
             {
@@ -241,6 +222,93 @@ namespace RenderingEngine.DoomMapLoader
                 float y = DetermineYLocation(wall.Y);
 
                 return new Point(x, y);
+            }
+        }
+
+        private static Models.TextureInfo? GetTextureInfo(in WallType wall, bool middleTexture)
+        {
+            short picNum;
+
+            if (middleTexture && wall.NextSector != -1)
+            {
+                if (!wall.CStat.HasFlag(WallCStat.MaskingWall) && !wall.CStat.HasFlag(WallCStat.OneWayWall))
+                {
+                    return null;
+                }
+
+                picNum = wall.OverPicNum;
+            }
+            else
+            {
+                picNum = wall.PicNum;
+            }
+
+            string textureName = ToTile(picNum);
+            (int xOffset, int yOffset) = CalculateOffset(in wall, textureName);
+
+            TextureRenderingOptions renderingOptions = ToTextureRenderingOptions(wall.CStat);
+
+            float alpha = wall.CStat.HasFlag(WallCStat.Transluscence) ? 0.5f : 1.0f;
+
+            int scaleX = wall.XRepeat;
+            int scaleY = wall.YRepeat;
+
+            return new Models.TextureInfo
+            {
+                Name = textureName,
+                XOffset = xOffset,
+                YOffset = yOffset,
+                XScale = scaleX,
+                YScale = scaleY,
+                RenderingOptions = renderingOptions,
+                Alpha = alpha
+            };
+        }
+
+        private static void DetermineSkyboxWalls(List<MapSector> sectorList)
+        {
+            Span<MapSector> sectors = CollectionsMarshal.AsSpan(sectorList);
+
+            foreach (MapSector sector in sectors)
+            {
+                bool ceilSkybox = sector.CeilingTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+                bool floorSkybox = sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+
+                if (ceilSkybox && floorSkybox)
+                {
+                    foreach (Line line in sector.Walls)
+                    {
+                        if (line.UpperTexture!.Name == sector.CeilingTexture.Name)
+                        {
+                            line.UpperTexture!.RenderingOptions |= TextureRenderingOptions.Skybox;
+                        }
+
+                        if (line.LowerTexture!.Name == sector.FloorTexture.Name)
+                        {
+                            line.LowerTexture!.RenderingOptions |= TextureRenderingOptions.Skybox;
+                        }
+
+                        if (line.SectorTo is int sectorTo && sectorTo != -1)
+                        {
+                            var childSector = sectors[sectorTo];
+
+                            bool ceilSkyboxChild = childSector.CeilingTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+                            bool floorSkyboxChild = childSector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+
+                            if (ceilSkyboxChild)
+                            {
+                                line.UpperTexture.Name = sector.CeilingTexture.Name;
+                                line.UpperTexture!.RenderingOptions |= TextureRenderingOptions.Skybox;
+                            }
+
+                            if (floorSkyboxChild)
+                            {
+                                line.LowerTexture.Name = sector.FloorTexture.Name;
+                                line.LowerTexture!.RenderingOptions |= TextureRenderingOptions.Skybox;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -282,27 +350,24 @@ namespace RenderingEngine.DoomMapLoader
                         }
 
                         Models.TextureInfo lowerTextureInfo = line.LowerTexture!;
-
                         Models.TextureInfo upperTextureInfo = line.UpperTexture!;
 
                         ref Texture lowerTexture = ref TextureCache.GetTexture(lowerTextureInfo);
                         ref Texture upperTexture = ref TextureCache.GetTexture(upperTextureInfo);
 
-                        (float xScale, float yScale) = DetermineScale(lowerTextureInfo, in lowerTexture);
+                        (float upperXScale, float upperYScale) = DetermineScale(upperTextureInfo, in upperTexture);
+                        (float lowerXScale, float lowerYScale) = DetermineScale(lowerTextureInfo, in lowerTexture);
 
-                        lowerTextureInfo.YScale = yScale;
-                        lowerTextureInfo.XScale = xScale;
-
-                        upperTextureInfo.YScale = yScale;
-                        upperTextureInfo.XScale = xScale;
-
-
+                        upperTextureInfo.YScale = upperYScale;
+                        upperTextureInfo.XScale = upperXScale;
+                        lowerTextureInfo.YScale = lowerYScale;
+                        lowerTextureInfo.XScale = lowerXScale;
 
                         float windowEndY = sectorHeight - floorOffset;
 
                         if (lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
                         {
-                            float meh = yScale * windowEndY;
+                            float meh = lowerYScale * windowEndY;
                             meh = meh - MathF.Floor(meh);
 
                             float potentialYOffset = upperTexture.Height - upperTexture.Height * meh;
@@ -312,13 +377,21 @@ namespace RenderingEngine.DoomMapLoader
 
                         if (!upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
                         {
-                            float meh = yScale * ceilOffset;
+                            float meh = upperYScale * ceilOffset;
                             meh = meh - MathF.Floor(meh);
-
 
                             float potentialYOffset = upperTexture.Height - upperTexture.Height * meh;
 
                             upperTextureInfo.YOffset -= (int)potentialYOffset;
+                        }
+
+                        if (line.MiddleTexture is Models.TextureInfo middleTextureInfo)
+                        {
+                            ref Texture middleTexture = ref TextureCache.GetTexture(middleTextureInfo);
+                            (float middleXScale, float middleYScale) = DetermineScale(middleTextureInfo, in middleTexture);
+
+                            middleTextureInfo.YScale = middleYScale;
+                            middleTextureInfo.XScale = middleXScale;
                         }
                     }
                     else
@@ -326,8 +399,6 @@ namespace RenderingEngine.DoomMapLoader
                         Models.TextureInfo middleTextureInfo = line.MiddleTexture!;
                         ref Texture middleTexture = ref TextureCache.GetTexture(middleTextureInfo);
                         float sectorHeight = sector.Ceiling - sector.Floor;
-                        // -64 to 3576 / 3640
-                        // -72 to 3576 / 3648
 
                         if (sectorHeight == 0f)
                         {
