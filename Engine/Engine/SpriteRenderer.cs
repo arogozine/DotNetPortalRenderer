@@ -125,7 +125,6 @@ namespace RenderingEngine.Engine
 
             float oneOverSectorHeight = 1f / sectorHeight;
 
-            int yOffset = textureInfo.YOffset > sectorHeight ? textureInfo.YOffset - 65536 : textureInfo.YOffset;
             bool renderFromTop = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromTop);
             byte lightLevel = sector.LightLevel;
             float alpha = Math.Clamp(textureInfo.Alpha, 0f, 1f);
@@ -141,10 +140,33 @@ namespace RenderingEngine.Engine
             }
 
             int xOffset = textureInfo.XOffset;
+            int yOffset = textureInfo.YOffset > sectorHeight ? textureInfo.YOffset - 65536 : textureInfo.YOffset;
+
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
+
+            (float? lowerXScale, float? lowerYScale) = (textureInfo.XScale, textureInfo.YScale);
+
+            {
+                if (lowerYScale is float yS)
+                {
+                    lowerYScale = (sector.Ceil - sector.Floor) * yS;
+                }
+            }
+
+            {
+                if (lowerXScale is float xs)
+                {
+                    lowerXScale = xs / wall.Length * texture.Width;
+                }
+            }
+
+            if (lowerXScale is not null)
+            {
+                yOffset = textureInfo.YOffset;
+            }
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
             {
@@ -177,7 +199,13 @@ namespace RenderingEngine.Engine
                 float textureStartY = renderFromTop ? portalFromY : (portalToY - texture.Height * pixelsPerUnit);
                 float textureEndY = renderFromTop ? (portalFromY + texture.Height * pixelsPerUnit) : portalToY;
 
-                if (yOffset != 0)
+                if (lowerYScale is not null)
+                {
+                    textureStartY = portalFromY;
+                    textureEndY = portalToY;
+                }
+
+                if (yOffset != 0 && lowerYScale is null)
                 {
                     float yOffsetF = yOffset * pixelsPerUnit;
 
@@ -206,8 +234,18 @@ namespace RenderingEngine.Engine
                 // Calculate Middle Texture Position
                 float textureXIncr = (float)(sectorHeight / (wallEndY - wallStartY));
                 int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
-                float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, offset, textureWidth);
 
+                if (lowerYScale is float ys3)
+                {
+                    textureXIncr = (texture.Height * ys3) / (float)(wallEndY - wallStartY);
+                }
+
+                if (lowerXScale is float scale)
+                {
+                    textureYPos = float.ConvertToIntegerNative<int>(distance * scale);
+                }
+
+                float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, offset, textureWidth);
 
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel);
 

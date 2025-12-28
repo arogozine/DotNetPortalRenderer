@@ -367,20 +367,20 @@ namespace RenderingEngine.DoomMapLoader
 
                         if (lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
                         {
-                            float meh = lowerYScale * windowEndY;
-                            meh = meh - MathF.Floor(meh);
+                            float remainder = lowerYScale * windowEndY;
+                            remainder = remainder - MathF.Floor(remainder);
 
-                            float potentialYOffset = upperTexture.Height - upperTexture.Height * meh;
+                            float potentialYOffset = upperTexture.Height - upperTexture.Height * remainder;
 
                             lowerTextureInfo.YOffset -= (int)potentialYOffset;
                         }
 
                         if (!upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
                         {
-                            float meh = upperYScale * ceilOffset;
-                            meh = meh - MathF.Floor(meh);
+                            float remainder = upperYScale * ceilOffset;
+                            remainder = remainder - MathF.Floor(remainder);
 
-                            float potentialYOffset = upperTexture.Height - upperTexture.Height * meh;
+                            float potentialYOffset = upperTexture.Height - upperTexture.Height * remainder;
 
                             upperTextureInfo.YOffset -= (int)potentialYOffset;
                         }
@@ -409,24 +409,19 @@ namespace RenderingEngine.DoomMapLoader
                         middleTextureInfo.YScale = yScale;
                         middleTextureInfo.XScale = xScale;
 
-
-                        //float scaledHeight = yScale * middleTexture.Height; // 128 -> 64
-                        float amountOnSector = yScale * sectorHeight;       // 192
+                        float amountOnSector = yScale * sectorHeight;
 
                         // if 1:1 scaling with sector height, do nothing
                         if (amountOnSector != 1f)
                         {
                             if (middleTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
                             {
-                                /// float whatever = sectorHeight / (middleTexture.Height * scaledHeight);
-                                float whatever = amountOnSector - MathF.Floor(amountOnSector);
-                                // whatever -= MathF.Floor(whatever);
-                                if (whatever != 0f)
-                                {
-                                    // 100
-                                    float potentialYOffset = middleTexture.Height - middleTexture.Height * whatever;
+                                float remainder = amountOnSector - MathF.Floor(amountOnSector);
 
-                                    middleTextureInfo.YOffset += (int)potentialYOffset; // DetermineTextureOffsetFromBottom(scaledHeight * middleTexture.Height, sectorHeight * amountOnSector);
+                                if (remainder != 0f)
+                                {
+                                    float potentialYOffset = middleTexture.Height - middleTexture.Height * remainder;
+                                    middleTextureInfo.YOffset += float.ConvertToIntegerNative<int>(potentialYOffset);
                                 }
                                 else if (middleTextureInfo.YOffset != 0)
                                 {
@@ -434,8 +429,6 @@ namespace RenderingEngine.DoomMapLoader
                                 }
                             }
                         }
-
-                        // middleTextureInfo.XOffset = 0;
                     }
                 }
             }

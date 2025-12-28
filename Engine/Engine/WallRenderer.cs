@@ -98,14 +98,8 @@ namespace RenderingEngine.Engine
             ref Texture upperTexture = ref TextureCache.GetTexture(upperTextureInfo);
             ref Texture lowerTexture = ref TextureCache.GetTexture(lowerTextureInfo);
 
-            bool upperSkybox = upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
-            bool lowerSkybox = lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
-
-            bool upperFlipY = upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
-            bool lowerFlipY = lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
-            bool upperFlipX = upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
-            bool lowerFlipX = lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
-            
+            (bool upperSkybox, bool upperFlipX, bool upperFlipY) = GetFlags(upperTextureInfo);
+            (bool lowerSkybox, bool lowerFlipX, bool lowerFlipY) = GetFlags(lowerTextureInfo);
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
@@ -138,32 +132,24 @@ namespace RenderingEngine.Engine
             upperTextureStart = upperTextureInfo.YOffset << 16;
             upperXOffset = upperTextureInfo.XOffset;
 
+            if (upperYScale is float)
             {
-                if (upperYScale is float yS)
-                {
-                    upperYScale = (sector.Ceil - sector.Floor) * yS;
-                }
+                upperYScale = (sector.Ceil - sector.Floor) * upperYScale.Value;
             }
 
+            if (upperXScale is float)
             {
-                if (upperXScale is float xs)
-                {
-                    upperXScale = xs / wallLength * upperTexture.Width;
-                }
+                upperXScale = upperXScale.Value / wallLength * upperTexture.Width;
             }
 
+            if (lowerYScale is float)
             {
-                if (lowerYScale is float yS2)
-                {
-                    lowerYScale = (sector.Ceil - sector.Floor) * yS2;
-                }
+                lowerYScale = (sector.Ceil - sector.Floor) * lowerYScale.Value;
             }
 
+            if (lowerXScale is float)
             {
-                if (lowerXScale is float xs2)
-                {
-                    lowerXScale = xs2 / wallLength * lowerTexture.Width;
-                }
+                lowerXScale = lowerXScale.Value / wallLength * lowerTexture.Width;
             }
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
@@ -198,9 +184,9 @@ namespace RenderingEngine.Engine
                 {
                     int textureXIncr;
 
-                    if (upperYScale is float ys3)
+                    if (upperYScale is float)
                     {
-                        textureXIncr = float.ConvertToIntegerNative<int>(((lowerTexture.Height << 16) * ys3) / (wallEndY - wallStartY));
+                        textureXIncr = float.ConvertToIntegerNative<int>(((upperTexture.Height << 16) * upperYScale.Value) / (wallEndY - wallStartY));
                     }
                     else
                     {
@@ -353,7 +339,9 @@ namespace RenderingEngine.Engine
             Line line = wall.Line;
             TextureInfo textureInfo = line.MiddleTexture!;
 
-            if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
+            (bool skybox, bool flipX, bool flipY) = GetFlags(textureInfo);
+
+            if (skybox)
             {
                 return DrawBasicSkyboxWall(player, renderableWall);
             }
@@ -379,10 +367,6 @@ namespace RenderingEngine.Engine
             ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
 
             sectorHeight <<= 16;
-
-            bool flipY = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
-            bool flipX = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
-
             textureStart <<= 16;
 
             float wallLength = wall.Length;
@@ -392,19 +376,14 @@ namespace RenderingEngine.Engine
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
 
-            float ys2;
-            if (yScale is float yS)
+            if (yScale is float)
             {
-                ys2 = (sector.Ceil - sector.Floor) * yS;
-            }
-            else
-            {
-                ys2 = 0f;
+                yScale = (sector.Ceil - sector.Floor) * yScale.Value;
             }
 
-            if (xScale is float xs)
+            if (xScale is float)
             {
-                xScale = xs / wallLength * textureHeight;
+                xScale = xScale.Value / wallLength * textureHeight;
             }
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
@@ -441,7 +420,7 @@ namespace RenderingEngine.Engine
 
                 if (yScale is float)
                 {
-                    textureXIncr = float.ConvertToIntegerNative<int>(((textureWidth << 16) * ys2) / (wallEndY - wallStartY));
+                    textureXIncr = float.ConvertToIntegerNative<int>(((textureWidth << 16) * yScale.Value) / (wallEndY - wallStartY));
                 }
                 else
                 {
@@ -635,7 +614,11 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CalculateAndCacheWallColumn(scoped Span<uint> buffer, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, byte brightness, bool flipY)
+        private static void CalculateAndCacheWallColumn(
+            scoped Span<uint> buffer,
+            ref int bufferIndex,
+            scoped ref BGRA wallTexturePtr,
+            int textureYPos, byte brightness, bool flipY)
         {
             // reuse the cached column
             if (bufferIndex == textureYPos)
@@ -749,6 +732,17 @@ namespace RenderingEngine.Engine
             float fromToYDist = t1 / denominator;
 
             return fromToYDist;
+        }
+
+        public static (bool IsSkybox, bool FlipX, bool FlipY) GetFlags(TextureInfo textureInfo)
+        {
+            var options = textureInfo.RenderingOptions;
+
+            bool skyBox = options.HasFlag(TextureRenderingOptions.Skybox);
+            bool flipX = options.HasFlag(TextureRenderingOptions.FlipX);
+            bool flipY = options.HasFlag(TextureRenderingOptions.FlipY);
+
+            return (skyBox, flipX, flipY);
         }
 
         #endregion
