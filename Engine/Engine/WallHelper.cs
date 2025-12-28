@@ -32,17 +32,57 @@ namespace RenderingEngine.Engine
             _player = player;
         }
 
-        public Span<Wall> DetermineWallsToRender(Sector sector, Span<Wall> portalWallsToOcclude, PortalPlayerSnapshot player)
+        public Span<Wall> DetermineWallsToRender(Sector sector, Span<Wall> portalWallsToOcclude, NeighborsToRender sectorInfo, PortalPlayerSnapshot player)
         {
             Span<Wall> rotatedWalls = CacheRotatedWallsRelativeToPlayer(sector, player);
+            
+            rotatedWalls = CullWallsOutsideOfWindow(rotatedWalls, sectorInfo);
 
             Span<Range> bunches = BreakUpIntoBunches(rotatedWalls);
             Span<Wall> result = CullHiddenWallsAndCombineBunches(bunches, rotatedWalls, portalWallsToOcclude);
-            result.Sort(wallComparer);
 
-            CullWallsBasedOnVisibility(ref result);
+            // we already sorted and culled bunches themselves, thus
+            // if there is just one bunch, no need to sort and cull again
+            if (bunches.Length > 1)
+            {
+                result.Sort(wallComparer);
+                CullWallsBasedOnVisibility(ref result);
+            }
 
             return result;
+        }
+
+        private static Span<Wall> CullWallsOutsideOfWindow(Span<Wall> rotatedWalls, NeighborsToRender sectorInfo)
+        {
+            RenderableWall? renderableWall = sectorInfo.RenderableWall;
+
+            if (renderableWall is null)
+            {
+                return rotatedWalls;
+            }
+
+            int xLeft = renderableWall.XLeft;
+            int xRight = renderableWall.XRight;
+
+            int j = 0;
+            for (int i = 0; i < rotatedWalls.Length; i++)
+            {
+                Wall wall = rotatedWalls[i];
+
+                if (Within(wall.XLeft, xLeft, xRight) || Within(wall.XRight, xLeft, xRight) || Within(xLeft, wall.XLeft, wall.XRight) || Within(xRight, wall.XLeft, wall.XRight))
+                {
+                    rotatedWalls[j] = wall;
+                    j++;
+                }
+            }
+
+            return rotatedWalls[..j];
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static bool Within(int value, int from, int to)
+            {
+                return value >= from && value <= to;
+            }
         }
 
         private void CullWallsBasedOnVisibility(ref Span<Wall> walls)
@@ -101,6 +141,64 @@ namespace RenderingEngine.Engine
             wallCache[sector.Id] = copy;
 
             return rotatedWalls;
+        }
+
+        public static void AssignBunches(Sector[] sectors)
+        {
+            Queue<Wall> wallsQ = [];
+
+            for (int s = 0; s < sectors.Length; s++)
+            {
+                Sector sector = sectors[s];
+                Span<Wall> walls = sector.Walls;
+
+                int currentGroupId = 0;
+
+                for (int i = 0; i < walls.Length; i++)
+                {
+                    Wall wall = walls[i];
+
+                    if (wall.Bunch == -1)
+                    {
+                        wall.Bunch = currentGroupId;
+                        currentGroupId++;
+
+                        wallsQ.Enqueue(wall);
+                    }
+
+                    while (wallsQ.TryDequeue(out Wall? current))
+                    {
+                        AssignGroup(current, walls);
+                    }
+                }
+
+                if (currentGroupId > 1)
+                {
+                    walls.Sort(BunchComparer.Default);
+                }
+            }
+
+            void AssignGroup(Wall current, scoped ReadOnlySpan<Wall> walls)
+            {
+                for (int i = 0; i < walls.Length; i++)
+                {
+                    Wall next = walls[i];
+
+                    if (next.Bunch != -1)
+                    {
+                        continue;
+                    }
+
+                    bool leftConnects = current.R1 == next.R1 || current.R1 == next.R2;
+                    bool rightConnects = current.R2 == next.R1 || current.R2 == next.R2;
+
+                    if (leftConnects || rightConnects)
+                    {
+                        next.Bunch = current.Bunch;
+                        wallsQ.Enqueue(next);
+                    }
+                }
+            }
         }
 
         private static void FilterParentPortalWall(ref Span<Wall> rotatedWalls, Wall parentSectorWall)
@@ -165,16 +263,13 @@ namespace RenderingEngine.Engine
                 Wall current = rotatedWalls[i];
                 Wall next = rotatedWalls[b];
 
-                bool leftConnects = current.R1 == next.R1 || current.R1 == next.R2;
-                bool rightConnects = current.R2 == next.R1 || current.R2 == next.R2;
-
                 if (b + 1 == rotatedWalls.Length)
                 {
                     bunches[bunchCount] = subsetStart..rotatedWalls.Length;
                     bunchCount++;
                 }
                 // New Bunch = Not Connected to Previous Wall
-                else if (!leftConnects && !rightConnects)
+                else if (current.Bunch != next.Bunch)
                 {
                     bunches[bunchCount] = subsetStart..b;
                     bunchCount++;
@@ -261,7 +356,7 @@ namespace RenderingEngine.Engine
         }
 
         public Span<Wall> CullHiddenWallsAndCombineBunches(
-            Span<Range> bunches, Span<Wall> rotatedWalls, Span<Wall> parentPortalWallsToOcclude)
+            scoped Span<Range> bunches, scoped Span<Wall> rotatedWalls, Span<Wall> parentPortalWallsToOcclude)
         {
             Span<Wall> finalWalls = new Wall[rotatedWalls.Length];
 
@@ -544,7 +639,8 @@ namespace RenderingEngine.Engine
 
             return new Wall(wall.Line, new Point(rx1, ry1), new Point(rx2, ry2), wall.Sector, wall.Neighbor)
             {
-                Length = length
+                Length = length,
+                Bunch = wall.Bunch
             };
         }
     }

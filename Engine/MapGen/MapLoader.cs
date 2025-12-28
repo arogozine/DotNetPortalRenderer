@@ -128,6 +128,8 @@ namespace RenderingEngine.MapGen
                 SpriteHelper.AssignSectors(map.Sprites, sectors);
             }
 
+            WallHelper.AssignBunches(sectors);
+
             return (map.Player, sectors, map.Sprites);
         }
 

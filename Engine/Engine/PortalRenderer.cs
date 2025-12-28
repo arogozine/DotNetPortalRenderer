@@ -77,7 +77,7 @@ namespace RenderingEngine.Engine
         private readonly RenderableAreaAndZBuffer[] spriteRenderableAreaCache = new RenderableAreaAndZBuffer[EngineConstants.MaxRenderDepth];
 
         private readonly List<RenderableSprite> transparentWalls = [];
-        private readonly Queue<NeighborsToRender> sectorRenderQueue = [];
+        private readonly List<NeighborsToRender> sectorRenderQueue = [];
 
         public void DrawScreen(PortalPlayerSnapshot player)
         {
@@ -86,7 +86,7 @@ namespace RenderingEngine.Engine
 
             RenderWindowHelper.NewRender();
 
-            sectorRenderQueue.Enqueue(new NeighborsToRender
+            sectorRenderQueue.Add(new NeighborsToRender
             {
                 SectorId = player.Sector
             });
@@ -172,7 +172,7 @@ namespace RenderingEngine.Engine
                         SectorId = neighbor.Neighbor
                     };
 
-                    sectorRenderQueue.Enqueue(neighborToRender);
+                    sectorRenderQueue.Add(neighborToRender);
                 }
 
                 if (RenderWindowHelper.NewDepth() == RenderColumnStatus.FinishedRendering)
@@ -200,13 +200,16 @@ namespace RenderingEngine.Engine
             List<RenderableWall> neighborsForDepth = [];
 
             // 0. Dequeue next sector to render. All sectors in the queue are for the current depth.
-            while (sectorRenderQueue.TryDequeue(out NeighborsToRender? sectorInfo))
+            Span<NeighborsToRender> renderQueueSpan = CollectionsMarshal.AsSpan(sectorRenderQueue);
+            for (int s = 0; s < renderQueueSpan.Length; s++)
             {
+                NeighborsToRender sectorInfo = renderQueueSpan[s];
+
                 Sector sector = sectors[sectorInfo.SectorId];
                 Wall[] parentWalls = sectorInfo.ParentWalls;
 
                 // 1. Filter out walls outside the player's view and sort them closest to furthest
-                Span<Wall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, player);
+                Span<Wall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player);
 
                 // 2. Determine where ceiling, floor, and walls start and end
                 RenderColumnStatus sectorStatus = CalculateRenderWindow(sectorInfo, sector, walls);
@@ -228,6 +231,8 @@ namespace RenderingEngine.Engine
 
                 neighborsForDepth.AddRange(neighbors);
             }
+
+            sectorRenderQueue.Clear();
 
             return neighborsForDepth;
         }

@@ -2,6 +2,21 @@
 
 namespace RenderingEngine.Engine
 {
+    internal sealed class BunchComparer : IComparer<Wall>
+    {
+        private BunchComparer() { }
+
+        public static readonly BunchComparer Default = new();
+
+        public int Compare(Wall? x, Wall? y)
+        {
+            ArgumentNullException.ThrowIfNull(x);
+            ArgumentNullException.ThrowIfNull(y);
+
+            return x.Bunch - y.Bunch;
+        }
+    }
+
     /// <summary>
     /// Wall distance comparer
     /// </summary>
@@ -132,6 +147,7 @@ namespace RenderingEngine.Engine
             return CompareFurtherst(xCY1, xCY2, yCY1, yCY2);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int CompareFurtherst(float xCY1, float xCY2, float yCY1, float yCY2)
         {
             float xd = MathF.Max(xCY1, xCY2);
