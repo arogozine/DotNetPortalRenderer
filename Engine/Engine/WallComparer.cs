@@ -74,6 +74,7 @@ namespace RenderingEngine.Engine
                 return Compare(xCY1, yCY2);
             }
 
+            // if the walls overlap, find the the distance at the overlapping point
             if (Within(x.XLeft, y.XLeft, y.XRight) || Within(x.XRight, y.XLeft, y.XRight))
             {
                 float yRX1 = y.R1.X;
@@ -103,10 +104,7 @@ namespace RenderingEngine.Engine
                 }
                 else if (right)
                 {
-                    return Compare(
-                        xCY2,
-                        yCY2
-                    );
+                    return Compare(xCY2, yCY2);
                 }
             }
 

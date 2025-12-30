@@ -94,9 +94,16 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
-        private static bool TryDecodeImage(byte[] lumpBytes, out BGRA[] bgra, out int width, out int height)
+        private static bool TryDecodeImage(byte[] lumpBytes, [NotNullWhen(true)] out BGRA[]? bgra, out int width, out int height)
         {
-            SKImage image = SKImage.FromEncodedData(lumpBytes);
+            SKImage? image = SKImage.FromEncodedData(lumpBytes);
+
+            if (image is null)
+            {
+                bgra = null;
+                width = height = default;
+                return false;
+            }
 
             width = image.Width;
             height = image.Height;

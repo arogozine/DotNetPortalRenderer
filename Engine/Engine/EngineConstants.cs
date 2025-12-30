@@ -2,19 +2,17 @@
 {
     internal static class EngineConstants
     {
+        // Maximum amount of iterations to render
         public const int MaxRenderDepth = 2048;
 
         public const int NullSector = -1;
         public const int Unset = -1;
 
-        public const int MaxSectorRenderQueue = 32;
-        public const float CameraPlaneX = 0.66f;
-        public const float LightFallOffDistance = 1024f;
-        public const float OneOverLightFallOffDistance = 1f / LightFallOffDistance;
-
         // This is DoomGuy height, but as I am working with rendering doom maps at the moment, is a good starting point
         public const int PlayerHeight = 56;
 
+        // Build and Doom, afaik, use 90degrees - so this can be simplified
+        public const float CameraPlaneX = 0.66f;
         public const float HeightToWidthRatio = 0.5f / CameraPlaneX;
 
         public const float NinetyDegrees = MathF.PI * (90f / 180f);

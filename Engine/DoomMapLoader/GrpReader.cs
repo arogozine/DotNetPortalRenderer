@@ -578,6 +578,10 @@ namespace RenderingEngine.DoomMapLoader
 
             Span<ArtFile> artFileSpan = CollectionsMarshal.AsSpan(artFiles);
 
+            // Art File can have many tiles (textures)
+            // Each tile is simply an X by Y index into the palette
+            // where 255 is transparent
+
             for (int s = 0; s < artFileSpan.Length; s++)
             {
                 ArtFile artFile = artFileSpan[s];
@@ -601,7 +605,6 @@ namespace RenderingEngine.DoomMapLoader
                                 byte index = tile.Pixels[x * tile.YSize + y];
 
                                 // 255th index is used for transparency
-                                // can also add r >= 250 && b >= 250 && g <= 5 ?
                                 if (index != byte.MaxValue)
                                 {
                                     texture[i] = pal[index];

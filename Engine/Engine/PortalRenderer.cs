@@ -76,8 +76,12 @@ namespace RenderingEngine.Engine
         private sealed record RenderableAreaAndZBuffer(int[] CeilingStart, int[] FloorEnd, float[] ZBuffer);
         private readonly RenderableAreaAndZBuffer[] spriteRenderableAreaCache = new RenderableAreaAndZBuffer[EngineConstants.MaxRenderDepth];
 
+        // avoid re-allocating lists to reduce memory pressure
+
         private readonly List<RenderableSprite> transparentWalls = [];
         private readonly List<NeighborsToRender> sectorRenderQueue = [];
+        private readonly List<RenderableWall> neightbors = [];
+        private readonly List<RenderableWall> renderableWalls = [];
 
         public void DrawScreen(PortalPlayerSnapshot player)
         {
@@ -214,15 +218,16 @@ namespace RenderingEngine.Engine
                 // 2. Determine where ceiling, floor, and walls start and end
                 RenderColumnStatus sectorStatus = CalculateRenderWindow(sectorInfo, sector, walls);
 
+                // 3. Nothing to render, bail early
                 if (sectorStatus == default || renderableWalls.Count == 0)
                 {
                     continue;
                 }
 
-                // 3. Render Floors, Ceilings, and Walls
+                // 4. Render Floors, Ceilings, and Walls
                 List<RenderableWall> neighbors = RenderSector(player, sector, sectors, sectorStatus);
 
-                // 4. Keep track of parent walls to avoid rendering them again
+                // 5. Keep track of parent walls to avoid rendering them again
                 Span<RenderableWall> neighborsSpan = CollectionsMarshal.AsSpan(neighbors);
                 for (int i = 0; i < neighborsSpan.Length; i++)
                 {
@@ -268,9 +273,6 @@ namespace RenderingEngine.Engine
                 }
             }
         }
-
-        private readonly List<RenderableWall> neightbors = [];
-        private readonly List<RenderableWall> renderableWalls = [];
 
         private RenderColumnStatus CalculateRenderWindow(
             NeighborsToRender sectorInfo,
@@ -374,6 +376,7 @@ namespace RenderingEngine.Engine
             float wallEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
+            // minor performance hack
             bool upperWallIsSkybox = sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox) &&
                 !wall.IsPortal && wall.Line.MiddleTexture!.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
 

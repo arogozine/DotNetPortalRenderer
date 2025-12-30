@@ -8,7 +8,7 @@ namespace RenderingEngine.Engine
             ParentWalls = [];
         }
 
-        public NeighborsToRender(RenderableWall renderableWall, scoped Span<Wall> walls)
+        public NeighborsToRender(RenderableWall renderableWall, scoped ReadOnlySpan<Wall> walls)
         {
             this.RenderableWall = renderableWall;
             ParentWalls = new Wall[walls.Length + 1];

@@ -143,9 +143,9 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        public static void AssignBunches(Sector[] sectors)
+        public static void AssignBunches(scoped ReadOnlySpan<Sector> sectors)
         {
-            Queue<Wall> wallsQ = [];
+            Queue<Wall> assignedWallsQueue = [];
 
             for (int s = 0; s < sectors.Length; s++)
             {
@@ -158,20 +158,23 @@ namespace RenderingEngine.Engine
                 {
                     Wall wall = walls[i];
 
+                    // line without a bunch assigned
                     if (wall.Bunch == -1)
                     {
                         wall.Bunch = currentGroupId;
                         currentGroupId++;
 
-                        wallsQ.Enqueue(wall);
+                        assignedWallsQueue.Enqueue(wall);
                     }
 
-                    while (wallsQ.TryDequeue(out Wall? current))
+                    // determine all connected lines
+                    while (assignedWallsQueue.TryDequeue(out Wall? current))
                     {
                         AssignGroup(current, walls);
                     }
                 }
 
+                // sort lines by group
                 if (currentGroupId > 1)
                 {
                     walls.Sort(BunchComparer.Default);
@@ -184,18 +187,21 @@ namespace RenderingEngine.Engine
                 {
                     Wall next = walls[i];
 
+                    // already assigned, skip
                     if (next.Bunch != -1)
                     {
                         continue;
                     }
 
+                    // if connects, assign to the same bunch
+                    // add to queue
                     bool leftConnects = current.R1 == next.R1 || current.R1 == next.R2;
                     bool rightConnects = current.R2 == next.R1 || current.R2 == next.R2;
 
                     if (leftConnects || rightConnects)
                     {
                         next.Bunch = current.Bunch;
-                        wallsQ.Enqueue(next);
+                        assignedWallsQueue.Enqueue(next);
                     }
                 }
             }

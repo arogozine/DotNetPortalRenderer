@@ -29,7 +29,7 @@ namespace RenderingEngine.Models
         public int YRightCeil { get; set; }
         public int YRightFloor { get; set; }
         public float Length { get; set; }
-        public int Bunch { get; set; } = -1;
+        public int Bunch { get; set; } = EngineConstants.Unset;
 
         public bool IsPortal => Neighbor != EngineConstants.NullSector;
 

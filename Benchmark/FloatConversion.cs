@@ -39,17 +39,5 @@ namespace Benchmark
             }
             return ans;
         }
-
-        [Benchmark()]
-        public int FastFloatToIntegerTest()
-        {
-            int ans = 0;
-            for (int i = 0; i < Meh.Length; i++)
-            {
-                ans = MathFormulas.FastPositiveFloatToInt(Meh[i]);
-            }
-
-            return ans;
-        }
     }
 }

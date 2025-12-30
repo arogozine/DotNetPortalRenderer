@@ -32,6 +32,7 @@
         private Span<T> GetSpan<T>((int Start, int Length) slice)
             where T : struct
         {
+            // we re-interpret the existin binary instead of allocating something new
             return MemoryMarshal.Cast<byte, T>(_binary.AsSpan().Slice(slice.Start, slice.Length));
         }
     }

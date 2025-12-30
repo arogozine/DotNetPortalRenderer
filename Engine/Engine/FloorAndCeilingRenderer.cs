@@ -5,6 +5,8 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
+        #region Shared Precalculated Vectors
+
         private Vector<int> pxVI = default;
         private Vector<int> pyVI = default;
         private Vector<int> pSinVI = default;
@@ -43,6 +45,8 @@ namespace RenderingEngine.Engine
             pCosVI = Vector.Create(float.ConvertToIntegerNative<int>(pCos * (1 << 8)));
         }
 
+        #endregion
+
         [SkipLocalsInit]
         private void RenderCeilingVector(
             PortalPlayerSnapshot player,
@@ -52,7 +56,7 @@ namespace RenderingEngine.Engine
 
             if (!rotated || sector.RotationCeiling == EngineConstants.NinetyDegrees)
             {
-                RenderCeilingVector2(player, sector, rotated);
+                RenderCeilingVector_FixedPoint(player, sector, rotated);
                 return;
             }
 
@@ -130,7 +134,7 @@ namespace RenderingEngine.Engine
         }
 
         [SkipLocalsInit]
-        public void RenderCeilingVector2(
+        public void RenderCeilingVector_FixedPoint(
             PortalPlayerSnapshot player,
             Sector sector,
             bool rotated)
@@ -147,10 +151,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = sector.CeilTexture;
             ref Texture ceilingTexture = ref TextureCache.GetTexture(textureInfo.Name);
-            bool flipY = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
-            bool flipX = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
-            bool swapXy = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.SwapXY);
-            bool doubleSize = textureInfo.XScale == 2 && textureInfo.YScale == 2;
+            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
@@ -158,8 +159,8 @@ namespace RenderingEngine.Engine
             Vector<int> yCeliningV = Vector.Create<int>(yCeiling);
 
             int textureWidth = ceilingTexture.Width;
-            int textureHeightMask = (ceilingTexture.Height) - 1;
-            int textureWidthMask = (ceilingTexture.Width) - 1;
+            int textureHeightMask = ceilingTexture.Height - 1;
+            int textureWidthMask = ceilingTexture.Width - 1;
 
             Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
@@ -187,7 +188,7 @@ namespace RenderingEngine.Engine
                 int screenIndex = floorFromY * width + x;
                 int xMapPosMultiplier = float.ConvertToIntegerNative<int>(((widthDiv2 - x) << 10) * xPosIncr);
 
-                RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
+                RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
                     x, lightLevel, yCeliningV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy, rotated, doubleSize);
             }
@@ -391,7 +392,7 @@ namespace RenderingEngine.Engine
 
             if (!rotated || sector.RotationFloor == EngineConstants.NinetyDegrees)
             {
-                RenderFloorVector2(player, sector, rotated);
+                RenderFloorVector_FixedPoint(player, sector, rotated);
                 return;
             }
 
@@ -467,7 +468,7 @@ namespace RenderingEngine.Engine
         }
 
         [SkipLocalsInit]
-        public void RenderFloorVector2(
+        public void RenderFloorVector_FixedPoint(
             PortalPlayerSnapshot player,
             Sector sector,
             bool rotated)
@@ -484,10 +485,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = sector.FloorTexture;
             ref Texture floorTexture = ref TextureCache.GetTexture(textureInfo.Name);
-            bool flipY = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
-            bool flipX = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
-            bool swapXy = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.SwapXY);
-            bool doubleSize = textureInfo.XScale == 2 && textureInfo.YScale == 2;
+            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
@@ -495,8 +493,8 @@ namespace RenderingEngine.Engine
             Vector<int> yfloorV = Vector.Create(yfloor);
 
             int textureWidth = floorTexture.Width;
-            int textureHeightMask = (floorTexture.Height) - 1;
-            int textureWidthMask = (floorTexture.Width) - 1;
+            int textureHeightMask = floorTexture.Height - 1;
+            int textureWidthMask = floorTexture.Width - 1;
 
             Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
@@ -524,14 +522,13 @@ namespace RenderingEngine.Engine
                 int screenIndex = floorFromY * width + x;
                 int xMapPosMultiplier = float.ConvertToIntegerNative<int>(((widthDiv2 - x) << 10) * xPosIncr);
 
-                RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
+                RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
                     x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy, rotated, doubleSize);
             }
         }
 
-
-        private void RenderFloorOrCeilingColumn(
+        private void RenderFloorOrCeilingColumn_FixedPoint(
             scoped ref BGRA screenPtr,
             scoped ref BGRA texturePtr,
             int screenIndex,
@@ -580,6 +577,7 @@ namespace RenderingEngine.Engine
 
                 Vector<int> _y1, _x1;
 
+                // for non-floating point rotation, we only support 90 degrees for now
                 if (rotated)
                 {
                     (xMapPos, yMapPos) = (yMapPos, xMapPos);
@@ -604,7 +602,7 @@ namespace RenderingEngine.Engine
 
                 if (flipX)
                 {
-                    _x1 = textureHeightMaskV - _x1;
+                    _x1 = textureWidthMaskV - _x1;
                 }
 
                 Vector<int> textureIndex = _y1 * textureWidthV + _x1;
@@ -621,6 +619,7 @@ namespace RenderingEngine.Engine
                 incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
             }
             
+            // tail that doesn't fit ovenly into a vector
             if (rem > 0)
             {
                 Vector<int> yMapPosR = yCeilV * incramentVector;
@@ -657,7 +656,7 @@ namespace RenderingEngine.Engine
 
                 if (flipX)
                 {
-                    _x1 = textureHeightMaskV - _x1;
+                    _x1 = textureWidthMaskV - _x1;
                 }
 
                 Vector<int> textureIndex = _y1 * textureWidthV + _x1;
@@ -765,6 +764,19 @@ namespace RenderingEngine.Engine
                     ShadeByPrecalc(in tex, ref screenTex, lightLevel);
                 }
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static (bool SwapXY, bool FlipX, bool FlipY, bool DoubleSize) GetFloorFlags(TextureInfo textureInfo)
+        {
+            TextureRenderingOptions options = textureInfo.RenderingOptions;
+
+            bool swapXy = options.HasFlag(TextureRenderingOptions.SwapXY);
+            bool flipX = options.HasFlag(TextureRenderingOptions.FlipX);
+            bool flipY = options.HasFlag(TextureRenderingOptions.FlipY);
+            bool doubleSize = textureInfo.XScale == 2 && textureInfo.YScale == 2;
+
+            return (swapXy, flipX, flipY, doubleSize);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -65,6 +65,7 @@ namespace RenderingEngine.Engine
                 renderColumnStatus |= render.Status;
             }
 
+            // this allows us to know what, if anything, we can still render
             return renderColumnStatus;
         }
 
@@ -129,6 +130,7 @@ namespace RenderingEngine.Engine
             }
         }
 
+        // for transparency
         public RenderWindow[] CopyRenderWindow(bool partial)
         {
             RenderWindow[] renderWindow = new RenderWindow[this.renderWindow.Length];

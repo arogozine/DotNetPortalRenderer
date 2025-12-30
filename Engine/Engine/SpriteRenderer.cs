@@ -110,8 +110,7 @@ namespace RenderingEngine.Engine
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
 
-            Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
-            ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
+            ref uint columnBufferPtr = ref GetBufferA(textureWidth, out Span<uint> columnBuffer);
 
             WallYPlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
             float wallStartY = yPlaneInfo.WallStartY;
@@ -142,27 +141,20 @@ namespace RenderingEngine.Engine
             int xOffset = textureInfo.XOffset;
             int yOffset = textureInfo.YOffset > sectorHeight ? textureInfo.YOffset - 65536 : textureInfo.YOffset;
 
-
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
 
             (float? lowerXScale, float? lowerYScale) = (textureInfo.XScale, textureInfo.YScale);
 
+            if (lowerYScale is float)
             {
-                if (lowerYScale is float yS)
-                {
-                    lowerYScale = (sector.Ceil - sector.Floor) * yS;
-                }
+                lowerYScale = (sector.Ceil - sector.Floor) * lowerYScale.Value;
             }
-
+            if (lowerXScale is float)
             {
-                if (lowerXScale is float xs)
-                {
-                    lowerXScale = xs / wall.Length * texture.Width;
-                }
+                lowerXScale = lowerXScale.Value / wall.Length * texture.Width;
             }
-
             if (lowerXScale is not null)
             {
                 yOffset = textureInfo.YOffset;
@@ -235,14 +227,14 @@ namespace RenderingEngine.Engine
                 float textureXIncr = (float)(sectorHeight / (wallEndY - wallStartY));
                 int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
 
-                if (lowerYScale is float ys3)
+                if (lowerYScale is float)
                 {
-                    textureXIncr = (texture.Height * ys3) / (float)(wallEndY - wallStartY);
+                    textureXIncr = (texture.Height * lowerYScale.Value) / (float)(wallEndY - wallStartY);
                 }
 
-                if (lowerXScale is float scale)
+                if (lowerXScale is float)
                 {
-                    textureYPos = float.ConvertToIntegerNative<int>(distance * scale);
+                    textureYPos = float.ConvertToIntegerNative<int>(distance * lowerXScale.Value);
                 }
 
                 float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, offset, textureWidth);

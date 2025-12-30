@@ -11,6 +11,5 @@ GROK helping figure out VB6 to C# for above utility
 
 https://fabiensanglard.net/duke3d/code_legacy.php
 
-
 EDuke Wiki,
 https://wiki.eduke32.com/wiki/
