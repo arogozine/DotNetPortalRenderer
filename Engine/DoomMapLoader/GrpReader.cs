@@ -76,6 +76,11 @@ namespace RenderingEngine.DoomMapLoader
                 yScale = 2;
             }
 
+            if (stat.HasFlag(Stat.AlignTexture))
+            {
+                options |= TextureRenderingOptions.AlignWithFirstWall;
+            }
+
             return (options, xScale, yScale);
         }
 
@@ -133,7 +138,6 @@ namespace RenderingEngine.DoomMapLoader
 
                 (int cXoffset, int cYOffset) = CalculateCeilingOffset(in sector, ceilingTexture);
                 (int fXoffset, int fYOffset) = CalculateFloorOffset(in sector, floorTexture);
-
 
                 (TextureRenderingOptions floorRenderingOptions, int floorXScale, int floorYScale) = ToTextureRenderingOptions(sector.FloorStat);
                 (TextureRenderingOptions ceilingRenderingOptions, int ceilXScale, int ceilYScale) = ToTextureRenderingOptions(sector.CeilingStat);
@@ -316,8 +320,29 @@ namespace RenderingEngine.DoomMapLoader
         {
             Span<MapSector> sectors = CollectionsMarshal.AsSpan(sectorList);
 
-            foreach (MapSector sector in sectors)
+            for (int s = 0; s < sectors.Length; s++)
             {
+                MapSector sector = sectors[s];
+                Line firstWall = sector.Walls[0];
+
+                if (sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.AlignWithFirstWall))
+                {
+                    (int xOffset, int yOffset, float angle) = CalculateAngle(firstWall, sector.FloorTexture);
+
+                    sector.RotationFloor = angle;
+                    sector.FloorTexture.XOffset += xOffset;
+                    sector.FloorTexture.YOffset += yOffset;
+                }
+
+                if (sector.CeilingTexture.RenderingOptions.HasFlag(TextureRenderingOptions.AlignWithFirstWall))
+                {
+                    (int xOffset, int yOffset, float angle) = CalculateAngle(firstWall, sector.CeilingTexture);
+
+                    sector.RotationCeiling = angle;
+                    sector.CeilingTexture.XOffset += xOffset;
+                    sector.CeilingTexture.YOffset += yOffset;
+                }
+
                 foreach (Line line in sector.Walls)
                 {
                     if (line.SectorTo is int sectorTo && sectorTo != -1)
@@ -431,6 +456,30 @@ namespace RenderingEngine.DoomMapLoader
                         }
                     }
                 }
+            }
+
+            static (int xOffset, int yOffset, float angle) CalculateAngle(Line firstWall, Models.TextureInfo textureInfo)
+            {
+                ref Texture texture = ref TextureCache.GetTexture(textureInfo);
+
+                (float x1, float y1) = firstWall.PointA.Point;
+                (float x2, float y2) = firstWall.PointB.Point;
+
+                float dy = y2 - y1;
+                float dx = x2 - x1;
+
+                int xOffset = float.ConvertToIntegerNative<int>(x1) % texture.Width;
+                int yOffset = float.ConvertToIntegerNative<int>(y1) % texture.Height;
+                float angle = MathF.Atan(dx / dy);
+
+                if ((x2 - x1) < 0 || (y2 - y1) < 0)
+                    angle += MathF.PI;
+                if ((x2 - x1) > 0 && (y2 - y1) < 0)
+                    angle -= MathF.PI;
+                if (angle < 0)
+                    angle += MathF.PI * 2f;
+
+                return (xOffset, yOffset, angle);
             }
         }
 

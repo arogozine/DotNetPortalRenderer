@@ -22,6 +22,7 @@
         Skybox = 16,
         FlipX = 32,
         FlipY = 64,
-        SwapXY = 128
+        SwapXY = 128,
+        AlignWithFirstWall = 256
     }
 }

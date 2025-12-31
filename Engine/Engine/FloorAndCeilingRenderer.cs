@@ -80,6 +80,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = sector.CeilTexture;
             ref Texture ceilingTexture = ref TextureCache.GetTexture(textureInfo.Name);
+            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
 
             int textureWidth = ceilingTexture.Width;
             int textureHeightMask = ceilingTexture.Height - 1;
@@ -129,7 +130,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, floorFromY, width,
                     x, lightLevel, yCeilV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV);
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy);
             }
         }
 
@@ -409,6 +410,7 @@ namespace RenderingEngine.Engine
             int widthDiv2 = width / 2;
 
             ref Texture floorTexture = ref TextureCache.GetTexture(textureInfo.Name);
+            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
@@ -422,7 +424,6 @@ namespace RenderingEngine.Engine
             Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
             Vector<int> textureWidthV = Vector.Create(textureWidth);
-
 
             int xOffset = -textureInfo.XOffset;
             int yOffset = textureInfo.YOffset;
@@ -463,7 +464,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
                     x, lightLevel, yfloorV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV);
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy);
             }
         }
 
@@ -692,7 +693,10 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthMaskV,
             bool rotated,
             Vector<float> rSinV,
-            Vector<float> rCosV
+            Vector<float> rCosV,
+            bool flipY,
+            bool flipX,
+            bool swapXy
         )
         {
             int rem = (floorToY - floorFromY) % Vector<int>.Count;
@@ -720,8 +724,30 @@ namespace RenderingEngine.Engine
                     yMapPos = yMapPosSR;
                 }
 
-                Vector<int> _y1 = (Vector.ConvertToInt32Native(yMapPos) + yOffSetV) & textureHeightMaskV;
-                Vector<int> _x1 = (Vector.ConvertToInt32Native(xMapPos) + xOffSetV) & textureWidthMaskV;
+                Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos);
+                Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos);
+
+                if (swapXy)
+                {
+                    _y1 = (_y1 + xOffSetV) & textureHeightMaskV;
+                    _x1 = (_x1 + yOffSetV) & textureWidthMaskV;
+                }
+                else
+                {
+                    _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
+                    _x1 = (_x1 + xOffSetV) & textureWidthMaskV;
+                }
+
+                if (flipY)
+                {
+                    _y1 = textureHeightMaskV - _y1;
+                }
+
+                if (flipX)
+                {
+                    _x1 = textureWidthMaskV - _x1;
+                }
+
                 Vector<int> textureIndex = _y1 * textureWidthV + _x1;
 
                 ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
@@ -752,8 +778,30 @@ namespace RenderingEngine.Engine
                     yMapPos = yMapPosSR;
                 }
 
-                Vector<int> _y1 = (Vector.ConvertToInt32Native(yMapPos) + yOffSetV) & textureHeightMaskV;
-                Vector<int> _x1 = (Vector.ConvertToInt32Native(xMapPos) + xOffSetV) & textureWidthMaskV;
+                Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos);
+                Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos);
+
+                if (swapXy)
+                {
+                    _y1 = (_y1 + xOffSetV) & textureHeightMaskV;
+                    _x1 = (_x1 + yOffSetV) & textureWidthMaskV;
+                }
+                else
+                {
+                    _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
+                    _x1 = (_x1 + xOffSetV) & textureWidthMaskV;
+                }
+
+                if (flipY)
+                {
+                    _y1 = textureHeightMaskV - _y1;
+                }
+
+                if (flipX)
+                {
+                    _x1 = textureWidthMaskV - _x1;
+                }
+
                 Vector<int> textureIndex = _y1 * textureWidthV + _x1;
 
                 ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);

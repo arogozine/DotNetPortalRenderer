@@ -17,8 +17,19 @@
         YFlip = 32,
 
         /// <summary>
-        /// Align texture to first wall of sector
+        /// Align texture to first wall of sector.
+        /// Texture relativity ("R" key)
         /// </summary>
-        AlignTexture = 64
+        AlignTexture = 64,
+
+        /// <summary>
+        /// Masked
+        /// </summary>
+        Masked = 128,
+
+        /// <summary>
+        /// Translucent mask
+        /// </summary>
+        Transluscent = 256
     }
 }
