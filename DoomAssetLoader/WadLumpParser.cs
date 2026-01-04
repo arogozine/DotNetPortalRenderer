@@ -130,7 +130,7 @@ namespace DoomAssetLoader
             return list;
         }
 
-        public static unsafe Dictionary<int, RGB[]> ReadPlaypal([NotNull] WadLump? playPalLump)
+        public static Dictionary<int, RGB[]> ReadPlaypal([NotNull] WadLump? playPalLump)
         {
             const int setSize = 256;
 
@@ -198,7 +198,7 @@ namespace DoomAssetLoader
         {
             WadLumpCheck(textLump, LumpType.TextMap);
 
-            string text = Encoding.ASCII.GetString(textLump.Bytes);
+            string text = Encoding.ASCII.GetString(textLump.Bytes.AsSpan());
 
             return UdmfParser.Parse(text);
         }

@@ -708,7 +708,7 @@ namespace RenderingEngine.DoomMapLoader
                     Angle = thing.Angle,
                     Location = new Point(thing.X, thing.Y),
                     Height = thing.Height ?? 0f,
-                    TextureName = GetTextureName((ThingType)thing.Type)
+                    Texture = new Models.TextureInfo { Name = GetTextureName((ThingType)thing.Type) }
                 });
             }
 
@@ -759,7 +759,7 @@ namespace RenderingEngine.DoomMapLoader
                     Angle = thing.Angle,
                     Location = new Point(thing.X, thing.Y),
                     Height = 0f,
-                    TextureName = GetTextureName(thing.Type)
+                    Texture = new Models.TextureInfo { Name = GetTextureName(thing.Type) }
                 });
             }
 

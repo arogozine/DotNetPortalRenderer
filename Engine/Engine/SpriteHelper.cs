@@ -128,7 +128,7 @@ namespace RenderingEngine.Engine
 
             static float CalculateDistance(Sprite sprite)
             {
-                ref Texture texture = ref TextureCache.GetTextureOrNullRef(sprite.TextureName);
+                ref Texture texture = ref TextureCache.GetTextureOrNullRef(sprite.Texture.Name);
 
                 if (Unsafe.IsNullRef(ref texture))
                 {
@@ -208,7 +208,7 @@ namespace RenderingEngine.Engine
                     Location = s.Location,
                     Rotated = new Point(rx1, ry1),
                     Height = s.Height,
-                    TextureName = s.TextureName,
+                    Texture = s.Texture,
                     SectorId = s.SectorId
                 };
 
@@ -296,16 +296,26 @@ namespace RenderingEngine.Engine
 
         public void CalculateSpritePlane(Sprite sprite, float yCeil, float yFloor, float yaw)
         {
-            ref Texture texture = ref TextureCache.GetTexture(sprite.TextureName);
+            TextureInfo textureInfo = sprite.Texture;
 
-            int textureWidth = texture.Width;
-            int textureHeight = texture.Height;
+            ref Texture texture = ref TextureCache.GetTexture(textureInfo);
+
+            float textureWidth = texture.Width * (textureInfo.XScale ?? 1f);
+            float textureHeight = texture.Height * (textureInfo.YScale ?? 1f);
 
             // calculate the x, y for the wall on the screen for both points
             float rx1 = sprite.Rotated.X - textureWidth / 2;
             float rx2 = sprite.Rotated.X + textureWidth / 2;
             float ry1 = sprite.Rotated.Y;
             float ry2 = sprite.Rotated.Y;
+
+            if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall))
+            {
+                (float sin, float cos) = MathF.SinCos(sprite.Angle);
+
+                (rx1, ry1) = MathFormulas.RotateVertex(rx1, ry1, sin, cos);
+                (rx2, ry2) = MathFormulas.RotateVertex(rx2, ry2, sin, cos);
+            }
 
             sprite.R1 = new Point(rx1, ry1);
             sprite.R2 = new Point(rx2, ry2);

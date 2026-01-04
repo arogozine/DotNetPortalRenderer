@@ -190,18 +190,6 @@ namespace RenderingEngine.Engine
                 // draw upper wall / upper skybox
                 if (ceilOffset != 0 && fromYClamped < portalFromYClamped)
                 {
-                    int textureXIncr;
-
-                    if (upperYScale is float)
-                    {
-                        textureXIncr = float.ConvertToIntegerNative<int>(((upperTexture.Height << 16) * upperYScale.Value) / (wallEndY - wallStartY));
-                    }
-                    else
-                    {
-                        textureXIncr = (sectorHeight << 16) / (wallEndY - wallStartY);
-                    }
-
-
                     if (upperSkybox)
                     {
                         ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, fromYClamped * width + x);
@@ -218,6 +206,17 @@ namespace RenderingEngine.Engine
                     }
                     else
                     {
+                        int textureXIncr;
+
+                        if (upperYScale is float)
+                        {
+                            textureXIncr = float.ConvertToIntegerNative<int>(((upperTexture.Height << 16) * upperYScale.Value) / (wallEndY - wallStartY));
+                        }
+                        else
+                        {
+                            textureXIncr = (sectorHeight << 16) / (wallEndY - wallStartY);
+                        }
+
                         (int distance, fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, upperFlipX);
 
                         // Calculate Upper  Texture Position
@@ -258,18 +257,6 @@ namespace RenderingEngine.Engine
                 // draw lower wall
                 if (floorOffset != 0 && portalToYClamped < toYClamped)
                 {
-                    int textureXIncr;
-
-                    if (lowerYScale is float)
-                    {
-                        textureXIncr = float.ConvertToIntegerNative<int>(((lowerTexture.Height << 16) * lowerYScale.Value) / (wallEndY - wallStartY));
-                    }
-                    else
-                    {
-                        textureXIncr = (sectorHeight << 16) / (wallEndY - wallStartY);
-                    }
-
-
                     if (lowerSkybox)
                     {
                         ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * width + x);
@@ -286,6 +273,17 @@ namespace RenderingEngine.Engine
                     }
                     else
                     {
+                        int textureXIncr;
+
+                        if (lowerYScale is float)
+                        {
+                            textureXIncr = float.ConvertToIntegerNative<int>(((lowerTexture.Height << 16) * lowerYScale.Value) / (wallEndY - wallStartY));
+                        }
+                        else
+                        {
+                            textureXIncr = (sectorHeight << 16) / (wallEndY - wallStartY);
+                        }
+
                         (int distance, fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, lowerFlipX);
 
 
@@ -720,6 +718,21 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static (float CameraRay, float CameraRayIncr, float t1, float d2y, float d2x) CalculateCameraRay(Sprite sprite, int width, int wallFromX)
+        {
+            float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
+            float rx1 = sprite.R1.X;
+            float ry1 = sprite.R1.Y;
+            float d2x = sprite.R2.X - rx1;
+            float d2y = sprite.R2.Y - ry1;
+            float t1 = rx1 * d2y - ry1 * d2x;
+            float cameraRay = -1f * EngineConstants.CameraPlaneX;
+            cameraRay += cameraWidthIncr * wallFromX;
+
+            return (cameraRay, cameraWidthIncr, t1, d2y, d2x);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static (int TextureLocation, float FromToYDist) CalculateDistance(
             Wall wall,
             float cameraRay,
@@ -741,6 +754,28 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static (int TextureLocation, float FromToYDist) CalculateDistance(
+            Sprite wall,
+            float cameraRay,
+            float t1, float d2y, float d2x,
+            bool flipX)
+        {
+            bool flipped = flipX; // ? !wall.Flipped : wall.Flipped;
+
+            float denominator = cameraRay * d2y - d2x;
+            float fromToYDist = t1 / denominator;
+            float fromToXDist = fromToYDist * cameraRay;
+
+            float distX = flipped ? (wall.R2.X - fromToXDist) : (fromToXDist - wall.R1.X);
+            float distY = flipped ? (wall.R2.Y - fromToYDist) : (fromToYDist - wall.R1.Y);
+
+            float textureXLocation = MathF.Sqrt(distX * distX + distY * distY);
+
+            return (float.ConvertToIntegerNative<int>(textureXLocation), fromToYDist);
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static float CalculateDistance2(float cameraRay, float t1, float d2y, float d2x)
         {
             float denominator = cameraRay * d2y - d2x;
@@ -752,6 +787,11 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static (bool IsSkybox, bool FlipX, bool FlipY) GetFlags(TextureInfo textureInfo)
         {
+            if (textureInfo is null)
+            {
+                return (false, false, false);
+            }
+
             TextureRenderingOptions options = textureInfo.RenderingOptions;
 
             bool skyBox = options.HasFlag(TextureRenderingOptions.Skybox);

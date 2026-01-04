@@ -216,7 +216,7 @@ namespace RenderingEngine.DoomMapLoader
                     Where = (DetermineXLocation(startingPosition.PosX), DetermineYLocation(startingPosition.PosY), DetermineZLocation(startingPosition.PosZ)),
                     Sector = startingPosition.SectorNumber
                 },
-                Sprites = ExtractSprites(sprites),
+                Sprites = ExtractSprites(sprites, grpSectors),
                 Sectors = sectors
             };
 
@@ -584,13 +584,15 @@ namespace RenderingEngine.DoomMapLoader
             return (wall.XPanning, wall.YPanning >> 2);
         }
 
-        private static Sprite[] ExtractSprites(Span<SpriteType> spritesTypes)
+        private static Sprite[] ExtractSprites(Span<SpriteType> spritesTypes, Span<SectorType> grpSectors)
         {
             Sprite[] sprites = new Sprite[spritesTypes.Length];
 
             for (int i = 0; i < spritesTypes.Length; i++)
             {
                 ref SpriteType sprite = ref spritesTypes[i];
+
+                ref SectorType sector = ref grpSectors[sprite.SectorNumber];
 
                 // no wall support for now
 
@@ -603,20 +605,58 @@ namespace RenderingEngine.DoomMapLoader
                 // On sprite Z location
                 // "This is the actor's current z coordinate in the map. Note that unless the sprite's cstat has bit 8 (128) set, this position refers to the base of the sprite, not the center."
                 // https://wiki.eduke32.com/wiki/Z
-                // int offset = sprite.CStat.HasFlag(SpriteCStat.RealCentered) ? texture.Height >> 1 : texture.Height;
-                int offset = sprite.CStat.HasFlag(SpriteCStat.RealCentered) ? sprite.YRepeat >> 1 : sprite.YRepeat;
+                int repeat = sprite.CStat.HasFlag(SpriteCStat.RealCentered) ? sprite.YRepeat >> 1 : sprite.YRepeat;
+
+                float elevation = DetermineZLocation(sprite.Z - sector.FloorZ);
+                float textureHeight = (texture.Height * repeat) >> 5;
+
+                float xScale = ((texture.Width * repeat) >> 5) / texture.Width;
+                float yScale = textureHeight / texture.Height;
 
                 sprites[i] = new Sprite
                 {
                     Angle = angle,
                     Location = new Point(DetermineXLocation(sprite.X), DetermineYLocation(sprite.Y)),
-                    Height = DetermineZLocation(sprite.Z) + offset,
-                    TextureName = textureName,
+                    Height = elevation + textureHeight,
+                    Texture = new Models.TextureInfo
+                    {
+                        Name = textureName,
+                        RenderingOptions = ToRenderingOptions(sprite.CStat),
+                        XScale = xScale,
+                        YScale = yScale
+                    },
                     SectorId = sprite.SectorNumber
                 };
             }
 
             return sprites;
+
+            static TextureRenderingOptions ToRenderingOptions(SpriteCStat stat)
+            {
+                TextureRenderingOptions options = default;
+
+                if (stat.HasFlag(SpriteCStat.XFlipped))
+                {
+                    options |= TextureRenderingOptions.FlipX;
+                }
+
+                if (stat.HasFlag(SpriteCStat.YFlipped))
+                {
+                    options |= TextureRenderingOptions.FlipY;
+                }
+
+                if (stat.HasFlag(SpriteCStat.Wall))
+                {
+                    options |= TextureRenderingOptions.RenderAsWall;
+                }
+
+                if (stat.HasFlag(SpriteCStat.Floor))
+                {
+                    options |= TextureRenderingOptions.RenderAsFloor;
+                }
+
+                return options;
+            }
         }
 
         private static Dictionary<string, TextureInfo> ExtractTextures(List<ArtFile> artFiles, PaletteFile paletteFile)

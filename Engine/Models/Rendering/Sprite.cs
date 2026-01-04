@@ -1,6 +1,6 @@
 ﻿namespace RenderingEngine.Models
 {
-    public sealed class Sprite
+    internal sealed class Sprite
     {
         public int SectorId { get; set; }
         public required Point Location { get; init; }
@@ -12,7 +12,7 @@
 
         public required float Angle { get; init; }
         public required float Height { get; init; }
-        public required string TextureName { get; init; }
+        public required TextureInfo Texture { get; init; }
 
         public bool IntersectsView { get; set; }
         // Plane

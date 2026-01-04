@@ -35,6 +35,16 @@ namespace RenderingEngine.Engine
             return span[quotient..];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static (float rx1, float ry1) RotateVertex(
+            float x, float y,
+            float sin, float cos)
+        {
+            float rx1 = y * cos + x * sin;
+            float ry1 = y * sin - x * cos;
+
+            return (rx1, ry1);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (Vector<int> rx1, Vector<int> ry1) RotateVertexBack(
@@ -47,7 +57,6 @@ namespace RenderingEngine.Engine
 
             return (rx1 + px, ry1 + py);
         }
-
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (Vector<float> rx1, Vector<float> ry1) RotateVertexBack(

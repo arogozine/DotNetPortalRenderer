@@ -23,6 +23,8 @@
         FlipX = 32,
         FlipY = 64,
         SwapXY = 128,
-        AlignWithFirstWall = 256
+        AlignWithFirstWall = 256,
+        RenderAsWall = 512,
+        RenderAsFloor = 1024
     }
 }

@@ -6,7 +6,15 @@ namespace RenderingEngine.Engine
     {
         private void DrawSprite(ReadOnlySpan<Sector> sectors, Sprite sprite, SectorSprites renderableWall)
         {
-            ref Texture texture = ref TextureCache.GetTextureOrNullRef(sprite.TextureName);
+            TextureInfo textureInfo = sprite.Texture;
+
+            if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall))
+            {
+                DrawWallSprite(sectors, sprite, renderableWall);
+                return;
+            }
+
+            ref Texture texture = ref TextureCache.GetTextureOrNullRef(textureInfo.Name);
 
             if (Unsafe.IsNullRef(ref texture))
             {
@@ -25,6 +33,7 @@ namespace RenderingEngine.Engine
             byte lightLevel = sector.LightLevel;
 
             float rx1 = sprite.R1.X;
+            float rx2 = sprite.R2.X;
 
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;
@@ -48,6 +57,9 @@ namespace RenderingEngine.Engine
             ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
 
             float textureXIncr = (((float)textureWidth) / (spriteEndY - spriteStartY));
+
+            bool flipY = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
+            bool flipX = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
 
             for (int x = spriteFromX; x < spriteToX; x++, cameraRay += cameraWidthIncr)
             {
@@ -73,7 +85,7 @@ namespace RenderingEngine.Engine
                 int textureYPos = textureXLocation * textureWidth;
                 float textureXPos = (clamptedFromY - spriteStartY) * textureXIncr;
 
-                CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel);
+                CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel, flipY);
 
                 DrawSpriteLine(width, x, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
                     ref screenPtr, ref columnBufferPtr);
@@ -82,9 +94,91 @@ namespace RenderingEngine.Engine
             int CalculateTextureXPosition(float cameraRay)
             {
                 float fromToXDist = fromToYDist * cameraRay;
-                float distX = rx1 - fromToXDist;
+                float distX = flipX ? (rx2 - fromToXDist) : (fromToXDist - rx1);
 
                 return float.ConvertToIntegerNative<int>(MathF.Abs(distX));
+            }
+        }
+
+        private void DrawWallSprite(ReadOnlySpan<Sector> sectors, Sprite sprite, SectorSprites renderableWall)
+        {
+            TextureInfo textureInfo = sprite.Texture;
+
+            ref Texture texture = ref TextureCache.GetTextureOrNullRef(textureInfo.Name);
+
+            if (Unsafe.IsNullRef(ref texture))
+            {
+                return;
+            }
+
+            ref uint screenPtr = ref GetScreenPtr<uint>();
+            ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
+
+            int width = PixelWidth;
+            int textureWidth = texture.Height;
+
+            Sector sector = sectors[sprite.SectorId];
+            byte lightLevel = sector.LightLevel;
+
+            int xLeft = sprite.XLeft;
+            int xRight = sprite.XRight;
+
+            int spriteStartY = sprite.YLeftCeil;
+            int spriteEndY = sprite.YLeftFloor;
+
+            int spriteFromX = xLeft;
+            int spriteToX = xRight;
+
+            int textureHeight = texture.Width;
+            int xOffset = 0;
+
+            Span<int> floorEndArray = renderableWall.FloorEnd;
+            Span<int> ceilingStartArray = renderableWall.CeilingStart;
+            Span<float> distance = renderableWall.Distance;
+
+            Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
+            ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
+
+            float textureXIncr = (((float)textureWidth) / (spriteEndY - spriteStartY));
+
+            bool flipY = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
+            bool flipX = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
+
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(sprite, width, 0);
+
+            for (int x = spriteFromX; x < spriteToX; x++, cameraRay += cameraWidthIncr)
+            {
+                int ceilingStart = ceilingStartArray[x];
+                int floorEnd = floorEndArray[x];
+
+                if (floorEnd <= ceilingStart)
+                {
+                    continue;
+                }
+
+                int clamptedFromY = Math.Clamp(spriteStartY, ceilingStart, floorEnd);
+                int clamptedToY = Math.Clamp(spriteEndY, ceilingStart, floorEnd);
+
+                if (clamptedFromY >= clamptedToY)
+                {
+                    continue;
+                }
+
+                (int textureXLocation, float fromToYdist) = CalculateDistance(sprite, cameraRay, t1, d2y, d2x, flipX);
+
+                if (distance[x] < fromToYdist)
+                {
+                    continue;
+                }
+
+                // Calculate Middle Texture Position
+                int textureYPos = ((textureXLocation + xOffset) % textureHeight) * textureWidth;
+                float textureXPos = (clamptedFromY - spriteStartY) * textureXIncr;
+
+                CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel, flipY);
+
+                DrawSpriteLine(width, x, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
+                    ref screenPtr, ref columnBufferPtr);
             }
         }
 
@@ -239,7 +333,7 @@ namespace RenderingEngine.Engine
 
                 float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, offset, textureWidth);
 
-                CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel);
+                CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel, false);
 
                 if (alpha == 1f)
                 {
@@ -384,7 +478,13 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CalculateSprite(scoped Span<uint> spriteTexturePtr, ref int bufferIndex, ref BGRA wallTexturePtr, int textureYPos, byte brightness)
+        private static void CalculateSprite(
+            scoped Span<uint> spriteTexturePtr,
+            ref int bufferIndex,
+            ref BGRA wallTexturePtr,
+            int textureYPos,
+            byte brightness,
+            bool flipY)
         {
             // reuse the cached column
             if (bufferIndex == textureYPos)
@@ -399,24 +499,49 @@ namespace RenderingEngine.Engine
             ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
             uint scale = (uint)brightness;
 
-            for (int i = 0; i < spriteTexturePtr.Length; i++)
+            if (flipY)
             {
-                if (columnPtr.IsTransparent)
+                for (int i = spriteTexturePtr.Length - 1; i >= 0; i--)
                 {
-                    spriteTexturePtr[i] = default;
-                }
-                else
-                {
-                    unchecked
+                    if (columnPtr.IsTransparent)
                     {
-                        uint b = columnPtr.B * scale >> 8;
-                        uint g = columnPtr.G * scale >> 8 << 8;
-                        uint r = columnPtr.R * scale >> 8 << 16;
-                        spriteTexturePtr[i] = b | g | r | Alpha;
+                        spriteTexturePtr[i] = default;
                     }
-                }
+                    else
+                    {
+                        unchecked
+                        {
+                            uint b = columnPtr.B * scale >> 8;
+                            uint g = columnPtr.G * scale >> 8 << 8;
+                            uint r = columnPtr.R * scale >> 8 << 16;
+                            spriteTexturePtr[i] = b | g | r | Alpha;
+                        }
+                    }
 
-                columnPtr = ref Unsafe.Add(ref columnPtr, 1);
+                    columnPtr = ref Unsafe.Add(ref columnPtr, 1);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < spriteTexturePtr.Length; i++)
+                {
+                    if (columnPtr.IsTransparent)
+                    {
+                        spriteTexturePtr[i] = default;
+                    }
+                    else
+                    {
+                        unchecked
+                        {
+                            uint b = columnPtr.B * scale >> 8;
+                            uint g = columnPtr.G * scale >> 8 << 8;
+                            uint r = columnPtr.R * scale >> 8 << 16;
+                            spriteTexturePtr[i] = b | g | r | Alpha;
+                        }
+                    }
+
+                    columnPtr = ref Unsafe.Add(ref columnPtr, 1);
+                }
             }
         }
     }

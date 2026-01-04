@@ -2,7 +2,7 @@
 
 namespace RenderingEngine.Engine
 {
-    public sealed class SpriteComparer : IComparer<Sprite>
+    internal sealed class SpriteComparer : IComparer<Sprite>
     {
         public int Compare(Sprite? x, Sprite? y)
         {
