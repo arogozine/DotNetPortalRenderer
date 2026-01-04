@@ -81,7 +81,6 @@ namespace RenderingEngine.Engine
 
                 int textureXLocation = CalculateTextureXPosition(cameraRay);
 
-                // Calculate Middle Texture Position
                 int textureYPos = textureXLocation * textureWidth;
                 float textureXPos = (clamptedFromY - spriteStartY) * textureXIncr;
 

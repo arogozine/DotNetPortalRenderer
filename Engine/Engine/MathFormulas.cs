@@ -40,8 +40,23 @@ namespace RenderingEngine.Engine
             float x, float y,
             float sin, float cos)
         {
-            float rx1 = y * cos + x * sin;
-            float ry1 = y * sin - x * cos;
+            float rx1 = x * sin - y * cos;
+            float ry1 = x * cos + y * sin;
+
+            return (rx1, ry1);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static (float rx1, float ry1) RotateVertex(
+            float x, float y,
+            float sin, float cos,
+            float px, float py)
+        {
+            x -= px;
+            y -= py;
+
+            float rx1 = x * sin - y * cos;
+            float ry1 = x * cos + y * sin;
 
             return (rx1, ry1);
         }

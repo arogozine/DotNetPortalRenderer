@@ -76,7 +76,7 @@
         /// <summary>
         /// Angle the sprite is facing
         /// </summary>
-        public readonly short Angle;
+        public readonly ushort Angle;
 
         public readonly short Owner;
         public readonly short XVel;

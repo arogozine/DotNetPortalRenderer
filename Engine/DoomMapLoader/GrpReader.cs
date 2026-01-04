@@ -212,7 +212,7 @@ namespace RenderingEngine.DoomMapLoader
             {
                 Player = new Player
                 {
-                    Angle = radians,
+                    Angle = DetermineAngleInRadians(startingPosition.Angle),
                     Where = (DetermineXLocation(startingPosition.PosX), DetermineYLocation(startingPosition.PosY), DetermineZLocation(startingPosition.PosZ)),
                     Sector = startingPosition.SectorNumber
                 },
@@ -596,7 +596,7 @@ namespace RenderingEngine.DoomMapLoader
 
                 // no wall support for now
 
-                float angle = MathF.PI * (sprite.Angle / 2048f);
+                float angle = DetermineAngleInRadians(sprite.Angle);
 
                 string textureName = ToTile(sprite.PicNum);
 
@@ -795,6 +795,11 @@ namespace RenderingEngine.DoomMapLoader
             coordinate /= 128f;
             // build engine coordinates are upside down
             return coordinate * -1;
+        }
+
+        private static float DetermineAngleInRadians(ushort angle)
+        {
+            return MathF.PI * (angle / 2048f);
         }
 
         private unsafe static void DebugTexture(int width, int height, Span<BGRA> texture, string textureName)
