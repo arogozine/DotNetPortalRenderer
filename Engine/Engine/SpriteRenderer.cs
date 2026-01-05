@@ -56,10 +56,12 @@ namespace RenderingEngine.Engine
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
             ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
 
-            float textureXIncr = (((float)textureWidth) / (spriteEndY - spriteStartY));
+            float textureXIncr = ((float)textureWidth) / (spriteEndY - spriteStartY);
 
             bool flipY = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
             bool flipX = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
+
+            float textureLen = texture.Width / sprite.Length;
 
             for (int x = spriteFromX; x < spriteToX; x++, cameraRay += cameraWidthIncr)
             {
@@ -95,7 +97,7 @@ namespace RenderingEngine.Engine
                 float fromToXDist = fromToYDist * cameraRay;
                 float distX = flipX ? (rx2 - fromToXDist) : (fromToXDist - rx1);
 
-                return float.ConvertToIntegerNative<int>(MathF.Abs(distX));
+                return float.ConvertToIntegerNative<int>(MathF.Abs(distX) * textureLen);
             }
         }
 
@@ -115,6 +117,7 @@ namespace RenderingEngine.Engine
 
             int width = PixelWidth;
             int textureWidth = texture.Height;
+            int textureHeight = texture.Width;
 
             Sector sector = sectors[sprite.SectorId];
             byte lightLevel = sector.LightLevel;
@@ -122,13 +125,15 @@ namespace RenderingEngine.Engine
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;
 
-            int spriteStartY = sprite.YLeftCeil;
-            int spriteEndY = sprite.YLeftFloor;
-
             int spriteFromX = xLeft;
             int spriteToX = xRight;
 
-            int textureHeight = texture.Width;
+            WallYPlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(sprite, spriteFromX);
+            float spriteStartY = yPlaneInfo.WallStartY;
+            float ceilDistIncr = yPlaneInfo.CeilDistIncr;
+            float spriteEndY = yPlaneInfo.WallEndY;
+            float floorDistIncr = yPlaneInfo.FloorDistIncr;
+
             int xOffset = 0;
 
             Span<int> floorEndArray = renderableWall.FloorEnd;
@@ -138,14 +143,14 @@ namespace RenderingEngine.Engine
             Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
             ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
 
-            float textureXIncr = (((float)textureWidth) / (spriteEndY - spriteStartY));
-
             bool flipY = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
             bool flipX = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
 
-            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(sprite, width, 0);
+            float xScale = texture.Width / sprite.Length;
 
-            for (int x = spriteFromX; x < spriteToX; x++, cameraRay += cameraWidthIncr)
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(sprite, width, spriteFromX);
+
+            for (int x = spriteFromX; x < spriteToX; x++, cameraRay += cameraWidthIncr, spriteStartY += ceilDistIncr, spriteEndY += floorDistIncr)
             {
                 int ceilingStart = ceilingStartArray[x];
                 int floorEnd = floorEndArray[x];
@@ -155,23 +160,27 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int clamptedFromY = Math.Clamp(spriteStartY, ceilingStart, floorEnd);
-                int clamptedToY = Math.Clamp(spriteEndY, ceilingStart, floorEnd);
+                float textureXIncr = (float)(textureWidth / (spriteEndY - spriteStartY));
+
+                int clamptedFromY = Math.Clamp(float.ConvertToIntegerNative<int>(spriteStartY), ceilingStart, floorEnd);
+                int clamptedToY = Math.Clamp(float.ConvertToIntegerNative<int>(spriteEndY), ceilingStart, floorEnd);
 
                 if (clamptedFromY >= clamptedToY)
                 {
                     continue;
                 }
 
-                (int textureXLocation, float fromToYdist) = CalculateDistance(sprite, cameraRay, t1, d2y, d2x, flipX);
+                (float textureXLocation, float fromToYdist) = CalculateDistance(sprite, cameraRay, t1, d2y, d2x, flipX);
 
                 if (distance[x] < fromToYdist)
                 {
                     continue;
                 }
 
-                // Calculate Middle Texture Position
-                int textureYPos = ((textureXLocation + xOffset) % textureHeight) * textureWidth;
+                textureXLocation += xOffset;
+                textureXLocation *= xScale;
+
+                int textureYPos = (float.ConvertToIntegerNative<int>(textureXLocation) % textureHeight) * textureWidth;
                 float textureXPos = (clamptedFromY - spriteStartY) * textureXIncr;
 
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel, flipY);

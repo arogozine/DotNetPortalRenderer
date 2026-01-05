@@ -139,7 +139,7 @@ namespace RenderingEngine.DoomMapLoader
                 }
 
                 // PNG
-                if (WadLumpParser.IsPng(wadLump) && TryDecodeImage(wadLump.Bytes, out BGRA[] png, out int width, out int height))
+                if (WadLumpParser.IsPng(wadLump) && TryDecodeImage(wadLump.Bytes, out BGRA[]? png, out int width, out int height))
                 {
                     textures[wadLump.Name] = new TextureInfo(width, height, png)
                     {
@@ -598,6 +598,43 @@ namespace RenderingEngine.DoomMapLoader
 
         #endregion
 
+        private static void PrecalculateWallSprites(scoped ReadOnlySpan<Sprite> sprites)
+        {
+            for (int i = 0; i < sprites.Length; i++)
+            {
+                Sprite sprite = sprites[i];
+                Models.TextureInfo textureInfo = sprite.Texture;
+                ref Texture texture = ref TextureCache.GetTexture(textureInfo);
+
+                float textureWidth = texture.Width * (textureInfo.XScale ?? 1f);
+
+                (float x, float y) = sprite.Location;
+
+                // calculate the x, y for the wall on the screen for both points
+                float rx1 = x - textureWidth / 2f;
+                float rx2 = x + textureWidth / 2f;
+                float ry1 = y;
+                float ry2 = y;
+
+                if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall))
+                {
+                    (float sin, float cos) = MathF.SinCos(sprite.Angle);
+
+                    (rx1, ry1) = MathFormulas.RotateVertex(rx1, ry1, sin, cos, x, y);
+                    (rx2, ry2) = MathFormulas.RotateVertex(rx2, ry2, sin, cos, x, y);
+
+                    rx1 += x;
+                    ry1 += y;
+                    rx2 += x;
+                    ry2 += y;
+                }
+
+                sprite.Length = textureWidth;
+                sprite.PointA = new Point(rx1, ry1);
+                sprite.PointB = new Point(rx2, ry2);
+            }
+        }
+
         private static void DetermineSkybox(List<MapSector> sectors, string mapName)
         {
             var defaultTexture = new Models.TextureInfo
@@ -712,6 +749,8 @@ namespace RenderingEngine.DoomMapLoader
                 });
             }
 
+            PrecalculateWallSprites(CollectionsMarshal.AsSpan(sprites));
+
             return sprites;
 
             static string GetTextureName(ThingType type)
@@ -762,6 +801,8 @@ namespace RenderingEngine.DoomMapLoader
                     Texture = new Models.TextureInfo { Name = GetTextureName(thing.Type) }
                 });
             }
+
+            PrecalculateWallSprites(CollectionsMarshal.AsSpan(sprites));
 
             return sprites;
 

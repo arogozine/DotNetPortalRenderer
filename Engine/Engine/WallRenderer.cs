@@ -682,7 +682,6 @@ namespace RenderingEngine.Engine
             }
         }
 
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static WallYPlaneInfo CalculateLeftWallYPlaneInfo(Wall wall, int wallFromXOffset)
         {
@@ -692,6 +691,28 @@ namespace RenderingEngine.Engine
 
             float wallEndY = wall.YLeftFloor;
             float floorDistIncr = (wall.YRightFloor - wallEndY) / wallLengthX;
+
+            if (wallFromXOffset != 0)
+            {
+                wallEndY += wallFromXOffset * floorDistIncr;
+                wallStartY += wallFromXOffset * ceilDistIncr;
+            }
+
+            return new WallYPlaneInfo(wallStartY, wallEndY, ceilDistIncr, floorDistIncr);
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static WallYPlaneInfo CalculateLeftWallYPlaneInfo(Sprite sprite, int wallFromXOffset)
+        {
+            wallFromXOffset = 0;
+
+            float wallLengthX = sprite.XRight - sprite.XLeft;
+            float wallStartY = sprite.YLeftCeil;
+            float ceilDistIncr = (sprite.YRightCeil - wallStartY) / wallLengthX;
+
+            float wallEndY = sprite.YLeftFloor;
+            float floorDistIncr = (sprite.YRightFloor - wallEndY) / wallLengthX;
 
             if (wallFromXOffset != 0)
             {
@@ -754,24 +775,24 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static (int TextureLocation, float FromToYDist) CalculateDistance(
-            Sprite wall,
+        private static (float TextureLocation, float FromToYDist) CalculateDistance(
+            Sprite sprite,
             float cameraRay,
             float t1, float d2y, float d2x,
             bool flipX)
         {
-            bool flipped = flipX; // ? !wall.Flipped : wall.Flipped;
+            bool flipped = flipX ? !sprite.Flipped : sprite.Flipped;
 
             float denominator = cameraRay * d2y - d2x;
             float fromToYDist = t1 / denominator;
             float fromToXDist = fromToYDist * cameraRay;
 
-            float distX = flipped ? (wall.R2.X - fromToXDist) : (fromToXDist - wall.R1.X);
-            float distY = flipped ? (wall.R2.Y - fromToYDist) : (fromToYDist - wall.R1.Y);
+            float distX = flipped ? (sprite.R2.X - fromToXDist) : (fromToXDist - sprite.R1.X);
+            float distY = flipped ? (sprite.R2.Y - fromToYDist) : (fromToYDist - sprite.R1.Y);
 
             float textureXLocation = MathF.Sqrt(distX * distX + distY * distY);
 
-            return (float.ConvertToIntegerNative<int>(textureXLocation), fromToYDist);
+            return (textureXLocation, fromToYDist);
         }
 
 

@@ -203,8 +203,6 @@ namespace RenderingEngine.DoomMapLoader
 
             }
 
-            float radians = MathF.PI * (startingPosition.Angle / 2048f);
-
             RecalculateOffsets(sectors);
             DetermineSkyboxWalls(sectors);
 
@@ -228,6 +226,45 @@ namespace RenderingEngine.DoomMapLoader
                 return new Point(x, y);
             }
         }
+
+
+        private static void PrecalculateWallSprites(scoped ReadOnlySpan<Sprite> sprites)
+        {
+            for (int i = 0; i < sprites.Length; i++)
+            {
+                Sprite sprite = sprites[i];
+                Models.TextureInfo textureInfo = sprite.Texture;
+                ref Texture texture = ref TextureCache.GetTexture(textureInfo);
+
+                float textureWidth = texture.Width * (textureInfo.XScale ?? 1f);
+
+                (float x, float y) = sprite.Location;
+
+                // calculate the x, y for the wall on the screen for both points
+                float rx1 = x - textureWidth / 2f;
+                float rx2 = x + textureWidth / 2f;
+                float ry1 = y;
+                float ry2 = y;
+
+                if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall))
+                {
+                    (float sin, float cos) = MathF.SinCos(sprite.Angle);
+
+                    (rx1, ry1) = MathFormulas.RotateVertex(rx1, ry1, sin, cos, x, y);
+                    (rx2, ry2) = MathFormulas.RotateVertex(rx2, ry2, sin, cos, x, y);
+
+                    rx1 += x;
+                    ry1 += y;
+                    rx2 += x;
+                    ry2 += y;
+                }
+
+                sprite.Length = textureWidth;
+                sprite.PointA = new Point(rx1, ry1);
+                sprite.PointB = new Point(rx2, ry2);
+            }
+        }
+
 
         private static Models.TextureInfo? GetTextureInfo(in WallType wall, bool middleTexture)
         {
@@ -594,8 +631,6 @@ namespace RenderingEngine.DoomMapLoader
 
                 ref SectorType sector = ref grpSectors[sprite.SectorNumber];
 
-                // no wall support for now
-
                 float angle = DetermineAngleInRadians(sprite.Angle);
 
                 string textureName = ToTile(sprite.PicNum);
@@ -610,14 +645,14 @@ namespace RenderingEngine.DoomMapLoader
                 float elevation = DetermineZLocation(sprite.Z - sector.FloorZ);
                 float textureHeight = (texture.Height * repeat) >> 5;
 
-                float xScale = ((texture.Width * repeat) >> 5) / texture.Width;
+                float xScale = ((texture.Width * repeat) >> 5) / (float)texture.Width;
                 float yScale = textureHeight / texture.Height;
 
                 sprites[i] = new Sprite
                 {
                     Angle = angle,
                     Location = new Point(DetermineXLocation(sprite.X), DetermineYLocation(sprite.Y)),
-                    Height = elevation + textureHeight,
+                    Height = elevation,
                     Texture = new Models.TextureInfo
                     {
                         Name = textureName,
@@ -628,6 +663,8 @@ namespace RenderingEngine.DoomMapLoader
                     SectorId = sprite.SectorNumber
                 };
             }
+
+            PrecalculateWallSprites(sprites);
 
             return sprites;
 
@@ -799,7 +836,7 @@ namespace RenderingEngine.DoomMapLoader
 
         private static float DetermineAngleInRadians(ushort angle)
         {
-            return MathF.PI * (angle / 2048f);
+            return MathF.PI * (angle / 1024f);
         }
 
         private unsafe static void DebugTexture(int width, int height, Span<BGRA> texture, string textureName)

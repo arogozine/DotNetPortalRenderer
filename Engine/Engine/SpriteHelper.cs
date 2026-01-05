@@ -118,12 +118,18 @@ namespace RenderingEngine.Engine
 
         }
 
-        private static void AssignDistance(scoped ReadOnlySpan<Sprite> sprites)
+        private void AssignDistance(scoped ReadOnlySpan<Sprite> sprites)
         {
+            int width = this.width;
+            float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
+
+
             for (int j = 0; j < sprites.Length; j++)
             {
                 Sprite sprite = sprites[j];
-                sprite.Distance = CalculateDistance(sprite);
+                bool wallSprite = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall);
+
+                sprite.Distance = wallSprite ? CalculateDistanceForWallSprite(sprite) : CalculateDistance(sprite);
             }
 
             static float CalculateDistance(Sprite sprite)
@@ -143,6 +149,26 @@ namespace RenderingEngine.Engine
                 float t1 = -ry * d2x;
 
                 return t1 / -textureHeight;
+            }
+
+            float CalculateDistanceForWallSprite(Sprite sprite)
+            {
+                float rx1 = sprite.R1.X;
+                float ry1 = sprite.R1.Y;
+                float d2x = sprite.R2.X - rx1;
+                float d2y = sprite.R2.Y - ry1;
+                float t1 = rx1 * d2y - ry1 * d2x;
+
+                float cameraRayA = -1f * EngineConstants.CameraPlaneX;
+                cameraRayA += cameraWidthIncr * sprite.XLeft;
+
+                float cameraRayB = -1f * EngineConstants.CameraPlaneX;
+                cameraRayB += cameraWidthIncr * sprite.XRight;
+
+                float fromToYDistA = t1 / (cameraRayA * d2y - d2x);
+                float fromToYDistB = t1 / (cameraRayB * d2y - d2x);
+
+                return MathF.Min(fromToYDistA, fromToYDistB);
             }
         }
 
@@ -191,30 +217,54 @@ namespace RenderingEngine.Engine
             for (int i = 0; i < sprites.Length; i++)
             {
                 Sprite s = sprites[i];
+                TextureInfo textureInfo = s.Texture;
 
-                float vx1 = s.Location.X;
-                float vy1 = s.Location.Y;
+                Point rotated = RotateVertex(s.Location);
 
-                // offset by player coordinates for easier calculations
-                float tx1 = vx1 - px;
-                float ty1 = vy1 - py;
+                Point r1, r2;
 
-                // rotate vertex points to face 'up' from player at (0, 0)
-                float rx1 = tx1 * pSin - ty1 * pCos;
-                float ry1 = tx1 * pCos + ty1 * pSin;
+                if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall))
+                {
+                    r1 = RotateVertex(s.PointA);
+                    r2 = RotateVertex(s.PointB);
+                }
+                else
+                {
+                    ref Texture texture = ref TextureCache.GetTexture(textureInfo);
 
-                rotatedSprites[i] = new Sprite {
+                    float textureWidth = texture.Width * (textureInfo.XScale ?? 1f);
+
+                    float rx1 = rotated.X - textureWidth / 2;
+                    float rx2 = rotated.X + textureWidth / 2;
+                    float ry1 = rotated.Y;
+                    float ry2 = rotated.Y;
+
+                    r1 = new Point(rx1, ry1);
+                    r2 = new Point(rx2, ry2);
+                }
+
+                rotatedSprites[i] = new Sprite
+                {
                     Angle = s.Angle,
                     Location = s.Location,
-                    Rotated = new Point(rx1, ry1),
+                    Rotated = rotated,
+                    R1 = r1,
+                    R2 = r2,
                     Height = s.Height,
                     Texture = s.Texture,
-                    SectorId = s.SectorId
+                    SectorId = s.SectorId,
+                    Length = s.Length
                 };
-
             }
 
             return rotatedSprites;
+
+            (float x, float y) RotateVertex(Point p)
+            {
+                // offset by player coordinates for easier calculations
+                // rotate vertex points to face 'up' from player at (0, 0)
+                return MathFormulas.RotateVertex(p.X, p.Y, pSin, pCos, px, py);
+            }
         }
 
         public static void FilterOutSpritesBehindPlayer(ref Span<Sprite> rotatedSprites)
@@ -227,7 +277,7 @@ namespace RenderingEngine.Engine
             {
                 Sprite sprite = rotatedSprites[i];
 
-                if (sprite.Rotated.Y <= 0f)
+                if (sprite.R1.Y <= 0f && sprite.R2.Y <= 0f)
                 {
                     continue;
                 }
@@ -297,28 +347,11 @@ namespace RenderingEngine.Engine
         public void CalculateSpritePlane(Sprite sprite, float yCeil, float yFloor, float yaw)
         {
             TextureInfo textureInfo = sprite.Texture;
-
             ref Texture texture = ref TextureCache.GetTexture(textureInfo);
-
-            float textureWidth = texture.Width * (textureInfo.XScale ?? 1f);
             float textureHeight = texture.Height * (textureInfo.YScale ?? 1f);
 
-            // calculate the x, y for the wall on the screen for both points
-            float rx1 = sprite.Rotated.X - textureWidth / 2;
-            float rx2 = sprite.Rotated.X + textureWidth / 2;
-            float ry1 = sprite.Rotated.Y;
-            float ry2 = sprite.Rotated.Y;
-
-            if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall))
-            {
-                (float sin, float cos) = MathF.SinCos(sprite.Angle);
-
-                (rx1, ry1) = MathFormulas.RotateVertex(rx1, ry1, sin, cos);
-                (rx2, ry2) = MathFormulas.RotateVertex(rx2, ry2, sin, cos);
-            }
-
-            sprite.R1 = new Point(rx1, ry1);
-            sprite.R2 = new Point(rx2, ry2);
+            (float rx1, float ry1) = sprite.R1;
+            (float rx2, float ry2) = sprite.R2;
 
             float xLeft, xRight, yLeftCeil, yLeftFloor, yRightCeil, yRightFloor;
             float scale = width * -EngineConstants.HeightToWidthRatio;
@@ -334,19 +367,21 @@ namespace RenderingEngine.Engine
                 (xLeft, xRight) = (xRight, xLeft);
 
                 (rx1, rx2) = (rx2, rx1);
-                //(ry1, ry2) = (ry2, ry1);
+                (ry1, ry2) = (ry2, ry1);
+
+                (sprite.R1, sprite.R2) = (sprite.R2, sprite.R1);
             }
 
             // part of the wall is in the back
-            if (ry1 <= 0f)
+            if (ry1 <= 0f || ry2 <= 0f)
             {
                 float d2x = rx2 - rx1;
-                float d2y = 0f;// ry2 - ry1;
+                float d2y = ry2 - ry1;
 
                 bool intersectsL = TryGetSegmentIntersectionZero2(-EngineConstants.CameraPlaneX, rx1, ry1, d2x, d2y,
                     out float xDistanceL, out float yDistanceL);
 
-                bool intersectsR = TryGetSegmentIntersectionZero2(EngineConstants.CameraPlaneX, rx1, ry1, d2x, d2y,
+                bool intersectsR = TryGetSegmentIntersectionZero2(EngineConstants.CameraPlaneX, rx2, ry2, -d2x, -d2y,
                     out float xDistanceR, out float yDistanceR);
 
                 if (intersectsL && intersectsR)
@@ -361,6 +396,7 @@ namespace RenderingEngine.Engine
                     xRight = width - 1;
 
                     sprite.IntersectsView = true;
+                    sprite.Flipped = true;
                 }
                 else if (intersectsL || intersectsR)
                 {
@@ -379,6 +415,8 @@ namespace RenderingEngine.Engine
                         ry2 = yDistance;
                         xRight = halfWidth - rx2 / ry2 * scale;
                     }
+
+                    sprite.Flipped = true;
                 }
                 else
                 {
@@ -404,10 +442,14 @@ namespace RenderingEngine.Engine
                 (xLeft, xRight) = (xRight, xLeft);
 
                 (rx1, rx2) = (rx2, rx1);
-                // (ry1, ry2) = (ry2, ry1);
+                (ry1, ry2) = (ry2, ry1);
+
+                (sprite.R1, sprite.R2) = (sprite.R2, sprite.R1);
+
+                sprite.Flipped = !sprite.Flipped;
             }
 
-            sprite.IntersectsView |= CalculatePlaneIntersectionsForWall(ref xLeft, ref xRight, ref rx1, ref ry1, ref rx2, ref ry2);
+            sprite.IntersectsView |= CalculatePlaneIntersectionsForWall(xLeft, xRight, ref rx1, ref ry1, ref rx2, ref ry2);
 
             if (sprite.IntersectsView)
             {
@@ -417,8 +459,8 @@ namespace RenderingEngine.Engine
                 yRightCeil = halfHeight - (yCeil / ry2 - yaw) * height;
                 yRightFloor = halfHeight - (yFloor / ry2 - yaw) * height;
 
-                // wall.C1 = new(rx1, ry1);
-                // wall.C2 = new(rx2, ry2);
+                // sprite.C1 = new(rx1, ry1);
+                // sprite.C2 = new(rx2, ry2);
 
                 sprite.XLeft = float.ConvertToIntegerNative<int>(xLeft);
                 sprite.XRight = float.ConvertToIntegerNative<int>(xRight);
@@ -436,26 +478,21 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private bool CalculatePlaneIntersectionsForWall(ref float xLeft, ref float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
+        private bool CalculatePlaneIntersectionsForWall(float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
         {
-            int xLeftInt = float.ConvertToIntegerNative<int>(xLeft);
-            int xRightInt = float.ConvertToIntegerNative<int>(xRight);
-
             // Nothing To Render
-            if (xLeftInt == xRightInt)
+            if (float.ConvertToIntegerNative<int>(xLeft) == float.ConvertToIntegerNative<int>(xRight))
             {
                 return false;
             }
 
-            float cameraPlaneX = this.cameraPlaneX;
-
             float cameraWidthIncr = 2.0f / width;
 
             float d2x = rx2 - rx1;
-            float d2y = 0f; //ry2 - ry1;
+            float d2y = ry2 - ry1;
 
-            float rayDirLeft = cameraPlaneX * (cameraWidthIncr * xLeftInt - 1f);
-            float rayDirRight = cameraPlaneX * (cameraWidthIncr * xRightInt - 1f);
+            float rayDirLeft = EngineConstants.CameraPlaneX * (cameraWidthIncr * xLeft - 1f);
+            float rayDirRight = EngineConstants.CameraPlaneX * (cameraWidthIncr * xRight - 1f);
 
             bool intersectsL = TryGetSegmentIntersectionZero2(rayDirLeft, rx1, ry1, d2x, d2y,
                 out float xDistanceL, out float yDistanceL);
@@ -483,9 +520,6 @@ namespace RenderingEngine.Engine
                 rx2 = xDistanceR;
                 ry2 = yDistanceR;
             }
-
-            xLeft = xLeftInt;
-            xRight = xRightInt;
 
             return true;
         }
