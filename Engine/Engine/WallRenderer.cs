@@ -20,7 +20,7 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref uint GetBufferA(int size, out Span<uint> buffer)
         {
-            buffer = columnB.AsSpan(..size);
+            buffer = columnA.AsSpan(..size);
             return ref MemoryMarshal.GetReference(buffer);
         }
 

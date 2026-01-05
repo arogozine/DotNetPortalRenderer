@@ -172,7 +172,7 @@ namespace RenderingEngine.Engine
 
                 (float textureXLocation, float fromToYdist) = CalculateDistance(sprite, cameraRay, t1, d2y, d2x, flipX);
 
-                if (distance[x] < fromToYdist)
+                if ((int)distance[x] < (int)fromToYdist)
                 {
                     continue;
                 }
