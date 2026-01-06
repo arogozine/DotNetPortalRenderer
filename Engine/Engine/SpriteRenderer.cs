@@ -197,6 +197,13 @@ namespace RenderingEngine.Engine
             Span<RenderWindow> window = renderableWall.RenderWindow!;
 
             TextureInfo textureInfo = line.MiddleTexture!;
+
+            if (textureInfo.XScale is not null)
+            {
+                DrawTransparentWall_Build(sectors, renderableWall);
+                return;
+            }
+
             Texture texture = TextureCache.GetTexture(line.MiddleTexture);
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
             int textureWidth = texture.Height;
@@ -237,21 +244,6 @@ namespace RenderingEngine.Engine
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
 
-            (float? lowerXScale, float? lowerYScale) = (textureInfo.XScale, textureInfo.YScale);
-
-            if (lowerYScale is float)
-            {
-                lowerYScale = (sector.Ceil - sector.Floor) * lowerYScale.Value;
-            }
-            if (lowerXScale is float)
-            {
-                lowerXScale = lowerXScale.Value / wall.Length * texture.Width;
-            }
-            if (lowerXScale is not null)
-            {
-                yOffset = textureInfo.YOffset;
-            }
-
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
             {
                 ref RenderWindow renderWindow = ref window[x];
@@ -283,13 +275,7 @@ namespace RenderingEngine.Engine
                 float textureStartY = renderFromTop ? portalFromY : (portalToY - texture.Height * pixelsPerUnit);
                 float textureEndY = renderFromTop ? (portalFromY + texture.Height * pixelsPerUnit) : portalToY;
 
-                if (lowerYScale is not null)
-                {
-                    textureStartY = portalFromY;
-                    textureEndY = portalToY;
-                }
-
-                if (yOffset != 0 && lowerYScale is null)
+                if (yOffset != 0)
                 {
                     float yOffsetF = yOffset * pixelsPerUnit;
 
@@ -319,16 +305,6 @@ namespace RenderingEngine.Engine
                 float textureXIncr = (float)(sectorHeight / (wallEndY - wallStartY));
                 int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
 
-                if (lowerYScale is float)
-                {
-                    textureXIncr = (texture.Height * lowerYScale.Value) / (float)(wallEndY - wallStartY);
-                }
-
-                if (lowerXScale is float)
-                {
-                    textureYPos = float.ConvertToIntegerNative<int>(distance * lowerXScale.Value);
-                }
-
                 float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, offset, textureWidth);
 
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel, false);
@@ -345,6 +321,136 @@ namespace RenderingEngine.Engine
                 {
                     DrawTransparentWallLineWithAlpha(width, x,
                         textureStartYClamped, textureEndYClamped,
+                        textureWidth,
+                        textureXPos, textureXIncr,
+                        ref screenPtr, ref columnBufferPtr,
+                        alpha);
+                }
+            }
+
+            columnABufferIndex = EngineConstants.Unset;
+        }
+
+
+        private void DrawTransparentWall_Build(
+            ReadOnlySpan<Sector> sectors,
+            RenderWindowWallSnapshot renderableWall)
+        {
+            int width = PixelWidth;
+            RenderableWall wall = renderableWall.Wall;
+            Line line = wall.Line;
+            int wallFromXOffset = renderableWall.Offset;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+            Sector sector = wall.Sector;
+            float sectorHeight = sector.Ceil - sector.Floor;
+
+
+            Span<RenderWindow> window = renderableWall.RenderWindow!;
+            ref uint screenPtr = ref GetScreenPtr<uint>();
+
+            TextureInfo textureInfo = line.MiddleTexture!;
+            Texture texture = TextureCache.GetTexture(line.MiddleTexture);
+            ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
+            int textureWidth = texture.Height;
+            int textureHeight = texture.Width;
+
+            ref uint columnBufferPtr = ref GetBufferA(textureWidth, out Span<uint> columnBuffer);
+
+            RenderablePlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
+            float wallStartY = yPlaneInfo.WallStartY;
+            float ceilDistIncr = yPlaneInfo.CeilDistIncr;
+            float wallEndY = yPlaneInfo.WallEndY;
+            float floorDistIncr = yPlaneInfo.FloorDistIncr;
+
+            Sector neighborSector = sectors[wall.Neighbor];
+            float floorOffset = neighborSector.Floor - sector.Floor;
+            float ceilOffset = neighborSector.Ceil - sector.Ceil;
+
+            float oneOverSectorHeight = 1f / sectorHeight;
+
+            byte lightLevel = sector.LightLevel;
+            float alpha = Math.Clamp(textureInfo.Alpha, 0f, 1f);
+
+            if (floorOffset < 0f)
+            {
+                floorOffset = 0f;
+            }
+
+            if (ceilOffset > 0f)
+            {
+                ceilOffset = 0f;
+            }
+
+            int xOffset = textureInfo.XOffset;
+            int yOffset = textureInfo.YOffset;
+
+            (_, bool flipX, bool flipY) = GetFlags(textureInfo);
+
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
+
+            (float xScale, float yScale) = (textureInfo.XScale!.Value, textureInfo.YScale!.Value);
+            yScale = (sector.Ceil - sector.Floor) * yScale;
+            xScale = xScale / wall.Length * texture.Width;
+
+            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
+            {
+                ref RenderWindow renderWindow = ref window[x];
+
+                if (renderWindow.CanRenderPortal)
+                {
+                    continue;
+                }
+
+                float buffer = renderWindow.Distance;
+
+                (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, flipX);
+
+                if (fromToYdist > buffer)
+                {
+                    wallStartY += ceilDistIncr;
+                    wallEndY += floorDistIncr;
+                    continue;
+                }
+
+                float pixelsPerUnit = (wallEndY - wallStartY) * oneOverSectorHeight;
+
+                // Portal Calculation
+                float floorPixelOffset = pixelsPerUnit * floorOffset;
+                float ceilPixelOffset = pixelsPerUnit * ceilOffset;
+                float textureFromY = wallStartY - ceilPixelOffset;
+                float textureToY = wallEndY - floorPixelOffset;
+
+                // Clamp to View Window
+                int clampedFromY = Math.Clamp(float.ConvertToIntegerNative<int>(textureFromY), renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int clampedToY = Math.Clamp(float.ConvertToIntegerNative<int>(textureToY), renderWindow.CeilingStart, renderWindow.FloorEnd);
+
+                if (clampedFromY >= clampedToY)
+                {
+                    continue;
+                }
+
+                // Calculate Middle Texture Position
+                int textureYPos = float.ConvertToIntegerNative<int>(distance * xScale);
+                textureYPos = ((textureYPos + xOffset) % textureHeight) * textureWidth;
+
+                float textureXIncr = (textureWidth * yScale) / (wallEndY - wallStartY);
+                float textureXPos = yOffset - textureXIncr * (wallStartY - clampedFromY);
+
+                CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel, flipY);
+
+                if (alpha == 1f)
+                {
+                    DrawTransparentWallLine(width, x,
+                        clampedFromY, clampedToY,
+                        textureWidth,
+                        textureXPos, textureXIncr,
+                        ref screenPtr, ref columnBufferPtr);
+                }
+                else
+                {
+                    DrawTransparentWallLineWithAlpha(width, x,
+                        clampedFromY, clampedToY,
                         textureWidth,
                         textureXPos, textureXIncr,
                         ref screenPtr, ref columnBufferPtr,
