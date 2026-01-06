@@ -72,8 +72,6 @@ namespace RenderingEngine.Engine
                 incrVectorCache[x] = float.ConvertToIntegerNative<int>(div / (upper * oneOverHeight));
             }
         }
-
-        private sealed record RenderableAreaAndZBuffer(int[] CeilingStart, int[] FloorEnd, float[] ZBuffer);
         private readonly RenderableAreaAndZBuffer[] spriteRenderableAreaCache = new RenderableAreaAndZBuffer[EngineConstants.MaxRenderDepth];
 
         // avoid re-allocating lists to reduce memory pressure
@@ -106,38 +104,34 @@ namespace RenderingEngine.Engine
                 int[] ceilingStart;
                 int[] floorEnd;
                 float[] zBuffer;
+                RenderColumnStatus[] columnStatus;
 
                 if (spriteRenderableAreaCache[renderDepth] is RenderableAreaAndZBuffer spriteCache)
                 {
                     ceilingStart = spriteCache.CeilingStart;
                     floorEnd = spriteCache.FloorEnd;
                     zBuffer = spriteCache.ZBuffer;
+                    columnStatus = spriteCache.ColumnStatus;
                 }
                 else
                 {
                     ceilingStart = new int[PixelWidth];
                     floorEnd = new int[PixelWidth];
                     zBuffer = new float[PixelWidth];
-                    spriteRenderableAreaCache[renderDepth] = new RenderableAreaAndZBuffer(ceilingStart, floorEnd, zBuffer);
+                    columnStatus = new RenderColumnStatus[PixelWidth];
+                    spriteRenderableAreaCache[renderDepth] = new RenderableAreaAndZBuffer(ceilingStart, floorEnd, zBuffer, columnStatus);
                 }
 
                 // 1. Copy over the renderable area for sprite rendering
-                for (int i = 0; i < RenderWindowHelper.RenderWindow.Length; i++)
-                {
-                    ref RenderWindow from = ref RenderWindowHelper.RenderWindow[i];
-                    ceilingStart[i] = from.CeilingStart;
-                    floorEnd[i] = from.FloorEnd;
-                }
+                RenderWindowHelper.CeilingStart.AsSpan().CopyTo(ceilingStart);
+                RenderWindowHelper.FloorEnd.AsSpan().CopyTo(floorEnd);
+                RenderWindowHelper.Status.AsSpan().CopyTo(columnStatus);
 
                 // 2. Render all sectors at current depth and calculate new z buffer and render window
                 List<RenderablePortalWall> neighborsForDepth = DrawScreenStep(player);
 
                 // 3. Cache z-buffer for sprite rendering
-                for (int i = 0; i < RenderWindowHelper.RenderWindow.Length; i++)
-                {
-                    ref RenderWindow from = ref RenderWindowHelper.RenderWindow[i];
-                    zBuffer[i] = from.Distance;
-                }
+                RenderWindowHelper.Distance.AsSpan().CopyTo(zBuffer);
 
                 // 4. We render sprites after all the walls were rendered
                 transparentWalls.Add(new RenderWindowSpriteSnapshot()
@@ -151,23 +145,21 @@ namespace RenderingEngine.Engine
                 });
 
                 // 5. We render transparent walls after all the walls were rendered
-                RenderWindow[]? renderableArea = null;
-
                 foreach (RenderablePortalWall renderableWall in neighborsForDepth)
                 {
                     _ = renderedSectors.Add(renderableWall.Wall.Neighbor);
-
                     if (renderableWall.IsPortalWithMiddleTexture)
                     {
-                        renderableArea ??= RenderWindowHelper.CopyRenderWindow(false);
-                        renderableWall.RenderWindow = renderableArea;
                         transparentWalls.Add(new RenderWindowWallSnapshot
                         {
                             Offset = renderableWall.Offset,
                             XLeft = renderableWall.XLeft,
                             XRight = renderableWall.XRight,
-                            RenderWindow = renderableArea,
-                            Wall = renderableWall.Wall
+                            Wall = renderableWall.Wall,
+                            CeilingStart = ceilingStart,
+                            ColumnStatus = columnStatus,
+                            Distance = zBuffer,
+                            FloorEnd = floorEnd
                         });
                     }
                 }
@@ -368,8 +360,6 @@ namespace RenderingEngine.Engine
 
         private RenderColumnStatus CalculateRenderWindow(RenderableWall wall, Sector sector, List<RenderablePortalWall> renderableWalls)
         {
-            Span<RenderWindow> renderedArea = RenderWindowHelper.RenderWindow;
-
             if (!RenderWindowHelper.SetWallToCalculate(wall))
             {
                 // don't render this wall, as its not within the window or is fully obscured by other walls
@@ -401,10 +391,10 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                ref RenderWindow renderedAreaX = ref renderedArea[x];
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
 
                 // we already have a different wall rendering in front of this one
-                if (renderedAreaX.Calculated || renderedAreaX.Finished)
+                if (columnStatus.IsCalculated || columnStatus.IsFinished)
                 {
                     if (x - 1 > renderableFromX)
                     {
@@ -432,11 +422,10 @@ namespace RenderingEngine.Engine
                 int wallStartYInt = float.ConvertToIntegerNative<int>(wallStartY);
                 int wallEndYInt = float.ConvertToIntegerNative<int>(wallEndY);
 
-                renderedAreaX.WallStart = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
-                renderedAreaX.WallEnd = wallEndYInt;
+                RenderWindowHelper.WallStart[x] = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
+                RenderWindowHelper.WallEnd[x] = wallEndYInt;
 
-                RenderWindowHelper.RecalculateRenderWindow(ref renderedAreaX, true);
-                status |= renderedAreaX.Status;
+                status |= RenderWindowHelper.RecalculateRenderWindow(x, true);
 
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;

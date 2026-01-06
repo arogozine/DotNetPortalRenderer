@@ -42,19 +42,19 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
 
-                if (!renderWindow.CanRenderWall)
+                if (!columnStatus.WallRenderable)
                 {
                     continue;
                 }
 
-                (int portalFromYClamped, int portalToYClamped) = RenderWindowHelper.GetClampedWallFromTo(ref renderWindow);
+                (int portalFromYClamped, int portalToYClamped) = RenderWindowHelper.GetClampedWallFromTo(x);
 
-                renderWindow.Distance = CalculateDistance2(cameraRay, t1, d2y, d2x);
-                renderWindow.CeilingStart = portalFromYClamped;
-                renderWindow.FloorEnd = portalToYClamped;
-                renderWindow.Status ^= RenderColumnStatus.CanRenderWall;
+                RenderWindowHelper.Distance[x] = CalculateDistance2(cameraRay, t1, d2y, d2x);
+                RenderWindowHelper.CeilingStart[x] = portalFromYClamped;
+                RenderWindowHelper.FloorEnd[x] = portalToYClamped;
+                RenderWindowHelper.Status[x] ^= RenderColumnStatus.CanRenderWall;
             }
         }
 
@@ -161,29 +161,32 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
 
-                if (!renderWindow.CanRenderWall)
+                if (!columnStatus.WallRenderable)
                 {
-                    renderWindow.SetFinished(CalculateDistance2(cameraRay, t1, d2y, d2x));
+                    RenderWindowHelper.Distance[x] = CalculateDistance2(cameraRay, t1, d2y, d2x);
+                    RenderWindowHelper.Status[x] = RenderColumnStatus.FinishedRendering;
                     continue;
                 }
 
-                int wallStartY = renderWindow.WallStart;
-                int wallEndY = renderWindow.WallEnd;
+                int wallStartY = RenderWindowHelper.WallStart[x];
+                int wallEndY = RenderWindowHelper.WallEnd[x];
+                int floorEnd = RenderWindowHelper.FloorEnd[x];
+                int ceilingStart = RenderWindowHelper.CeilingStart[x];
 
                 float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
 
                 // Wall Calculation
-                (int fromYClamped, int toYClamped) = RenderWindowHelper.GetClampedWallFromTo(ref renderWindow);
+                (int fromYClamped, int toYClamped) = RenderWindowHelper.GetClampedWallFromTo(x);
 
                 // Portal Calculation
                 int floorPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * floorOffset);
                 int ceilPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * ceilOffset);
                 int portalFromY = wallStartY - ceilPixelOffset;
                 int portalToY = wallEndY - floorPixelOffset;
-                int portalFromYClamped = Math.Clamp(portalFromY, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int portalToYClamped = Math.Clamp(portalToY, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int portalFromYClamped = Math.Clamp(portalFromY, ceilingStart, floorEnd);
+                int portalToYClamped = Math.Clamp(portalToY, ceilingStart, floorEnd);
                 float fromToYdist = CalculateDistance2(cameraRay, t1, d2y, d2x);
 
                 // draw upper wall / upper skybox
@@ -199,7 +202,6 @@ namespace RenderingEngine.Engine
                             in upperTexture,
                             ref upperTextureUintPtr,
                             ref angleCachePtr,
-                            in renderWindow,
                             ref screenIndexPtr,
                             ref screenIndexPtrEnd);
                     }
@@ -266,7 +268,6 @@ namespace RenderingEngine.Engine
                             in upperTexture,
                             ref upperTextureUintPtr,
                             ref angleCachePtr,
-                            in renderWindow,
                             ref screenIndexPtr,
                             ref screenIndexPtrEnd);
                     }
@@ -321,10 +322,10 @@ namespace RenderingEngine.Engine
                     }
                 }
 
-                renderWindow.Distance = fromToYdist;
-                renderWindow.CeilingStart = portalFromYClamped;
-                renderWindow.FloorEnd = portalToYClamped;
-                renderWindow.Status ^= RenderColumnStatus.CanRenderWall;
+                RenderWindowHelper.Distance[x] = fromToYdist;
+                RenderWindowHelper.CeilingStart[x] = portalFromYClamped;
+                RenderWindowHelper.FloorEnd[x] = portalToYClamped;
+                RenderWindowHelper.Status[x] ^= RenderColumnStatus.CanRenderWall;
             }
 
             columnABufferIndex = EngineConstants.Unset;
@@ -394,19 +395,20 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
 
-                if (!renderWindow.CanRenderWall)
+                if (!columnStatus.WallRenderable)
                 {
-                    renderWindow.SetFinished(CalculateDistance2(cameraRay, t1, d2y, d2x));
+                    RenderWindowHelper.Distance[x] = CalculateDistance2(cameraRay, t1, d2y, d2x);
+                    RenderWindowHelper.Status[x] = RenderColumnStatus.FinishedRendering;
                     continue;
                 }
 
                 (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, flipX);
-                (int clamptedFromY, int clamptedToY) = RenderWindowHelper.GetClampedWallFromTo(ref renderWindow);
+                (int clamptedFromY, int clamptedToY) = RenderWindowHelper.GetClampedWallFromTo(x);
 
-                int wallStartY = renderWindow.WallStart;
-                int wallEndY = renderWindow.WallEnd;
+                int wallStartY = RenderWindowHelper.WallStart[x];
+                int wallEndY = RenderWindowHelper.WallEnd[x];
 
                 // texture is rotated - y position is x position in texture
                 int textureYPos;
@@ -451,7 +453,8 @@ namespace RenderingEngine.Engine
                     ref columnBufferPtr
                 );
 
-                renderWindow.SetFinished(fromToYdist);
+                RenderWindowHelper.Distance[x] = fromToYdist;
+                RenderWindowHelper.Status[x] = RenderColumnStatus.FinishedRendering;
             }
 
             columnABufferIndex = EngineConstants.Unset;
@@ -478,15 +481,17 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
+                RenderWindowHelper.Status[x] = RenderColumnStatus.FinishedRendering;
 
-                if (!renderWindow.CanRenderWall)
+                if (!columnStatus.WallRenderable)
                 {
-                    renderWindow.SetFinished(CalculateDistance2(cameraRay, t1, d2y, d2x));
+                    RenderWindowHelper.Distance[x] = CalculateDistance2(cameraRay, t1, d2y, d2x);
+                    RenderWindowHelper.Status[x] = RenderColumnStatus.FinishedRendering;
                     continue;
                 }
 
-                (int clamptedFromY, int clamptedToY) = RenderWindowHelper.GetClampedWallFromTo(ref renderWindow);
+                (int clamptedFromY, int clamptedToY) = RenderWindowHelper.GetClampedWallFromTo(x);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
                 ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
@@ -498,11 +503,11 @@ namespace RenderingEngine.Engine
                     in wallTexture,
                     ref wallTextureUintPtr,
                     ref angleCachePtr,
-                    in renderWindow,
                     ref screenIndexPtr,
                     ref screenIndexPtrEnd);
 
-                renderWindow.SetFinished(fromToYdist);
+                RenderWindowHelper.Distance[x] = fromToYdist;
+                RenderWindowHelper.Status[x] = RenderColumnStatus.FinishedRendering;
             }
 
             return true;
@@ -515,7 +520,6 @@ namespace RenderingEngine.Engine
             in Texture upperTexture,
             ref uint upperTextureUintPtr,
             ref float angleCachePtr,
-            in RenderWindow renderWindow,
             ref uint screenIndexPtr,
             ref uint screenIndexPtrEnd)
         {
@@ -546,7 +550,10 @@ namespace RenderingEngine.Engine
 
             int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
-            int fromYClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
+            int wallStart = RenderWindowHelper.WallStart[x];
+            int ceilingStart = RenderWindowHelper.CeilingStart[x];
+            int floorEnd = RenderWindowHelper.FloorEnd[x];
+            int fromYClamped = Math.Clamp(wallStart, ceilingStart, floorEnd);
             float vScreen = (float)fromYClamped * yTextureIncr;
 
             ref uint textureColumnPtr = ref Unsafe.Add(ref upperTextureUintPtr, texX);

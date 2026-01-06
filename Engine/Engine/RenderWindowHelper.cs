@@ -6,7 +6,15 @@ namespace RenderingEngine.Engine
     {
         private readonly int width;
         private readonly int height;
-        private readonly RenderWindow[] renderWindow;
+
+        public RenderColumnStatus[] Status { get; }
+        public int[] CeilingStart { get; }
+        public int[] WallStart { get; }
+        public int[] WallEnd { get; }
+        public int[] FloorEnd { get; }
+        public float[] Distance { get; }
+        public float[] TextureXLocation { get; }
+
 
         private int sectorFromX;
         private int sectorToX;
@@ -17,14 +25,19 @@ namespace RenderingEngine.Engine
 
         public int SectorFrom => sectorFromX;
         public int SectorTo => sectorToX;
-        public Span<RenderWindow> RenderWindow => renderWindow;
 
         public RenderWindowHelper(int width, int height)
         {
             this.width = width;
             this.height = height;
 
-            renderWindow = new RenderWindow[width];
+            Status = new RenderColumnStatus[width];
+            CeilingStart = new int[width];
+            WallStart = new int[width];
+            WallEnd = new int[width];
+            FloorEnd = new int[width];
+            Distance = new float[width];
+            TextureXLocation = new float[width];
 
             sectorFromX = 0;
             sectorToX = width;
@@ -32,37 +45,37 @@ namespace RenderingEngine.Engine
 
         public void NewRender()
         {
-            renderWindow.AsSpan().Fill(new RenderWindow {
-                CeilingStart = 0,
-                FloorEnd = height - 1,
-                WallEnd = height - 1,
-                Distance = float.MaxValue,
-                Status = RenderColumnStatus.NewRender
-            });
+            Status.AsSpan().Fill(RenderColumnStatus.NewRender);
+            CeilingStart.AsSpan().Clear();
+            FloorEnd.AsSpan().Fill(height - 1);
+            WallEnd.AsSpan().Fill(height - 1);
+            Distance.AsSpan().Fill(float.MaxValue);
+            TextureXLocation.AsSpan().Clear();
         }
 
         public RenderColumnStatus NewDepth()
         {
             RenderColumnStatus renderColumnStatus = default;
 
-            for (int i = 0; i < renderWindow.Length; i++)
+            for (int i = 0; i < this.width; i++)
             {
-                ref RenderWindow render = ref renderWindow[i];
+                RenderColumnStatus columnStatus = Status[i];
 
-                if (render.Finished)
+                if (columnStatus.IsFinished)
                 {
                     continue;
                 }
-                else if (render.Calculated)
+                else if (columnStatus.IsCalculated)
                 {
-                    RecalculateRenderWindow(ref render, false);
+                    columnStatus = RecalculateRenderWindow(i, false);
                 }
                 else
                 {
-                    render.Status = RenderColumnStatus.FinishedRendering;
+                    columnStatus = RenderColumnStatus.FinishedRendering;
+                    Status[i] = RenderColumnStatus.FinishedRendering;
                 }
 
-                renderColumnStatus |= render.Status;
+                renderColumnStatus |= columnStatus;
             }
 
             // this allows us to know what, if anything, we can still render
@@ -70,52 +83,67 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static (int ClampedWallStart, int ClampedWallEnd) GetClampedWallFromTo(ref RenderWindow renderWindow)
+        public (int ClampedWallStart, int ClampedWallEnd) GetClampedWallFromTo(int x)
         {
-            int portalFromYClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
-            int portalToYClamped = Math.Clamp(renderWindow.WallEnd, renderWindow.CeilingStart, renderWindow.FloorEnd);
+            int ceilingStart = this.CeilingStart[x];
+            int wallStart = this.WallStart[x];
+            int wallEnd = this.WallEnd[x];
+            int floorEnd = this.FloorEnd[x];
+
+            int portalFromYClamped = Math.Clamp(wallStart, ceilingStart, floorEnd);
+            int portalToYClamped = Math.Clamp(wallEnd, ceilingStart, floorEnd);
+
             return (portalFromYClamped, portalToYClamped);
         }
 
-        public static void RecalculateRenderWindow(ref RenderWindow render, bool calculated)
+        public RenderColumnStatus RecalculateRenderWindow(int x, bool calculated)
         {
-            bool windowExists = render.CeilingStart < render.FloorEnd;
+            RenderColumnStatus status;
+            int ceilingStart = this.CeilingStart[x];
+            int floorEnd = this.FloorEnd[x];
+            int wallStart = this.WallStart[x];
+            int wallEnd = this.WallEnd[x];
 
-            bool canRenderCeiling = windowExists && render.CeilingStart < render.WallStart && render.CeilingStart < render.FloorEnd;
-            bool canRenderFloor = windowExists && render.WallEnd < render.FloorEnd;
-            bool canRenderWall = windowExists && render.WallStart < render.WallEnd && render.CeilingStart < render.FloorEnd;
-            bool canRenderPortal = windowExists && render.FloorEnd < render.CeilingStart && render.WallStart < render.FloorEnd;
+            bool windowExists = ceilingStart < floorEnd;
+
+            bool canRenderCeiling = windowExists && ceilingStart < wallStart && ceilingStart < floorEnd;
+            bool canRenderFloor = windowExists && wallEnd < floorEnd;
+            bool canRenderWall = windowExists && wallStart < wallEnd && ceilingStart < floorEnd;
+            bool canRenderPortal = windowExists && floorEnd < ceilingStart && wallStart < floorEnd;
 
             RenderColumnStatus startingStatus = calculated ? RenderColumnStatus.Calculated : default;
 
             if (!windowExists || !(canRenderCeiling || canRenderFloor || canRenderWall || canRenderPortal))
             {
-                render.Status = RenderColumnStatus.FinishedRendering;
+                status = RenderColumnStatus.FinishedRendering;
             }
             else
             {
-                render.Status = startingStatus;
+                status = startingStatus;
 
                 if (canRenderCeiling)
                 {
-                    render.Status |= RenderColumnStatus.CanRenderCeiling;
+                    status |= RenderColumnStatus.CanRenderCeiling;
                 }
 
                 if (canRenderFloor)
                 {
-                    render.Status |= RenderColumnStatus.CanRenderFloor;
+                    status |= RenderColumnStatus.CanRenderFloor;
                 }
 
                 if (canRenderWall)
                 {
-                    render.Status |= RenderColumnStatus.CanRenderWall;
+                    status |= RenderColumnStatus.CanRenderWall;
                 }
 
                 if (canRenderPortal)
                 {
-                    render.Status |= RenderColumnStatus.CanRenderPortal;
+                    status |= RenderColumnStatus.CanRenderPortal;
                 }
             }
+
+            this.Status[x] = status;
+            return status;
         }
 
         public void NewSector(NeighborsToRender sectorInfo)
@@ -130,6 +158,7 @@ namespace RenderingEngine.Engine
             }
         }
 
+        /*
         // for transparency
         public RenderWindow[] CopyRenderWindow(bool partial)
         {
@@ -148,6 +177,7 @@ namespace RenderingEngine.Engine
 
             return renderWindow;
         }
+        */
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public (int SectroFromX, int SectorToX) GetSectorX()
@@ -171,9 +201,9 @@ namespace RenderingEngine.Engine
 
             for (i = wallFromX; i <= wallToX; i++)
             {
-                ref RenderWindow window = ref renderWindow[i];
+                RenderColumnStatus columnStatus = Status[i];
 
-                if (!window.Finished && !window.Calculated)
+                if (!columnStatus.IsFinished && !columnStatus.IsCalculated)
                 {
                     break;
                 }
@@ -181,9 +211,9 @@ namespace RenderingEngine.Engine
 
             for (j = wallToX; j >= wallFromX; j--)
             {
-                ref RenderWindow window = ref renderWindow[j];
+                RenderColumnStatus columnStatus = Status[j];
 
-                if (!window.Finished && !window.Calculated)
+                if (!columnStatus.IsFinished && !columnStatus.IsCalculated)
                 {
                     break;
                 }

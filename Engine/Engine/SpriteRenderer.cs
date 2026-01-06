@@ -192,9 +192,6 @@ namespace RenderingEngine.Engine
             Sector sector = wall.Sector;
             float sectorHeight = sector.Ceil - sector.Floor;
 
-
-            Span<RenderWindow> window = renderableWall.RenderWindow!;
-
             TextureInfo textureInfo = wall.MiddleTexture!;
 
             if (textureInfo.XScale is not null)
@@ -245,14 +242,16 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
             {
-                ref RenderWindow renderWindow = ref window[x];
+                RenderColumnStatus columnStatus = renderableWall.ColumnStatus[x];
 
-                if (renderWindow.CanRenderPortal)
+                if (columnStatus.PortalRenderable)
                 {
                     continue;
                 }
 
-                float buffer = renderWindow.Distance;
+                float buffer = renderableWall.Distance[x];
+                int floorEnd = renderableWall.FloorEnd[x];
+                int ceilingStart = renderableWall.CeilingStart[x];
 
                 (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, false);
 
@@ -290,8 +289,8 @@ namespace RenderingEngine.Engine
                     }
                 }
 
-                int textureStartYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(textureStartY), renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int textureEndYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(textureEndY), renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int textureStartYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(textureStartY), ceilingStart, floorEnd);
+                int textureEndYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(textureEndY), ceilingStart, floorEnd);
 
                 if (textureStartYClamped >= textureEndYClamped)
                 {
@@ -343,8 +342,6 @@ namespace RenderingEngine.Engine
             Sector sector = wall.Sector;
             float sectorHeight = sector.Ceil - sector.Floor;
 
-
-            Span<RenderWindow> window = renderableWall.RenderWindow!;
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             TextureInfo textureInfo = wall.MiddleTexture!;
@@ -393,14 +390,16 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
             {
-                ref RenderWindow renderWindow = ref window[x];
+                RenderColumnStatus columnStatus = renderableWall.ColumnStatus[x];
 
-                if (renderWindow.CanRenderPortal)
+                if (columnStatus.PortalRenderable)
                 {
                     continue;
                 }
 
-                float buffer = renderWindow.Distance;
+                float buffer = renderableWall.Distance[x];
+                int floorEnd = renderableWall.FloorEnd[x];
+                int ceilingStart = renderableWall.CeilingStart[x];
 
                 (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, flipX);
 
@@ -420,8 +419,8 @@ namespace RenderingEngine.Engine
                 float textureToY = wallEndY - floorPixelOffset;
 
                 // Clamp to View Window
-                int clampedFromY = Math.Clamp(float.ConvertToIntegerNative<int>(textureFromY), renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int clampedToY = Math.Clamp(float.ConvertToIntegerNative<int>(textureToY), renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int clampedFromY = Math.Clamp(float.ConvertToIntegerNative<int>(textureFromY), ceilingStart, floorEnd);
+                int clampedToY = Math.Clamp(float.ConvertToIntegerNative<int>(textureToY), ceilingStart, floorEnd);
 
                 if (clampedFromY >= clampedToY)
                 {

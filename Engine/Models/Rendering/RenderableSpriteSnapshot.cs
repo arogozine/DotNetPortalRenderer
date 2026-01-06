@@ -6,6 +6,9 @@ namespace RenderingEngine.Models
     {
         public required int XLeft { get; init; }
         public required int XRight { get; init; }
+        public required int[] CeilingStart { get; init; }
+        public required int[] FloorEnd { get; init; }
+        public required float[] Distance { get; init; }
     }
 
     /// <summary>
@@ -14,8 +17,8 @@ namespace RenderingEngine.Models
     internal class RenderWindowWallSnapshot : RenderableSpriteSnapshot
     {
         public required int Offset { get; init; }
-        public required RenderableWall Wall { get; set; }
-        public required RenderWindow[] RenderWindow { get; init; }
+        public required RenderableWall Wall { get; init; }
+        public required RenderColumnStatus[] ColumnStatus { get; init; }
     }
 
     /// <summary>
@@ -24,8 +27,5 @@ namespace RenderingEngine.Models
     internal class RenderWindowSpriteSnapshot : RenderableSpriteSnapshot
     {
         public required int RenderDepth { get; init; }
-        public required int[] CeilingStart { get; init; }
-        public required int[] FloorEnd { get; init; }
-        public required float[] Distance { get; init; }
     }
 }

@@ -111,24 +111,26 @@ namespace RenderingEngine.Engine
 
             for (int x = sectroFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
 
-                if (!renderWindow.CanRenderCeiling)
+                if (!columnStatus.CeilingRenderable)
                 {
                     continue;
                 }
 
-                int floorFromY = renderWindow.CeilingStart;
-                int floorToY = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int ceilingStart = RenderWindowHelper.CeilingStart[x];
+                int wallStart = RenderWindowHelper.WallStart[x];
+                int floorEnd = RenderWindowHelper.FloorEnd[x];
+                int floorToY = Math.Clamp(wallStart, ceilingStart, floorEnd);
 
-                int screenIndex = floorFromY * width + x;
+                int screenIndex = ceilingStart * width + x;
 
                 float xMapPosMultiplier = (widthDiv2 - x) * xPosIncr;
 
-                incramentVector = Vector.CreateSequence(halfHeightInt - floorFromY, -1f);
+                incramentVector = Vector.CreateSequence(halfHeightInt - ceilingStart, -1f);
                 incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
 
-                RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, floorFromY, width,
+                RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, ceilingStart, width,
                     x, lightLevel, yCeilV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, doubleSize);
             }
@@ -176,20 +178,22 @@ namespace RenderingEngine.Engine
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
 
-                if (!renderWindow.CanRenderCeiling)
+                if (!columnStatus.CeilingRenderable)
                 {
                     continue;
                 }
 
-                int floorFromY = renderWindow.CeilingStart;
-                int floorToY = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int ceilingStart = RenderWindowHelper.CeilingStart[x];
+                int wallStart = RenderWindowHelper.WallStart[x];
+                int floorEnd = RenderWindowHelper.FloorEnd[x];
+                int floorToY = Math.Clamp(wallStart, ceilingStart, floorEnd);
 
-                int screenIndex = floorFromY * width + x;
+                int screenIndex = ceilingStart * width + x;
                 int xMapPosMultiplier = float.ConvertToIntegerNative<int>(((widthDiv2 - x) << 10) * xPosIncr);
 
-                RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
+                RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, ceilingStart, width,
                     x, lightLevel, yCeliningV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy, rotated, doubleSize);
             }
@@ -229,9 +233,9 @@ namespace RenderingEngine.Engine
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
 
-                if (!renderWindow.CanRenderCeiling)
+                if (!columnStatus.CeilingRenderable)
                 {
                     continue;
                 }
@@ -250,8 +254,10 @@ namespace RenderingEngine.Engine
 
                 int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
-                int ceilingStart = renderWindow.CeilingStart;
-                int wallStartClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
+                int wallStart = RenderWindowHelper.WallStart[x];
+                int ceilingStart = RenderWindowHelper.CeilingStart[x];
+                int floorEnd = RenderWindowHelper.FloorEnd[x];
+                int wallStartClamped = Math.Clamp(wallStart, ceilingStart, floorEnd);
 
                 int rem = (wallStartClamped - ceilingStart) % Vector<int>.Count;
                 wallStartClamped -= rem;
@@ -323,9 +329,9 @@ namespace RenderingEngine.Engine
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
 
-                if (!renderWindow.CanRenderFloor)
+                if (!columnStatus.FloorRenderable)
                 {
                     continue;
                 }
@@ -344,8 +350,10 @@ namespace RenderingEngine.Engine
 
                 int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
-                int wallStartClamped = Math.Clamp(renderWindow.WallStart, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int floorEnd = renderWindow.FloorEnd;
+                int wallStart = RenderWindowHelper.WallStart[x];
+                int ceilingStart = RenderWindowHelper.CeilingStart[x];
+                int floorEnd = RenderWindowHelper.FloorEnd[x];
+                int wallStartClamped = Math.Clamp(wallStart, ceilingStart, floorEnd);
 
                 int rem = (floorEnd - wallStartClamped) % Vector<int>.Count;
                 floorEnd -= rem;
@@ -446,15 +454,18 @@ namespace RenderingEngine.Engine
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
 
-                if (!renderWindow.CanRenderFloor)
+                if (!columnStatus.FloorRenderable)
                 {
                     continue;
                 }
 
-                int floorFromY = Math.Clamp(renderWindow.WallEnd, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int floorToY = renderWindow.FloorEnd;
+                int ceilingStart = RenderWindowHelper.CeilingStart[x];
+                int floorEnd = RenderWindowHelper.FloorEnd[x];
+                int wallEnd = RenderWindowHelper.WallEnd[x];
+
+                int floorFromY = Math.Clamp(wallEnd, ceilingStart, floorEnd);
 
                 int screenIndex = floorFromY * width + x;
                 float xMapPosMultiplier = (widthDiv2 - x) * xPosIncr;
@@ -462,7 +473,7 @@ namespace RenderingEngine.Engine
                 incramentVector = Vector.CreateSequence(halfHeightInt - floorFromY, -1f);
                 incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
 
-                RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
+                RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEnd, floorFromY, width,
                     x, lightLevel, yfloorV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, doubleSize);
             }
@@ -511,20 +522,23 @@ namespace RenderingEngine.Engine
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                ref RenderWindow renderWindow = ref RenderWindowHelper.RenderWindow[x];
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
 
-                if (!renderWindow.CanRenderFloor)
+                if (!columnStatus.FloorRenderable)
                 {
                     continue;
                 }
 
-                int floorFromY = Math.Clamp(renderWindow.WallEnd, renderWindow.CeilingStart, renderWindow.FloorEnd);
-                int floorToY = renderWindow.FloorEnd;
+                int ceilingStart = RenderWindowHelper.CeilingStart[x];
+                int floorEnd = RenderWindowHelper.FloorEnd[x];
+                int wallEnd = RenderWindowHelper.WallEnd[x];
+
+                int floorFromY = Math.Clamp(wallEnd, ceilingStart, floorEnd);
 
                 int screenIndex = floorFromY * width + x;
                 int xMapPosMultiplier = float.ConvertToIntegerNative<int>(((widthDiv2 - x) << 10) * xPosIncr);
 
-                RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, floorFromY, width,
+                RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorEnd, floorFromY, width,
                     x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy, rotated, doubleSize);
             }
