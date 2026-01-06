@@ -304,7 +304,7 @@ namespace RenderingEngine.DoomMapLoader
                 }
 
                 // PNG
-                if (WadLumpParser.IsPng(wadLump) && TryDecodeImage(wadLump.Bytes, out BGRA[] png, out int width, out int height))
+                if (WadLumpParser.IsPng(wadLump) && TryDecodeImage(wadLump.Bytes, out BGRA[]? png, out int width, out int height))
                 {
                     flats[wadLump.Name] = new TextureInfo(width, height, png);
                     continue;
@@ -742,6 +742,7 @@ namespace RenderingEngine.DoomMapLoader
 
                 sprites.Add(new Sprite
                 {
+                    Id = i,
                     Angle = thing.Angle,
                     Location = new Point(thing.X, thing.Y),
                     Height = thing.Height ?? 0f,
@@ -795,6 +796,7 @@ namespace RenderingEngine.DoomMapLoader
 
                 sprites.Add(new Sprite
                 {
+                    Id = i,
                     Angle = thing.Angle,
                     Location = new Point(thing.X, thing.Y),
                     Height = 0f,

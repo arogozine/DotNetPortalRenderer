@@ -10,7 +10,7 @@ namespace RenderingEngine
         public Player Player { get; private set; }
 
         internal Sector[] Sectors { get; private set; }
-        internal Sprite[] Sprites { get; private set; }
+        internal RenderableSprite[] Sprites { get; private set; }
 
         internal Arguments Arguments { get; }
 

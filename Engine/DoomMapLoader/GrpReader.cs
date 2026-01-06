@@ -650,6 +650,7 @@ namespace RenderingEngine.DoomMapLoader
 
                 sprites[i] = new Sprite
                 {
+                    Id = i,
                     Angle = angle,
                     Location = new Point(DetermineXLocation(sprite.X), DetermineYLocation(sprite.Y)),
                     Height = elevation,

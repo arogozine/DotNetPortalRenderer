@@ -55,7 +55,7 @@ namespace RenderingEngine.Engine
 
             for (int i = 0; i < playerSector.Walls.Length; i++)
             {
-                Wall wall = playerSector.Walls[i];
+                RenderableWall wall = playerSector.Walls[i];
 
                 if (wall.IsPortal)
                 {
@@ -66,7 +66,7 @@ namespace RenderingEngine.Engine
             foreach (int s in childSectors)
             {
                 Sector sector = sectors[s];
-                Wall[] walls = sector.Walls;
+                RenderableWall[] walls = sector.Walls;
 
                 if (SharedHelpers.IsPointInPolygon(walls, location))
                 {
@@ -78,7 +78,7 @@ namespace RenderingEngine.Engine
             for (int s = 0; s < sectors.Length; s++)
             {
                 Sector sector = sectors[s];
-                Wall[] walls = sector.Walls;
+                RenderableWall[] walls = sector.Walls;
 
                 if (SharedHelpers.IsPointInPolygon(walls, location))
                 {

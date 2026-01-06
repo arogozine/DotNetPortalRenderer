@@ -98,7 +98,14 @@ namespace RenderingEngine.Engine
             return value > from && value < to;
         }
 
-        public static bool IsPointInPolygon(scoped ReadOnlySpan<Wall> walls, Point point)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool WithinInclusive<T>(T value, T from, T to)
+            where T : IComparisonOperators<T, T, bool>
+        {
+            return value >= from && value <= to;
+        }
+
+        public static bool IsPointInPolygon(scoped ReadOnlySpan<RenderableWall> walls, Point point)
         {
             float x = point.X;
             float y = point.Y;
@@ -106,7 +113,7 @@ namespace RenderingEngine.Engine
 
             for (int i = 0; i < walls.Length; i++)
             {
-                Wall wall = walls[i];
+                RenderableWall wall = walls[i];
 
                 float x1 = wall.R1.X;
                 float y1 = wall.R1.Y;

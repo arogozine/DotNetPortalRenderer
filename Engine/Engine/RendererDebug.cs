@@ -4,7 +4,7 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        private void Meh(Span<BGRA> screen, SectorSprites sectorSprites)
+        private void Meh(Span<BGRA> screen, RenderWindowSpriteSnapshot sectorSprites)
         {
             var floorEnd = sectorSprites.FloorEnd;
             var ceilingStart = sectorSprites.CeilingStart;

@@ -100,7 +100,7 @@ namespace RenderingEngine.MapGen
             return GrpReader.LoadBuildMap(grp, mapName);
         }
 
-        internal static (Player player, Sector[] sectors, Sprite[] sprites) LoadData(Arguments arguments)
+        internal static (Player player, Sector[] sectors, RenderableSprite[] sprites) LoadData(Arguments arguments)
         {
             Map map;
 
@@ -121,21 +121,30 @@ namespace RenderingEngine.MapGen
                 sector.Walls = SortMapWalls(sector.Walls);
             }
 
+            RenderableSprite[] sprites = map.Sprites.Select(ParseSprite).ToArray();
             Sector[] sectors = map.Sectors.Select(ParseMapSector).ToArray();
 
             if (arguments.IWad is not null)
             {
-                SpriteHelper.AssignSectors(map.Sprites, sectors);
+                SpriteHelper.AssignSectors(sprites, sectors);
             }
 
             WallHelper.AssignBunches(sectors);
 
-            return (map.Player, sectors, map.Sprites);
+            return (map.Player, sectors, sprites);
+        }
+
+        static RenderableSprite ParseSprite(Sprite sprite)
+        {
+            return new RenderableSprite
+            {
+                Sprite = sprite
+            };
         }
 
         static Sector ParseMapSector(MapSector x)
         {
-            Wall[] vertex = new Wall[x.Walls.Count];
+            RenderableWall[] vertex = new RenderableWall[x.Walls.Count];
 
             var sector = new Sector
             {
@@ -153,7 +162,7 @@ namespace RenderingEngine.MapGen
             for (int i = 0; i < x.Walls.Count; i++)
             {
                 Line v = x.Walls[i];
-                vertex[i] = new Wall(v,
+                vertex[i] = new RenderableWall(v,
                     v.PointA, v.PointB,
                     sector,
                     v.SectorTo

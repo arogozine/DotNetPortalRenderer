@@ -26,7 +26,7 @@ namespace RenderingEngine.Engine
         {
             for (int i = 0; i < a.Walls.Length; i++)
             {
-                Wall wall = a.Walls[i];
+                RenderableWall wall = a.Walls[i];
 
                 if (!SharedHelpers.IsPointInPolygon(b.Walls, wall.R1))
                 {
@@ -59,9 +59,9 @@ namespace RenderingEngine.Engine
             this.cameraPlaneX = cameraPlaneX;
         }
 
-        public Span<Sprite> GetSpritesForPlayer(PortalPlayerSnapshot player, Span<Sprite> sprites, ReadOnlySpan<Sector> sectors)
+        public Span<RenderableSprite> GetSpritesForPlayer(PortalPlayerSnapshot player, Span<RenderableSprite> sprites, ReadOnlySpan<Sector> sectors)
         {
-            Span<Sprite> rotatedSprites = RotateSprites(sprites, player);
+            Span<RenderableSprite> rotatedSprites = RotateSprites(sprites, player);
 
             FilterOutSpritesBehindPlayer(ref rotatedSprites);
             FilterOutSpritesWithoutSector(ref rotatedSprites);
@@ -71,7 +71,7 @@ namespace RenderingEngine.Engine
 
             for (int i = 0; i < rotatedSprites.Length; i++)
             {
-                Sprite sprite = rotatedSprites[i];
+                RenderableSprite sprite = rotatedSprites[i];
 
                 Sector sector = sectors[sprite.SectorId];
                 float yCeil = sector.Ceil - pz + sprite.Height;
@@ -88,11 +88,11 @@ namespace RenderingEngine.Engine
             return rotatedSprites;
         }
 
-        public static void AssignSectors(scoped ReadOnlySpan<Sprite> sprites, scoped ReadOnlySpan<Sector> sectors)
+        public static void AssignSectors(scoped ReadOnlySpan<RenderableSprite> sprites, scoped ReadOnlySpan<Sector> sectors)
         {
             for (int j = 0; j < sprites.Length; j++)
             {
-                Sprite sprite = sprites[j];
+                RenderableSprite sprite = sprites[j];
                 List<Sector> potentialSectors = [];
 
                 for (int i = sectors.Length - 1; i >= 0; i--)
@@ -107,18 +107,18 @@ namespace RenderingEngine.Engine
 
                 if (potentialSectors.Count == 0)
                 {
-                    sprite.SectorId = -1;
+                    sprite.Sprite.SectorId = -1;
                     continue;
                     //throw new Exception();
                 }
 
                 potentialSectors.Sort(new SectorInSectorComparer());
-                sprite.SectorId = potentialSectors[0].Id;
+                sprite.Sprite.SectorId = potentialSectors[0].Id;
             }
 
         }
 
-        private void AssignDistance(scoped ReadOnlySpan<Sprite> sprites)
+        private void AssignDistance(scoped ReadOnlySpan<RenderableSprite> sprites)
         {
             int width = this.width;
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
@@ -126,13 +126,13 @@ namespace RenderingEngine.Engine
 
             for (int j = 0; j < sprites.Length; j++)
             {
-                Sprite sprite = sprites[j];
+                RenderableSprite sprite = sprites[j];
                 bool wallSprite = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall);
 
                 sprite.Distance = wallSprite ? CalculateDistanceForWallSprite(sprite) : CalculateDistance(sprite);
             }
 
-            static float CalculateDistance(Sprite sprite)
+            static float CalculateDistance(RenderableSprite sprite)
             {
                 Texture texture = TextureCache.GetTexture(sprite.Texture);
 
@@ -146,7 +146,7 @@ namespace RenderingEngine.Engine
                 return t1 / -textureHeight;
             }
 
-            float CalculateDistanceForWallSprite(Sprite sprite)
+            float CalculateDistanceForWallSprite(RenderableSprite sprite)
             {
                 float rx1 = sprite.R1.X;
                 float ry1 = sprite.R1.Y;
@@ -167,16 +167,16 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static List<Sprite> FilterOutSpritesOutsideDepth(
-            scoped Span<Sprite> rotatedSprites,
+        public static List<RenderableSprite> FilterOutSpritesOutsideDepth(
+            scoped Span<RenderableSprite> rotatedSprites,
             HashSet<int> sectors,
             float[] depth, float[]? parentDepth)
         {
-            List<Sprite> sprites = [];
+            List<RenderableSprite> sprites = [];
 
             for (int i = 0; i < rotatedSprites.Length; i++)
             {
-                Sprite sprite = rotatedSprites[i];
+                RenderableSprite sprite = rotatedSprites[i];
 
                 if (WithinDepth(sprite))
                 {
@@ -187,7 +187,7 @@ namespace RenderingEngine.Engine
             return sprites;
 
 
-            bool WithinDepth(Sprite sprite)
+            bool WithinDepth(RenderableSprite sprite)
             {
                 float fromToYDist = sprite.Distance;
 
@@ -203,9 +203,9 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static Span<Sprite> RotateSprites(scoped ReadOnlySpan<Sprite> sprites, PortalPlayerSnapshot player)
+        public static Span<RenderableSprite> RotateSprites(scoped ReadOnlySpan<RenderableSprite> sprites, PortalPlayerSnapshot player)
         {
-            var rotatedSprites = new Sprite[sprites.Length];
+            var rotatedSprites = new RenderableSprite[sprites.Length];
 
             float pSin = player.Sin;
             float pCos = player.Cos;
@@ -214,7 +214,7 @@ namespace RenderingEngine.Engine
 
             for (int i = 0; i < sprites.Length; i++)
             {
-                Sprite s = sprites[i];
+                RenderableSprite s = sprites[i];
                 TextureInfo textureInfo = s.Texture;
 
                 Point rotated = RotateVertex(s.Location);
@@ -241,17 +241,12 @@ namespace RenderingEngine.Engine
                     r2 = new Point(rx2, ry2);
                 }
 
-                rotatedSprites[i] = new Sprite
+                rotatedSprites[i] = new RenderableSprite
                 {
-                    Angle = s.Angle,
-                    Location = s.Location,
+                    Sprite = s.Sprite,
                     Rotated = rotated,
                     R1 = r1,
-                    R2 = r2,
-                    Height = s.Height,
-                    Texture = s.Texture,
-                    SectorId = s.SectorId,
-                    Length = s.Length
+                    R2 = r2
                 };
             }
 
@@ -265,7 +260,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static void FilterOutSpritesBehindPlayer(ref Span<Sprite> rotatedSprites)
+        public static void FilterOutSpritesBehindPlayer(ref Span<RenderableSprite> rotatedSprites)
         {
             // in-place sort out sprites and trim the span
 
@@ -273,7 +268,7 @@ namespace RenderingEngine.Engine
 
             for (int i = 0; i < rotatedSprites.Length; i++)
             {
-                Sprite sprite = rotatedSprites[i];
+                RenderableSprite sprite = rotatedSprites[i];
 
                 if (sprite.R1.Y <= 0f && sprite.R2.Y <= 0f)
                 {
@@ -287,7 +282,7 @@ namespace RenderingEngine.Engine
             rotatedSprites = rotatedSprites[..j];
         }
 
-        public static void FilterOutSpritesWithoutSector(ref Span<Sprite> rotatedSprites)
+        public static void FilterOutSpritesWithoutSector(ref Span<RenderableSprite> rotatedSprites)
         {
             // in-place sort out sprites and trim the span
 
@@ -295,7 +290,7 @@ namespace RenderingEngine.Engine
 
             for (int i = 0; i < rotatedSprites.Length; i++)
             {
-                Sprite sprite = rotatedSprites[i];
+                RenderableSprite sprite = rotatedSprites[i];
 
                 if (sprite.SectorId == -1)
                 {
@@ -309,7 +304,7 @@ namespace RenderingEngine.Engine
             rotatedSprites = rotatedSprites[..j];
         }
 
-        public void FilterOutNonIntersectingSprites(ref Span<Sprite> rotatedSprites)
+        public void FilterOutNonIntersectingSprites(ref Span<RenderableSprite> rotatedSprites)
         {
             // in-place sort out sprites and trim the span
 
@@ -317,7 +312,7 @@ namespace RenderingEngine.Engine
 
             for (int i = 0; i < rotatedSprites.Length; i++)
             {
-                Sprite sprite = rotatedSprites[i];
+                RenderableSprite sprite = rotatedSprites[i];
 
                 if (!IntersectsView(sprite))
                 {
@@ -331,7 +326,7 @@ namespace RenderingEngine.Engine
             rotatedSprites = rotatedSprites[..j];
 
 
-            bool IntersectsView(Sprite s)
+            bool IntersectsView(RenderableSprite s)
             {
                 if (!s.IntersectsView)
                 {
@@ -342,7 +337,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public void CalculateSpritePlane(Sprite sprite, float yCeil, float yFloor, float yaw)
+        public void CalculateSpritePlane(RenderableSprite sprite, float yCeil, float yFloor, float yaw)
         {
             TextureInfo textureInfo = sprite.Texture;
             Texture texture = TextureCache.GetTexture(textureInfo);

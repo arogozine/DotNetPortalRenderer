@@ -7,7 +7,7 @@ namespace RenderingEngine.Engine
     {
         public readonly int PixelWidth;
         public readonly int PixelHeight;
-        public required Sprite[] Sprites { get; set; }
+        public required RenderableSprite[] Sprites { get; set; }
         public required Player Player { get; set; }
         public required Sector[] Sectors { get; set; }
 
@@ -78,10 +78,10 @@ namespace RenderingEngine.Engine
 
         // avoid re-allocating lists to reduce memory pressure
 
-        private readonly List<RenderableSprite> transparentWalls = [];
+        private readonly List<RenderableSpriteSnapshot> transparentWalls = [];
         private readonly List<NeighborsToRender> sectorRenderQueue = [];
-        private readonly List<RenderableWall> neightbors = [];
-        private readonly List<RenderableWall> renderableWalls = [];
+        private readonly List<RenderablePortalWall> neightbors = [];
+        private readonly List<RenderablePortalWall> renderableWalls = [];
         private readonly HashSet<int> renderedSectors = [];
 
         public void DrawScreen(PortalPlayerSnapshot player)
@@ -130,7 +130,7 @@ namespace RenderingEngine.Engine
                 }
 
                 // 2. Render all sectors at current depth and calculate new z buffer and render window
-                List<RenderableWall> neighborsForDepth = DrawScreenStep(player);
+                List<RenderablePortalWall> neighborsForDepth = DrawScreenStep(player);
 
                 // 3. Cache z-buffer for sprite rendering
                 for (int i = 0; i < RenderWindowHelper.RenderWindow.Length; i++)
@@ -140,7 +140,7 @@ namespace RenderingEngine.Engine
                 }
 
                 // 4. We render sprites after all the walls were rendered
-                transparentWalls.Add(new SectorSprites()
+                transparentWalls.Add(new RenderWindowSpriteSnapshot()
                 {
                     XLeft = 0,
                     XRight = PixelWidth,
@@ -153,7 +153,7 @@ namespace RenderingEngine.Engine
                 // 5. We render transparent walls after all the walls were rendered
                 RenderWindow[]? renderableArea = null;
 
-                foreach (RenderableWall renderableWall in neighborsForDepth)
+                foreach (RenderablePortalWall renderableWall in neighborsForDepth)
                 {
                     _ = renderedSectors.Add(renderableWall.Wall.Neighbor);
 
@@ -161,7 +161,7 @@ namespace RenderingEngine.Engine
                     {
                         renderableArea ??= RenderWindowHelper.CopyRenderWindow(false);
                         renderableWall.RenderWindow = renderableArea;
-                        transparentWalls.Add(new TransparentWall
+                        transparentWalls.Add(new RenderWindowWallSnapshot
                         {
                             Offset = renderableWall.Offset,
                             XLeft = renderableWall.XLeft,
@@ -173,9 +173,9 @@ namespace RenderingEngine.Engine
                 }
 
                 // 7. Enqueue all portal walls for next depth
-                foreach (RenderableWall renderableWall in neighborsForDepth)
+                foreach (RenderablePortalWall renderableWall in neighborsForDepth)
                 {
-                    Wall neighbor = renderableWall.Wall;
+                    RenderableWall neighbor = renderableWall.Wall;
 
                     var neighborToRender = new NeighborsToRender(renderableWall, renderableWall.ParentWalls!)
                     {
@@ -204,11 +204,11 @@ namespace RenderingEngine.Engine
         /// </summary>
         /// <param name="player">Player information</param>
         /// <returns>Set of portal walls to render nexts</returns>
-        public List<RenderableWall> DrawScreenStep(PortalPlayerSnapshot player)
+        public List<RenderablePortalWall> DrawScreenStep(PortalPlayerSnapshot player)
         {
             ReadOnlySpan<Sector> sectors = Sectors;
 
-            List<RenderableWall> neighborsForDepth = [];
+            List<RenderablePortalWall> neighborsForDepth = [];
 
             // 0. Dequeue next sector to render. All sectors in the queue are for the current depth.
             Span<NeighborsToRender> renderQueueSpan = CollectionsMarshal.AsSpan(sectorRenderQueue);
@@ -217,10 +217,10 @@ namespace RenderingEngine.Engine
                 NeighborsToRender sectorInfo = renderQueueSpan[s];
 
                 Sector sector = sectors[sectorInfo.SectorId];
-                Wall[] parentWalls = sectorInfo.ParentWalls;
+                RenderableWall[] parentWalls = sectorInfo.ParentWalls;
 
                 // 1. Filter out walls outside the player's view and sort them closest to furthest
-                Span<Wall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player);
+                Span<RenderableWall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player);
 
                 // 2. Determine where ceiling, floor, and walls start and end
                 RenderColumnStatus sectorStatus = CalculateRenderWindow(sectorInfo, sector, walls);
@@ -232,10 +232,10 @@ namespace RenderingEngine.Engine
                 }
 
                 // 4. Render Floors, Ceilings, and Walls
-                List<RenderableWall> neighbors = RenderSector(player, sector, sectors, sectorStatus);
+                List<RenderablePortalWall> neighbors = RenderSector(player, sector, sectors, sectorStatus);
 
                 // 5. Keep track of parent walls to avoid rendering them again
-                Span<RenderableWall> neighborsSpan = CollectionsMarshal.AsSpan(neighbors);
+                Span<RenderablePortalWall> neighborsSpan = CollectionsMarshal.AsSpan(neighbors);
                 for (int i = 0; i < neighborsSpan.Length; i++)
                 {
                     neighborsSpan[i].ParentWalls = parentWalls;
@@ -253,28 +253,28 @@ namespace RenderingEngine.Engine
         {
             ReadOnlySpan<Sector> sectors = Sectors;
 
-            Span<Sprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites, sectors);
+            Span<RenderableSprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites, sectors);
 
             // render transparent walls and sprites
-            Span<RenderableSprite> transparentWallsSpan = CollectionsMarshal.AsSpan(transparentWalls);
+            Span<RenderableSpriteSnapshot> transparentWallsSpan = CollectionsMarshal.AsSpan(transparentWalls);
             for (int i = transparentWallsSpan.Length - 1; i >= 0; i--)
             {
-                RenderableSprite renderableWall = transparentWallsSpan[i];
+                RenderableSpriteSnapshot renderableWall = transparentWallsSpan[i];
 
-                if (renderableWall is TransparentWall transparentWall)
+                if (renderableWall is RenderWindowWallSnapshot transparentWall)
                 {
                     DrawTransparentWall(sectors, transparentWall);
                 }
-                else if (renderableWall is SectorSprites sectorSprites)
+                else if (renderableWall is RenderWindowSpriteSnapshot sectorSprites)
                 {
                     // filter sprites based on depth between this and next set of sectors
                     float[] currentDistance = sectorSprites.Distance;
                     float[]? nextDistance = sectorSprites.RenderDepth > 1 ? spriteRenderableAreaCache[sectorSprites.RenderDepth - 1].ZBuffer : null;
 
-                    List<Sprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
+                    List<RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
                         renderedSectors, currentDistance, nextDistance);
 
-                    foreach (Sprite s in sprites)
+                    foreach (RenderableSprite s in sprites)
                     {
                         DrawSprite(sectors, s, sectorSprites);
                     }
@@ -285,7 +285,7 @@ namespace RenderingEngine.Engine
         private RenderColumnStatus CalculateRenderWindow(
             NeighborsToRender sectorInfo,
             Sector sector,
-            Span<Wall> walls)
+            Span<RenderableWall> walls)
         {
             neightbors.Clear();
             renderableWalls.Clear();
@@ -301,7 +301,7 @@ namespace RenderingEngine.Engine
 
             for (int s = 0; s < walls.Length; s++)
             {
-                Wall wall = walls[s];
+                RenderableWall wall = walls[s];
 
                 RenderColumnStatus status = CalculateRenderWindow(wall, sector, renderableWalls);
                 sectorStatus |= status;
@@ -310,7 +310,7 @@ namespace RenderingEngine.Engine
             return sectorStatus & RenderColumnStatus.NewRender;
         }
 
-        private List<RenderableWall> RenderSector(
+        private List<RenderablePortalWall> RenderSector(
             PortalPlayerSnapshot player,
             Sector sector,
             ReadOnlySpan<Sector> sectors,
@@ -344,11 +344,11 @@ namespace RenderingEngine.Engine
             {
                 for (int s = 0; s < renderableWalls.Count; s++)
                 {
-                    RenderableWall renderableWall = renderableWalls[s];
+                    RenderablePortalWall renderableWall = renderableWalls[s];
 
                     if (renderableWall.RenderColumnStatus.HasFlag(RenderColumnStatus.CanRenderWall))
                     {
-                        Wall wall = renderableWall.Wall;
+                        RenderableWall wall = renderableWall.Wall;
 
                         bool wallDrawn = wall.IsPortal ?
                             DrawPortalWall(player, sector, sectors, renderableWall) :
@@ -366,7 +366,7 @@ namespace RenderingEngine.Engine
         }
 
 
-        private RenderColumnStatus CalculateRenderWindow(Wall wall, Sector sector, List<RenderableWall> renderableWalls)
+        private RenderColumnStatus CalculateRenderWindow(RenderableWall wall, Sector sector, List<RenderablePortalWall> renderableWalls)
         {
             Span<RenderWindow> renderedArea = RenderWindowHelper.RenderWindow;
 
@@ -378,7 +378,7 @@ namespace RenderingEngine.Engine
 
             (int offset, int wallFromX, int wallToX) = RenderWindowHelper.GetWallRenderWindowX();
 
-            WallYPlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, offset);
+            RenderablePlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, offset);
             float wallStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float wallEndY = yPlaneInfo.WallEndY;
@@ -410,7 +410,7 @@ namespace RenderingEngine.Engine
                     {
                         offset = wallFromX > wall.XLeft ? wallFromX - wall.XLeft : 0;
 
-                        renderableWalls.Add(new RenderableWall
+                        renderableWalls.Add(new RenderablePortalWall
                         {
                             Wall = wall,
                             XLeft = renderableFromX,
@@ -448,7 +448,7 @@ namespace RenderingEngine.Engine
             {
                 offset = renderableFromX > wall.XLeft ? renderableFromX - wall.XLeft : 0;
 
-                renderableWalls.Add(new RenderableWall {
+                renderableWalls.Add(new RenderablePortalWall {
                     Wall = wall,
                     XLeft = renderableFromX,
                     XRight = renderableToX,

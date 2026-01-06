@@ -1,25 +1,37 @@
-﻿using RenderingEngine.Engine;
-
-namespace RenderingEngine.Models
+﻿namespace RenderingEngine.Models
 {
-    internal abstract class RenderableSprite
+    internal sealed class RenderableSprite
     {
-        public required int XLeft { get; init; }
-        public required int XRight { get; init; }
-    }
+        public required Sprite Sprite { get; set; }
 
-    internal class TransparentWall : RenderableSprite
-    {
-        public required int Offset { get; init; }
-        public required Wall Wall { get; set; }
-        public required RenderWindow[] RenderWindow { get; init; }
-    }
 
-    internal class SectorSprites : RenderableSprite
-    {
-        public required int RenderDepth { get; init; }
-        public required int[] CeilingStart { get; init; }
-        public required int[] FloorEnd { get; init; }
-        public required float[] Distance { get; init; }
+        public int Id => Sprite.Id;
+        public int SectorId => Sprite.SectorId;
+        public Point Location => Sprite.Location;
+        public Point PointA => Sprite.PointA;
+        public Point PointB => Sprite.PointB;
+        public float Angle => Sprite.Angle;
+        public float Height => Sprite.Height;
+        public TextureInfo Texture => Sprite.Texture;
+        public float Length => Sprite.Length;
+
+
+        public bool IntersectsView { get; set; }
+        public bool Flipped { get; set; }
+
+        public Point Rotated { get; set; }
+        public Point R1 { get; set; }
+        public Point R2 { get; set; }
+
+
+        // Plane
+        public int XLeft { get; set; }
+        public int XRight { get; set; }
+        public int YLeftCeil { get; set; }
+        public int YLeftFloor { get; set; }
+        public int YRightCeil { get; set; }
+        public int YRightFloor { get; set; }
+        public float Distance { get; set; }
+
     }
 }

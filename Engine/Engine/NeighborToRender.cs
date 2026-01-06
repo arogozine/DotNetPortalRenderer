@@ -8,16 +8,16 @@ namespace RenderingEngine.Engine
             ParentWalls = [];
         }
 
-        public NeighborsToRender(RenderableWall renderableWall, scoped ReadOnlySpan<Wall> walls)
+        public NeighborsToRender(RenderablePortalWall renderableWall, scoped ReadOnlySpan<RenderableWall> walls)
         {
             this.RenderableWall = renderableWall;
-            ParentWalls = new Wall[walls.Length + 1];
+            ParentWalls = new RenderableWall[walls.Length + 1];
             walls.CopyTo(ParentWalls);
             ParentWalls[^1] = renderableWall.Wall;
         }
 
         public required int SectorId { get; init; }
-        public RenderableWall? RenderableWall { get; init; }
-        public Wall[] ParentWalls { get; }
+        public RenderablePortalWall? RenderableWall { get; init; }
+        public RenderableWall[] ParentWalls { get; }
     }
 }

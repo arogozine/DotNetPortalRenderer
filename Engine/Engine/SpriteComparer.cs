@@ -2,9 +2,9 @@
 
 namespace RenderingEngine.Engine
 {
-    internal sealed class SpriteComparer : IComparer<Sprite>
+    internal sealed class SpriteComparer : IComparer<RenderableSprite>
     {
-        public int Compare(Sprite? x, Sprite? y)
+        public int Compare(RenderableSprite? x, RenderableSprite? y)
         {
             ArgumentNullException.ThrowIfNull(x);
             ArgumentNullException.ThrowIfNull(y);

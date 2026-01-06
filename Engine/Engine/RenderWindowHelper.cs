@@ -11,7 +11,7 @@ namespace RenderingEngine.Engine
         private int sectorFromX;
         private int sectorToX;
 
-        private Wall? wall;
+        private RenderableWall? wall;
         private int wallFromX;
         private int wallToX;
 
@@ -120,7 +120,7 @@ namespace RenderingEngine.Engine
 
         public void NewSector(NeighborsToRender sectorInfo)
         {
-            if (sectorInfo.RenderableWall is RenderableWall renderableWall)
+            if (sectorInfo.RenderableWall is RenderablePortalWall renderableWall)
             {
                 (sectorFromX, sectorToX) = (renderableWall.XLeft, Math.Min(renderableWall.XRight, width - 1));
             }
@@ -157,7 +157,7 @@ namespace RenderingEngine.Engine
 
 
         [MemberNotNull(nameof(wall))]
-        public bool SetWallToCalculate(Wall wall)
+        public bool SetWallToCalculate(RenderableWall wall)
         {
             this.wall = wall;
             this.wallFromX = wall.XLeft;

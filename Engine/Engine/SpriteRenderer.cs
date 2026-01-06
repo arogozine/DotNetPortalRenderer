@@ -4,7 +4,7 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        private void DrawSprite(ReadOnlySpan<Sector> sectors, Sprite sprite, SectorSprites renderableWall)
+        private void DrawSprite(ReadOnlySpan<Sector> sectors, RenderableSprite sprite, RenderWindowSpriteSnapshot renderableWall)
         {
             TextureInfo textureInfo = sprite.Texture;
 
@@ -96,7 +96,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private void DrawWallSprite(ReadOnlySpan<Sector> sectors, Sprite sprite, SectorSprites renderableWall)
+        private void DrawWallSprite(ReadOnlySpan<Sector> sectors, RenderableSprite sprite, RenderWindowSpriteSnapshot renderableWall)
         {
             TextureInfo textureInfo = sprite.Texture;
 
@@ -118,7 +118,7 @@ namespace RenderingEngine.Engine
             int spriteFromX = xLeft;
             int spriteToX = xRight;
 
-            WallYPlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(sprite, spriteFromX);
+            RenderablePlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(sprite, spriteFromX);
             float spriteStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float spriteEndY = yPlaneInfo.WallEndY;
@@ -182,10 +182,10 @@ namespace RenderingEngine.Engine
 
         private void DrawTransparentWall(
             ReadOnlySpan<Sector> sectors,
-            TransparentWall renderableWall)
+            RenderWindowWallSnapshot renderableWall)
         {
             int width = PixelWidth;
-            Wall wall = renderableWall.Wall;
+            RenderableWall wall = renderableWall.Wall;
             Line line = wall.Line;
             int wallFromXOffset = renderableWall.Offset;
             int wallFromX = renderableWall.XLeft;
@@ -204,7 +204,7 @@ namespace RenderingEngine.Engine
 
             ref uint columnBufferPtr = ref GetBufferA(textureWidth, out Span<uint> columnBuffer);
 
-            WallYPlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
+            RenderablePlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
             float wallStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float wallEndY = yPlaneInfo.WallEndY;

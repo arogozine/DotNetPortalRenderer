@@ -3,13 +3,13 @@ using static RenderingEngine.Engine.SharedHelpers;
 
 namespace RenderingEngine.Engine
 {
-    internal sealed class BunchComparer : IComparer<Wall>
+    internal sealed class BunchComparer : IComparer<RenderableWall>
     {
         private BunchComparer() { }
 
         public static readonly BunchComparer Default = new();
 
-        public int Compare(Wall? x, Wall? y)
+        public int Compare(RenderableWall? x, RenderableWall? y)
         {
             ArgumentNullException.ThrowIfNull(x);
             ArgumentNullException.ThrowIfNull(y);
@@ -22,7 +22,7 @@ namespace RenderingEngine.Engine
     /// Wall distance comparer
     /// </summary>
     [SkipLocalsInit]
-    internal sealed class WallComparer : IComparer<Wall>
+    internal sealed class WallComparer : IComparer<RenderableWall>
     {
         public readonly float cameraWidthIncr;
 
@@ -31,7 +31,7 @@ namespace RenderingEngine.Engine
             cameraWidthIncr = 2.0f / width;
         }
 
-        public int Compare(Wall? x, Wall? y)
+        public int Compare(RenderableWall? x, RenderableWall? y)
         {
             ArgumentNullException.ThrowIfNull(x);
             ArgumentNullException.ThrowIfNull(y);

@@ -2,19 +2,50 @@
 
 namespace RenderingEngine.Models
 {
-    internal sealed class RenderableWall
+    internal sealed class RenderableWall : IEquatable<RenderableWall?>
     {
-        public bool SpritesOnly { get; set; }
+        public int Id => Line.Id;
 
-        public required Wall Wall { get; set; }
-        public required int XLeft { get; set; }
-        public required int XRight { get; set; }
-        public required int Offset { get; set; }
-        public RenderWindow[]? RenderWindow { get; set; }
-        public Wall[]? ParentWalls { get; set; }
-        public RenderColumnStatus RenderColumnStatus { get; set; }
+        public Line Line { get; }
 
+        public Sector Sector { get; }
 
-        public bool IsPortalWithMiddleTexture => Wall.IsPortal && Wall.Line.MiddleTexture != null;
+        public bool IntersectsView { get; set; }
+        public bool Flipped { get; set; }
+
+        public Point R1 { get; set; }
+        public Point R2 { get; set; }
+
+        public Point C1 { get; set; }
+        public Point C2 { get; set; }
+
+        //
+        public int Neighbor { get; }
+        // Plane
+        public int XLeft { get; set; }
+        public int XRight { get; set; }
+        public int YLeftCeil { get; set; }
+        public int YLeftFloor { get; set; }
+        public int YRightCeil { get; set; }
+        public int YRightFloor { get; set; }
+        public float Length { get; set; }
+        public int Bunch { get; set; } = EngineConstants.Unset;
+
+        public bool IsPortal => Neighbor != EngineConstants.NullSector;
+
+        public RenderableWall(Line line, Point r1, Point r2, Sector sector, int? neighbor)
+        {
+            Line = line;
+            R1 = r1;
+            R2 = r2;
+            Sector = sector;
+            Neighbor = neighbor ?? -1;
+        }
+
+        public override bool Equals(object? obj) => Equals(obj as RenderableWall);
+        public bool Equals(RenderableWall? other) => other?.Id == Id;
+        public override int GetHashCode() => Id.GetHashCode();
+        public static bool operator ==(RenderableWall left, RenderableWall right) => left.Id == right.Id;
+        public static bool operator !=(RenderableWall left, RenderableWall right) => left.Id != right.Id;
     }
 }

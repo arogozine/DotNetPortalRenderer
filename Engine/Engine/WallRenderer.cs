@@ -31,7 +31,7 @@ namespace RenderingEngine.Engine
             return ref MemoryMarshal.GetReference(buffer);
         }
 
-        private void CalculateDistance(RenderableWall renderableWall)
+        private void CalculateDistance(RenderablePortalWall renderableWall)
         {
             int width = PixelWidth;
             var wall = renderableWall.Wall;
@@ -62,7 +62,7 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             Sector sector,
             ReadOnlySpan<Sector> sectors,
-            RenderableWall renderableWall)
+            RenderablePortalWall renderableWall)
         {
             int sectorHeight = float.ConvertToIntegerNative<int>(sector.Ceil - sector.Floor);
             var wall = renderableWall.Wall;
@@ -339,10 +339,10 @@ namespace RenderingEngine.Engine
         private bool DrawBasicWall(
             PortalPlayerSnapshot player,
             Sector sector,
-            RenderableWall renderableWall)
+            RenderablePortalWall renderableWall)
         {
             // separate path for skybox rendering
-            Wall wall = renderableWall.Wall;
+            RenderableWall wall = renderableWall.Wall;
             Line line = wall.Line;
             TextureInfo textureInfo = line.MiddleTexture!;
 
@@ -461,7 +461,7 @@ namespace RenderingEngine.Engine
 
         private bool DrawBasicSkyboxWall(
             PortalPlayerSnapshot player,
-            RenderableWall renderableWall)
+            RenderablePortalWall renderableWall)
         {
             int width = PixelWidth;
             var wall = renderableWall.Wall;
@@ -683,7 +683,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static WallYPlaneInfo CalculateLeftWallYPlaneInfo(Wall wall, int wallFromXOffset)
+        private static RenderablePlaneInfo CalculateLeftWallYPlaneInfo(RenderableWall wall, int wallFromXOffset)
         {
             float wallLengthX = wall.XRight - wall.XLeft;
             float wallStartY = wall.YLeftCeil;
@@ -698,12 +698,12 @@ namespace RenderingEngine.Engine
                 wallStartY += wallFromXOffset * ceilDistIncr;
             }
 
-            return new WallYPlaneInfo(wallStartY, wallEndY, ceilDistIncr, floorDistIncr);
+            return new RenderablePlaneInfo(wallStartY, wallEndY, ceilDistIncr, floorDistIncr);
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static WallYPlaneInfo CalculateLeftWallYPlaneInfo(Sprite sprite, int wallFromXOffset)
+        private static RenderablePlaneInfo CalculateLeftWallYPlaneInfo(RenderableSprite sprite, int wallFromXOffset)
         {
             wallFromXOffset = 0;
 
@@ -720,11 +720,11 @@ namespace RenderingEngine.Engine
                 wallStartY += wallFromXOffset * ceilDistIncr;
             }
 
-            return new WallYPlaneInfo(wallStartY, wallEndY, ceilDistIncr, floorDistIncr);
+            return new RenderablePlaneInfo(wallStartY, wallEndY, ceilDistIncr, floorDistIncr);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static (float CameraRay, float CameraRayIncr, float t1, float d2y, float d2x) CalculateCameraRay(Wall wall, int width, int wallFromX)
+        private static (float CameraRay, float CameraRayIncr, float t1, float d2y, float d2x) CalculateCameraRay(RenderableWall wall, int width, int wallFromX)
         {
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
             float rx1 = wall.R1.X;
@@ -739,7 +739,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static (float CameraRay, float CameraRayIncr, float t1, float d2y, float d2x) CalculateCameraRay(Sprite sprite, int width, int wallFromX)
+        private static (float CameraRay, float CameraRayIncr, float t1, float d2y, float d2x) CalculateCameraRay(RenderableSprite sprite, int width, int wallFromX)
         {
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
             float rx1 = sprite.R1.X;
@@ -755,7 +755,7 @@ namespace RenderingEngine.Engine
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static (int TextureLocation, float FromToYDist) CalculateDistance(
-            Wall wall,
+            RenderableWall wall,
             float cameraRay,
             float t1, float d2y, float d2x,
             bool flipX)
@@ -776,7 +776,7 @@ namespace RenderingEngine.Engine
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static (float TextureLocation, float FromToYDist) CalculateDistance(
-            Sprite sprite,
+            RenderableSprite sprite,
             float cameraRay,
             float t1, float d2y, float d2x,
             bool flipX)
