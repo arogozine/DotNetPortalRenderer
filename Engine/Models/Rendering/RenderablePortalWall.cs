@@ -15,6 +15,6 @@ namespace RenderingEngine.Models
         public RenderColumnStatus RenderColumnStatus { get; set; }
 
 
-        public bool IsPortalWithMiddleTexture => Wall.IsPortal && Wall.Line.MiddleTexture != null;
+        public bool IsPortalWithMiddleTexture => Wall.IsPortal && Wall.MiddleTexture != null;
     }
 }

@@ -186,7 +186,6 @@ namespace RenderingEngine.Engine
         {
             int width = PixelWidth;
             RenderableWall wall = renderableWall.Wall;
-            Line line = wall.Line;
             int wallFromXOffset = renderableWall.Offset;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
@@ -196,7 +195,7 @@ namespace RenderingEngine.Engine
 
             Span<RenderWindow> window = renderableWall.RenderWindow!;
 
-            TextureInfo textureInfo = line.MiddleTexture!;
+            TextureInfo textureInfo = wall.MiddleTexture!;
 
             if (textureInfo.XScale is not null)
             {
@@ -204,7 +203,7 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            Texture texture = TextureCache.GetTexture(line.MiddleTexture);
+            Texture texture = TextureCache.GetTexture(textureInfo);
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
@@ -338,7 +337,6 @@ namespace RenderingEngine.Engine
         {
             int width = PixelWidth;
             RenderableWall wall = renderableWall.Wall;
-            Line line = wall.Line;
             int wallFromXOffset = renderableWall.Offset;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
@@ -349,8 +347,8 @@ namespace RenderingEngine.Engine
             Span<RenderWindow> window = renderableWall.RenderWindow!;
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            TextureInfo textureInfo = line.MiddleTexture!;
-            Texture texture = TextureCache.GetTexture(line.MiddleTexture);
+            TextureInfo textureInfo = wall.MiddleTexture!;
+            Texture texture = TextureCache.GetTexture(textureInfo);
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
@@ -563,22 +561,19 @@ namespace RenderingEngine.Engine
         {
             const uint Alpha = (uint)byte.MaxValue << 24;
 
-            unchecked
-            {
-                uint bDst = bgraDst.B;
-                uint gDst = bgraDst.G;
-                uint rDst = bgraDst.R;
+            uint bDst = bgraDst.B;
+            uint gDst = bgraDst.G;
+            uint rDst = bgraDst.R;
 
-                uint bSrc = bgraSrc.B;
-                uint gSrc = bgraSrc.G;
-                uint rSrc = bgraSrc.R;
+            uint bSrc = bgraSrc.B;
+            uint gSrc = bgraSrc.G;
+            uint rSrc = bgraSrc.R;
 
-                uint bOut = (bSrc * a + bDst * aInv) >> 8;
-                uint gOut = (gSrc * a + gDst * aInv) >> 8;
-                uint rOut = (rSrc * a + rDst * aInv) >> 8;
+            uint bOut = (bSrc * a + bDst * aInv) >> 8;
+            uint gOut = (gSrc * a + gDst * aInv) >> 8;
+            uint rOut = (rSrc * a + rDst * aInv) >> 8;
 
-                return (Alpha | (rOut << 16) | (gOut << 8) | bOut);
-            }
+            return (Alpha | (rOut << 16) | (gOut << 8) | bOut);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -613,13 +608,10 @@ namespace RenderingEngine.Engine
                     }
                     else
                     {
-                        unchecked
-                        {
-                            uint b = columnPtr.B * scale >> 8;
-                            uint g = columnPtr.G * scale >> 8 << 8;
-                            uint r = columnPtr.R * scale >> 8 << 16;
-                            spriteTexturePtr[i] = b | g | r | Alpha;
-                        }
+                        uint b = columnPtr.B * scale >> 8;
+                        uint g = columnPtr.G * scale >> 8 << 8;
+                        uint r = columnPtr.R * scale >> 8 << 16;
+                        spriteTexturePtr[i] = b | g | r | Alpha;
                     }
 
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);
@@ -635,13 +627,10 @@ namespace RenderingEngine.Engine
                     }
                     else
                     {
-                        unchecked
-                        {
-                            uint b = columnPtr.B * scale >> 8;
-                            uint g = columnPtr.G * scale >> 8 << 8;
-                            uint r = columnPtr.R * scale >> 8 << 16;
-                            spriteTexturePtr[i] = b | g | r | Alpha;
-                        }
+                        uint b = columnPtr.B * scale >> 8;
+                        uint g = columnPtr.G * scale >> 8 << 8;
+                        uint r = columnPtr.R * scale >> 8 << 16;
+                        spriteTexturePtr[i] = b | g | r | Alpha;
                     }
 
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);

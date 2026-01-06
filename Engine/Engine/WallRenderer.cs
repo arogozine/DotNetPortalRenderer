@@ -65,7 +65,7 @@ namespace RenderingEngine.Engine
             RenderablePortalWall renderableWall)
         {
             int sectorHeight = float.ConvertToIntegerNative<int>(sector.Ceil - sector.Floor);
-            var wall = renderableWall.Wall;
+            RenderableWall wall = renderableWall.Wall;
 
             Sector neighborSector = sectors[wall.Neighbor];
             float oneOverSectorHeight = 1f / sectorHeight;
@@ -103,12 +103,11 @@ namespace RenderingEngine.Engine
             }
 
             int width = PixelWidth;
-            var line = wall.Line;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            TextureInfo upperTextureInfo = line.UpperTexture!;
-            TextureInfo lowerTextureInfo = line.LowerTexture!;
+            TextureInfo upperTextureInfo = wall.UpperTexture!;
+            TextureInfo lowerTextureInfo = wall.LowerTexture!;
 
             (bool upperSkybox, bool upperFlipX, bool upperFlipY) = GetFlags(upperTextureInfo);
             (bool lowerSkybox, bool lowerFlipX, bool lowerFlipY) = GetFlags(lowerTextureInfo);
@@ -343,8 +342,7 @@ namespace RenderingEngine.Engine
         {
             // separate path for skybox rendering
             RenderableWall wall = renderableWall.Wall;
-            Line line = wall.Line;
-            TextureInfo textureInfo = line.MiddleTexture!;
+            TextureInfo textureInfo = wall.MiddleTexture!;
 
             (bool skybox, bool flipX, bool flipY) = GetFlags(textureInfo);
 
@@ -362,7 +360,7 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            Texture wallTexture = TextureCache.GetTexture(line.MiddleTexture);
+            Texture wallTexture = TextureCache.GetTexture(textureInfo);
             ref BGRA wallTexturePtr = ref MemoryMarshal.GetArrayDataReference(wallTexture.Rotated);
             int textureWidth = wallTexture.Height;
             int textureHeight = wallTexture.Width;
@@ -381,10 +379,12 @@ namespace RenderingEngine.Engine
             (float? xScale, float? yScale) = (textureInfo.XScale, textureInfo.YScale);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
+            float scaledTextureWidth = default;
 
             if (yScale is float)
             {
                 yScale = (sector.Ceil - sector.Floor) * yScale.Value;
+                scaledTextureWidth = ((textureWidth << 16) * yScale.Value);
             }
 
             if (xScale is float)
@@ -426,7 +426,7 @@ namespace RenderingEngine.Engine
 
                 if (yScale is float)
                 {
-                    textureXIncr = float.ConvertToIntegerNative<int>(((textureWidth << 16) * yScale.Value) / (wallEndY - wallStartY));
+                    textureXIncr = float.ConvertToIntegerNative<int>(scaledTextureWidth / (wallEndY - wallStartY));
                 }
                 else
                 {
@@ -465,13 +465,12 @@ namespace RenderingEngine.Engine
         {
             int width = PixelWidth;
             var wall = renderableWall.Wall;
-            var line = wall.Line;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            Texture wallTexture = TextureCache.GetTexture(line.MiddleTexture);
+            Texture wallTexture = TextureCache.GetTexture(wall.MiddleTexture);
             ref uint wallTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetArrayDataReference(wallTexture.Data));
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
@@ -657,13 +656,10 @@ namespace RenderingEngine.Engine
             {
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {
-                    unchecked
-                    {
-                        uint b = columnPtr.B * scale >> 8;
-                        uint g = columnPtr.G * scale >> 8 << 8;
-                        uint r = columnPtr.R * scale >> 8 << 16;
-                        buffer[i] = b | g | r | Alpha;
-                    }
+                    uint b = columnPtr.B * scale >> 8;
+                    uint g = columnPtr.G * scale >> 8 << 8;
+                    uint r = columnPtr.R * scale >> 8 << 16;
+                    buffer[i] = b | g | r | Alpha;
 
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);
                 }

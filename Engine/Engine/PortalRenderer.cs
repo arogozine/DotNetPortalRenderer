@@ -386,7 +386,7 @@ namespace RenderingEngine.Engine
 
             // minor performance hack
             bool upperWallIsSkybox = sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox) &&
-                !wall.IsPortal && wall.Line.MiddleTexture!.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+                !wall.IsPortal && wall.MiddleTexture!.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
 
             if (wallToX <= wallFromX)
             {

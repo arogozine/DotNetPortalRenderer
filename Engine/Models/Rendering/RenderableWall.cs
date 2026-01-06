@@ -5,6 +5,13 @@ namespace RenderingEngine.Models
     internal sealed class RenderableWall : IEquatable<RenderableWall?>
     {
         public int Id => Line.Id;
+        public TextureInfo? UpperTexture => Line.UpperTexture;
+        public TextureInfo? MiddleTexture => Line.MiddleTexture;
+        public TextureInfo? LowerTexture => Line.LowerTexture;
+        public Point PointA => Line.PointA;
+        public Point PointB => Line.PointB;
+        public int? SectorTo => Line.SectorTo;
+
 
         public Line Line { get; }
 
