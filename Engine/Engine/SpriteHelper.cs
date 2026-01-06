@@ -172,7 +172,10 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public List<Sprite> FilterOutSpritesOutsideDepth(scoped Span<Sprite> rotatedSprites, float[] depth, float[]? parentDepth)
+        public static List<Sprite> FilterOutSpritesOutsideDepth(
+            scoped Span<Sprite> rotatedSprites,
+            HashSet<int> sectors,
+            float[] depth, float[]? parentDepth)
         {
             List<Sprite> sprites = [];
 
@@ -197,7 +200,7 @@ namespace RenderingEngine.Engine
                 {
                     if (depth[x] >= fromToYDist && (parentDepth == null || parentDepth[x] <= fromToYDist))
                     {
-                        return true;
+                        return sectors.Contains(sprite.SectorId);
                     }
                 }
 

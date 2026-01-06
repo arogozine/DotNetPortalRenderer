@@ -82,6 +82,7 @@ namespace RenderingEngine.Engine
         private readonly List<NeighborsToRender> sectorRenderQueue = [];
         private readonly List<RenderableWall> neightbors = [];
         private readonly List<RenderableWall> renderableWalls = [];
+        private readonly HashSet<int> renderedSectors = [];
 
         public void DrawScreen(PortalPlayerSnapshot player)
         {
@@ -94,6 +95,8 @@ namespace RenderingEngine.Engine
             {
                 SectorId = player.Sector
             });
+
+            _ = renderedSectors.Add(player.Sector);
 
             int renderDepth = 0;
 
@@ -149,8 +152,11 @@ namespace RenderingEngine.Engine
 
                 // 5. We render transparent walls after all the walls were rendered
                 RenderWindow[]? renderableArea = null;
+
                 foreach (RenderableWall renderableWall in neighborsForDepth)
                 {
+                    _ = renderedSectors.Add(renderableWall.Wall.Neighbor);
+
                     if (renderableWall.IsPortalWithMiddleTexture)
                     {
                         renderableArea ??= RenderWindowHelper.CopyRenderWindow(false);
@@ -190,6 +196,7 @@ namespace RenderingEngine.Engine
 
             transparentWalls.Clear();
             sectorRenderQueue.Clear();
+            renderedSectors.Clear();
         }
 
         /// <summary>
@@ -264,7 +271,8 @@ namespace RenderingEngine.Engine
                     float[] currentDistance = sectorSprites.Distance;
                     float[]? nextDistance = sectorSprites.RenderDepth > 1 ? spriteRenderableAreaCache[sectorSprites.RenderDepth - 1].ZBuffer : null;
 
-                    List<Sprite> sprites = this.SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites, currentDistance, nextDistance);
+                    List<Sprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
+                        renderedSectors, currentDistance, nextDistance);
 
                     foreach (Sprite s in sprites)
                     {

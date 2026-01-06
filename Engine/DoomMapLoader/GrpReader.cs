@@ -718,25 +718,30 @@ namespace RenderingEngine.DoomMapLoader
                 {
                     TileType tile = artFile.Tiles[j];
 
-                    if (tile.Pixels.Length != 0)
+                    Span<byte> pixels = tile.Pixels;
+
+                    if (pixels.Length != 0)
                     {
-                        BGRA[] texture = new BGRA[tile.Pixels.Length];
+                        BGRA[] texture = new BGRA[pixels.Length];
 
                         int i = 0;
 
                         for (int y = 0; y < tile.YSize; y++)
                         {
+                            int index = y;
+
                             for (int x = 0; x < tile.XSize; x++)
                             {
-                                byte index = tile.Pixels[x * tile.YSize + y];
+                                byte palIndex = pixels[index];
 
                                 // 255th index is used for transparency
-                                if (index != byte.MaxValue)
+                                if (palIndex != byte.MaxValue)
                                 {
-                                    texture[i] = pal[index];
+                                    texture[i] = pal[palIndex];
                                 }
 
                                 i++;
+                                index += tile.YSize;
                             }
                         }
 

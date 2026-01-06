@@ -99,6 +99,18 @@ namespace RenderingEngine.Engine
             return n > 0 && (n & (n - 1)) == 0;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool Within(int value, int from, int to)
+        {
+            return value > from && value < to;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool Within(float value, float from, float to)
+        {
+            return value > from && value < to;
+        }
+
         public static bool IsPointInPolygon(scoped ReadOnlySpan<Wall> walls, Point point)
         {
             float x = point.X;
