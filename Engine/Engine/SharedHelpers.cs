@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace RenderingEngine.Engine
 {
-    internal static class MathFormulas
+    internal static class SharedHelpers
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe Span<T> AlignSpan<T>(Span<T> span)
@@ -86,27 +86,14 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static Vector<int> SetAllZerosToOne(Vector<int> input)
-        {
-            Vector<int> zeroMask = Vector.Equals(input, Vector<int>.Zero);
-            Vector<int> onesVector = Vector<int>.One;
-            return Vector.ConditionalSelect(zeroMask, onesVector, input);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static bool IsPowerOfTwo(int n)
         {
             return n > 0 && (n & (n - 1)) == 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Within(int value, int from, int to)
-        {
-            return value > from && value < to;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Within(float value, float from, float to)
+        public static bool Within<T>(T value, T from, T to)
+            where T : IComparisonOperators<T, T, bool>
         {
             return value > from && value < to;
         }

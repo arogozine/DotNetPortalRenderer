@@ -553,7 +553,7 @@ namespace RenderingEngine.Engine
             bool doubleSize
         )
         {
-            Span<int> incrVectorCache = MathFormulas.AlignSpan(this.incrVectorCache);
+            Span<int> incrVectorCache = SharedHelpers.AlignSpan(this.incrVectorCache);
 
             Vector<int> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
 
@@ -570,7 +570,7 @@ namespace RenderingEngine.Engine
                 Vector<int> yMapPosR = yCeilV * incramentVector;
                 Vector<int> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
-                (Vector<int> xMapPos, Vector<int> yMapPos) = MathFormulas.RotateVertexBack(
+                (Vector<int> xMapPos, Vector<int> yMapPos) = SharedHelpers.RotateVertexBack(
                     xMapPosR >> 10,
                     yMapPosR,
                     pSinVI, pCosVI, pxVI, pyVI);
@@ -628,7 +628,7 @@ namespace RenderingEngine.Engine
                 Vector<int> yMapPosR = yCeilV * incramentVector;
                 Vector<int> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
-                (Vector<int> xMapPos, Vector<int> yMapPos) = MathFormulas.RotateVertexBack(
+                (Vector<int> xMapPos, Vector<int> yMapPos) = SharedHelpers.RotateVertexBack(
                     xMapPosR >> 10,
                     yMapPosR,
                     pSinVI, pCosVI, pxVI, pyVI);
@@ -718,7 +718,7 @@ namespace RenderingEngine.Engine
                 Vector<float> yMapPosR = yCeilV / incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
-                (Vector<float> xMapPos, Vector<float> yMapPos) = MathFormulas.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
+                (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
                 if (rotated)
                 {
@@ -775,7 +775,7 @@ namespace RenderingEngine.Engine
                 Vector<float> yMapPosR = yCeilV / incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
-                (Vector<float> xMapPos, Vector<float> yMapPos) = MathFormulas.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
+                (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
                 if (rotated)
                 {

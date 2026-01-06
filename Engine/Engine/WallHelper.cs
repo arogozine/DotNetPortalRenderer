@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using static RenderingEngine.Engine.SharedHelpers;
 
 namespace RenderingEngine.Engine
 {
@@ -77,12 +78,6 @@ namespace RenderingEngine.Engine
             }
 
             return rotatedWalls[..j];
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static bool Within(int value, int from, int to)
-            {
-                return value >= from && value <= to;
-            }
         }
 
         private void CullWallsBasedOnVisibility(ref Span<Wall> walls)

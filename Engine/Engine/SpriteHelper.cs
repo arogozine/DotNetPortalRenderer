@@ -28,12 +28,12 @@ namespace RenderingEngine.Engine
             {
                 Wall wall = a.Walls[i];
 
-                if (!MathFormulas.IsPointInPolygon(b.Walls, wall.R1))
+                if (!SharedHelpers.IsPointInPolygon(b.Walls, wall.R1))
                 {
                     return false;
                 }
 
-                if (!MathFormulas.IsPointInPolygon(b.Walls, wall.R2))
+                if (!SharedHelpers.IsPointInPolygon(b.Walls, wall.R2))
                 {
                     return false;
                 }
@@ -99,7 +99,7 @@ namespace RenderingEngine.Engine
                 {
                     Sector sector = sectors[i];
 
-                    if (MathFormulas.IsPointInPolygon(sector.Walls, sprite.Location))
+                    if (SharedHelpers.IsPointInPolygon(sector.Walls, sprite.Location))
                     {
                         potentialSectors.Add(sector);
                     }
@@ -261,7 +261,7 @@ namespace RenderingEngine.Engine
             {
                 // offset by player coordinates for easier calculations
                 // rotate vertex points to face 'up' from player at (0, 0)
-                return MathFormulas.RotateVertex(p.X, p.Y, pSin, pCos, px, py);
+                return SharedHelpers.RotateVertex(p.X, p.Y, pSin, pCos, px, py);
             }
         }
 

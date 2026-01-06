@@ -620,8 +620,8 @@ namespace RenderingEngine.DoomMapLoader
                 {
                     (float sin, float cos) = MathF.SinCos(sprite.Angle);
 
-                    (rx1, ry1) = MathFormulas.RotateVertex(rx1, ry1, sin, cos, x, y);
-                    (rx2, ry2) = MathFormulas.RotateVertex(rx2, ry2, sin, cos, x, y);
+                    (rx1, ry1) = SharedHelpers.RotateVertex(rx1, ry1, sin, cos, x, y);
+                    (rx2, ry2) = SharedHelpers.RotateVertex(rx2, ry2, sin, cos, x, y);
 
                     rx1 += x;
                     ry1 += y;

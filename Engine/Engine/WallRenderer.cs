@@ -580,7 +580,7 @@ namespace RenderingEngine.Engine
             // % is slower than the bitwise &
             // thus we have two paths to render a wall line
             // depending if texture is power of two or not
-            if (MathFormulas.IsPowerOfTwo(textureHeight))
+            if (SharedHelpers.IsPowerOfTwo(textureHeight))
             {
                 uint textureMask = (uint)(textureHeight - 1);
 

@@ -68,7 +68,7 @@ namespace RenderingEngine.Engine
                 Sector sector = sectors[s];
                 Wall[] walls = sector.Walls;
 
-                if (MathFormulas.IsPointInPolygon(walls, location))
+                if (SharedHelpers.IsPointInPolygon(walls, location))
                 {
                     return s;
                 }
@@ -80,7 +80,7 @@ namespace RenderingEngine.Engine
                 Sector sector = sectors[s];
                 Wall[] walls = sector.Walls;
 
-                if (MathFormulas.IsPointInPolygon(walls, location))
+                if (SharedHelpers.IsPointInPolygon(walls, location))
                 {
                     return s;
                 }

@@ -59,7 +59,7 @@ namespace RenderingEngine.Engine
 
         private void GenerateCache()
         {
-            Span<int> incrVectorCache = MathFormulas.AlignSpan(this.incrVectorCache);
+            Span<int> incrVectorCache = SharedHelpers.AlignSpan(this.incrVectorCache);
 
             int width = this.PixelWidth;
             int halfHeightInt = this.PixelHeight / 2;

@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using static RenderingEngine.Engine.SharedHelpers;
 
 namespace RenderingEngine.Engine
 {
@@ -163,13 +164,6 @@ namespace RenderingEngine.Engine
             }
 
             return xcy < ycy ? -1 : 1;
-        }
-
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool Within(int value, int from, int to)
-        {
-            return value > from && value < to;
         }
 
         private (bool left, bool right) CalculatePlaneIntersectionsForWall(float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
