@@ -52,43 +52,25 @@ internal static class TextureCache
     public static bool TextureExists(string name)
     {
         name = name.ToUpperInvariant();
-        ref Texture texture = ref CollectionsMarshal.GetValueRefOrNullRef(Cache, name);
-        return !Unsafe.IsNullRef(ref texture);
+        return Cache.ContainsKey(name);
     }
 
-    public static ref Texture GetTextureOrNullRef(string? name)
+    public static Texture GetTexture(TextureInfo? textureInfo) => GetTexture(textureInfo?.Name);
+
+    public static Texture GetTexture(string? name)
     {
         if (name == null)
         {
-            return ref GetFallBack();
+            return Cache[FallBack];
         }
 
         name = name.ToUpperInvariant();
 
-        return ref CollectionsMarshal.GetValueRefOrNullRef(Cache, name);
-    }
-
-    public static ref Texture GetTexture(TextureInfo? textureInfo) => ref GetTexture(textureInfo?.Name);
-
-    public static ref Texture GetTexture(string? name)
-    {
-        if (name == null)
+        if (!Cache.TryGetValue(name, out Texture? texture))
         {
-            return ref GetFallBack();
+            texture ??= Cache[FallBack];
         }
 
-        name = name.ToUpperInvariant();
-
-        ref Texture texture = ref CollectionsMarshal.GetValueRefOrNullRef(Cache, name);
-
-        if (Unsafe.IsNullRef(ref texture))
-        {
-            return ref GetFallBack();
-        }
-
-        return ref texture;
+        return texture;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ref Texture GetFallBack() => ref CollectionsMarshal.GetValueRefOrNullRef(Cache, FallBack);
 }

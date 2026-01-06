@@ -234,7 +234,7 @@ namespace RenderingEngine.DoomMapLoader
             {
                 Sprite sprite = sprites[i];
                 Models.TextureInfo textureInfo = sprite.Texture;
-                ref Texture texture = ref TextureCache.GetTexture(textureInfo);
+                Texture texture = TextureCache.GetTexture(textureInfo);
 
                 float textureWidth = texture.Width * (textureInfo.XScale ?? 1f);
 
@@ -414,8 +414,8 @@ namespace RenderingEngine.DoomMapLoader
                         Models.TextureInfo lowerTextureInfo = line.LowerTexture!;
                         Models.TextureInfo upperTextureInfo = line.UpperTexture!;
 
-                        ref Texture lowerTexture = ref TextureCache.GetTexture(lowerTextureInfo);
-                        ref Texture upperTexture = ref TextureCache.GetTexture(upperTextureInfo);
+                        Texture lowerTexture = TextureCache.GetTexture(lowerTextureInfo);
+                        Texture upperTexture = TextureCache.GetTexture(upperTextureInfo);
 
                         (float upperXScale, float upperYScale) = DetermineScale(upperTextureInfo, in upperTexture);
                         (float lowerXScale, float lowerYScale) = DetermineScale(lowerTextureInfo, in lowerTexture);
@@ -449,7 +449,7 @@ namespace RenderingEngine.DoomMapLoader
 
                         if (line.MiddleTexture is Models.TextureInfo middleTextureInfo)
                         {
-                            ref Texture middleTexture = ref TextureCache.GetTexture(middleTextureInfo);
+                            Texture middleTexture = TextureCache.GetTexture(middleTextureInfo);
                             (float middleXScale, float middleYScale) = DetermineScale(middleTextureInfo, in middleTexture);
 
                             middleTextureInfo.YScale = middleYScale;
@@ -459,7 +459,7 @@ namespace RenderingEngine.DoomMapLoader
                     else
                     {
                         Models.TextureInfo middleTextureInfo = line.MiddleTexture!;
-                        ref Texture middleTexture = ref TextureCache.GetTexture(middleTextureInfo);
+                        Texture middleTexture = TextureCache.GetTexture(middleTextureInfo);
                         float sectorHeight = sector.Ceiling - sector.Floor;
 
                         if (sectorHeight == 0f)
@@ -497,7 +497,7 @@ namespace RenderingEngine.DoomMapLoader
 
             static (int xOffset, int yOffset, float angle) CalculateAngle(Line firstWall, Models.TextureInfo textureInfo)
             {
-                ref Texture texture = ref TextureCache.GetTexture(textureInfo);
+                Texture texture = TextureCache.GetTexture(textureInfo);
 
                 (float x1, float y1) = firstWall.PointA.Point;
                 (float x2, float y2) = firstWall.PointB.Point;
@@ -550,7 +550,7 @@ namespace RenderingEngine.DoomMapLoader
             // Values are normalized on a 0-255 scale, meaning that regardless of the sprite's size, a value of 128 will pan it 50%.
             // https://wiki.eduke32.com/wiki/Xpanning
 
-            ref Texture texture = ref TextureCache.GetTexture(textureName);
+            Texture texture = TextureCache.GetTexture(textureName);
 
             int xOffset = 0;
             int yOffset = 0;
@@ -580,7 +580,7 @@ namespace RenderingEngine.DoomMapLoader
             // Values are normalized on a 0-255 scale, meaning that regardless of the sprite's size, a value of 128 will pan it 50%.
             // https://wiki.eduke32.com/wiki/Xpanning
 
-            ref Texture texture = ref TextureCache.GetTexture(textureName);
+            Texture texture = TextureCache.GetTexture(textureName);
 
             int xOffset = 0;
             int yOffset = 0;
@@ -606,7 +606,7 @@ namespace RenderingEngine.DoomMapLoader
 
         private static (int XOffset, int YOffset) CalculateOffset(in WallType wall, string textureName)
         {
-            ref Texture texture = ref TextureCache.GetTexture(textureName);
+            Texture texture = TextureCache.GetTexture(textureName);
 
             if (texture.Height > 128)
             {
@@ -635,7 +635,7 @@ namespace RenderingEngine.DoomMapLoader
 
                 string textureName = ToTile(sprite.PicNum);
 
-                ref Texture texture = ref TextureCache.GetTexture(textureName);
+                Texture texture = TextureCache.GetTexture(textureName);
 
                 // On sprite Z location
                 // "This is the actor's current z coordinate in the map. Note that unless the sprite's cstat has bit 8 (128) set, this position refers to the base of the sprite, not the center."

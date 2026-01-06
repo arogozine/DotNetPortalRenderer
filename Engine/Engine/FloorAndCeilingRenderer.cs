@@ -79,7 +79,7 @@ namespace RenderingEngine.Engine
             ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
             TextureInfo textureInfo = sector.CeilTexture;
-            ref Texture ceilingTexture = ref TextureCache.GetTexture(textureInfo.Name);
+            Texture ceilingTexture = TextureCache.GetTexture(textureInfo.Name);
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
 
             int textureWidth = ceilingTexture.Width;
@@ -151,7 +151,7 @@ namespace RenderingEngine.Engine
             int widthDiv2 = width / 2;
 
             TextureInfo textureInfo = sector.CeilTexture;
-            ref Texture ceilingTexture = ref TextureCache.GetTexture(textureInfo.Name);
+            Texture ceilingTexture = TextureCache.GetTexture(textureInfo.Name);
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
@@ -208,7 +208,7 @@ namespace RenderingEngine.Engine
             float viewAngle = player.Angle;
 
             TextureInfo textureInfo = sector.CeilTexture;
-            ref Texture texture = ref TextureCache.GetTexture(textureInfo.Name);
+            Texture texture = TextureCache.GetTexture(textureInfo.Name);
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
@@ -302,7 +302,7 @@ namespace RenderingEngine.Engine
             float viewAngle = player.Angle;
 
             TextureInfo textureInfo = sector.FloorTexture;
-            ref Texture texture = ref TextureCache.GetTexture(textureInfo.Name);
+            Texture texture = TextureCache.GetTexture(textureInfo.Name);
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
@@ -409,7 +409,7 @@ namespace RenderingEngine.Engine
             int halfHeightInt = height / 2;
             int widthDiv2 = width / 2;
 
-            ref Texture floorTexture = ref TextureCache.GetTexture(textureInfo.Name);
+            Texture floorTexture = TextureCache.GetTexture(textureInfo.Name);
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
@@ -485,7 +485,7 @@ namespace RenderingEngine.Engine
             int widthDiv2 = width / 2;
 
             TextureInfo textureInfo = sector.FloorTexture;
-            ref Texture floorTexture = ref TextureCache.GetTexture(textureInfo.Name);
+            Texture floorTexture = TextureCache.GetTexture(textureInfo.Name);
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);

@@ -1,11 +1,11 @@
 ﻿namespace RenderingEngine.Models;
 
-internal readonly struct Texture
+internal sealed class Texture
 {
-    public readonly int Width;
-    public readonly int Height;
-    public readonly BGRA[] Data;
-    public readonly BGRA[] Rotated;
+    public int Width { get; }
+    public int Height { get; }
+    public BGRA[] Data { get; }
+    public BGRA[] Rotated { get; }
 
     public Texture(int width, int height, BGRA[] data, BGRA[] rotated)
     {

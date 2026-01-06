@@ -14,12 +14,7 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            ref Texture texture = ref TextureCache.GetTextureOrNullRef(textureInfo.Name);
-
-            if (Unsafe.IsNullRef(ref texture))
-            {
-                return;
-            }
+            Texture texture = TextureCache.GetTexture(textureInfo.Name);
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
@@ -105,12 +100,7 @@ namespace RenderingEngine.Engine
         {
             TextureInfo textureInfo = sprite.Texture;
 
-            ref Texture texture = ref TextureCache.GetTextureOrNullRef(textureInfo.Name);
-
-            if (Unsafe.IsNullRef(ref texture))
-            {
-                return;
-            }
+            Texture texture = TextureCache.GetTexture(textureInfo.Name);
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
@@ -207,7 +197,7 @@ namespace RenderingEngine.Engine
             Span<RenderWindow> window = renderableWall.RenderWindow!;
 
             TextureInfo textureInfo = line.MiddleTexture!;
-            ref Texture texture = ref TextureCache.GetTexture(line.MiddleTexture);
+            Texture texture = TextureCache.GetTexture(line.MiddleTexture);
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;

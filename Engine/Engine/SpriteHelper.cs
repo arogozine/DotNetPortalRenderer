@@ -134,12 +134,7 @@ namespace RenderingEngine.Engine
 
             static float CalculateDistance(Sprite sprite)
             {
-                ref Texture texture = ref TextureCache.GetTextureOrNullRef(sprite.Texture.Name);
-
-                if (Unsafe.IsNullRef(ref texture))
-                {
-                    return default;
-                }
+                Texture texture = TextureCache.GetTexture(sprite.Texture);
 
                 int textureHeight = texture.Width;
 
@@ -233,7 +228,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    ref Texture texture = ref TextureCache.GetTexture(textureInfo);
+                    Texture texture = TextureCache.GetTexture(textureInfo);
 
                     float textureWidth = texture.Width * (textureInfo.XScale ?? 1f);
 
@@ -350,7 +345,7 @@ namespace RenderingEngine.Engine
         public void CalculateSpritePlane(Sprite sprite, float yCeil, float yFloor, float yaw)
         {
             TextureInfo textureInfo = sprite.Texture;
-            ref Texture texture = ref TextureCache.GetTexture(textureInfo);
+            Texture texture = TextureCache.GetTexture(textureInfo);
             float textureHeight = texture.Height * (textureInfo.YScale ?? 1f);
 
             (float rx1, float ry1) = sprite.R1;

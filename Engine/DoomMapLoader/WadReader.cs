@@ -469,8 +469,8 @@ namespace RenderingEngine.DoomMapLoader
 
                         Models.TextureInfo upperTextureInfo = line.UpperTexture!;
 
-                        ref Texture lowerTexture = ref TextureCache.GetTexture(lowerTextureInfo);
-                        ref Texture upperTexture = ref TextureCache.GetTexture(upperTextureInfo);
+                        Texture lowerTexture = TextureCache.GetTexture(lowerTextureInfo);
+                        Texture upperTexture = TextureCache.GetTexture(upperTextureInfo);
 
                         lowerTextureInfo.XOffset = DetermineXOffset(lowerTextureInfo, in lowerTexture);
                         upperTextureInfo.XOffset = DetermineXOffset(upperTextureInfo, in upperTexture);
@@ -480,14 +480,14 @@ namespace RenderingEngine.DoomMapLoader
 
                         if (middleTextureInfo is not null)
                         {
-                            ref Texture middleTexture = ref TextureCache.GetTexture(middleTextureInfo);
+                            Texture middleTexture = TextureCache.GetTexture(middleTextureInfo);
                             middleTextureInfo.XOffset = DetermineXOffset(middleTextureInfo, in middleTexture);
                             // middleTextureInfo.YOffset = DetermineTextureYOffset(sector, middleTextureInfo, in middleTexture);
                         }
                     }
                     else if (middleTextureInfo is not null)
                     {
-                        ref Texture middleTexture = ref TextureCache.GetTexture(middleTextureInfo);
+                        Texture middleTexture = TextureCache.GetTexture(middleTextureInfo);
                         middleTextureInfo.XOffset = DetermineXOffset(middleTextureInfo, in middleTexture);
                         middleTextureInfo.YOffset = DetermineTextureYOffset(sector, middleTextureInfo, in middleTexture);
                     }
@@ -604,7 +604,7 @@ namespace RenderingEngine.DoomMapLoader
             {
                 Sprite sprite = sprites[i];
                 Models.TextureInfo textureInfo = sprite.Texture;
-                ref Texture texture = ref TextureCache.GetTexture(textureInfo);
+                Texture texture = TextureCache.GetTexture(textureInfo);
 
                 float textureWidth = texture.Width * (textureInfo.XScale ?? 1f);
 

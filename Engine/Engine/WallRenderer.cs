@@ -116,11 +116,11 @@ namespace RenderingEngine.Engine
             (float? upperXScale, float? upperYScale) = (upperTextureInfo.XScale, upperTextureInfo.YScale);
             (float? lowerXScale, float? lowerYScale) = (lowerTextureInfo.XScale, lowerTextureInfo.YScale);
 
-            ref Texture upperTexture = ref TextureCache.GetTexture(upperTextureInfo);
+            Texture upperTexture = TextureCache.GetTexture(upperTextureInfo);
             ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperSkybox ? upperTexture.Data : upperTexture.Rotated);
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
 
-            ref Texture lowerTexture = ref TextureCache.GetTexture(lowerTextureInfo);
+            Texture lowerTexture = TextureCache.GetTexture(lowerTextureInfo);
             ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
@@ -362,7 +362,7 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            ref Texture wallTexture = ref TextureCache.GetTexture(line.MiddleTexture);
+            Texture wallTexture = TextureCache.GetTexture(line.MiddleTexture);
             ref BGRA wallTexturePtr = ref MemoryMarshal.GetArrayDataReference(wallTexture.Rotated);
             int textureWidth = wallTexture.Height;
             int textureHeight = wallTexture.Width;
@@ -471,7 +471,7 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            ref Texture wallTexture = ref TextureCache.GetTexture(line.MiddleTexture);
+            Texture wallTexture = TextureCache.GetTexture(line.MiddleTexture);
             ref uint wallTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetArrayDataReference(wallTexture.Data));
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
