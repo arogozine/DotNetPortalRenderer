@@ -27,4 +27,14 @@
         RenderAsWall = 512,
         RenderAsFloor = 1024
     }
+
+    internal static class TextureRenderingOptionsExtensions
+    {
+        extension(TextureRenderingOptions options)
+        {
+            public bool IsSkybox => options.HasFlag(TextureRenderingOptions.Skybox);
+            public bool IsFlippedX => options.HasFlag(TextureRenderingOptions.FlipX);
+            public bool IsFlippedY => options.HasFlag(TextureRenderingOptions.FlipY);
+        }
+    }
 }

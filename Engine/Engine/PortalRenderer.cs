@@ -101,8 +101,7 @@ namespace RenderingEngine.Engine
             do
             {
                 // 0. Cache current renderable area for sprite rendering
-                int[] ceilingStart;
-                int[] floorEnd;
+                int[] ceilingStart, floorEnd, wallEnd;
                 float[] zBuffer;
                 RenderColumnStatus[] columnStatus;
 
@@ -112,6 +111,7 @@ namespace RenderingEngine.Engine
                     floorEnd = spriteCache.FloorEnd;
                     zBuffer = spriteCache.ZBuffer;
                     columnStatus = spriteCache.ColumnStatus;
+                    wallEnd = spriteCache.WallEnd;
                 }
                 else
                 {
@@ -119,7 +119,8 @@ namespace RenderingEngine.Engine
                     floorEnd = new int[PixelWidth];
                     zBuffer = new float[PixelWidth];
                     columnStatus = new RenderColumnStatus[PixelWidth];
-                    spriteRenderableAreaCache[renderDepth] = new RenderableAreaAndZBuffer(ceilingStart, floorEnd, zBuffer, columnStatus);
+                    wallEnd = new int[PixelWidth];
+                    spriteRenderableAreaCache[renderDepth] = new RenderableAreaAndZBuffer(ceilingStart, floorEnd, wallEnd, zBuffer, columnStatus);
                 }
 
                 // 1. Copy over the renderable area for sprite rendering
@@ -132,6 +133,7 @@ namespace RenderingEngine.Engine
 
                 // 3. Cache z-buffer for sprite rendering
                 RenderWindowHelper.Distance.AsSpan().CopyTo(zBuffer);
+                RenderWindowHelper.FloorEnd.AsSpan().CopyTo(wallEnd);
 
                 // 4. We render sprites after all the walls were rendered
                 transparentWalls.Add(new RenderWindowSpriteSnapshot()
@@ -141,6 +143,7 @@ namespace RenderingEngine.Engine
                     CeilingStart = ceilingStart,
                     FloorEnd = floorEnd,
                     Distance = zBuffer,
+                    WallEnd = wallEnd,
                     RenderDepth = renderDepth
                 });
 
@@ -159,6 +162,7 @@ namespace RenderingEngine.Engine
                             CeilingStart = ceilingStart,
                             ColumnStatus = columnStatus,
                             Distance = zBuffer,
+                            WallEnd = wallEnd,
                             FloorEnd = floorEnd
                         });
                     }

@@ -250,7 +250,7 @@ namespace RenderingEngine.Engine
                 }
 
                 float buffer = renderableWall.Distance[x];
-                int floorEnd = renderableWall.FloorEnd[x];
+                int floorEnd = Math.Min(renderableWall.FloorEnd[x], renderableWall.WallEnd[x]);
                 int ceilingStart = renderableWall.CeilingStart[x];
 
                 (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, false);
