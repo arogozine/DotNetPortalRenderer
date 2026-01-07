@@ -8,7 +8,7 @@ namespace RenderingEngine.Engine
         {
             TextureInfo textureInfo = sprite.Texture;
 
-            if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall))
+            if (textureInfo.RenderingOptions.IsWall)
             {
                 DrawWallSprite(sectors, sprite, renderableWall);
                 return;
@@ -48,13 +48,12 @@ namespace RenderingEngine.Engine
             float cameraRay = -1f * EngineConstants.CameraPlaneX;
             cameraRay += cameraWidthIncr * spriteFromX;
 
-            Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
-            ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
+            ref uint columnBufferPtr = ref GetBufferA(textureWidth, out Span<uint> columnBuffer);
 
             float textureXIncr = ((float)textureWidth) / (spriteEndY - spriteStartY);
 
-            bool flipY = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
-            bool flipX = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
+            bool flipY = sprite.Texture.RenderingOptions.IsFlippedY;
+            bool flipX = sprite.Texture.RenderingOptions.IsFlippedX;
 
             float textureLen = texture.Width / sprite.Length;
 
@@ -87,6 +86,9 @@ namespace RenderingEngine.Engine
                     ref screenPtr, ref columnBufferPtr);
             }
 
+            columnABufferIndex = EngineConstants.Unset;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             int CalculateTextureXPosition(float cameraRay)
             {
                 float fromToXDist = fromToYDist * cameraRay;
@@ -126,15 +128,14 @@ namespace RenderingEngine.Engine
 
             int xOffset = 0;
 
-            Span<int> floorEndArray = renderableWall.FloorEnd;
-            Span<int> ceilingStartArray = renderableWall.CeilingStart;
-            Span<float> distance = renderableWall.Distance;
+            ReadOnlySpan<int> floorEndArray = renderableWall.FloorEnd;
+            ReadOnlySpan<int> ceilingStartArray = renderableWall.CeilingStart;
+            ReadOnlySpan<float> distance = renderableWall.Distance;
 
-            Span<uint> columnBuffer = this.columnA.AsSpan(..textureWidth);
-            ref uint columnBufferPtr = ref MemoryMarshal.GetReference(columnBuffer);
+            ref uint columnBufferPtr = ref GetBufferA(textureWidth, out Span<uint> columnBuffer);
 
-            bool flipY = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
-            bool flipX = sprite.Texture.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
+            bool flipY = sprite.Texture.RenderingOptions.IsFlippedY;
+            bool flipX = sprite.Texture.RenderingOptions.IsFlippedX;
 
             float xScale = texture.Width / sprite.Length;
 
@@ -178,20 +179,15 @@ namespace RenderingEngine.Engine
                 DrawSpriteLine(width, x, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
                     ref screenPtr, ref columnBufferPtr);
             }
+
+            columnABufferIndex = EngineConstants.Unset;
         }
 
         private void DrawTransparentWall(
             ReadOnlySpan<Sector> sectors,
             RenderWindowWallSnapshot renderableWall)
         {
-            int width = PixelWidth;
             RenderableWall wall = renderableWall.Wall;
-            int wallFromXOffset = renderableWall.Offset;
-            int wallFromX = renderableWall.XLeft;
-            int wallToX = renderableWall.XRight;
-            Sector sector = wall.Sector;
-            float sectorHeight = sector.Ceil - sector.Floor;
-
             TextureInfo textureInfo = wall.MiddleTexture!;
 
             if (textureInfo.XScale is not null)
@@ -199,6 +195,13 @@ namespace RenderingEngine.Engine
                 DrawTransparentWall_Build(sectors, renderableWall);
                 return;
             }
+
+            Sector sector = wall.Sector;
+            int width = PixelWidth;
+            int wallFromXOffset = renderableWall.Offset;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+            float sectorHeight = sector.Ceil - sector.Floor;
 
             Texture texture = TextureCache.GetTexture(textureInfo);
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
@@ -334,6 +337,11 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors,
             RenderWindowWallSnapshot renderableWall)
         {
+            ReadOnlySpan<int> floorEnd = renderableWall.FloorEnd;
+            ReadOnlySpan<int> ceilingStart = renderableWall.CeilingStart;
+            ReadOnlySpan<float> distance = renderableWall.Distance;
+            ReadOnlySpan<RenderColumnStatus> columnStatus = renderableWall.ColumnStatus;
+
             int width = PixelWidth;
             RenderableWall wall = renderableWall.Wall;
             int wallFromXOffset = renderableWall.Offset;
@@ -390,18 +398,18 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
             {
-                RenderColumnStatus columnStatus = renderableWall.ColumnStatus[x];
+                RenderColumnStatus columnStatusY = columnStatus[x];
 
-                if (columnStatus.PortalRenderable)
+                if (columnStatusY.PortalRenderable)
                 {
                     continue;
                 }
 
-                float buffer = renderableWall.Distance[x];
-                int floorEnd = renderableWall.FloorEnd[x];
-                int ceilingStart = renderableWall.CeilingStart[x];
+                float buffer = distance[x];
+                int floorEndY = floorEnd[x];
+                int ceilingStartY = ceilingStart[x];
 
-                (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, flipX);
+                (int distanceY, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, flipX);
 
                 if (fromToYdist > buffer)
                 {
@@ -419,8 +427,8 @@ namespace RenderingEngine.Engine
                 float textureToY = wallEndY - floorPixelOffset;
 
                 // Clamp to View Window
-                int clampedFromY = Math.Clamp(float.ConvertToIntegerNative<int>(textureFromY), ceilingStart, floorEnd);
-                int clampedToY = Math.Clamp(float.ConvertToIntegerNative<int>(textureToY), ceilingStart, floorEnd);
+                int clampedFromY = Math.Clamp(float.ConvertToIntegerNative<int>(textureFromY), ceilingStartY, floorEndY);
+                int clampedToY = Math.Clamp(float.ConvertToIntegerNative<int>(textureToY), ceilingStartY, floorEndY);
 
                 if (clampedFromY >= clampedToY)
                 {
@@ -428,7 +436,7 @@ namespace RenderingEngine.Engine
                 }
 
                 // Calculate Middle Texture Position
-                int textureYPos = float.ConvertToIntegerNative<int>(distance * xScale);
+                int textureYPos = float.ConvertToIntegerNative<int>(distanceY * xScale);
                 textureYPos = ((textureYPos + xOffset) % textureHeight) * textureWidth;
 
                 float textureXIncr = (textureWidth * yScale) / (wallEndY - wallStartY);

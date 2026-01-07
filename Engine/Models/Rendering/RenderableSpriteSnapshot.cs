@@ -8,6 +8,7 @@ namespace RenderingEngine.Models
         public required int XRight { get; init; }
         public required int[] CeilingStart { get; init; }
         public required int[] FloorEnd { get; init; }
+        public required int[] WallEnd { get; init; }
         public required float[] Distance { get; init; }
     }
 

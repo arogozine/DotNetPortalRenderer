@@ -32,6 +32,7 @@
     {
         extension(TextureRenderingOptions options)
         {
+            public bool IsWall => options.HasFlag(TextureRenderingOptions.RenderAsWall);
             public bool IsSkybox => options.HasFlag(TextureRenderingOptions.Skybox);
             public bool IsFlippedX => options.HasFlag(TextureRenderingOptions.FlipX);
             public bool IsFlippedY => options.HasFlag(TextureRenderingOptions.FlipY);
