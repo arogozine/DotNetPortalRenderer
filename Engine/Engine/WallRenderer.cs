@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using System.Numerics;
 
 namespace RenderingEngine.Engine
 {
@@ -494,9 +495,9 @@ namespace RenderingEngine.Engine
             Span<float> distance = RenderWindowHelper.Distance;
             Span<int> topXLocation = RenderWindowHelper.TopTextureXLocation;
             Span<int> topYLocation = RenderWindowHelper.TopTextureYLocation;
-            ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
-            ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
-            ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
+            Span<int> wallStart = RenderWindowHelper.WallStart;
+            Span<int> wallEnd = RenderWindowHelper.WallEnd;
+            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
 
             RenderableWall wall = renderableWall.Wall;
             int wallFromX = renderableWall.XLeft;
@@ -513,6 +514,55 @@ namespace RenderingEngine.Engine
 
             float rX = flipX ? wall.R2.X : wall.R1.X;
             float rY = flipX ? wall.R2.Y : wall.R1.Y;
+
+            int length = (wallToX - wallFromX);
+
+            if (Vector<float>.IsSupported && length > Vector<float>.Count)
+            {
+                Vector<float> t1V = Vector.Create(t1);
+                Vector<float> d2yV = Vector.Create(d2y);
+                Vector<float> d2xV = Vector.Create(d2x);
+                Vector<float> rXV = Vector.Create(rX);
+                Vector<float> rYV = Vector.Create(rY);
+
+                Vector<float> xScaleV = Vector.Create(xScale);
+                Vector<float> xOffsetV = Vector.Create(xOffset);
+                Vector<float> scaledTextureWidthV = Vector.Create(scaledTextureWidth);
+
+                Vector<float> cameraRayV = Vector.CreateSequence(cameraRay, cameraWidthIncr);
+                Vector<float> cameraWidthIncrV = Vector.Create(cameraWidthIncr * Vector<float>.Count);
+
+                int rem = (wallToX - wallFromX) % Vector<float>.Count;
+                wallToX -= rem;
+
+                for (int x = wallFromX; x < wallToX; x += Vector<float>.Count)
+                {
+                    (Vector<float> fromToXdist, Vector<float> fromToYdist) = CalculateRayIntersection(cameraRayV, t1V, d2yV, d2xV);
+                    Vector<float> distX = rXV - fromToXdist;
+                    Vector<float> distY = rYV - fromToYdist;
+
+                    Vector<int> wallStartV = Vector.LoadUnsafe(ref wallStart[x]);
+                    Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
+
+                    Vector<float> textureDist = Vector.SquareRoot(distX * distX + distY * distY);
+                    Vector<int> topXLocationV = Vector.ConvertToInt32Native(Vector.FusedMultiplyAdd(textureDist, xScaleV, xOffsetV));
+                    Vector<int> topYLocationV = Vector.ConvertToInt32Native(scaledTextureWidthV / Vector.ConvertToSingle(wallEndV - wallStartV));
+
+                    Vector.StoreUnsafe(fromToYdist, ref distance[x]);
+                    Vector.StoreUnsafe(topYLocationV, ref topYLocation[x]);
+
+                    for (int i = 0; i < Vector<float>.Count; i++)
+                    {
+                        topXLocation[x + i] = (topXLocationV[i] % textureHeight) * textureWidth;
+                    }
+
+                    cameraRayV += cameraWidthIncrV;
+                }
+
+                wallFromX = wallToX;
+                wallToX += rem;
+                cameraRay = cameraRayV[0];
+            }
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
@@ -895,13 +945,13 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static (float CameraRay, float CameraRayIncr, float t1, float d2y, float d2x) CalculateCameraRay(RenderableWall wall, int width, int wallFromX)
         {
-            float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
+            float cameraWidthIncr = 2.0f / width;
             float rx1 = wall.R1.X;
             float ry1 = wall.R1.Y;
             float d2x = wall.R2.X - rx1;
             float d2y = wall.R2.Y - ry1;
             float t1 = rx1 * d2y - ry1 * d2x;
-            float cameraRay = -1f * EngineConstants.CameraPlaneX;
+            float cameraRay = -1f;
             cameraRay += cameraWidthIncr * wallFromX;
 
             return (cameraRay, cameraWidthIncr, t1, d2y, d2x);
@@ -910,13 +960,13 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static (float CameraRay, float CameraRayIncr, float t1, float d2y, float d2x) CalculateCameraRay(RenderableSprite sprite, int width, int wallFromX)
         {
-            float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
+            float cameraWidthIncr = 2.0f / width;
             float rx1 = sprite.R1.X;
             float ry1 = sprite.R1.Y;
             float d2x = sprite.R2.X - rx1;
             float d2y = sprite.R2.Y - ry1;
             float t1 = rx1 * d2y - ry1 * d2x;
-            float cameraRay = -1f * EngineConstants.CameraPlaneX;
+            float cameraRay = -1f;
             cameraRay += cameraWidthIncr * wallFromX;
 
             return (cameraRay, cameraWidthIncr, t1, d2y, d2x);
@@ -928,6 +978,16 @@ namespace RenderingEngine.Engine
             float denominator = cameraRay * d2y - d2x;
             float fromToYDist = t1 / denominator;
             float fromToXDist = fromToYDist * cameraRay;
+
+            return (fromToXDist, fromToYDist);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static (Vector<float> X, Vector<float> Y) CalculateRayIntersection(Vector<float> cameraRay, Vector<float> t1, Vector<float> d2y, Vector<float> d2x)
+        {
+            Vector<float> denominator = cameraRay * d2y - d2x;
+            Vector<float> fromToYDist = t1 / denominator;
+            Vector<float> fromToXDist = fromToYDist * cameraRay;
 
             return (fromToXDist, fromToYDist);
         }

@@ -291,9 +291,23 @@ namespace RenderingEngine.Engine
             {
                 RenderableWall wall = walls[i];
 
-                if (wall.R1.Y <= 0f && wall.R2.Y <= 0f)
+                (float x1, float y1) = wall.R1;
+                (float x2, float y2) = wall.R2;
+
+                // wall fully behind the player
+                if (y1 <= 0f && y2 <= 0f)
                 {
                     continue;
+                }
+
+                // wall is in front and either on the left or the right side (not in the middle)
+                if ((y1 > 0f && y2 > 0f) && ((x1 < 0f && x2 < 0f) || ((x1 > 0f && x2 > 0f))))
+                {
+                    // check if within the camera cone
+                    if (MathF.Abs(x1) > y1 && MathF.Abs(x2) > y2)
+                    {
+                        continue;
+                    }
                 }
 
                 walls[j] = wall;
@@ -434,8 +448,6 @@ namespace RenderingEngine.Engine
                 bool intersectsR = TryGetSegmentIntersectionZero2(EngineConstants.CameraPlaneX, rx2, ry2, -d2x, -d2y,
                     out float xDistanceR, out float yDistanceR);
 
-                // Clamp(ref xLeft, ref xRight);
-
                 if (intersectsL && intersectsR)
                 {
                     rx1 = xDistanceL;
@@ -542,8 +554,8 @@ namespace RenderingEngine.Engine
             float d2x = rx2 - rx1;
             float d2y = ry2 - ry1;
 
-            float rayDirLeft = EngineConstants.CameraPlaneX * (cameraWidthIncr * xLeft - 1f);
-            float rayDirRight = EngineConstants.CameraPlaneX * (cameraWidthIncr * xRight - 1f);
+            float rayDirLeft = MathF.FusedMultiplyAdd(cameraWidthIncr, xLeft, -1f);
+            float rayDirRight = MathF.FusedMultiplyAdd(cameraWidthIncr, xRight, -1f);
 
             bool intersectsL = TryGetSegmentIntersectionZero2(rayDirLeft, rx1, ry1, d2x, d2y,
                 out float xDistanceL, out float yDistanceL);

@@ -121,8 +121,7 @@ namespace RenderingEngine.Engine
         private void AssignDistance(scoped ReadOnlySpan<RenderableSprite> sprites)
         {
             int width = this.width;
-            float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
-
+            float cameraWidthIncr = 2.0f / width;
 
             for (int j = 0; j < sprites.Length; j++)
             {
@@ -154,10 +153,10 @@ namespace RenderingEngine.Engine
                 float d2y = sprite.R2.Y - ry1;
                 float t1 = rx1 * d2y - ry1 * d2x;
 
-                float cameraRayA = -1f * EngineConstants.CameraPlaneX;
+                float cameraRayA = -EngineConstants.CameraPlaneX;
                 cameraRayA += cameraWidthIncr * sprite.XLeft;
 
-                float cameraRayB = -1f * EngineConstants.CameraPlaneX;
+                float cameraRayB = -EngineConstants.CameraPlaneX;
                 cameraRayB += cameraWidthIncr * sprite.XRight;
 
                 float fromToYDistA = t1 / (cameraRayA * d2y - d2x);
@@ -484,8 +483,8 @@ namespace RenderingEngine.Engine
             float d2x = rx2 - rx1;
             float d2y = ry2 - ry1;
 
-            float rayDirLeft = EngineConstants.CameraPlaneX * (cameraWidthIncr * xLeft - 1f);
-            float rayDirRight = EngineConstants.CameraPlaneX * (cameraWidthIncr * xRight - 1f);
+            float rayDirLeft = MathF.FusedMultiplyAdd(cameraWidthIncr, xLeft, -1f);
+            float rayDirRight = MathF.FusedMultiplyAdd(cameraWidthIncr, xRight, -1f);
 
             bool intersectsL = TryGetSegmentIntersectionZero2(rayDirLeft, rx1, ry1, d2x, d2y,
                 out float xDistanceL, out float yDistanceL);

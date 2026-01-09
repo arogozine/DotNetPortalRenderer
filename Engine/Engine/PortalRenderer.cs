@@ -48,7 +48,7 @@ namespace RenderingEngine.Engine
         {
             int width = this.angleCache.Length;
 
-            float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
+            float cameraWidthIncr = 2.0f / width;
             float cameraRay = -EngineConstants.CameraPlaneX;
 
             for (int x = 0; x < width; x++, cameraRay += cameraWidthIncr)

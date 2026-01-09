@@ -26,7 +26,7 @@ internal static class TextureCache
 
     private static unsafe BGRA[] RotateTexture(int height, int width, scoped Span<BGRA> input)
     {
-        // build engine rotates textures for faster access or something like that
+        // build engine rotates textures for better memory locality
         BGRA[] output = new BGRA[height * width];
         ref BGRA inputPtr = ref MemoryMarshal.GetReference(input);
         ref BGRA outputPtr = ref MemoryMarshal.GetArrayDataReference(output);
@@ -68,7 +68,7 @@ internal static class TextureCache
 
         if (!Cache.TryGetValue(name, out Texture? texture))
         {
-            texture ??= Cache[FallBack];
+            texture = Cache[FallBack];
         }
 
         return texture;

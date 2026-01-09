@@ -50,7 +50,7 @@ namespace RenderingEngine.Engine
 
             ref uint columnBufferPtr = ref GetBufferA(textureWidth, out Span<uint> columnBuffer);
 
-            float textureXIncr = ((float)textureWidth) / (spriteEndY - spriteStartY);
+            int textureXIncr = (textureWidth << 16) / (spriteEndY - spriteStartY);
 
             bool flipY = sprite.Texture.RenderingOptions.IsFlippedY;
             bool flipX = sprite.Texture.RenderingOptions.IsFlippedX;
@@ -78,7 +78,7 @@ namespace RenderingEngine.Engine
                 int textureXLocation = CalculateTextureXPosition(cameraRay);
 
                 int textureYPos = textureXLocation * textureWidth;
-                float textureXPos = (clamptedFromY - spriteStartY) * textureXIncr;
+                int textureXPos = (clamptedFromY - spriteStartY) * textureXIncr;
 
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel, flipY);
 
@@ -151,10 +151,10 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                float textureXIncr = (float)(textureWidth / (spriteEndY - spriteStartY));
-
-                int clamptedFromY = Math.Clamp(float.ConvertToIntegerNative<int>(spriteStartY), ceilingStart, floorEnd);
-                int clamptedToY = Math.Clamp(float.ConvertToIntegerNative<int>(spriteEndY), ceilingStart, floorEnd);
+                int spriteStartY_Int = float.ConvertToIntegerNative<int>(spriteStartY);
+                int spriteEndY_Int = float.ConvertToIntegerNative<int>(spriteEndY);
+                int clamptedFromY = Math.Clamp(spriteStartY_Int, ceilingStart, floorEnd);
+                int clamptedToY = Math.Clamp(spriteEndY_Int, ceilingStart, floorEnd);
 
                 if (clamptedFromY >= clamptedToY)
                 {
@@ -170,9 +170,9 @@ namespace RenderingEngine.Engine
 
                 textureXLocation += xOffset;
                 textureXLocation *= xScale;
-
+                int textureXIncr = (textureWidth << 16) / (spriteEndY_Int - spriteStartY_Int);
                 int textureYPos = (float.ConvertToIntegerNative<int>(textureXLocation) % textureHeight) * textureWidth;
-                float textureXPos = (clamptedFromY - spriteStartY) * textureXIncr;
+                int textureXPos = (clamptedFromY - spriteStartY_Int) * textureXIncr;
 
                 CalculateSprite(columnBuffer, ref this.columnABufferIndex, ref texturePtr, textureYPos, lightLevel, flipY);
 
@@ -181,6 +181,32 @@ namespace RenderingEngine.Engine
             }
 
             columnABufferIndex = EngineConstants.Unset;
+        }
+
+        private void DrawFloorSprite(
+            PortalPlayerSnapshot player,
+            ReadOnlySpan<Sector> sectors,
+            RenderableSprite sprite,
+            RenderWindowSpriteSnapshot renderableWall)
+        {
+            Sector sector = sectors[sprite.SectorId];
+            int yfloor = float.ConvertToIntegerNative<int>(sector.Floor - player.Z);
+
+
+            TextureInfo textureInfo = sprite.Texture;
+            Texture texture = TextureCache.GetTexture(textureInfo.Name);
+            float halfWidth = texture.Height * 0.5f;
+            float halfHeight = texture.Width * 0.5f;
+
+            (float rx, float ry) = sprite.Rotated;
+            float xFrom = rx - halfWidth;
+            float xTo = rx + halfWidth;
+            float yFrom = ry - halfWidth;
+            float yTo = ry + halfWidth;
+
+            // do the wall calculation
+
+            // middle point is in the center
         }
 
         private void DrawTransparentWall(
@@ -331,7 +357,6 @@ namespace RenderingEngine.Engine
 
             columnABufferIndex = EngineConstants.Unset;
         }
-
 
         private void DrawTransparentWall_Build(
             ReadOnlySpan<Sector> sectors,
@@ -539,16 +564,16 @@ namespace RenderingEngine.Engine
                 int width,
                 int x,
                 int textureStartYClamped, int textureEndYClamped,
-                float textureXPos,
-                float textureXIncr,
+                int textureXPos,
+                int textureXIncr,
                 scoped ref uint screenPtr,
                 scoped ref uint textureBuffer
                 )
         {
             ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * width + x);
             ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, textureEndYClamped * width + x);
-            uint textureXPos_u = float.ConvertToIntegerNative<uint>(textureXPos * (1 << 16));
-            uint textureXIncr_u = float.ConvertToIntegerNative<uint>(textureXIncr * (1 << 16));
+            uint textureXPos_u = (uint)(textureXPos);
+            uint textureXIncr_u = (uint)(textureXIncr);
 
             while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
             {

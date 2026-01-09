@@ -36,6 +36,7 @@
             public bool IsSkybox => options.HasFlag(TextureRenderingOptions.Skybox);
             public bool IsFlippedX => options.HasFlag(TextureRenderingOptions.FlipX);
             public bool IsFlippedY => options.HasFlag(TextureRenderingOptions.FlipY);
+            public bool IsFloor => options.HasFlag(TextureRenderingOptions.RenderAsFloor);
         }
     }
 }

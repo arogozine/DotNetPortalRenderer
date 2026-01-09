@@ -492,7 +492,7 @@ namespace RenderingEngine.Engine
             Sector sector,
             bool rotated)
         {
-            ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
+            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
             ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
             ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
             ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
@@ -534,10 +534,18 @@ namespace RenderingEngine.Engine
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
+            Span<int> statusI = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
+
+            Vector<int> floorRenderable = Vector.Create((int)(RenderColumnStatus.CanRenderFloor | RenderColumnStatus.Calculated));
+
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
+                /*
+                Vector<int> floorRederableCheck = Vector.LoadUnsafe(ref statusI[x]) & floorRenderable;
+                
+                RenderColumnStatus columnStatus = (RenderColumnStatus)Vector.Sum(floorRederableCheck);
+                */
                 RenderColumnStatus columnStatus = status[x];
-
                 if (!columnStatus.FloorRenderable)
                 {
                     continue;

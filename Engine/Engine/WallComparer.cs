@@ -171,8 +171,8 @@ namespace RenderingEngine.Engine
             float d2x = rx2 - rx1;
             float d2y = ry2 - ry1;
 
-            float rayDirLeft = EngineConstants.CameraPlaneX * (cameraWidthIncr * xLeft - 1f);
-            float rayDirRight = EngineConstants.CameraPlaneX * (cameraWidthIncr * xRight - 1f);
+            float rayDirLeft = MathF.FusedMultiplyAdd(cameraWidthIncr, xLeft, -1f);
+            float rayDirRight = MathF.FusedMultiplyAdd(cameraWidthIncr, xRight, -1f);
 
             bool intersectsL = TryGetSegmentIntersectionZero2(rayDirLeft, rx1, ry1, d2x, d2y,
                 out float xDistanceL, out float yDistanceL);
