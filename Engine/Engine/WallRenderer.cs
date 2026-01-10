@@ -534,6 +534,8 @@ namespace RenderingEngine.Engine
                 Vector<float> xScaleV = Vector.Create(xScale);
                 Vector<float> xOffsetV = Vector.Create(xOffset);
                 Vector<float> scaledTextureWidthV = Vector.Create(scaledTextureWidth);
+                Vector<int> textureWidthV = Vector.Create(textureWidth);
+
 
                 Vector<float> cameraRayV = Vector.CreateSequence(cameraRay, cameraWidthIncr);
                 Vector<float> cameraWidthIncrV = Vector.Create(cameraWidthIncr * Vector<float>.Count);
@@ -541,11 +543,14 @@ namespace RenderingEngine.Engine
                 int rem = (wallToX - wallFromX) % Vector<float>.Count;
                 wallToX -= rem;
 
+                bool even = SharedHelpers.IsPowerOfTwo(textureHeight);
+                Vector<int> heightMask = even ? Vector.Create(textureHeight - 1) : default;
+
                 for (int x = wallFromX; x < wallToX; x += Vector<float>.Count)
                 {
                     Vector<int> columnStatusV = Vector.LoadUnsafe(ref statusInt[x]);
 
-                    if (Vector.EqualsAll(columnStatusV & canRenderWallMaskV, Vector<int>.Zero))
+                    if ((columnStatusV & canRenderWallMaskV) == Vector<int>.Zero)
                     {
                         continue;
                     }
@@ -564,9 +569,17 @@ namespace RenderingEngine.Engine
                     Vector.StoreUnsafe(fromToYdist, ref distance[x]);
                     Vector.StoreUnsafe(topYLocationV, ref topYLocation[x]);
 
-                    for (int i = 0; i < Vector<float>.Count; i++)
+                    if (even)
                     {
-                        topXLocation[x + i] = (topXLocationV[i] % textureHeight) * textureWidth;
+                        topXLocationV = (topXLocationV & heightMask) * textureWidthV;
+                        Vector.StoreUnsafe(topXLocationV, ref topXLocation[x]);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < Vector<float>.Count; i++)
+                        {
+                            topXLocation[x + i] = (topXLocationV[i] % textureHeight) * textureWidth;
+                        }
                     }
 
                     cameraRayV += cameraWidthIncrV;

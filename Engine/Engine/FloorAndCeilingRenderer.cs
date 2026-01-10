@@ -142,6 +142,11 @@ namespace RenderingEngine.Engine
             Sector sector,
             bool rotated)
         {
+            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
+            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
+            Span<int> wallStart = RenderWindowHelper.WallStart;
+            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
+
             byte lightLevel = sector.LightLevel;
 
             int width = PixelWidth;
@@ -178,24 +183,83 @@ namespace RenderingEngine.Engine
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
+            int length = (sectorToX - sectorFromX);
+
+            if (Vector<float>.IsSupported && length > Vector<float>.Count)
+            {
+                const int canRenderCeilingMask = (int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderCeiling);
+
+                Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
+                Vector<int> widthV = Vector.Create(width);
+                Vector<int> widthDiv2V = Vector.Create(widthDiv2);
+                Vector<float> xPosIncrV = Vector.Create(xPosIncr);
+                Vector<int> canRenderCeilingMaskV = Vector.Create(canRenderCeilingMask);
+
+                Vector<int> sectorFromXV = Vector.CreateSequence(sectorFromX, 1);
+                Vector<int> incr = Vector.Create(Vector<int>.Count);
+
+                int rem = (sectorToX - sectorFromX) % Vector<float>.Count;
+                sectorToX -= rem;
+
+                for (int x = sectorFromX; x < sectorToX; sectorFromXV += incr)
+                {
+                    Vector<int> columnStatusV = Vector.LoadUnsafe(ref statusInt[x]) & canRenderCeilingMaskV;
+
+                    if (columnStatusV == Vector<int>.Zero)
+                    {
+                        x += Vector<int>.Count;
+                        continue;
+                    }
+
+                    Vector<int> ceilingStartV = Vector.LoadUnsafe(ref ceilingStart[x]);
+                    Vector<int> wallStartV = Vector.LoadUnsafe(ref wallStart[x]);
+                    Vector<int> floorEndV = Vector.LoadUnsafe(ref floorEnd[x]);
+
+                    Vector<int> floorToV = Vector.Min(Vector.Max(wallStartV, ceilingStartV), floorEndV);
+                    Vector<int> screenIndexV = ceilingStartV * widthV + sectorFromXV;
+                    Vector<int> xMapPosMultiplierV = Vector.ConvertToInt32Native(Vector.ConvertToSingle((widthDiv2V - sectorFromXV) << 10) * xPosIncrV);
+
+                    for (int i = 0; i < Vector<float>.Count; i++, x++)
+                    {
+                        if (columnStatusV[i] != canRenderCeilingMask)
+                        {
+                            continue;
+                        }
+
+                        int ceilingStartY = ceilingStartV[i];
+                        int floorToY = floorToV[i];
+                        int screenIndex = screenIndexV[i];
+                        int xMapPosMultiplier = xMapPosMultiplierV[i];
+
+                        RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, ceilingStartY, width,
+                            x, lightLevel, yCeliningV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV, textureHeightV,
+                            textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy, rotated, doubleSize);
+                    }
+                }
+
+
+                sectorFromX = sectorToX;
+                sectorToX += rem;
+            }
+
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
+                RenderColumnStatus columnStatus = status[x];
 
                 if (!columnStatus.CeilingRenderable)
                 {
                     continue;
                 }
 
-                int ceilingStart = RenderWindowHelper.CeilingStart[x];
-                int wallStart = RenderWindowHelper.WallStart[x];
-                int floorEnd = RenderWindowHelper.FloorEnd[x];
-                int floorToY = Math.Clamp(wallStart, ceilingStart, floorEnd);
+                int ceilingStartY = ceilingStart[x];
+                int wallStartY = wallStart[x];
+                int floorEndY = floorEnd[x];
+                int floorToY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
 
-                int screenIndex = ceilingStart * width + x;
+                int screenIndex = ceilingStartY * width + x;
                 int xMapPosMultiplier = float.ConvertToIntegerNative<int>(((widthDiv2 - x) << 10) * xPosIncr);
 
-                RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, ceilingStart, width,
+                RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, ceilingStartY, width,
                     x, lightLevel, yCeliningV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV, textureHeightV,
                     textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy, rotated, doubleSize);
             }
@@ -493,10 +557,9 @@ namespace RenderingEngine.Engine
             bool rotated)
         {
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
-            ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
-
+            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
+            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
+            Span<int> wallEnd = RenderWindowHelper.WallEnd;
 
             byte lightLevel = sector.LightLevel;
 
@@ -534,18 +597,67 @@ namespace RenderingEngine.Engine
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            Span<int> statusI = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
+            int length = (sectorToX - sectorFromX);
 
-            Vector<int> floorRenderable = Vector.Create((int)(RenderColumnStatus.CanRenderFloor | RenderColumnStatus.Calculated));
+            if (Vector<float>.IsSupported && length > Vector<float>.Count)
+            {
+                const int canRenderFloorMask = (int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderFloor);
+
+                Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
+                Vector<int> widthV = Vector.Create(width);
+                Vector<int> widthDiv2V = Vector.Create(widthDiv2);
+                Vector<float> xPosIncrV = Vector.Create(xPosIncr);
+                Vector<int> canRenderFloorMaskV = Vector.Create(canRenderFloorMask);
+
+                Vector<int> sectorFromXV = Vector.CreateSequence(sectorFromX, 1);
+                Vector<int> incr = Vector.Create(Vector<int>.Count);
+
+                int rem = (sectorToX - sectorFromX) % Vector<float>.Count;
+                sectorToX -= rem;
+
+                for (int x = sectorFromX; x < sectorToX; sectorFromXV += incr)
+                {
+                    Vector<int> columnStatusV = Vector.LoadUnsafe(ref statusInt[x]) & canRenderFloorMaskV;
+
+                    if (columnStatusV == Vector<int>.Zero)
+                    {
+                        x += Vector<int>.Count;
+                        continue;
+                    }
+
+                    Vector<int> ceilingStartV = Vector.LoadUnsafe(ref ceilingStart[x]);
+                    Vector<int> floorEndV = Vector.LoadUnsafe(ref floorEnd[x]);
+                    Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
+                    Vector<int> floorFromV = Vector.Min(Vector.Max(wallEndV, ceilingStartV), floorEndV);
+                    Vector<int> screenIndexV = floorFromV * widthV + sectorFromXV;
+                    Vector<int> xMapPosMultiplierV = Vector.ConvertToInt32Native(Vector.ConvertToSingle((widthDiv2V - sectorFromXV) << 10) * xPosIncrV);
+
+                    for (int i = 0; i < Vector<float>.Count; i++, x++)
+                    {
+                        if (columnStatusV[i] != canRenderFloorMask)
+                        {
+                            continue;
+                        }
+
+                        int floorFromY = floorFromV[i];
+                        int floorEndY = floorEndV[i];
+                        int screenIndex = screenIndexV[i];
+                        int xMapPosMultiplier = xMapPosMultiplierV[i];
+
+                        RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
+                            x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV, textureHeightV,
+                            textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy, rotated, doubleSize);
+                    }
+                }
+
+                sectorFromX = sectorToX;
+                sectorToX += rem;
+            }
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                /*
-                Vector<int> floorRederableCheck = Vector.LoadUnsafe(ref statusI[x]) & floorRenderable;
-                
-                RenderColumnStatus columnStatus = (RenderColumnStatus)Vector.Sum(floorRederableCheck);
-                */
                 RenderColumnStatus columnStatus = status[x];
+
                 if (!columnStatus.FloorRenderable)
                 {
                     continue;

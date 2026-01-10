@@ -318,6 +318,11 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
+                if (sprite.YLeftCeil == sprite.YLeftFloor || sprite.YRightCeil == sprite.YRightFloor)
+                {
+                    continue;
+                }
+
                 rotatedSprites[j] = sprite;
                 j++;
             }
