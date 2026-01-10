@@ -538,13 +538,13 @@ namespace RenderingEngine.Engine
 
             ref BGRA screenIndexPtrBgra = ref Unsafe.As<uint, BGRA>(ref screenPtr);
             ref BGRA screenIndexPtr = ref Unsafe.Add(ref screenIndexPtrBgra, textureStartYClamped * width + x);
-            ref BGRA screenIndexPtrEnd = ref Unsafe.Add(ref screenIndexPtrBgra, textureEndYClamped * width + x);
+            ref readonly BGRA screenIndexPtrEnd = ref Unsafe.Add(ref screenIndexPtrBgra, textureEndYClamped * width + x);
 
             uint textureXPos_u = float.ConvertToIntegerNative<uint>(textureXPos * (1 << 16));
             uint textureXIncr_u = float.ConvertToIntegerNative<uint>(textureXIncr * (1 << 16));
             uint textureHeight_u = (uint)textureHeight;
 
-            while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
+            while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
             {
                 uint texelIndex = (textureXPos_u >> 16) % textureHeight_u;
                 BGRA shaded = Unsafe.Add(ref textureBuffer, texelIndex);
@@ -571,11 +571,11 @@ namespace RenderingEngine.Engine
                 )
         {
             ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * width + x);
-            ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, textureEndYClamped * width + x);
+            ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, textureEndYClamped * width + x);
             uint textureXPos_u = (uint)(textureXPos);
             uint textureXIncr_u = (uint)(textureXIncr);
 
-            while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
+            while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
             {
                 uint texelIndex = textureXPos_u >> 16;
                 uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
@@ -589,7 +589,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint BlendBGRA(ref BGRA bgraDst, ref BGRA bgraSrc, uint a, uint aInv)
+        public static uint BlendBGRA(ref readonly BGRA bgraDst, ref readonly BGRA bgraSrc, uint a, uint aInv)
         {
             const uint Alpha = (uint)byte.MaxValue << 24;
 

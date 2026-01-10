@@ -234,7 +234,7 @@ namespace RenderingEngine.Engine
                     if (lowerSkybox)
                     {
                         ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * width + x);
-                        ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, toYClamped * width + x);
+                        ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, toYClamped * width + x);
 
                         RenderSkyboxLine(player,
                             x,
@@ -242,7 +242,7 @@ namespace RenderingEngine.Engine
                             ref upperTextureUintPtr,
                             ref angleCachePtr,
                             ref screenIndexPtr,
-                            ref screenIndexPtrEnd);
+                            in screenIndexPtrEnd);
                     }
                     else
                     {
@@ -519,6 +519,12 @@ namespace RenderingEngine.Engine
 
             if (Vector<float>.IsSupported && length > Vector<float>.Count)
             {
+                const int canRenderWallMask = (int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall);
+
+                Vector<int> canRenderWallMaskV = Vector.Create(canRenderWallMask);
+
+                Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
+
                 Vector<float> t1V = Vector.Create(t1);
                 Vector<float> d2yV = Vector.Create(d2y);
                 Vector<float> d2xV = Vector.Create(d2x);
@@ -537,6 +543,13 @@ namespace RenderingEngine.Engine
 
                 for (int x = wallFromX; x < wallToX; x += Vector<float>.Count)
                 {
+                    Vector<int> columnStatusV = Vector.LoadUnsafe(ref statusInt[x]);
+
+                    if (Vector.EqualsAll(columnStatusV & canRenderWallMaskV, Vector<int>.Zero))
+                    {
+                        continue;
+                    }
+
                     (Vector<float> fromToXdist, Vector<float> fromToYdist) = CalculateRayIntersection(cameraRayV, t1V, d2yV, d2xV);
                     Vector<float> distX = rXV - fromToXdist;
                     Vector<float> distY = rYV - fromToYdist;
@@ -736,7 +749,7 @@ namespace RenderingEngine.Engine
             ref uint upperTextureUintPtr,
             ref float angleCachePtr,
             ref uint screenIndexPtr,
-            ref uint screenIndexPtrEnd)
+            ref readonly uint screenIndexPtrEnd)
         {
             const float twoPi = 2 * MathF.PI;
             const float oneOverTwoPi = 1f / (2 * MathF.PI);
@@ -774,7 +787,7 @@ namespace RenderingEngine.Engine
             ref uint textureColumnPtr = ref Unsafe.Add(ref upperTextureUintPtr, texX);
 
             for (;
-                    Unsafe.IsAddressGreaterThan(ref screenIndexPtrEnd, ref screenIndexPtr);
+                    Unsafe.IsAddressGreaterThan(in screenIndexPtrEnd, in screenIndexPtr);
                     vScreen += yTextureIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
                 )
             {
@@ -796,7 +809,7 @@ namespace RenderingEngine.Engine
             )
         {
             ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, startY * width + x);
-            ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, endY * width + x);
+            ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, endY * width + x);
 
             // % is slower than the bitwise &
             // thus we have two paths to render a wall line
@@ -805,7 +818,7 @@ namespace RenderingEngine.Engine
             {
                 uint textureMask = (uint)(textureHeight - 1);
 
-                while (!Unsafe.AreSame(ref screenIndexPtr, ref screenIndexPtrEnd))
+                while (!Unsafe.AreSame(in screenIndexPtr, in screenIndexPtrEnd))
                 {
                     uint texelIndex = (textureXPos_u >> 16) & textureMask;
                     uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
@@ -819,7 +832,7 @@ namespace RenderingEngine.Engine
             {
                 uint textureHeight_u = (uint)textureHeight;
 
-                while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
+                while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
                 {
                     uint texelIndex = (textureXPos_u >> 16) % textureHeight_u;
                     uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);

@@ -600,9 +600,9 @@ namespace RenderingEngine.Engine
             Vector<int> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
 
             ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-            ref BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
+            ref readonly BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
 
-            while (!Unsafe.AreSame(ref screenTex, ref toScalePtr))
+            while (!Unsafe.AreSame(in screenTex, in toScalePtr))
             {
                 Vector<int> yMapPosR = yCeilV * incramentVector;
                 Vector<int> xMapPosR = yMapPosR * xMapPosMultiplierV;
@@ -758,9 +758,9 @@ namespace RenderingEngine.Engine
             Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
 
             ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-            ref BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
+            ref readonly BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
 
-            while (!Unsafe.AreSame(ref screenTex, ref toScalePtr))
+            while (!Unsafe.AreSame(in screenTex, in toScalePtr))
             {
                 Vector<float> yMapPosR = yCeilV / incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;

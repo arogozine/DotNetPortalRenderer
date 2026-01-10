@@ -300,14 +300,9 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                // wall is in front and either on the left or the right side (not in the middle)
-                if ((y1 > 0f && y2 > 0f) && ((x1 < 0f && x2 < 0f) || ((x1 > 0f && x2 > 0f))))
+                if ((x1 < -y1 && x2 < -y2) || (x1 > y1 && x2 > y2))
                 {
-                    // check if within the camera cone
-                    if (MathF.Abs(x1) > y1 && MathF.Abs(x2) > y2)
-                    {
-                        continue;
-                    }
+                    continue;
                 }
 
                 walls[j] = wall;
