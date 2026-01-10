@@ -120,7 +120,7 @@ namespace RenderingEngine.Engine
             int spriteFromX = xLeft;
             int spriteToX = xRight;
 
-            RenderablePlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(sprite, spriteFromX);
+            RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo(sprite, 0);
             float spriteStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float spriteEndY = yPlaneInfo.WallEndY;
@@ -139,7 +139,7 @@ namespace RenderingEngine.Engine
 
             float xScale = texture.Width / sprite.Length;
 
-            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(sprite, width, spriteFromX);
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(sprite, width, spriteFromX);
 
             for (int x = spriteFromX; x < spriteToX; x++, cameraRay += cameraWidthIncr, spriteStartY += ceilDistIncr, spriteEndY += floorDistIncr)
             {
@@ -161,7 +161,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                (float textureXLocation, float fromToYdist) = CalculateDistance(sprite, cameraRay, t1, d2y, d2x, flipX);
+                (float textureXLocation, float fromToYdist) = MathFormulas.CalculateDistance(sprite, cameraRay, t1, d2y, d2x, flipX);
 
                 if ((int)distance[x] < (int)fromToYdist)
                 {
@@ -192,21 +192,37 @@ namespace RenderingEngine.Engine
             Sector sector = sectors[sprite.SectorId];
             int yfloor = float.ConvertToIntegerNative<int>(sector.Floor - player.Z);
 
+            (Point a, Point b, Point c, Point d) = GetSpriteBoundingBox(player, sprite);
+
+        }
+
+
+        private static (Point a, Point b, Point c, Point d) GetSpriteBoundingBox(
+            PortalPlayerSnapshot player,
+            RenderableSprite sprite)
+        {
+            float pSin = player.Sin;
+            float pCos = player.Cos;
+            float px = player.X;
+            float py = player.Y;
 
             TextureInfo textureInfo = sprite.Texture;
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
             float halfWidth = texture.Height * 0.5f;
             float halfHeight = texture.Width * 0.5f;
 
-            (float rx, float ry) = sprite.Rotated;
+            (float rx, float ry) = sprite.Location;
             float xFrom = rx - halfWidth;
             float xTo = rx + halfWidth;
-            float yFrom = ry - halfWidth;
-            float yTo = ry + halfWidth;
+            float yFrom = ry - halfHeight;
+            float yTo = ry + halfHeight;
 
-            // do the wall calculation
+            Point a = SharedHelpers.RotateVertex(xFrom, yTo, pSin, pCos, px, py);
+            Point b = SharedHelpers.RotateVertex(xTo, yTo, pSin, pCos, px, py);
+            Point c = SharedHelpers.RotateVertex(xFrom, yFrom, pSin, pCos, px, py);
+            Point d = SharedHelpers.RotateVertex(xTo, yFrom, pSin, pCos, px, py);
 
-            // middle point is in the center
+            return (a, b, c, d);
         }
 
         private void DrawTransparentWall(
@@ -236,7 +252,7 @@ namespace RenderingEngine.Engine
 
             ref uint columnBufferPtr = ref GetBufferA(textureWidth, out Span<uint> columnBuffer);
 
-            RenderablePlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
+            RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
             float wallStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float wallEndY = yPlaneInfo.WallEndY;
@@ -267,7 +283,7 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
             {
@@ -282,7 +298,7 @@ namespace RenderingEngine.Engine
                 int floorEnd = Math.Min(renderableWall.FloorEnd[x], renderableWall.WallEnd[x]);
                 int ceilingStart = renderableWall.CeilingStart[x];
 
-                (int distance, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, false);
+                (float distance, float fromToYdist) = MathFormulas.CalculateDistance(wall, cameraRay, t1, d2y, d2x, false);
 
                 if (fromToYdist > buffer)
                 {
@@ -330,7 +346,7 @@ namespace RenderingEngine.Engine
 
                 // Calculate Middle Texture Position
                 float textureXIncr = (float)(sectorHeight / (wallEndY - wallStartY));
-                int textureYPos = ((distance + xOffset) % textureHeight) * textureWidth;
+                int textureYPos = ((float.ConvertToIntegerNative<int>(distance) + xOffset) % textureHeight) * textureWidth;
 
                 float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, offset, textureWidth);
 
@@ -385,7 +401,7 @@ namespace RenderingEngine.Engine
 
             ref uint columnBufferPtr = ref GetBufferA(textureWidth, out Span<uint> columnBuffer);
 
-            RenderablePlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
+            RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
             float wallStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float wallEndY = yPlaneInfo.WallEndY;
@@ -415,7 +431,7 @@ namespace RenderingEngine.Engine
 
             (_, bool flipX, bool flipY) = GetFlags(textureInfo);
 
-            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = CalculateCameraRay(wall, width, wallFromX);
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
 
             (float xScale, float yScale) = (textureInfo.XScale!.Value, textureInfo.YScale!.Value);
             yScale = (sector.Ceil - sector.Floor) * yScale;
@@ -434,7 +450,7 @@ namespace RenderingEngine.Engine
                 int floorEndY = floorEnd[x];
                 int ceilingStartY = ceilingStart[x];
 
-                (int distanceY, float fromToYdist) = CalculateDistance(wall, cameraRay, t1, d2y, d2x, flipX);
+                (float distanceY, float fromToYdist) = MathFormulas.CalculateDistance(wall, cameraRay, t1, d2y, d2x, flipX);
 
                 if (fromToYdist > buffer)
                 {

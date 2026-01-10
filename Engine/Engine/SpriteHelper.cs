@@ -375,10 +375,10 @@ namespace RenderingEngine.Engine
                 float d2x = rx2 - rx1;
                 float d2y = ry2 - ry1;
 
-                bool intersectsL = TryGetSegmentIntersectionZero2(-EngineConstants.CameraPlaneX, rx1, ry1, d2x, d2y,
+                bool intersectsL = MathFormulas.TryGetSegmentIntersectionZero2(-EngineConstants.CameraPlaneX, rx1, ry1, d2x, d2y,
                     out float xDistanceL, out float yDistanceL);
 
-                bool intersectsR = TryGetSegmentIntersectionZero2(EngineConstants.CameraPlaneX, rx2, ry2, -d2x, -d2y,
+                bool intersectsR = MathFormulas.TryGetSegmentIntersectionZero2(EngineConstants.CameraPlaneX, rx2, ry2, -d2x, -d2y,
                     out float xDistanceR, out float yDistanceR);
 
                 if (intersectsL && intersectsR)
@@ -491,10 +491,10 @@ namespace RenderingEngine.Engine
             float rayDirLeft = MathF.FusedMultiplyAdd(cameraWidthIncr, xLeft, -1f);
             float rayDirRight = MathF.FusedMultiplyAdd(cameraWidthIncr, xRight, -1f);
 
-            bool intersectsL = TryGetSegmentIntersectionZero2(rayDirLeft, rx1, ry1, d2x, d2y,
+            bool intersectsL = MathFormulas.TryGetSegmentIntersectionZero2(rayDirLeft, rx1, ry1, d2x, d2y,
                 out float xDistanceL, out float yDistanceL);
 
-            bool intersectsR = TryGetSegmentIntersectionZero2(rayDirRight, rx1, ry1, d2x, d2y,
+            bool intersectsR = MathFormulas.TryGetSegmentIntersectionZero2(rayDirRight, rx1, ry1, d2x, d2y,
                 out float xDistanceR, out float yDistanceR);
 
             if (intersectsL && intersectsR)
@@ -517,44 +517,6 @@ namespace RenderingEngine.Engine
                 rx2 = xDistanceR;
                 ry2 = yDistanceR;
             }
-
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool TryGetSegmentIntersectionZero2(
-            float rayDirX,
-            float rx1, float ry1,
-            float d2x, float d2y,
-            out float distanceX,
-            out float distanceY)
-        {
-            distanceY = default;
-            distanceX = default;
-
-            float denominator = rayDirX * d2y - d2x;
-
-            if (MathF.Abs(denominator) < float.Epsilon)
-            {
-                return false;
-            }
-
-            float u = (rx1 - ry1 * rayDirX) / denominator;
-
-            if (u < 0f || u > 1f)
-            {
-                return false;
-            }
-
-            float t = (rx1 * d2y - ry1 * d2x) / denominator;
-
-            if (t < 0f)
-            {
-                return false;
-            }
-
-            distanceY = t;
-            distanceX = t * rayDirX;
 
             return true;
         }

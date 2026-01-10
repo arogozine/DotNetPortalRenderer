@@ -1,6 +1,8 @@
-﻿namespace RenderingEngine.Models
+﻿using RenderingEngine.Models.Rendering;
+
+namespace RenderingEngine.Models
 {
-    internal sealed class RenderableSprite
+    internal sealed class RenderableSprite : IWallLike
     {
         public required Sprite Sprite { get; set; }
 

@@ -372,7 +372,7 @@ namespace RenderingEngine.Engine
 
             (int offset, int wallFromX, int wallToX) = RenderWindowHelper.GetWallRenderWindowX();
 
-            RenderablePlaneInfo yPlaneInfo = CalculateLeftWallYPlaneInfo(wall, offset);
+            RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo(wall, offset);
             float wallStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float wallEndY = yPlaneInfo.WallEndY;

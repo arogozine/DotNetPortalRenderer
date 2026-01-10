@@ -1,8 +1,9 @@
 ﻿using RenderingEngine.Engine;
+using RenderingEngine.Models.Rendering;
 
 namespace RenderingEngine.Models
 {
-    internal sealed class RenderableWall : IEquatable<RenderableWall?>
+    internal sealed class RenderableWall : IEquatable<RenderableWall?>, IWallLike
     {
         public int Id => Line.Id;
         public TextureInfo? UpperTexture => Line.UpperTexture;
