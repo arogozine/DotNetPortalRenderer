@@ -139,5 +139,51 @@ namespace RenderingEngine.Engine
             return new RenderablePlaneInfo(wallStartY, wallEndY, ceilDistIncr, floorDistIncr);
         }
 
+        internal static bool CalculatePlaneIntersectionsForWall(int width, float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
+        {
+            // Nothing To Render
+            if (float.ConvertToIntegerNative<int>(xLeft) == float.ConvertToIntegerNative<int>(xRight))
+            {
+                return false;
+            }
+
+            float cameraWidthIncr = 2.0f / width;
+
+            float d2x = rx2 - rx1;
+            float d2y = ry2 - ry1;
+
+            float rayDirLeft = MathF.FusedMultiplyAdd(cameraWidthIncr, xLeft, -1f);
+            float rayDirRight = MathF.FusedMultiplyAdd(cameraWidthIncr, xRight, -1f);
+
+            bool intersectsL = TryGetSegmentIntersectionZero2(rayDirLeft, rx1, ry1, d2x, d2y,
+                out float xDistanceL, out float yDistanceL);
+
+            bool intersectsR = TryGetSegmentIntersectionZero2(rayDirRight, rx2, ry2, -d2x, -d2y,
+                out float xDistanceR, out float yDistanceR);
+
+            if (intersectsL && intersectsR)
+            {
+                rx1 = xDistanceL;
+                ry1 = yDistanceL;
+
+                rx2 = xDistanceR;
+                ry2 = yDistanceR;
+
+                return true;
+            }
+            else if (intersectsL)
+            {
+                rx1 = xDistanceL;
+                ry1 = yDistanceL;
+            }
+            else if (intersectsR)
+            {
+                rx2 = xDistanceR;
+                ry2 = yDistanceR;
+            }
+
+            return true;
+        }
+
     }
 }

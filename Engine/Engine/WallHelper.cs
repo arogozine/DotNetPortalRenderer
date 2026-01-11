@@ -508,7 +508,7 @@ namespace RenderingEngine.Engine
                 wall.Flipped = !wall.Flipped;
             }
 
-            wall.IntersectsView |= CalculatePlaneIntersectionsForWall(xLeft, xRight, ref rx1, ref ry1, ref rx2, ref ry2);
+            wall.IntersectsView |= MathFormulas.CalculatePlaneIntersectionsForWall(width, xLeft, xRight, ref rx1, ref ry1, ref rx2, ref ry2);
 
             if (wall.IntersectsView)
             {
@@ -534,52 +534,6 @@ namespace RenderingEngine.Engine
                 xLeft = Math.Clamp(xLeft, 0f, width - 1f);
                 xRight = Math.Clamp(xRight, 0f, width - 1f);
             }
-        }
-
-        private bool CalculatePlaneIntersectionsForWall(float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
-        {
-            // Nothing To Render
-            if (float.ConvertToIntegerNative<int>(xLeft) == float.ConvertToIntegerNative<int>(xRight))
-            {
-                return false;
-            }
-
-            float cameraWidthIncr = 2.0f / width;
-
-            float d2x = rx2 - rx1;
-            float d2y = ry2 - ry1;
-
-            float rayDirLeft = MathF.FusedMultiplyAdd(cameraWidthIncr, xLeft, -1f);
-            float rayDirRight = MathF.FusedMultiplyAdd(cameraWidthIncr, xRight, -1f);
-
-            bool intersectsL = MathFormulas.TryGetSegmentIntersectionZero2(rayDirLeft, rx1, ry1, d2x, d2y,
-                out float xDistanceL, out float yDistanceL);
-
-            bool intersectsR = MathFormulas.TryGetSegmentIntersectionZero2(rayDirRight, rx2, ry2, -d2x, -d2y,
-                out float xDistanceR, out float yDistanceR);
-
-            if (intersectsL && intersectsR)
-            {
-                rx1 = xDistanceL;
-                ry1 = yDistanceL;
-
-                rx2 = xDistanceR;
-                ry2 = yDistanceR;
-
-                return true;
-            }
-            else if (intersectsL)
-            {
-                rx1 = xDistanceL;
-                ry1 = yDistanceL;
-            }
-            else if (intersectsR)
-            {
-                rx2 = xDistanceR;
-                ry2 = yDistanceR;
-            }
-
-            return true;
         }
 
         public static RenderableWall RotateWall(RenderableWall wall, float psin, float pcos, float px, float py)
