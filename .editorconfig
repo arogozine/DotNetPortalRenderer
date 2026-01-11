@@ -18,3 +18,14 @@ csharp_style_unused_value_expression_statement_preference = discard_variable:sug
 dotnet_diagnostic.IDE0058.severity = suggestion
 csharp_style_unused_value_assignment_preference = discard_variable:suggestion
 dotnet_diagnostic.IDE0059.severity = suggestion
+
+
+# Treat unused variable assignments as errors
+dotnet_diagnostic.IDE0059.severity = warning
+
+# Treat unused variable declarations as errors
+dotnet_diagnostic.IDE0005.severity = warning  # For unused usings
+dotnet_diagnostic.CS0168.severity = error   # Variable declared but never used
+dotnet_diagnostic.CS0219.severity = warning   # Variable assigned but never used
+
+dotnet_style_require_explicit_cast_for_numeric_conversions = true:warning

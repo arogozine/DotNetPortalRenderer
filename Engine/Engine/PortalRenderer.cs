@@ -272,7 +272,7 @@ namespace RenderingEngine.Engine
 
                     foreach (RenderableSprite s in sprites)
                     {
-                        DrawSprite(sectors, s, sectorSprites);
+                        DrawSprite(player, sectors, s, sectorSprites);
                     }
                 }
             }
