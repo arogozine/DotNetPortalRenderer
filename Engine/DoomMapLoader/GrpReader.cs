@@ -789,22 +789,19 @@ namespace RenderingEngine.DoomMapLoader
             for (int i = 0; i < rgb.Length; i++)
             {
                 // Calling "new BGRA" is extremely slow
-                unchecked
-                {
-                    const uint Alpha = (uint)byte.MaxValue << 24;
-                    uint b = color.B;
-                    uint g = (uint)color.G << 8;
-                    uint r = (uint)color.R << 16;
+                const uint Alpha = (uint)byte.MaxValue << 24;
+                uint b = color.B;
+                uint g = (uint)color.G << 8;
+                uint r = (uint)color.R << 16;
 
-                    // Only 6-bits are used for color information, so each byte will need to be
-                    // multiplied by 4
+                // Only 6-bits are used for color information, so each byte will need to be
+                // multiplied by 4
 
-                    b <<= 2;
-                    g <<= 2;
-                    r <<= 2;
+                b <<= 2;
+                g <<= 2;
+                r <<= 2;
 
-                    bgra[i] = b | g | r | Alpha;
-                }
+                bgra[i] = b | g | r | Alpha;
 
                 color = ref Unsafe.Add(ref color, 1);
             }
@@ -845,7 +842,7 @@ namespace RenderingEngine.DoomMapLoader
             return MathF.PI * (angle / 1024f);
         }
 
-        private unsafe static void DebugTexture(int width, int height, Span<BGRA> texture, string textureName)
+        private static unsafe void DebugTexture(int width, int height, Span<BGRA> texture, string textureName)
         {
             textureName = textureName.Replace("\\", "_");
 

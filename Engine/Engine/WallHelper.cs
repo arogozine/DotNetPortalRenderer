@@ -176,6 +176,8 @@ namespace RenderingEngine.Engine
                 }
             }
 
+            return;
+
             void AssignGroup(RenderableWall current, scoped ReadOnlySpan<RenderableWall> walls)
             {
                 for (int i = 0; i < walls.Length; i++)
@@ -410,13 +412,13 @@ namespace RenderingEngine.Engine
             float rx2 = wall.R2.X;
             float ry2 = wall.R2.Y;
 
-            float xLeft, xRight, yLeftCeil, yLeftFloor, yRightCeil, yRightFloor;
+            float yLeftCeil, yLeftFloor, yRightCeil, yRightFloor;
             float scale = width * -EngineConstants.HeightToWidthRatio;
             float halfWidth = width / 2f;
             float halfHeight = height / 2f;
 
-            xLeft = halfWidth - rx1 / ry1 * scale;
-            xRight = halfWidth - rx2 / ry2 * scale;
+            float xLeft = halfWidth - rx1 / ry1 * scale;
+            float xRight = halfWidth - rx2 / ry2 * scale;
 
             // order left to right
             if (xLeft > xRight)

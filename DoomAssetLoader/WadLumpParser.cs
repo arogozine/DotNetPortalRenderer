@@ -203,7 +203,7 @@ namespace DoomAssetLoader
             return UdmfParser.Parse(text);
         }
 
-        public static unsafe Span<Sidedef> ReadSideDefs([NotNull] WadLump? sideDefLump)
+        public static Span<Sidedef> ReadSideDefs([NotNull] WadLump? sideDefLump)
         {
             const int sideDefSize = 30;
 
@@ -263,7 +263,7 @@ namespace DoomAssetLoader
             return sideDefs;
         }
 
-        public unsafe static Span<Thing> ReadThings([NotNull] WadLump? thingsLump)
+        public static unsafe Span<Thing> ReadThings([NotNull] WadLump? thingsLump)
         {
             WadLumpCheck(thingsLump, LumpType.Things, divisor: sizeof(Thing));
 

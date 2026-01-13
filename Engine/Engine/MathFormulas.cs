@@ -168,8 +168,6 @@ namespace RenderingEngine.Engine
 
                 rx2 = xDistanceR;
                 ry2 = yDistanceR;
-
-                return true;
             }
             else if (intersectsL)
             {

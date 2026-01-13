@@ -131,6 +131,8 @@ namespace RenderingEngine.Engine
                 sprite.Distance = wallSprite ? CalculateDistanceForWallSprite(sprite) : CalculateDistance(sprite);
             }
 
+            return;
+
             static float CalculateDistance(RenderableSprite sprite)
             {
                 Texture texture = TextureCache.GetTexture(sprite.Texture);
@@ -328,7 +330,7 @@ namespace RenderingEngine.Engine
             }
 
             rotatedSprites = rotatedSprites[..j];
-
+            return;
 
             bool IntersectsView(RenderableSprite s)
             {
@@ -350,13 +352,13 @@ namespace RenderingEngine.Engine
             (float rx1, float ry1) = sprite.R1;
             (float rx2, float ry2) = sprite.R2;
 
-            float xLeft, xRight, yLeftCeil, yLeftFloor, yRightCeil, yRightFloor;
+            float yLeftCeil, yLeftFloor, yRightCeil, yRightFloor;
             float scale = width * -EngineConstants.HeightToWidthRatio;
             float halfWidth = width / 2f;
             float halfHeight = height / 2f;
 
-            xLeft = halfWidth - rx1 / ry1 * scale;
-            xRight = halfWidth - rx2 / ry2 * scale;
+            float xLeft = halfWidth - rx1 / ry1 * scale;
+            float xRight = halfWidth - rx2 / ry2 * scale;
 
             // order left to right
             if (xLeft > xRight)
@@ -466,6 +468,8 @@ namespace RenderingEngine.Engine
                 sprite.YRightCeil = float.ConvertToIntegerNative<int>(yRightCeil);
                 sprite.YRightFloor = float.ConvertToIntegerNative<int>(yRightFloor);
             }
+
+            return;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void Clamp(ref float xLeft, ref float xRight)

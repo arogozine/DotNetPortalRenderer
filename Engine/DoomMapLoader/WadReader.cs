@@ -120,7 +120,7 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
-        public static unsafe Dictionary<string, TextureInfo> ExtractSprites(WadFile wad)
+        public static Dictionary<string, TextureInfo> ExtractSprites(WadFile wad)
         {
             Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
 
@@ -193,7 +193,7 @@ namespace RenderingEngine.DoomMapLoader
             return textures;
         }
 
-        public static unsafe Dictionary<string, TextureInfo> ExtractTextures(WadFile wad)
+        public static Dictionary<string, TextureInfo> ExtractTextures(WadFile wad)
         {
             Dictionary<string, TextureInfo> textures = [];
 
@@ -210,7 +210,7 @@ namespace RenderingEngine.DoomMapLoader
             return textures;
         }
 
-        private static unsafe void ExtractTextures(WadFile wad, WadLump textureLump, Dictionary<string, TextureInfo> textures)
+        private static void ExtractTextures(WadFile wad, WadLump textureLump, Dictionary<string, TextureInfo> textures)
         {
             Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
             Span<string> patchNames = WadLumpParser.ReadPNames(wad[LumpType.PNames]);
@@ -279,7 +279,7 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
-        public static unsafe Dictionary<string, TextureInfo> ExtractFloorTextures(WadFile wad)
+        public static Dictionary<string, TextureInfo> ExtractFloorTextures(WadFile wad)
         {
             Dictionary<int, byte[]> colorMaps = WadLumpParser.ReadColorMap(wad[LumpType.ColorMap]);
             Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
@@ -1124,15 +1124,12 @@ namespace RenderingEngine.DoomMapLoader
             for (int i = 0; i < rgb.Length; i++)
             {
                 // Calling "new BGRA" is extremely slow
-                unchecked
-                {
-                    const uint Alpha = (uint)byte.MaxValue << 24;
-                    uint b = color.B;
-                    uint g = (uint)color.G << 8;
-                    uint r = (uint)color.R << 16;
+                const uint Alpha = (uint)byte.MaxValue << 24;
+                uint b = color.B;
+                uint g = (uint)color.G << 8;
+                uint r = (uint)color.R << 16;
 
-                    bgra[i] = b | g | r | Alpha;
-                }
+                bgra[i] = b | g | r | Alpha;
 
                 color = ref Unsafe.Add(ref color, 1);
             }

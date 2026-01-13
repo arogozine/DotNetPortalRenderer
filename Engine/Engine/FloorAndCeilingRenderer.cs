@@ -76,7 +76,6 @@ namespace RenderingEngine.Engine
             Vector<float> yCeilV = Vector.Create(yCeil);
 
             Unsafe.SkipInit(out Vector<float> incramentVector);
-            ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
 
             TextureInfo textureInfo = sector.CeilTexture;
             Texture ceilingTexture = TextureCache.GetTexture(textureInfo.Name);
@@ -164,7 +163,7 @@ namespace RenderingEngine.Engine
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
-            Vector<int> yCeliningV = Vector.Create<int>(yCeiling);
+            Vector<int> yCeliningV = Vector.Create(yCeiling);
 
             int textureWidth = ceilingTexture.Width;
             int textureHeight = ceilingTexture.Height;
@@ -687,9 +686,8 @@ namespace RenderingEngine.Engine
 
                 if (rotated)
                 {
-                    Vector<float> xMapPosSR, yMapPosSR;
-                    xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
-                    yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
+                    Vector<float> xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
+                    Vector<float> yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
 
                     xMapPos = xMapPosSR;
                     yMapPos = yMapPosSR;
@@ -744,9 +742,8 @@ namespace RenderingEngine.Engine
 
                 if (rotated)
                 {
-                    Vector<float> xMapPosSR, yMapPosSR;
-                    xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
-                    yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
+                    Vector<float> xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
+                    Vector<float> yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
 
                     xMapPos = xMapPosSR;
                     yMapPos = yMapPosSR;

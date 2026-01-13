@@ -95,6 +95,7 @@ namespace RenderingEngine.Engine
             }
 
             columnABufferIndex = EngineConstants.Unset;
+            return;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             int CalculateTextureXPosition(float cameraRay)
@@ -357,9 +358,8 @@ namespace RenderingEngine.Engine
 
                 if (rotated)
                 {
-                    Vector<float> xMapPosSR, yMapPosSR;
-                    xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
-                    yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
+                    Vector<float> xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
+                    Vector<float> yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
 
                     xMapPos = xMapPosSR;
                     yMapPos = yMapPosSR;
@@ -411,9 +411,8 @@ namespace RenderingEngine.Engine
 
                 if (rotated)
                 {
-                    Vector<float> xMapPosSR, yMapPosSR;
-                    xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
-                    yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
+                    Vector<float> xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
+                    Vector<float> yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
 
                     xMapPos = xMapPosSR;
                     yMapPos = yMapPosSR;

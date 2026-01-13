@@ -464,7 +464,7 @@ namespace RenderingEngine.Engine
             int ceilingStart = RenderWindowHelper.CeilingStart[x];
             int floorEnd = RenderWindowHelper.FloorEnd[x];
             int fromYClamped = Math.Clamp(wallStart, ceilingStart, floorEnd);
-            float vScreen = (float)fromYClamped * yTextureIncr;
+            float vScreen = fromYClamped * yTextureIncr;
 
             ref uint textureColumnPtr = ref Unsafe.Add(ref upperTextureUintPtr, texX);
 
@@ -765,7 +765,7 @@ namespace RenderingEngine.Engine
             }
 
             ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
-            uint scale = (uint)brightness;
+            uint scale = brightness;
 
             if (flipY)
             {

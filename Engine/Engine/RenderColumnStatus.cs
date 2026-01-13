@@ -1,7 +1,7 @@
 ﻿namespace RenderingEngine.Engine
 {
     [Flags]
-    public enum RenderColumnStatus : int
+    public enum RenderColumnStatus
     {
         Calculated = 1,
         CanRenderWall = 2,

@@ -28,7 +28,7 @@ namespace DoomAssetLoader.Map
     public enum ThingOptions : short
     {
         /// <summary>
-        /// Thing is present in skill levels 1 & 2.
+        /// Thing is present in skill levels 1 &amp; 2.
         /// </summary>
         Skill12 = 1,
 
@@ -38,7 +38,7 @@ namespace DoomAssetLoader.Map
         Skill3 = 2,
 
         /// <summary>
-        /// Thing is present in skill levels 4 & 5.
+        /// Thing is present in skill levels 4 &amp; 5.
         /// </summary>
         Skill45 = 4,
 

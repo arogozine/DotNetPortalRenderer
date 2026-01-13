@@ -36,6 +36,8 @@ namespace RenderingEngine
                     Debug.WriteLine(t.Exception);
                     Debugger.Break();
                 }, TaskContinuationOptions.OnlyOnFaulted);
+            
+            return;
 
             void TaskBody() 
             {
