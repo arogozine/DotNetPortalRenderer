@@ -1,5 +1,4 @@
 ﻿using BenchmarkDotNet.Attributes;
-using RenderingEngine.Engine;
 
 namespace Benchmark
 {

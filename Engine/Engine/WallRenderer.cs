@@ -5,31 +5,11 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        // pre-computed texture buffers
-        private int columnABufferIndex = -1;
-        private readonly uint[] columnA = new uint[512];
-        private int columnBBufferIndex = -1;
-        private readonly uint[] columnB = new uint[512];
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref T GetScreenPtr<T>()
             where T : struct
         {
             return ref Unsafe.As<BGRA, T>(ref MemoryMarshal.GetReference(this.buffer));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref uint GetBufferA(int size, out Span<uint> buffer)
-        {
-            buffer = columnA.AsSpan(..size);
-            return ref MemoryMarshal.GetReference(buffer);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref uint GetBufferB(int size, out Span<uint> buffer)
-        {
-            buffer = columnB.AsSpan(..size);
-            return ref MemoryMarshal.GetReference(buffer);
         }
 
         private void CalculateDistance(RenderablePortalWall renderableWall)
@@ -134,28 +114,26 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            TextureInfo upperTextureInfo = wall.UpperTexture!;
-            TextureInfo lowerTextureInfo = wall.LowerTexture!;
+            TextureInfo upperTexture = wall.UpperTexture!;
+            TextureInfo lowerTexture = wall.LowerTexture!;
 
-            (bool upperSkybox, _, bool upperFlipY) = GetFlags(upperTextureInfo);
-            (bool lowerSkybox, _, bool lowerFlipY) = GetFlags(lowerTextureInfo);
+            (bool upperSkybox, _, bool upperFlipY) = GetFlags(upperTexture);
+            (bool lowerSkybox, _, bool lowerFlipY) = GetFlags(lowerTexture);
 
-            Texture upperTexture = TextureCache.GetTexture(upperTextureInfo);
             ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperSkybox ? upperTexture.Data : upperTexture.Rotated);
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
 
-            Texture lowerTexture = TextureCache.GetTexture(lowerTextureInfo);
             ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            ref uint lowerTextureBufferPtr = ref GetBufferA(lowerTexture.Height, out Span<uint> lowerTextureBuffer);
-            ref uint upperTextureBufferPtr = ref GetBufferB(upperTexture.Height, out Span<uint> upperTextureBuffer);
+            using TempBuffer<uint> lowerBuffer = TempBuffer<uint>.GetBuffer(lowerTexture.Height);
+            using TempBuffer<uint> upperBuffer = TempBuffer<uint>.GetBuffer(upperTexture.Height);
 
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
-            int lowerTextureStart = lowerTextureInfo.YOffset << 16;
-            int upperTextureStart = upperTextureInfo.YOffset << 16;
+            int lowerTextureStart = lowerTexture.YOffset << 16;
+            int upperTextureStart = upperTexture.YOffset << 16;
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
@@ -195,7 +173,7 @@ namespace RenderingEngine.Engine
 
                         RenderSkyboxLine(player,
                             x,
-                            in upperTexture,
+                            upperTexture,
                             ref upperTextureUintPtr,
                             ref angleCachePtr,
                             ref screenIndexPtr,
@@ -212,7 +190,7 @@ namespace RenderingEngine.Engine
 
                         textureXPos = EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
-                        CalculateAndCacheWallColumn(upperTextureBuffer, ref columnABufferIndex, ref upperTexturePtr, textureYPos, lightLevel, upperFlipY);
+                        CalculateAndCacheWallColumn(upperBuffer, ref upperTexturePtr, textureYPos, lightLevel, upperFlipY);
 
                         RenderWallLine(
                             width,
@@ -223,7 +201,7 @@ namespace RenderingEngine.Engine
                             (uint)textureXPos,
                             (uint)textureXIncr,
                             ref screenPtr,
-                            ref upperTextureBufferPtr
+                            ref upperBuffer.Pointer
                         );
                     }
                 }
@@ -238,7 +216,7 @@ namespace RenderingEngine.Engine
 
                         RenderSkyboxLine(player,
                             x,
-                            in upperTexture,
+                            upperTexture,
                             ref upperTextureUintPtr,
                             ref angleCachePtr,
                             ref screenIndexPtr,
@@ -255,7 +233,7 @@ namespace RenderingEngine.Engine
 
                         textureXPos = EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
-                        CalculateAndCacheWallColumn(lowerTextureBuffer, ref columnBBufferIndex, ref lowerTexturePtr, textureYPos, lightLevel, lowerFlipY);
+                        CalculateAndCacheWallColumn(lowerBuffer, ref lowerTexturePtr, textureYPos, lightLevel, lowerFlipY);
 
                         RenderWallLine(
                             width,
@@ -266,7 +244,7 @@ namespace RenderingEngine.Engine
                             (uint)textureXPos,
                             (uint)textureXIncr,
                             ref screenPtr,
-                            ref lowerTextureBufferPtr
+                            ref lowerBuffer.Pointer
                         );
                     }
                 }
@@ -275,9 +253,6 @@ namespace RenderingEngine.Engine
                 floorEnd[x] = portalToYClamped;
                 status[x] ^= RenderColumnStatus.CanRenderWall;
             }
-
-            columnABufferIndex = EngineConstants.Unset;
-            columnBBufferIndex = EngineConstants.Unset;
 
             // if sector height matches top or bottom offset only top or bottom texture was drawn
             // no middle texture is possible, thus we can treat this as basic wall
@@ -310,12 +285,11 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            Texture wallTexture = TextureCache.GetTexture(textureInfo);
-            ref BGRA wallTexturePtr = ref MemoryMarshal.GetArrayDataReference(wallTexture.Rotated);
-            int textureWidth = wallTexture.Height;
+            ref BGRA wallTexturePtr = ref MemoryMarshal.GetArrayDataReference(textureInfo.Rotated);
+            int textureWidth = textureInfo.Height;
 
             int textureStart = textureInfo.YOffset << 16;
-            ref uint columnBufferPtr = ref GetBufferA(textureWidth, out Span<uint> columnBuffer);
+            using TempBuffer<uint> buffer = TempBuffer<uint>.GetBuffer(textureInfo.Height);
 
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
             ReadOnlySpan<int> textureXLocation = RenderWindowHelper.TopTextureXLocation;
@@ -346,7 +320,7 @@ namespace RenderingEngine.Engine
                 int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
                 int textureXPos = textureStart - textureXIncr * (wallStartY - clamptedFromY);
 
-                CalculateAndCacheWallColumn(columnBuffer, ref columnABufferIndex, ref wallTexturePtr, textureYPos, lightLevel, flipY);
+                CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, lightLevel, flipY);
 
                 textureXPos = EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
@@ -359,13 +333,11 @@ namespace RenderingEngine.Engine
                     (uint)textureXPos,
                     (uint)textureXIncr,
                     ref screenPtr,
-                    ref columnBufferPtr
+                    ref buffer.Pointer
                 );
 
                 status[x] = RenderColumnStatus.FinishedRendering;
             }
-
-            columnABufferIndex = EngineConstants.Unset;
 
             return true;
         }
@@ -384,7 +356,7 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            Texture wallTexture = TextureCache.GetTexture(wall.MiddleTexture);
+            TextureInfo wallTexture = wall.MiddleTexture!;
             ref uint wallTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetArrayDataReference(wallTexture.Data));
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
@@ -410,7 +382,7 @@ namespace RenderingEngine.Engine
 
                 RenderSkyboxLine(player,
                     x,
-                    in wallTexture,
+                    wallTexture,
                     ref wallTextureUintPtr,
                     ref angleCachePtr,
                     ref screenIndexPtr,
@@ -427,7 +399,7 @@ namespace RenderingEngine.Engine
 
         private void RenderSkyboxLine(PortalPlayerSnapshot player,
             int x,
-            in Texture upperTexture,
+            TextureInfo upperTexture,
             ref uint upperTextureUintPtr,
             ref float angleCachePtr,
             ref uint screenIndexPtr,
@@ -692,13 +664,12 @@ namespace RenderingEngine.Engine
         private static (int Width, int Height, float XScale, float ScaledTextureWidth) CalculateScale(
             Sector sector,
             RenderableWall wall,
-            TextureInfo textureInfo)
+            TextureInfo wallTexture)
         {
-            Texture wallTexture = TextureCache.GetTexture(textureInfo);
             int textureWidth = wallTexture.Height;
             int textureHeight = wallTexture.Width;
 
-            if (textureInfo.XScale is float xScale)
+            if (wallTexture.XScale is float xScale)
             {
                 float wallLength = wall.Length;
                 xScale = xScale / wallLength * textureHeight;
@@ -710,7 +681,7 @@ namespace RenderingEngine.Engine
 
             float scaledTextureWidth;
 
-            if (textureInfo.YScale is float yScale)
+            if (wallTexture.YScale is float yScale)
             {
                 yScale = (sector.Ceil - sector.Floor) * yScale;
                 scaledTextureWidth = ((textureWidth << 16) * yScale);
@@ -742,28 +713,28 @@ namespace RenderingEngine.Engine
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void CalculateAndCacheWallColumn(
-            scoped Span<uint> buffer,
-            ref int bufferIndex,
+            TempBuffer<uint> tempBuffer,
             scoped ref BGRA wallTexturePtr,
             int textureYPos, byte brightness, bool flipY)
         {
             // reuse the cached column
-            if (bufferIndex == textureYPos)
+            if (tempBuffer.Index == textureYPos)
             {
                 return;
             }
 
             const uint Alpha = (uint)byte.MaxValue << 24;
 
-            bufferIndex = textureYPos;
+            tempBuffer.Index = textureYPos;
 
             // avoid calculating if too far away (all black)
             if (brightness == byte.MinValue)
             {
-                buffer.Fill(Alpha);
+                tempBuffer.Span.Fill(Alpha);
                 return;
             }
 
+            Span<uint> buffer = tempBuffer.Span;
             ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
             uint scale = brightness;
 

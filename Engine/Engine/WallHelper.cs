@@ -49,8 +49,8 @@ namespace RenderingEngine.Engine
                 return result;
             }
 
-                result.Sort(wallComparer);
-                CullWallsBasedOnVisibility(ref result);
+            result.Sort(wallComparer);
+            CullWallsBasedOnVisibility(ref result);
 
             return result;
         }

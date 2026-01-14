@@ -75,11 +75,9 @@ namespace RenderingEngine.Engine
 
             Vector<float> yCeilV = Vector.Create(yCeil);
 
-            Unsafe.SkipInit(out Vector<float> incramentVector);
-
-            TextureInfo textureInfo = sector.CeilTexture;
-            Texture ceilingTexture = TextureCache.GetTexture(textureInfo.Name);
-            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
+            Vector<float> incramentVector;
+            TextureInfo ceilingTexture = sector.CeilTexture;
+            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(ceilingTexture);
 
             int textureWidth = ceilingTexture.Width;
             int textureHeightMask = doubleSize ? (ceilingTexture.Height << 1) - 1 : ceilingTexture.Height - 1;
@@ -88,8 +86,8 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
             Vector<int> textureWidthV = Vector.Create(textureWidth);
 
-            int xOffset = -textureInfo.XOffset;
-            int yOffset = textureInfo.YOffset;
+            int xOffset = -ceilingTexture.XOffset;
+            int yOffset = ceilingTexture.YOffset;
             Vector<int> xOffSetV = Vector.Create(xOffset);
             Vector<int> yOffSetV = Vector.Create(yOffset);
 
@@ -156,9 +154,8 @@ namespace RenderingEngine.Engine
 
             int widthDiv2 = width / 2;
 
-            TextureInfo textureInfo = sector.CeilTexture;
-            Texture ceilingTexture = TextureCache.GetTexture(textureInfo.Name);
-            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
+            TextureInfo ceilingTexture = sector.CeilTexture;
+            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(ceilingTexture);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
@@ -175,8 +172,8 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthV = Vector.Create(textureWidth);
             Vector<int> textureHeightV = Vector.Create(textureHeight);
 
-            int xOffset = -textureInfo.XOffset;
-            int yOffset = textureInfo.YOffset;
+            int xOffset = -ceilingTexture.XOffset;
+            int yOffset = ceilingTexture.YOffset;
             Vector<int> xOffSetV = Vector.Create(xOffset << 16);
             Vector<int> yOffSetV = Vector.Create(yOffset << 16);
 
@@ -268,7 +265,7 @@ namespace RenderingEngine.Engine
         public void RenderFloorVector(PortalPlayerSnapshot player, Sector sector)
         {
             bool rotated = sector.RotationFloor != 0f;
-            TextureInfo textureInfo = sector.FloorTexture;
+            TextureInfo floorTexture = sector.FloorTexture;
 
             if (!rotated || sector.RotationFloor == EngineConstants.NinetyDegrees)
             {
@@ -293,8 +290,7 @@ namespace RenderingEngine.Engine
             int halfHeightInt = height / 2;
             int widthDiv2 = width / 2;
 
-            Texture floorTexture = TextureCache.GetTexture(textureInfo.Name);
-            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
+            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(floorTexture);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
@@ -309,8 +305,8 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
             Vector<int> textureWidthV = Vector.Create(textureWidth);
 
-            int xOffset = -textureInfo.XOffset;
-            int yOffset = textureInfo.YOffset;
+            int xOffset = -floorTexture.XOffset;
+            int yOffset = floorTexture.YOffset;
             Vector<int> xOffSetV = Vector.Create(xOffset);
             Vector<int> yOffSetV = Vector.Create(yOffset);
 
@@ -376,9 +372,8 @@ namespace RenderingEngine.Engine
 
             int widthDiv2 = width / 2;
 
-            TextureInfo textureInfo = sector.FloorTexture;
-            Texture floorTexture = TextureCache.GetTexture(textureInfo.Name);
-            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(textureInfo);
+            TextureInfo floorTexture = sector.FloorTexture;
+            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(floorTexture);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
@@ -395,8 +390,8 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthV = Vector.Create(textureWidth);
             Vector<int> textureHeightV = Vector.Create(textureHeight);
 
-            int xOffset = -textureInfo.XOffset;
-            int yOffset = textureInfo.YOffset;
+            int xOffset = -floorTexture.XOffset;
+            int yOffset = floorTexture.YOffset;
             Vector<int> xOffSetV = Vector.Create(xOffset << 16);
             Vector<int> yOffSetV = Vector.Create(yOffset << 16);
 
