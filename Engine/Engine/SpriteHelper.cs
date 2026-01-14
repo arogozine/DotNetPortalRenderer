@@ -271,7 +271,16 @@ namespace RenderingEngine.Engine
             {
                 RenderableSprite sprite = rotatedSprites[i];
 
-                if (sprite.R1.Y <= 0f && sprite.R2.Y <= 0f)
+                (float x1, float y1) = sprite.R1;
+                (float x2, float y2) = sprite.R2;
+
+                if (y1 <= 0f && y2 <= 0f)
+                {
+                    continue;
+                }
+
+                // Render cone culling from https://theforceengine.github.io/2020/05/16/DFRender1.html
+                if ((x1 < -y1 && x2 < -y2) || (x1 > y1 && x2 > y2))
                 {
                     continue;
                 }

@@ -44,11 +44,13 @@ namespace RenderingEngine.Engine
 
             // we already sorted and culled bunches themselves, thus
             // if there is just one bunch, no need to sort and cull again
-            if (bunches.Length > 1)
+            if (bunches.Length <= 1)
             {
+                return result;
+            }
+
                 result.Sort(wallComparer);
                 CullWallsBasedOnVisibility(ref result);
-            }
 
             return result;
         }
@@ -302,7 +304,14 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
+                // Render cone culling from https://theforceengine.github.io/2020/05/16/DFRender1.html
                 if ((x1 < -y1 && x2 < -y2) || (x1 > y1 && x2 > y2))
+                {
+                    continue;
+                }
+
+                // Backface culling from https://theforceengine.github.io/2020/05/16/DFRender1.html
+                if (x2 * y1 < y2 * x1)
                 {
                     continue;
                 }

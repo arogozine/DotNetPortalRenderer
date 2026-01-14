@@ -389,8 +389,8 @@ namespace RenderingEngine.DoomMapLoader
                     var line = new Line
                     {
                         Id = lineInfo.LineDefId,
-                        PointA = ToVector(vertex1, linedef.Vertex1),
-                        PointB = ToVector(vertex2, linedef.Vertex1),
+                        PointA = lineInfo.Left ? ToVector(vertex1, linedef.Vertex1) : ToVector(vertex2, linedef.Vertex2),
+                        PointB = lineInfo.Left ? ToVector(vertex2, linedef.Vertex2) : ToVector(vertex1, linedef.Vertex1),
                         SectorTo = lineInfo.ParentSectorId,
                         UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, !linedef.Flags.HasFlag(LinedefFlags.DontPegTop)),
                         MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffsetMid, lineInfo.YOffsetMid, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom)),
@@ -899,8 +899,8 @@ namespace RenderingEngine.DoomMapLoader
                     var line = new Line
                     {
                         Id = lineInfo.LineDefId,
-                        PointA = ToVector(vertex1, linedef.V1),
-                        PointB = ToVector(vertex2, linedef.V2),
+                        PointA = lineInfo.Left ? ToVector(vertex2, linedef.V2) : ToVector(vertex1, linedef.V1),
+                        PointB = lineInfo.Left ? ToVector(vertex1, linedef.V1) : ToVector(vertex2, linedef.V2),
                         SectorTo = lineInfo.ParentSectorId,
                         UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, !lineInfo.LowerUnpegged),
                         MiddleTexture = middleTexture,
@@ -963,6 +963,7 @@ namespace RenderingEngine.DoomMapLoader
 
         internal sealed class LineInfo
         {
+            public required bool Left { get; init; }
             public required int? ParentSectorId { get; init; }
             public required int LineDefId { get; init; }
             public required string? UpperTexture { get; init; }
@@ -995,18 +996,18 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (leftDef?.Sector is int leftSector)
                 {
-                    AddSectorLineDef(leftSector, i, rightDef?.Sector, leftDef, linedef);
+                    AddSectorLineDef(leftSector, i, rightDef?.Sector, leftDef, linedef, true);
                 }
 
                 if (rightDef?.Sector is int rightSector)
                 {
-                    AddSectorLineDef(rightSector, i, leftDef?.Sector, rightDef, linedef);
+                    AddSectorLineDef(rightSector, i, leftDef?.Sector, rightDef, linedef, false);
                 }
             }
 
             return sectorToLineDefs;
 
-            void AddSectorLineDef(int sectorId, int linedefId, int? parentSectorId, UdmfSidedef sidedef, UdmfLinedef linedef)
+            void AddSectorLineDef(int sectorId, int linedefId, int? parentSectorId, UdmfSidedef sidedef, UdmfLinedef linedef, bool left)
             {
                 if (!sectorToLineDefs.TryGetValue(sectorId, out List<LineInfo>? sectorLineDefs))
                 {
@@ -1016,6 +1017,7 @@ namespace RenderingEngine.DoomMapLoader
 
                 sectorLineDefs.Add(new LineInfo
                 {
+                    Left = !left,
                     ParentSectorId = parentSectorId,
                     LineDefId = linedefId,
                     UpperTexture = sidedef.TextureTop,
@@ -1049,12 +1051,12 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (leftDef is Sidedef left)
                 {
-                    AddSectorLineDef(left.Sector, i, rightDef?.Sector, ref left, ref linedef);
+                    AddSectorLineDef(left.Sector, i, rightDef?.Sector, ref left, ref linedef, true);
                 }
 
                 if (rightDef is Sidedef right)
                 {
-                    AddSectorLineDef(right.Sector, i, leftDef?.Sector, ref right, ref linedef);
+                    AddSectorLineDef(right.Sector, i, leftDef?.Sector, ref right, ref linedef, false);
                 }
             }
 
@@ -1062,7 +1064,7 @@ namespace RenderingEngine.DoomMapLoader
 
             return sectorToLineDefs;
 
-            void AddSectorLineDef(int sectorId, int linedefId, int? parentSectorId, ref Sidedef sidedef, ref Linedef linedef)
+            void AddSectorLineDef(int sectorId, int linedefId, int? parentSectorId, ref Sidedef sidedef, ref Linedef linedef, bool left)
             {
                 if (!sectorToLineDefs.TryGetValue(sectorId, out List<LineInfo>? sectorLineDefs))
                 {
@@ -1072,6 +1074,7 @@ namespace RenderingEngine.DoomMapLoader
 
                 sectorLineDefs.Add(new LineInfo
                 {
+                    Left = !left,
                     ParentSectorId = parentSectorId,
                     LineDefId = linedefId,
                     UpperTexture = sidedef.UpperTextureNullable,
