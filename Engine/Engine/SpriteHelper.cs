@@ -216,22 +216,20 @@ namespace RenderingEngine.Engine
             for (int i = 0; i < sprites.Length; i++)
             {
                 RenderableSprite s = sprites[i];
-                TextureInfo textureInfo = s.Texture;
+                TextureInfo texture = s.Texture;
 
                 Point rotated = RotateVertex(s.Location);
 
                 Point r1, r2;
 
-                if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall))
+                if (texture.RenderingOptions.IsWall)
                 {
                     r1 = RotateVertex(s.PointA);
                     r2 = RotateVertex(s.PointB);
                 }
                 else
                 {
-                    Texture texture = TextureCache.GetTexture(textureInfo);
-
-                    float textureWidth = texture.Width * (textureInfo.XScale ?? 1f);
+                    float textureWidth = texture.Width * (texture.XScale ?? 1f);
 
                     float rx1 = rotated.X - textureWidth / 2;
                     float rx2 = rotated.X + textureWidth / 2;

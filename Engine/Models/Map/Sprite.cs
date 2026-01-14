@@ -7,6 +7,8 @@ internal sealed class Sprite
     public required Point Location { get; init; }
     public Point PointA { get; set; }
     public Point PointB { get; set; }
+    public Point PointC { get; set; }
+    public Point PointD { get; set; }
     public required float Angle { get; init; }
     public required float Height { get; init; }
     public required TextureInfo Texture { get; init; }

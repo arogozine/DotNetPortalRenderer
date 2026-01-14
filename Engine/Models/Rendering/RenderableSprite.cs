@@ -12,6 +12,8 @@ namespace RenderingEngine.Models
         public Point Location => Sprite.Location;
         public Point PointA => Sprite.PointA;
         public Point PointB => Sprite.PointB;
+        public Point PointC => Sprite.PointC;
+        public Point PointD => Sprite.PointD;
         public float Angle => Sprite.Angle;
         public float Height => Sprite.Height;
         public TextureInfo Texture => Sprite.Texture;

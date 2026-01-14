@@ -227,16 +227,14 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
-
         private static void PrecalculateWallSprites(scoped ReadOnlySpan<Sprite> sprites)
         {
             for (int i = 0; i < sprites.Length; i++)
             {
                 Sprite sprite = sprites[i];
-                Models.TextureInfo textureInfo = sprite.Texture;
-                Texture texture = TextureCache.GetTexture(textureInfo);
+                Models.TextureInfo texture = sprite.Texture;
 
-                float textureWidth = texture.Width * (textureInfo.XScale ?? 1f);
+                float textureWidth = texture.Width * (texture.XScale ?? 1f);
 
                 (float x, float y) = sprite.Location;
 
@@ -246,7 +244,7 @@ namespace RenderingEngine.DoomMapLoader
                 float ry1 = y;
                 float ry2 = y;
 
-                if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall))
+                if (texture.RenderingOptions.IsWall)
                 {
                     (float sin, float cos) = MathF.SinCos(sprite.Angle);
 
@@ -257,6 +255,22 @@ namespace RenderingEngine.DoomMapLoader
                     ry1 += y;
                     rx2 += x;
                     ry2 += y;
+                }
+                else if (texture.RenderingOptions.IsFloor)
+                {
+                    (float width, float height) = texture.GetScaledDemensions();
+
+                    float xFrom = x - width * 0.5f;
+                    float xTo = x + width * 0.5f;
+                    float yTo = y - height * 0.5f;
+                    float yFrom = y + height * 0.5f;
+
+                    sprite.PointA = (xFrom, yFrom);
+                    sprite.PointB = (xTo, yFrom);
+                    sprite.PointC = (xFrom, yTo);
+                    sprite.PointD = (xTo, yTo);
+
+                    continue;
                 }
 
                 sprite.Length = textureWidth;

@@ -74,9 +74,7 @@ namespace RenderingEngine.Engine
 
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
-
-            Unsafe.SkipInit(out Vector<float> incramentVector);
-            ref float incramentVectorPtr = ref Unsafe.As<Vector<float>, float>(ref incramentVector);
+            Vector<float> incramentVector;
 
             PopulateFloorTextureBounds(spriteWindowTop, spriteWindowBottom, topWall, rightWall, bottomWall, leftWall);
 
@@ -185,8 +183,8 @@ namespace RenderingEngine.Engine
                 Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos * yScaleV);
                 Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos * xScaleV);
 
-                _y1 = (_y1 + xOffSetV) & textureHeightMaskV;
-                _x1 = (_x1 + yOffSetV) & textureWidthMaskV;
+                _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
+                _x1 = (_x1 + xOffSetV) & textureWidthMaskV;
 
                 if (flipY)
                 {
@@ -238,8 +236,8 @@ namespace RenderingEngine.Engine
                 Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos * yScaleV);
                 Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos * xScaleV);
 
-                _y1 = (_y1 + xOffSetV) & textureHeightMaskV;
-                _x1 = (_x1 + yOffSetV) & textureWidthMaskV;
+                _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
+                _x1 = (_x1 + xOffSetV) & textureWidthMaskV;
 
                 if (flipY)
                 {
@@ -468,19 +466,20 @@ namespace RenderingEngine.Engine
         {
             TextureInfo texture = sprite.Texture;
 
-            (float spriteWidth, float spriteHeight) = texture.GetScaledDemensions();
+            (float xScale, float yScale) = texture.GetScale();
 
-            float halfWidth = spriteWidth * 0.5f;
-            float halfHeight = spriteHeight * 0.5f;
+            (float xFrom, float yTo) = sprite.PointA;
 
-            (float rx, float ry) = sprite.Location;
-            float xFrom = rx - halfWidth;
-            float yTo = ry - halfHeight;
+            xFrom *= (1f/xScale);
+            yTo *= (1f/yScale);
 
-            int xOffset = -float.ConvertToIntegerNative<int>(xFrom % spriteWidth);
-            int yOffset = float.ConvertToIntegerNative<int>(yTo % spriteHeight);
+            int xOffset = float.ConvertToIntegerNative<int>(xFrom % texture.Width);
+            int yOffset = float.ConvertToIntegerNative<int>(yTo % texture.Height);
 
-            return (xOffset, yOffset);
+            xOffset = EnsureOffsetIsPositive(texture.Width, xOffset);
+            yOffset = texture.Height - EnsureOffsetIsPositive(texture.Height, yOffset);
+
+            return (-xOffset, yOffset);
         }
 
         private static (Point TopLeft, Point TopRight, Point BottomLeft, Point BottomRight) GetSpriteBoundingBox(
@@ -492,24 +491,10 @@ namespace RenderingEngine.Engine
             float px = player.X;
             float py = player.Y;
 
-            float xScale = sprite.Texture.XScale ?? 1f;
-            float yScale = sprite.Texture.YScale ?? 1f;
-
-            TextureInfo textureInfo = sprite.Texture;
-            Texture texture = TextureCache.GetTexture(textureInfo.Name);
-            float halfWidth = texture.Height * 0.5f * xScale;
-            float halfHeight = texture.Width * 0.5f * yScale;
-
-            (float rx, float ry) = sprite.Location;
-            float xFrom = rx - halfWidth;
-            float xTo = rx + halfWidth;
-            float yFrom = ry - halfHeight;
-            float yTo = ry + halfHeight;
-
-            Point a = SharedHelpers.RotateVertex(xFrom, yTo, pSin, pCos, px, py);
-            Point b = SharedHelpers.RotateVertex(xTo, yTo, pSin, pCos, px, py);
-            Point c = SharedHelpers.RotateVertex(xFrom, yFrom, pSin, pCos, px, py);
-            Point d = SharedHelpers.RotateVertex(xTo, yFrom, pSin, pCos, px, py);
+            Point a = SharedHelpers.RotateVertex(sprite.PointA, pSin, pCos, px, py);
+            Point b = SharedHelpers.RotateVertex(sprite.PointB, pSin, pCos, px, py);
+            Point c = SharedHelpers.RotateVertex(sprite.PointC, pSin, pCos, px, py);
+            Point d = SharedHelpers.RotateVertex(sprite.PointD, pSin, pCos, px, py);
 
             return (a, b, c, d);
         }

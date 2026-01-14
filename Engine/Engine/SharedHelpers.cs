@@ -48,6 +48,23 @@ namespace RenderingEngine.Engine
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (float rx1, float ry1) RotateVertex(
+            Point p,
+            float sin, float cos,
+            float px, float py)
+        {
+            (float x, float y) = p;
+
+            x -= px;
+            y -= py;
+
+            float rx1 = x * sin - y * cos;
+            float ry1 = x * cos + y * sin;
+
+            return (rx1, ry1);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static (float rx1, float ry1) RotateVertex(
             float x, float y,
             float sin, float cos,
             float px, float py)
