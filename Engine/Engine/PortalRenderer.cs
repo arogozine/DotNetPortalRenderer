@@ -63,15 +63,15 @@ namespace RenderingEngine.Engine
 
             int width = this.PixelWidth;
             int halfHeightInt = this.PixelHeight / 2;
-            float oneOverHeight = 1f / PixelHeight;
-            const float div = 1 << 8;
+            float div = this.PixelHeight * (1 << 8);
 
             for (int x = 0; x < width; x++)
             {
                 int upper = halfHeightInt - x;
-                incrVectorCache[x] = float.ConvertToIntegerNative<int>(div / (upper * oneOverHeight));
+                incrVectorCache[x] = float.ConvertToIntegerNative<int>(div / upper);
             }
         }
+
         private readonly RenderableAreaAndZBuffer[] spriteRenderableAreaCache = new RenderableAreaAndZBuffer[EngineConstants.MaxRenderDepth];
 
         // avoid re-allocating lists to reduce memory pressure

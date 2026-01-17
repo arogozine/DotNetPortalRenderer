@@ -133,7 +133,7 @@ namespace RenderingEngine.Engine
 
             ReadOnlySpan<int> floorEndArray = renderableWall.FloorEnd;
             ReadOnlySpan<int> ceilingStartArray = renderableWall.CeilingStart;
-            ReadOnlySpan<float> distance = renderableWall.Distance;
+            ReadOnlySpan<float> distance = RenderWindowHelper.Distance; // renderableWall.Distance;
 
             using TempBuffer<uint> tempBuffer = TempBuffer<uint>.GetBuffer(textureWidth);
 

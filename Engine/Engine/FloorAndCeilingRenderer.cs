@@ -211,7 +211,7 @@ namespace RenderingEngine.Engine
                     Vector<int> wallStartV = Vector.LoadUnsafe(ref wallStart[x]);
                     Vector<int> floorEndV = Vector.LoadUnsafe(ref floorEnd[x]);
 
-                    Vector<int> floorToV = Vector.Min(Vector.Max(wallStartV, ceilingStartV), floorEndV);
+                    Vector<int> floorToV = Vector.ClampNative(wallStartV, ceilingStartV, floorEndV);
                     Vector<int> screenIndexV = ceilingStartV * widthV + sectorFromXV;
                     Vector<int> xMapPosMultiplierV = Vector.ConvertToInt32Native(Vector.ConvertToSingle((widthDiv2V - sectorFromXV) << 10) * xPosIncrV);
 
@@ -273,10 +273,10 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
-            ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
-            ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
+            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
+            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
+            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
+            Span<int> wallEnd = RenderWindowHelper.WallEnd;
 
             byte lightLevel = sector.LightLevel;
 
@@ -298,8 +298,8 @@ namespace RenderingEngine.Engine
             Vector<float> yfloorV = Vector.Create(yfloor);
 
             int textureWidth = floorTexture.Width;
-            int textureHeightMask = doubleSize ? (floorTexture.Height << 1) - 1 : floorTexture.Height - 1;
-            int textureWidthMask = doubleSize ? (floorTexture.Width << 1) - 1 : floorTexture.Width - 1;
+            int textureHeightMask = floorTexture.Height - 1;
+            int textureWidthMask = floorTexture.Width - 1;
 
             Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
@@ -323,6 +323,65 @@ namespace RenderingEngine.Engine
             Vector<float> incramentVector;
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
+            int length = (sectorToX - sectorFromX);
+            if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
+            {
+                const int canRenderFloorMask = (int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderFloor);
+
+                Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
+                Vector<int> widthV = Vector.Create(width);
+                Vector<int> widthDiv2V = Vector.Create(widthDiv2);
+                Vector<float> xPosIncrV = Vector.Create(xPosIncr);
+                Vector<int> canRenderFloorMaskV = Vector.Create(canRenderFloorMask);
+
+                Vector<int> sectorFromXV = Vector.CreateSequence(sectorFromX, 1);
+                Vector<int> incr = Vector.Create(Vector<int>.Count);
+
+                int rem = (sectorToX - sectorFromX) % Vector<float>.Count;
+                sectorToX -= rem;
+
+                for (int x = sectorFromX; x < sectorToX; sectorFromXV += incr)
+                {
+                    Vector<int> columnStatusV = Vector.LoadUnsafe(ref statusInt[x]) & canRenderFloorMaskV;
+
+                    if (columnStatusV == Vector<int>.Zero)
+                    {
+                        x += Vector<int>.Count;
+                        continue;
+                    }
+
+                    Vector<int> ceilingStartV = Vector.LoadUnsafe(ref ceilingStart[x]);
+                    Vector<int> floorEndV = Vector.LoadUnsafe(ref floorEnd[x]);
+                    Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
+                    Vector<int> floorFromV = Vector.ClampNative(wallEndV, ceilingStartV, floorEndV);
+                    Vector<int> screenIndexV = floorFromV * widthV + sectorFromXV;
+                    Vector<float> xMapPosMultiplierV = Vector.ConvertToSingle(widthDiv2V - sectorFromXV) * xPosIncrV;
+
+                    for (int i = 0; i < Vector<float>.Count; i++, x++)
+                    {
+                        if (columnStatusV[i] != canRenderFloorMask)
+                        {
+                            continue;
+                        }
+
+                        int floorFromY = floorFromV[i];
+                        int floorEndY = floorEndV[i];
+                        int screenIndex = screenIndexV[i];
+                        float xMapPosMultiplier = xMapPosMultiplierV[i];
+
+                        incramentVector = Vector.CreateSequence(halfHeightInt - floorFromY, -1f);
+                        incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
+
+                        RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
+                            x, lightLevel, yfloorV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                            textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, doubleSize);
+                    }
+                }
+
+                sectorFromX = sectorToX;
+                sectorToX += rem;
+            }
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
@@ -382,8 +441,8 @@ namespace RenderingEngine.Engine
 
             int textureWidth = floorTexture.Width;
             int textureHeight = floorTexture.Height;
-            int textureHeightMask = doubleSize ? (textureHeight << 1) - 1 : textureHeight - 1;
-            int textureWidthMask = doubleSize ? (textureWidth << 1) - 1 : textureWidth - 1;
+            int textureHeightMask = textureHeight - 1;
+            int textureWidthMask = textureWidth - 1;
 
             Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
@@ -399,7 +458,7 @@ namespace RenderingEngine.Engine
 
             int length = (sectorToX - sectorFromX);
 
-            if (Vector<float>.IsSupported && length > Vector<float>.Count)
+            if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
             {
                 const int canRenderFloorMask = (int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderFloor);
 
@@ -428,7 +487,7 @@ namespace RenderingEngine.Engine
                     Vector<int> ceilingStartV = Vector.LoadUnsafe(ref ceilingStart[x]);
                     Vector<int> floorEndV = Vector.LoadUnsafe(ref floorEnd[x]);
                     Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
-                    Vector<int> floorFromV = Vector.Min(Vector.Max(wallEndV, ceilingStartV), floorEndV);
+                    Vector<int> floorFromV = Vector.ClampNative(wallEndV, ceilingStartV, floorEndV);
                     Vector<int> screenIndexV = floorFromV * widthV + sectorFromXV;
                     Vector<int> xMapPosMultiplierV = Vector.ConvertToInt32Native(Vector.ConvertToSingle((widthDiv2V - sectorFromXV) << 10) * xPosIncrV);
 
@@ -526,6 +585,17 @@ namespace RenderingEngine.Engine
 
                 Vector<int> _y1, _x1;
 
+                if (doubleSize)
+                {
+                    xMapPos >>= 1;
+                    yMapPos >>= 1;
+                }
+
+                if (swapXy)
+                {
+                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
+                }
+
                 // for non-floating point rotation, we only support 90 degrees for now
                 if (rotated)
                 {
@@ -533,8 +603,8 @@ namespace RenderingEngine.Engine
                     yMapPos *= -1;
                 }
 
-                _y1 = ((xMapPos + xOffSetV) >> 16) & textureHeightMaskV;
-                _x1 = ((yMapPos + yOffSetV) >> 16) & textureWidthMaskV;
+                _y1 = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
+                _x1 = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
                 
                 if (flipY)
                 {
@@ -546,23 +616,7 @@ namespace RenderingEngine.Engine
                     _x1 = textureWidthMaskV - _x1;
                 }
 
-                if (doubleSize)
-                {
-                    _y1 >>= 1;
-                    _x1 >>= 1;
-                }
-
-                Vector<int> textureIndex;
-
-                if (swapXy)
-                {
-                    (_y1, _x1) = (_x1, _y1);
-                    textureIndex = _y1 * textureHeightV + _x1;
-                }
-                else
-                {
-                    textureIndex = _y1 * textureWidthV + _x1;
-                }
+                Vector<int> textureIndex = _y1 * textureWidthV + _x1;
 
                 ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
 
@@ -587,16 +641,28 @@ namespace RenderingEngine.Engine
                     yMapPosR,
                     pSinVI, pCosVI, pxVI, pyVI);
 
+                Vector<int> _y1, _x1;
+
+                if (doubleSize)
+                {
+                    xMapPos >>= 1;
+                    yMapPos >>= 1;
+                }
+
+                if (swapXy)
+                {
+                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
+                }
+
+                // for non-floating point rotation, we only support 90 degrees for now
                 if (rotated)
                 {
                     (xMapPos, yMapPos) = (yMapPos, xMapPos);
                     yMapPos *= -1;
                 }
 
-                Vector<int> _y1, _x1;
-
-                _y1 = ((xMapPos + xOffSetV) >> 16) & textureHeightMaskV;
-                _x1 = ((yMapPos + yOffSetV) >> 16) & textureWidthMaskV;
+                _y1 = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
+                _x1 = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
 
                 if (flipY)
                 {
@@ -608,23 +674,7 @@ namespace RenderingEngine.Engine
                     _x1 = textureWidthMaskV - _x1;
                 }
 
-                if (doubleSize)
-                {
-                    _y1 >>= 1;
-                    _x1 >>= 1;
-                }
-
-                Vector<int> textureIndex;
-
-                if (swapXy)
-                {
-                    (_y1, _x1) = (_x1, _y1);
-                    textureIndex = _y1 * textureHeightV + _x1;
-                }
-                else
-                {
-                    textureIndex = _y1 * textureWidthV + _x1;
-                }
+                Vector<int> textureIndex = _y1 * textureWidthV + _x1;
 
                 ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
 
@@ -688,11 +738,22 @@ namespace RenderingEngine.Engine
                     yMapPos = yMapPosSR;
                 }
 
+                if (doubleSize)
+                {
+                    xMapPos *= 0.5f;
+                    yMapPos *= 0.5f;
+                }
+
+                if (swapXy)
+                {
+                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
+                }
+
                 Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos);
                 Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos);
 
-                _y1 = (_y1 + xOffSetV) & textureHeightMaskV;
-                _x1 = (_x1 + yOffSetV) & textureWidthMaskV;         
+                _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
+                _x1 = (_x1 + xOffSetV) & textureWidthMaskV;         
 
                 if (flipY)
                 {
@@ -702,17 +763,6 @@ namespace RenderingEngine.Engine
                 if (flipX)
                 {
                     _x1 = textureWidthMaskV - _x1;
-                }
-
-                if (doubleSize)
-                {
-                    _y1 >>= 1;
-                    _x1 >>= 1;
-                }
-
-                if (swapXy)
-                {
-                    (_y1, _x1) = (_x1, _y1);
                 }
 
                 Vector<int> textureIndex = _y1 * textureWidthV + _x1;
@@ -744,11 +794,22 @@ namespace RenderingEngine.Engine
                     yMapPos = yMapPosSR;
                 }
 
+                if (doubleSize)
+                {
+                    xMapPos *= 0.5f;
+                    yMapPos *= 0.5f;
+                }
+
+                if (swapXy)
+                {
+                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
+                }
+
                 Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos);
                 Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos);
 
-                _y1 = (_y1 + xOffSetV) & textureHeightMaskV;
-                _x1 = (_x1 + yOffSetV) & textureWidthMaskV;
+                _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
+                _x1 = (_x1 + xOffSetV) & textureWidthMaskV;
 
                 if (flipY)
                 {
@@ -758,17 +819,6 @@ namespace RenderingEngine.Engine
                 if (flipX)
                 {
                     _x1 = textureWidthMaskV - _x1;
-                }
-
-                if (doubleSize)
-                {
-                    _y1 >>= 1;
-                    _x1 >>= 1;
-                }
-
-                if (swapXy)
-                {
-                    (_y1, _x1) = (_x1, _y1);
                 }
 
                 Vector<int> textureIndex = _y1 * textureWidthV + _x1;

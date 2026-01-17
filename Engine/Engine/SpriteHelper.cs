@@ -135,16 +135,14 @@ namespace RenderingEngine.Engine
 
             static float CalculateDistance(RenderableSprite sprite)
             {
-                Texture texture = TextureCache.GetTexture(sprite.Texture);
-
-                int textureHeight = texture.Width;
+                (float textureWidth, _) = sprite.Texture.GetScaledDemensions();
 
                 float ry = sprite.Rotated.Y;
 
-                float d2x = textureHeight;
+                float d2x = textureWidth;
                 float t1 = -ry * d2x;
 
-                return t1 / -textureHeight;
+                return t1 / -textureWidth;
             }
 
             float CalculateDistanceForWallSprite(RenderableSprite sprite)

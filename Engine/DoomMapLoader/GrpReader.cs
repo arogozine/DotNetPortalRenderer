@@ -234,13 +234,13 @@ namespace RenderingEngine.DoomMapLoader
                 Sprite sprite = sprites[i];
                 Models.TextureInfo texture = sprite.Texture;
 
-                float textureWidth = texture.Width * (texture.XScale ?? 1f);
+                (float width, float height) = texture.GetScaledDemensions();
 
                 (float x, float y) = sprite.Location;
 
                 // calculate the x, y for the wall on the screen for both points
-                float rx1 = x - textureWidth / 2f;
-                float rx2 = x + textureWidth / 2f;
+                float rx1 = x - width * 0.5f;
+                float rx2 = x + width * 0.5f;
                 float ry1 = y;
                 float ry2 = y;
 
@@ -258,8 +258,6 @@ namespace RenderingEngine.DoomMapLoader
                 }
                 else if (texture.RenderingOptions.IsFloor)
                 {
-                    (float width, float height) = texture.GetScaledDemensions();
-
                     float xFrom = x - width * 0.5f;
                     float xTo = x + width * 0.5f;
                     float yTo = y - height * 0.5f;
@@ -273,7 +271,7 @@ namespace RenderingEngine.DoomMapLoader
                     continue;
                 }
 
-                sprite.Length = textureWidth;
+                sprite.Length = width;
                 sprite.PointA = new Point(rx1, ry1);
                 sprite.PointB = new Point(rx2, ry2);
             }
@@ -329,20 +327,10 @@ namespace RenderingEngine.DoomMapLoader
                 bool ceilSkybox = sector.CeilingTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
                 bool floorSkybox = sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
 
-                if (ceilSkybox && floorSkybox)
+                if (ceilSkybox || floorSkybox)
                 {
                     foreach (Line line in sector.Walls)
                     {
-                        if (line.UpperTexture!.Name == sector.CeilingTexture.Name)
-                        {
-                            line.UpperTexture!.RenderingOptions |= TextureRenderingOptions.Skybox;
-                        }
-
-                        if (line.LowerTexture!.Name == sector.FloorTexture.Name)
-                        {
-                            line.LowerTexture!.RenderingOptions |= TextureRenderingOptions.Skybox;
-                        }
-
                         if (line.SectorTo is int sectorTo && sectorTo != -1)
                         {
                             var childSector = sectors[sectorTo];
@@ -350,13 +338,13 @@ namespace RenderingEngine.DoomMapLoader
                             bool ceilSkyboxChild = childSector.CeilingTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
                             bool floorSkyboxChild = childSector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
 
-                            if (ceilSkyboxChild)
+                            if (ceilSkybox && ceilSkyboxChild)
                             {
                                 line.UpperTexture.Name = sector.CeilingTexture.Name;
                                 line.UpperTexture!.RenderingOptions |= TextureRenderingOptions.Skybox;
                             }
 
-                            if (floorSkyboxChild)
+                            if (floorSkybox && floorSkyboxChild)
                             {
                                 line.LowerTexture.Name = sector.FloorTexture.Name;
                                 line.LowerTexture!.RenderingOptions |= TextureRenderingOptions.Skybox;
@@ -431,8 +419,8 @@ namespace RenderingEngine.DoomMapLoader
                         Texture lowerTexture = TextureCache.GetTexture(lowerTextureInfo);
                         Texture upperTexture = TextureCache.GetTexture(upperTextureInfo);
 
-                        (float upperXScale, float upperYScale) = DetermineScale(upperTextureInfo, in upperTexture);
-                        (float lowerXScale, float lowerYScale) = DetermineScale(lowerTextureInfo, in lowerTexture);
+                        (float upperXScale, float upperYScale) = DetermineScale(upperTextureInfo, upperTexture);
+                        (float lowerXScale, float lowerYScale) = DetermineScale(lowerTextureInfo, lowerTexture);
 
                         upperTextureInfo.YScale = upperYScale;
                         upperTextureInfo.XScale = upperXScale;
@@ -463,8 +451,7 @@ namespace RenderingEngine.DoomMapLoader
 
                         if (line.MiddleTexture is Models.TextureInfo middleTextureInfo)
                         {
-                            Texture middleTexture = TextureCache.GetTexture(middleTextureInfo);
-                            (float middleXScale, float middleYScale) = DetermineScale(middleTextureInfo, in middleTexture);
+                            (float middleXScale, float middleYScale) = DetermineScale(middleTextureInfo);
 
                             middleTextureInfo.YScale = middleYScale;
                             middleTextureInfo.XScale = middleXScale;
@@ -472,8 +459,7 @@ namespace RenderingEngine.DoomMapLoader
                     }
                     else
                     {
-                        Models.TextureInfo middleTextureInfo = line.MiddleTexture!;
-                        Texture middleTexture = TextureCache.GetTexture(middleTextureInfo);
+                        Models.TextureInfo middleTexture = line.MiddleTexture!;
                         float sectorHeight = sector.Ceiling - sector.Floor;
 
                         if (sectorHeight == 0f)
@@ -481,27 +467,27 @@ namespace RenderingEngine.DoomMapLoader
                             continue;
                         }
 
-                        (float xScale, float yScale) = DetermineScale(middleTextureInfo, in middleTexture);
-                        middleTextureInfo.YScale = yScale;
-                        middleTextureInfo.XScale = xScale;
+                        (float xScale, float yScale) = DetermineScale(middleTexture);
+                        middleTexture.YScale = yScale;
+                        middleTexture.XScale = xScale;
 
                         float amountOnSector = yScale * sectorHeight;
 
                         // if 1:1 scaling with sector height, do nothing
                         if (amountOnSector != 1f)
                         {
-                            if (middleTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
+                            if (middleTexture.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
                             {
                                 float remainder = amountOnSector - MathF.Floor(amountOnSector);
 
                                 if (remainder != 0f)
                                 {
                                     float potentialYOffset = middleTexture.Height - middleTexture.Height * remainder;
-                                    middleTextureInfo.YOffset += float.ConvertToIntegerNative<int>(potentialYOffset);
+                                    middleTexture.YOffset += float.ConvertToIntegerNative<int>(potentialYOffset);
                                 }
-                                else if (middleTextureInfo.YOffset != 0)
+                                else if (middleTexture.YOffset != 0)
                                 {
-                                    middleTextureInfo.YOffset = middleTexture.Height - middleTextureInfo.YOffset;
+                                    middleTexture.YOffset = middleTexture.Height - middleTexture.YOffset;
                                 }
                             }
                         }
@@ -513,8 +499,8 @@ namespace RenderingEngine.DoomMapLoader
             {
                 Texture texture = TextureCache.GetTexture(textureInfo);
 
-                (float x1, float y1) = firstWall.PointA.Point;
-                (float x2, float y2) = firstWall.PointB.Point;
+                (float x1, float y1) = firstWall.PointB.Point;
+                (float x2, float y2) = firstWall.PointA.Point;
 
                 float dy = y2 - y1;
                 float dx = x2 - x1;
@@ -530,12 +516,25 @@ namespace RenderingEngine.DoomMapLoader
                 if (angle < 0)
                     angle += MathF.PI * 2f;
 
-                return (xOffset, yOffset, angle);
+                return (xOffset, yOffset, angle + MathF.PI * 0.5f);
             }
         }
 
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static (float XScale, float YScale) DetermineScale(Models.TextureInfo textureInfo, in Texture wallTexture)
+        private static (float XScale, float YScale) DetermineScale(Models.TextureInfo textureInfo)
+        {
+            int xScale = (int)textureInfo.XScale!;
+            int yScale = (int)textureInfo.YScale!;
+
+            float x = ((float)(xScale << 3) / textureInfo.Width);
+            float y = ((yScale / 16f) / textureInfo.Height);
+
+            return (x, y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static (float XScale, float YScale) DetermineScale(Models.TextureInfo textureInfo, Texture wallTexture)
         {
             int xScale = (int)textureInfo.XScale!;
             int yScale = (int)textureInfo.YScale!;
@@ -654,12 +653,13 @@ namespace RenderingEngine.DoomMapLoader
                 // On sprite Z location
                 // "This is the actor's current z coordinate in the map. Note that unless the sprite's cstat has bit 8 (128) set, this position refers to the base of the sprite, not the center."
                 // https://wiki.eduke32.com/wiki/Z
-                int repeat = sprite.CStat.HasFlag(SpriteCStat.RealCentered) ? sprite.YRepeat >> 1 : sprite.YRepeat;
+                int yRepeat = sprite.CStat.HasFlag(SpriteCStat.RealCentered) ? sprite.YRepeat >> 1 : sprite.YRepeat;
+                int xRepeat = sprite.XRepeat;
 
                 float elevation = DetermineZLocation(sprite.Z - sector.FloorZ);
-                float textureHeight = (texture.Height * repeat) >> 5;
+                float textureHeight = (texture.Height * yRepeat) >> 5;
 
-                float xScale = ((texture.Width * repeat) >> 5) / (float)texture.Width;
+                float xScale = ((texture.Width * xRepeat) >> 5) / (float)texture.Width;
                 float yScale = textureHeight / texture.Height;
 
                 sprites[i] = new Sprite
