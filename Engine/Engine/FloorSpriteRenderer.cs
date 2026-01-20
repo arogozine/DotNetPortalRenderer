@@ -272,7 +272,7 @@ namespace RenderingEngine.Engine
         private static void PopulateFloorTextureBounds(
             Span<int> spriteWindowTop,
             Span<int> spriteWindowBottom,
-            params FloorSpriteWallInfo[] spriteBounds)
+            params ReadOnlySpan<FloorSpriteWallInfo> spriteBounds)
         {
             for (int s = 0; s < spriteBounds.Length; s++)
             {
@@ -298,7 +298,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private static (int from, int to) DetermineBounds(params FloorSpriteWallInfo[] spriteBounds)
+        private static (int from, int to) DetermineBounds(params ReadOnlySpan<FloorSpriteWallInfo> spriteBounds)
         {
             int from = int.MaxValue;
             int to = int.MinValue;
@@ -476,8 +476,8 @@ namespace RenderingEngine.Engine
             int xOffset = float.ConvertToIntegerNative<int>(xFrom % texture.Width);
             int yOffset = float.ConvertToIntegerNative<int>(yTo % texture.Height);
 
-            xOffset = EnsureOffsetIsPositive(texture.Width, xOffset);
-            yOffset = texture.Height - EnsureOffsetIsPositive(texture.Height, yOffset);
+            xOffset = SharedHelpers.EnsureOffsetIsPositive(texture.Width, xOffset);
+            yOffset = texture.Height - SharedHelpers.EnsureOffsetIsPositive(texture.Height, yOffset);
 
             return (-xOffset, yOffset);
         }

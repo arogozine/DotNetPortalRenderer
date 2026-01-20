@@ -36,12 +36,25 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int EnsureOffsetIsPositive(int length, int offset)
+        {
+            offset %= length;
+
+            if (offset < 0)
+            {
+                offset = length + offset;
+            }
+
+            return offset;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (float rx1, float ry1) RotateVertex(
             float x, float y,
             float sin, float cos)
         {
-            float rx1 = x * sin - y * cos;
-            float ry1 = x * cos + y * sin;
+            float rx1 = MathF.FusedMultiplyAdd(x, sin, - y * cos);
+            float ry1 = MathF.FusedMultiplyAdd(x, cos, + y * sin);
 
             return (rx1, ry1);
         }
@@ -57,8 +70,8 @@ namespace RenderingEngine.Engine
             x -= px;
             y -= py;
 
-            float rx1 = x * sin - y * cos;
-            float ry1 = x * cos + y * sin;
+            float rx1 = MathF.FusedMultiplyAdd(x, sin, - y * cos);
+            float ry1 = MathF.FusedMultiplyAdd(x, cos,  y * sin);
 
             return (rx1, ry1);
         }
@@ -72,8 +85,8 @@ namespace RenderingEngine.Engine
             x -= px;
             y -= py;
 
-            float rx1 = x * sin - y * cos;
-            float ry1 = x * cos + y * sin;
+            float rx1 = MathF.FusedMultiplyAdd(x, sin, -y * cos);
+            float ry1 = MathF.FusedMultiplyAdd(x, cos, +y * sin);
 
             return (rx1, ry1);
         }
@@ -96,10 +109,10 @@ namespace RenderingEngine.Engine
             Vector<float> psin, Vector<float> pcos,
             Vector<float> px, Vector<float> py)
         {
-            Vector<float> rx1 = y * pcos + x * psin;
-            Vector<float> ry1 = y * psin - x * pcos;
+            Vector<float> rx = px + Vector.FusedMultiplyAdd(y, pcos, x * psin);
+            Vector<float> ry = py + Vector.FusedMultiplyAdd(y, psin, x * (-pcos));
 
-            return (rx1 + px, ry1 + py);
+            return (rx, ry);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

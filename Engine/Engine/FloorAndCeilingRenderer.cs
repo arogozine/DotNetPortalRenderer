@@ -80,8 +80,8 @@ namespace RenderingEngine.Engine
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(ceilingTexture);
 
             int textureWidth = ceilingTexture.Width;
-            int textureHeightMask = doubleSize ? (ceilingTexture.Height << 1) - 1 : ceilingTexture.Height - 1;
-            int textureWidthMask = doubleSize ? (ceilingTexture.Width << 1) - 1 : ceilingTexture.Width - 1;
+            int textureHeightMask = ceilingTexture.Height - 1;
+            int textureWidthMask = ceilingTexture.Width - 1;
             Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
             Vector<int> textureWidthV = Vector.Create(textureWidth);
@@ -164,8 +164,8 @@ namespace RenderingEngine.Engine
 
             int textureWidth = ceilingTexture.Width;
             int textureHeight = ceilingTexture.Height;
-            int textureHeightMask = doubleSize ? (ceilingTexture.Height << 1) - 1 : ceilingTexture.Height - 1;
-            int textureWidthMask = doubleSize ? (ceilingTexture.Width << 1) - 1 : ceilingTexture.Width - 1;
+            int textureHeightMask = ceilingTexture.Height - 1;
+            int textureWidthMask = ceilingTexture.Width - 1;
 
             Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
@@ -731,17 +731,11 @@ namespace RenderingEngine.Engine
 
                 if (rotated)
                 {
-                    Vector<float> xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
-                    Vector<float> yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
+                    Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, - yMapPos * rSinV);
+                    Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
 
                     xMapPos = xMapPosSR;
                     yMapPos = yMapPosSR;
-                }
-
-                if (doubleSize)
-                {
-                    xMapPos *= 0.5f;
-                    yMapPos *= 0.5f;
                 }
 
                 if (swapXy)
@@ -751,6 +745,12 @@ namespace RenderingEngine.Engine
 
                 Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos);
                 Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos);
+
+                if (doubleSize)
+                {
+                    _y1 >>= 1;
+                    _x1 >>= 1;
+                }
 
                 _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
                 _x1 = (_x1 + xOffSetV) & textureWidthMaskV;         
@@ -794,12 +794,6 @@ namespace RenderingEngine.Engine
                     yMapPos = yMapPosSR;
                 }
 
-                if (doubleSize)
-                {
-                    xMapPos *= 0.5f;
-                    yMapPos *= 0.5f;
-                }
-
                 if (swapXy)
                 {
                     (xMapPos, yMapPos) = (yMapPos, xMapPos);
@@ -807,6 +801,12 @@ namespace RenderingEngine.Engine
 
                 Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos);
                 Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos);
+
+                if (doubleSize)
+                {
+                    _y1 >>= 1;
+                    _x1 >>= 1;
+                }
 
                 _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
                 _x1 = (_x1 + xOffSetV) & textureWidthMaskV;

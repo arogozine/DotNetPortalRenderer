@@ -202,7 +202,6 @@ namespace RenderingEngine.Engine
             int wallFromXOffset = renderableWall.Offset;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
-            float sectorHeight = sector.Ceil - sector.Floor;
 
             Texture texture = TextureCache.GetTexture(textureInfo);
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
@@ -217,25 +216,14 @@ namespace RenderingEngine.Engine
             float wallEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
+            (int sectorHeight, int ceilOffset, int floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
             Sector neighborSector = sectors[wall.Neighbor];
-            float floorOffset = neighborSector.Floor - sector.Floor;
-            float ceilOffset = neighborSector.Ceil - sector.Ceil;
 
             float oneOverSectorHeight = 1f / sectorHeight;
 
             bool renderFromTop = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromTop);
             byte lightLevel = sector.LightLevel;
             float alpha = Math.Clamp(textureInfo.Alpha, 0f, 1f);
-
-            if (floorOffset < 0f)
-            {
-                floorOffset = 0f;
-            }
-
-            if (ceilOffset > 0f)
-            {
-                ceilOffset = 0f;
-            }
 
             int xOffset = textureInfo.XOffset;
             int yOffset = textureInfo.YOffset > sectorHeight ? textureInfo.YOffset - 65536 : textureInfo.YOffset;
@@ -346,7 +334,6 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
             Sector sector = wall.Sector;
-            float sectorHeight = sector.Ceil - sector.Floor;
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
@@ -364,24 +351,11 @@ namespace RenderingEngine.Engine
             float wallEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
-            Sector neighborSector = sectors[wall.Neighbor];
-            float floorOffset = neighborSector.Floor - sector.Floor;
-            float ceilOffset = neighborSector.Ceil - sector.Ceil;
-
+            (int sectorHeight, int ceilOffset, int floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
             float oneOverSectorHeight = 1f / sectorHeight;
 
             byte lightLevel = sector.LightLevel;
             float alpha = Math.Clamp(textureInfo.Alpha, 0f, 1f);
-
-            if (floorOffset < 0f)
-            {
-                floorOffset = 0f;
-            }
-
-            if (ceilOffset > 0f)
-            {
-                ceilOffset = 0f;
-            }
 
             int xOffset = textureInfo.XOffset;
             int yOffset = textureInfo.YOffset;

@@ -49,35 +49,7 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors,
             RenderablePortalWall renderableWall)
         {
-            int sectorHeight = float.ConvertToIntegerNative<int>(sector.Ceil - sector.Floor);
-            RenderableWall wall = renderableWall.Wall;
-
-            Sector neighborSector = sectors[wall.Neighbor];
-            float oneOverSectorHeight = 1f / sectorHeight;
-            int floorOffset = float.ConvertToIntegerNative<int>(neighborSector.Floor - sector.Floor);
-            int ceilOffset = float.ConvertToIntegerNative<int>(neighborSector.Ceil - sector.Ceil);
-            byte lightLevel = sector.LightLevel;
-
-            if (floorOffset < 0)
-            {
-                floorOffset = 0;
-            }
-
-            if (ceilOffset > 0)
-            {
-                ceilOffset = 0;
-            }
-
-            // don't draw beyond the bounds
-            if (ceilOffset < -sectorHeight)
-            {
-                ceilOffset = -sectorHeight;
-            }
-
-            if (floorOffset > sectorHeight)
-            {
-                floorOffset = sectorHeight;
-            }
+            (int sectorHeight, int ceilOffset, int floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
 
             // ceiling and floor of the sector are the same
             // so no wall is drawn
@@ -86,6 +58,9 @@ namespace RenderingEngine.Engine
                 CalculateDistance(renderableWall);
                 return true;
             }
+
+            float oneOverSectorHeight = 1f / sectorHeight;
+            byte lightLevel = sector.LightLevel;
 
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
             ReadOnlySpan<int> bottomTextureYLocation = RenderWindowHelper.BottomTextureYLocation;
@@ -114,6 +89,7 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
+            RenderableWall wall = renderableWall.Wall;
             TextureInfo upperTexture = wall.UpperTexture!;
             TextureInfo lowerTexture = wall.LowerTexture!;
 
@@ -188,7 +164,7 @@ namespace RenderingEngine.Engine
                         int textureWidth = upperTexture.Height;
                         int textureXPos = upperTextureStart - textureXIncr * (wallStartY - fromYClamped);
 
-                        textureXPos = EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
+                        textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
                         CalculateAndCacheWallColumn(upperBuffer, ref upperTexturePtr, textureYPos, lightLevel, upperFlipY);
 
@@ -231,7 +207,7 @@ namespace RenderingEngine.Engine
 
                         int textureXPos = textureXIncr * (portalToYClamped - portalToY) + lowerTextureStart;
 
-                        textureXPos = EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
+                        textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
                         CalculateAndCacheWallColumn(lowerBuffer, ref lowerTexturePtr, textureYPos, lightLevel, lowerFlipY);
 
@@ -322,7 +298,7 @@ namespace RenderingEngine.Engine
 
                 CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, lightLevel, flipY);
 
-                textureXPos = EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
+                textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
                 RenderWallLine(
                     width,
@@ -563,7 +539,7 @@ namespace RenderingEngine.Engine
 
             int length = (wallToX - wallFromX);
 
-            if (Vector<float>.IsSupported && length > Vector<float>.Count)
+            if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
             {
                 const int canRenderWallMask = (int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall);
 
@@ -698,17 +674,36 @@ namespace RenderingEngine.Engine
 
         #region Calculation Helpers
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int EnsureOffsetIsPositive(int textureHeight, int offset)
+        private static (int SectorHeight, int CeilingOffset, int FloorOffset) CalculatePortalOffsets(ReadOnlySpan<Sector> sectors, RenderableWall wall)
         {
-            offset %= textureHeight;
+            Sector sector = wall.Sector;
+            Sector neighborSector = sectors[wall.Neighbor];
+            int sectorHeight = float.ConvertToIntegerNative<int>(sector.Ceil - sector.Floor);
+            int floorOffset = float.ConvertToIntegerNative<int>(neighborSector.Floor - sector.Floor);
+            int ceilOffset = float.ConvertToIntegerNative<int>(neighborSector.Ceil - sector.Ceil);
 
-            if (offset < 0)
+            if (floorOffset < 0)
             {
-                offset = textureHeight + offset;
+                floorOffset = 0;
             }
 
-            return offset;
+            if (ceilOffset > 0)
+            {
+                ceilOffset = 0;
+            }
+
+            // don't draw beyond the bounds
+            if (ceilOffset < -sectorHeight)
+            {
+                ceilOffset = -sectorHeight;
+            }
+
+            if (floorOffset > sectorHeight)
+            {
+                floorOffset = sectorHeight;
+            }
+
+            return (sectorHeight, ceilOffset, floorOffset);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

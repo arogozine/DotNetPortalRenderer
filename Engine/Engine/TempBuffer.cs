@@ -3,6 +3,10 @@ using System.Buffers;
 
 namespace RenderingEngine.Engine
 {
+    /// <summary>
+    /// Array Pool Disposable Wrapper
+    /// </summary>
+    /// <typeparam name="T">Type of Array to Request</typeparam>
     internal sealed class TempBuffer<T> : IDisposable
         where T : unmanaged
     {

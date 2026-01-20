@@ -151,7 +151,7 @@ namespace RenderingEngine.Engine
                 float ry1 = sprite.R1.Y;
                 float d2x = sprite.R2.X - rx1;
                 float d2y = sprite.R2.Y - ry1;
-                float t1 = rx1 * d2y - ry1 * d2x;
+                float t1 = MathF.FusedMultiplyAdd(rx1, d2y, - ry1 * d2x);
 
                 float cameraRayA = -EngineConstants.CameraPlaneX;
                 cameraRayA += cameraWidthIncr * sprite.XLeft;
@@ -159,8 +159,8 @@ namespace RenderingEngine.Engine
                 float cameraRayB = -EngineConstants.CameraPlaneX;
                 cameraRayB += cameraWidthIncr * sprite.XRight;
 
-                float fromToYDistA = t1 / (cameraRayA * d2y - d2x);
-                float fromToYDistB = t1 / (cameraRayB * d2y - d2x);
+                float fromToYDistA = t1 / MathF.FusedMultiplyAdd(cameraRayA, d2y, - d2x);
+                float fromToYDistB = t1 / MathF.FusedMultiplyAdd(cameraRayB, d2y, - d2x);
 
                 return MathF.Min(fromToYDistA, fromToYDistB);
             }

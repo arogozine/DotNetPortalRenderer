@@ -497,16 +497,14 @@ namespace RenderingEngine.DoomMapLoader
 
             static (int xOffset, int yOffset, float angle) CalculateAngle(Line firstWall, Models.TextureInfo textureInfo)
             {
-                Texture texture = TextureCache.GetTexture(textureInfo);
-
                 (float x1, float y1) = firstWall.PointB.Point;
                 (float x2, float y2) = firstWall.PointA.Point;
 
                 float dy = y2 - y1;
                 float dx = x2 - x1;
 
-                int xOffset = float.ConvertToIntegerNative<int>(x1) % texture.Width;
-                int yOffset = float.ConvertToIntegerNative<int>(y1) % texture.Height;
+                int xOffset = float.ConvertToIntegerNative<int>(x1) % textureInfo.Width;
+                int yOffset = float.ConvertToIntegerNative<int>(y1) % textureInfo.Height;
                 float angle = MathF.Atan(dx / dy);
 
                 if ((x2 - x1) < 0 || (y2 - y1) < 0)

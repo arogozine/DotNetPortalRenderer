@@ -45,7 +45,7 @@ namespace BuildAssetLoader
                 // sprites
                 ushort numSprites = BitConverter.ToUInt16(binary[offset..]);
                 offset += sizeof(ushort);
-                int spriteSizeInBytes = numSectors * sizeof(SpriteType);
+                int spriteSizeInBytes = numSprites * sizeof(SpriteType);
                 sprites = (offset, spriteSizeInBytes);
                 offset += spriteSizeInBytes;
 

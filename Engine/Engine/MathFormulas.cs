@@ -104,7 +104,7 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (Vector<float> X, Vector<float> Y) CalculateRayIntersection(Vector<float> cameraRay, Vector<float> t1, Vector<float> d2y, Vector<float> d2x)
         {
-            Vector<float> denominator = cameraRay * d2y - d2x;
+            Vector<float> denominator = Vector.FusedMultiplyAdd(cameraRay, d2y, - d2x);
             Vector<float> fromToYDist = t1 / denominator;
             Vector<float> fromToXDist = fromToYDist * cameraRay;
 
