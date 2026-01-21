@@ -29,7 +29,7 @@ namespace RenderingEngine.Engine
 
             PixelWidth = width;
             PixelHeight = height;
-            SpriteHelper = new SpriteHelper(width, height, EngineConstants.CameraPlaneX);
+            SpriteHelper = new SpriteHelper(width, height);
             WallHelper = new WallHelper(width, height);
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             angleCache = new float[width + overflowBuffer];

@@ -7,19 +7,23 @@ namespace RenderingEngine.Engine
     {
         private void DrawSprite(PortalPlayerSnapshot player, ReadOnlySpan<Sector> sectors, RenderableSprite sprite, RenderWindowSpriteSnapshot renderableWall)
         {
+            if (sprite is RenderableWallSprite renderableWallSprite)
+            {
+                DrawWallSprite(sectors, renderableWallSprite, renderableWall);
+            }
+            else if (sprite is RenderableFloorSprite renderableFloorSprite)
+            {
+                DrawFloorSprite(player, sectors, renderableFloorSprite, renderableWall);
+            }
+            else if (sprite is RenderableBasicSprite renderableSprite)
+            {
+                DrawSprite(sectors, renderableSprite, renderableWall);
+            }
+        }
+
+        private void DrawSprite(ReadOnlySpan<Sector> sectors, RenderableBasicSprite sprite, RenderWindowSpriteSnapshot renderableWall)
+        {
             TextureInfo texture = sprite.Texture;
-
-            if (texture.RenderingOptions.IsWall)
-            {
-                DrawWallSprite(sectors, sprite, renderableWall);
-                return;
-            }
-
-            if (texture.RenderingOptions.IsFloor)
-            {
-                DrawFloorSprite(player, sectors, sprite, renderableWall);
-                return;
-            }
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
@@ -48,7 +52,7 @@ namespace RenderingEngine.Engine
             Span<int> ceilingStartArray = renderableWall.CeilingStart;
             Span<float> distance = renderableWall.Distance;
 
-            float fromToYDist = sprite.Distance;
+            float fromToYDist = sprite.DistanceMin;
 
             float cameraRay = -1f * EngineConstants.CameraPlaneX;
             cameraRay += cameraWidthIncr * spriteFromX;
@@ -103,7 +107,8 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private void DrawWallSprite(ReadOnlySpan<Sector> sectors, RenderableSprite sprite, RenderWindowSpriteSnapshot renderableWall)
+
+        private void DrawWallSprite(ReadOnlySpan<Sector> sectors, RenderableWallSprite sprite, RenderWindowSpriteSnapshot renderableWall)
         {
             TextureInfo texture = sprite.Texture;
 

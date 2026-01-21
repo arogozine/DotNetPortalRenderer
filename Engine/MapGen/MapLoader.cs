@@ -44,11 +44,10 @@ namespace RenderingEngine.MapGen
             for (int i = 0, j = 1; j < walls.Count; i++, j++)
             {
                 Line wall = walls[i];
-                Line wallNext = walls[j];
 
                 for (; j < walls.Count; j++)
                 {
-                    wallNext = walls[j];
+                    Line wallNext = walls[j];
 
                     if (wall.PointB == wallNext.PointA)
                     {
@@ -136,7 +135,16 @@ namespace RenderingEngine.MapGen
 
         static RenderableSprite ParseSprite(Sprite sprite)
         {
-            return new RenderableSprite
+            if (sprite is WallSprite wallSprite)
+            {
+                return new RenderableWallSprite { Sprite = wallSprite };
+            }
+            else if (sprite is FloorSprite floorSprite)
+            {
+                return new RenderableFloorSprite { Sprite = floorSprite };
+            }
+
+            return new RenderableBasicSprite
             {
                 Sprite = sprite
             };

@@ -1,5 +1,4 @@
 ﻿using RenderingEngine.Models;
-using System.Buffers;
 using System.Numerics;
 
 namespace RenderingEngine.Engine
@@ -9,7 +8,7 @@ namespace RenderingEngine.Engine
         private void DrawFloorSprite(
             PortalPlayerSnapshot player,
             ReadOnlySpan<Sector> sectors,
-            RenderableSprite sprite,
+            RenderableFloorSprite sprite,
             RenderWindowSpriteSnapshot renderableWall)
         {
             int height = PixelHeight;
@@ -21,32 +20,19 @@ namespace RenderingEngine.Engine
 
             Sector sector = sectors[sprite.SectorId];
 
-            (Point topLeft, Point topRight, Point bottomLeft, Point bottomRight) = GetSpriteBoundingBox(player, sprite);
-
             (float xScale, float yScale) = sprite.Texture.GetScale();
 
             float yCeil = sector.Ceil - player.Z;
             float yFloor = sector.Floor - player.Z + sprite.Height;
             float yaw = player.Yaw;
 
-            FloorSpriteWallInfo topWall = CalculateWallPlane(topLeft, topRight, yCeil, yFloor, yaw);
-            FloorSpriteWallInfo rightWall = CalculateWallPlane(topRight, bottomRight, yCeil, yFloor, yaw);
-            FloorSpriteWallInfo bottomWall = CalculateWallPlane(bottomRight, bottomLeft, yCeil, yFloor, yaw);
-            FloorSpriteWallInfo leftWall = CalculateWallPlane(bottomLeft, topLeft, yCeil, yFloor, yaw);
+            using var spriteWindowTop = TempBuffer<int>.GetBuffer(width);
+            using var spriteWindowBottom = TempBuffer<int>.GetBuffer(width);
 
-            if (!topWall.IntersectsView && !rightWall.IntersectsView && !bottomWall.IntersectsView && !leftWall.IntersectsView)
-            {
-                return;
-            }
+            (int from, int to) = (sprite.XLeft, sprite.XRight);
 
-
-            int[] spriteWindowTop = ArrayPool<int>.Shared.Rent(width);
-            int[] spriteWindowBottom = ArrayPool<int>.Shared.Rent(width);
-
-            (int from, int to) = DetermineBounds(topWall, rightWall, bottomWall, leftWall);
-
-            spriteWindowTop.AsSpan(from..to).Fill(int.MaxValue);
-            spriteWindowBottom.AsSpan(from..to).Fill(int.MinValue);
+            spriteWindowTop.Span[from..to].Fill(int.MaxValue);
+            spriteWindowBottom.Span[from..to].Fill(int.MinValue);
 
             TextureInfo textureInfo = sprite.Texture;
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
@@ -76,7 +62,7 @@ namespace RenderingEngine.Engine
             Unsafe.SkipInit(out Vector<float> rCosV);
             Vector<float> incramentVector;
 
-            PopulateFloorTextureBounds(spriteWindowTop, spriteWindowBottom, topWall, rightWall, bottomWall, leftWall);
+            PopulateFloorTextureBounds(spriteWindowTop, spriteWindowBottom, sprite);
 
             (int a, int b) = DetermineOffset(sprite);
             xOffset += a;
@@ -102,8 +88,8 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int spriteFromY = spriteWindowTop[x];
-                int spriteToY = spriteWindowBottom[x];
+                int spriteFromY = spriteWindowTop.Span[x];
+                int spriteToY = spriteWindowBottom.Span[x];
 
                 int clamptedFromY = Math.Clamp(spriteFromY, ceilingStart, floorEnd);
                 int clamptedToY = Math.Clamp(spriteToY, ceilingStart, floorEnd);
@@ -124,9 +110,6 @@ namespace RenderingEngine.Engine
                     x, lightLevel, yFloorV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, xScaleV, yScaleV);
             }
-
-            ArrayPool<int>.Shared.Return(spriteWindowTop);
-            ArrayPool<int>.Shared.Return(spriteWindowBottom);
         }
 
         private void RenderFloorOrCeilingSpriteColumn(
@@ -272,12 +255,10 @@ namespace RenderingEngine.Engine
         private static void PopulateFloorTextureBounds(
             Span<int> spriteWindowTop,
             Span<int> spriteWindowBottom,
-            params ReadOnlySpan<FloorSpriteWallInfo> spriteBounds)
+            RenderableFloorSprite sprite)
         {
-            for (int s = 0; s < spriteBounds.Length; s++)
+            foreach (FloorSpriteWallInfo spriteBound in new[] { sprite.Wall1!, sprite.Wall2!, sprite.Wall3!, sprite.Wall4! })
             {
-                FloorSpriteWallInfo spriteBound = spriteBounds[s];
-
                 if (!spriteBound.IntersectsView)
                 {
                     continue;
@@ -295,170 +276,6 @@ namespace RenderingEngine.Engine
                     spriteWindowBottom[i] = Math.Max(yBottom, loc);
                     spriteWindowTop[i] = Math.Min(yTop, loc);
                 }
-            }
-        }
-
-        private static (int from, int to) DetermineBounds(params ReadOnlySpan<FloorSpriteWallInfo> spriteBounds)
-        {
-            int from = int.MaxValue;
-            int to = int.MinValue;
-
-            for (int i = 0; i < spriteBounds.Length; i++)
-            {
-                var spriteBound = spriteBounds[i];
-
-                if (spriteBound.IntersectsView)
-                {
-                    from = Math.Min(from, spriteBound.XLeft);
-                    to = Math.Max(to, spriteBound.XRight);
-                }
-            }
-
-            return (from, to);
-        }
-
-        private sealed class FloorSpriteWallInfo
-        {
-            public required bool IntersectsView { get; set; }
-            public int XLeft { get; set; }
-            public int XRight { get; set; }
-            public int YLeftFloor { get; set; }
-            public int YRightFloor { get; set; }
-        }
-
-        private FloorSpriteWallInfo CalculateWallPlane(
-            Point r1, Point r2,
-            float yCeil, float yFloor, float yaw)
-        {
-            int height = this.PixelHeight;
-            int width = this.PixelWidth;
-
-            // calculate the x, y for the wall on the screen for both points
-            (float rx1, float ry1) = r1;
-            (float rx2, float ry2) = r2;
-
-            float xLeft, xRight, yLeftFloor, yRightFloor;
-            float scale = width * -EngineConstants.HeightToWidthRatio;
-            float halfWidth = width / 2f;
-            float halfHeight = height / 2f;
-
-            xLeft = halfWidth - rx1 / ry1 * scale;
-            xRight = halfWidth - rx2 / ry2 * scale;
-
-            // order left to right
-            if (xLeft > xRight)
-            {
-                (xLeft, xRight) = (xRight, xLeft);
-
-                (rx1, rx2) = (rx2, rx1);
-                (ry1, ry2) = (ry2, ry1);
-
-                // (wall.R1, wall.R2) = (wall.R2, wall.R1);
-            }
-
-            var spriteWallInfo = new FloorSpriteWallInfo { IntersectsView = false };
-
-            // part of the wall is in the back
-            if (ry1 <= 0f || ry2 <= 0f)
-            {
-                float d2x = rx2 - rx1;
-                float d2y = ry2 - ry1;
-
-                bool intersectsL = MathFormulas.TryGetSegmentIntersectionZero2(-EngineConstants.CameraPlaneX, rx1, ry1, d2x, d2y,
-                    out float xDistanceL, out float yDistanceL);
-
-                bool intersectsR = MathFormulas.TryGetSegmentIntersectionZero2(EngineConstants.CameraPlaneX, rx2, ry2, -d2x, -d2y,
-                    out float xDistanceR, out float yDistanceR);
-
-                if (intersectsL && intersectsR)
-                {
-                    rx1 = xDistanceL;
-                    ry1 = yDistanceL;
-
-                    rx2 = xDistanceR;
-                    ry2 = yDistanceR;
-
-                    xLeft = 0;
-                    xRight = width - 1;
-
-                    // wall.IntersectsView = true;
-                    // wall.Flipped = true;
-                    spriteWallInfo.IntersectsView = true;
-                }
-                else if (intersectsL || intersectsR)
-                {
-                    float xDistance = intersectsL ? xDistanceL : xDistanceR;
-                    float yDistance = intersectsL ? yDistanceL : yDistanceR;
-
-                    if (ry1 <= 0f)
-                    {
-                        rx1 = xDistance;
-                        ry1 = yDistance;
-                        xLeft = halfWidth - rx1 / ry1 * scale;
-                    }
-                    else
-                    {
-                        rx2 = xDistance;
-                        ry2 = yDistance;
-                        xRight = halfWidth - rx2 / ry2 * scale;
-                    }
-
-                    // wall.Flipped = true;
-                }
-                else
-                {
-                    // despite one the wall going behind the player's view
-                    // player's view doesn't intersect at corners
-                    // we assume wall can't be drawn
-                    // wall.IntersectsView = false;
-                    return spriteWallInfo;
-                }
-            }
-
-            if (xLeft == xRight)
-            {
-                // wall.IntersectsView = false;
-                return spriteWallInfo;
-            }
-
-            Clamp(ref xLeft, ref xRight);
-
-            // order left to right
-            if (xLeft > xRight)
-            {
-                (xLeft, xRight) = (xRight, xLeft);
-
-                (rx1, rx2) = (rx2, rx1);
-                (ry1, ry2) = (ry2, ry1);
-
-                // (wall.R1, wall.R2) = (wall.R2, wall.R1);
-                // wall.Flipped = !wall.Flipped;
-            }
-
-            spriteWallInfo.IntersectsView |= MathFormulas.CalculatePlaneIntersectionsForWall(width, xLeft, xRight, ref rx1, ref ry1, ref rx2, ref ry2);
-
-            if (spriteWallInfo.IntersectsView)
-            {
-                yLeftFloor = halfHeight - (yFloor / ry1 - yaw) * height;
-                yRightFloor = halfHeight - (yFloor / ry2 - yaw) * height;
-
-                // wall.C1 = new(rx1, ry1);
-                // wall.C2 = new(rx2, ry2);
-
-                spriteWallInfo.XLeft = float.ConvertToIntegerNative<int>(xLeft);
-                spriteWallInfo.XRight = float.ConvertToIntegerNative<int>(xRight);
-                spriteWallInfo.YLeftFloor = float.ConvertToIntegerNative<int>(yLeftFloor);
-                spriteWallInfo.YRightFloor = float.ConvertToIntegerNative<int>(yRightFloor);
-
-            }
-
-            return spriteWallInfo;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            void Clamp(ref float xLeft, ref float xRight)
-            {
-                xLeft = Math.Clamp(xLeft, 0f, width - 1f);
-                xRight = Math.Clamp(xRight, 0f, width - 1f);
             }
         }
 
@@ -481,23 +298,5 @@ namespace RenderingEngine.Engine
 
             return (-xOffset, yOffset);
         }
-
-        private static (Point TopLeft, Point TopRight, Point BottomLeft, Point BottomRight) GetSpriteBoundingBox(
-            PortalPlayerSnapshot player,
-            RenderableSprite sprite)
-        {
-            float pSin = player.Sin;
-            float pCos = player.Cos;
-            float px = player.X;
-            float py = player.Y;
-
-            Point a = SharedHelpers.RotateVertex(sprite.PointA, pSin, pCos, px, py);
-            Point b = SharedHelpers.RotateVertex(sprite.PointB, pSin, pCos, px, py);
-            Point c = SharedHelpers.RotateVertex(sprite.PointC, pSin, pCos, px, py);
-            Point d = SharedHelpers.RotateVertex(sprite.PointD, pSin, pCos, px, py);
-
-            return (a, b, c, d);
-        }
-
     }
 }

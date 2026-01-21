@@ -26,6 +26,9 @@ namespace RenderingEngine.Engine
 
         public static implicit operator Span<T>(TempBuffer<T> buffer) => buffer.Span;
 
+        public static implicit operator T[](TempBuffer<T> buffer) => buffer._buffer;
+
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static TempBuffer<T> GetBuffer(int length) => new(length);
 

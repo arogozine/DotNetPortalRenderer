@@ -244,9 +244,9 @@ namespace RenderingEngine.DoomMapLoader
                 float ry1 = y;
                 float ry2 = y;
 
-                if (texture.RenderingOptions.IsWall)
+                if (sprite is WallSprite wallSprite)
                 {
-                    (float sin, float cos) = MathF.SinCos(sprite.Angle);
+                    (float sin, float cos) = MathF.SinCos(wallSprite.Angle);
 
                     (rx1, ry1) = SharedHelpers.RotateVertex(rx1, ry1, sin, cos, x, y);
                     (rx2, ry2) = SharedHelpers.RotateVertex(rx2, ry2, sin, cos, x, y);
@@ -256,17 +256,17 @@ namespace RenderingEngine.DoomMapLoader
                     rx2 += x;
                     ry2 += y;
                 }
-                else if (texture.RenderingOptions.IsFloor)
+                else if (sprite is FloorSprite floorSprite)
                 {
                     float xFrom = x - width * 0.5f;
                     float xTo = x + width * 0.5f;
                     float yTo = y - height * 0.5f;
                     float yFrom = y + height * 0.5f;
 
-                    sprite.PointA = (xFrom, yFrom);
-                    sprite.PointB = (xTo, yFrom);
-                    sprite.PointC = (xFrom, yTo);
-                    sprite.PointD = (xTo, yTo);
+                    floorSprite.PointA = (xFrom, yFrom);
+                    floorSprite.PointB = (xTo, yFrom);
+                    floorSprite.PointC = (xFrom, yTo);
+                    floorSprite.PointD = (xTo, yTo);
 
                     continue;
                 }
@@ -366,7 +366,9 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.AlignWithFirstWall))
                 {
-                    (int xOffset, int yOffset, float angle) = CalculateAngle(firstWall, sector.FloorTexture);
+                    (_, _, float angle) = CalculateAngle(firstWall, sector.FloorTexture);
+
+                    (int xOffset, int yOffset) = DetermineOffset(firstWall, sector.CeilingTexture);
 
                     sector.RotationFloor = angle;
                     sector.FloorTexture.XOffset += xOffset;
@@ -375,7 +377,9 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (sector.CeilingTexture.RenderingOptions.HasFlag(TextureRenderingOptions.AlignWithFirstWall))
                 {
-                    (int xOffset, int yOffset, float angle) = CalculateAngle(firstWall, sector.CeilingTexture);
+                    (_, _, float angle) = CalculateAngle(firstWall, sector.CeilingTexture);
+
+                    (int xOffset, int yOffset) = DetermineOffset(firstWall, sector.CeilingTexture);
 
                     sector.RotationCeiling = angle;
                     sector.CeilingTexture.XOffset += xOffset;
@@ -515,6 +519,24 @@ namespace RenderingEngine.DoomMapLoader
                     angle += MathF.PI * 2f;
 
                 return (xOffset, yOffset, angle + MathF.PI * 0.5f);
+            }
+
+            static (int xOffset, int yOffset) DetermineOffset(Line firstWall, Models.TextureInfo textureInfo)
+            {
+                (float xScale, float yScale) = textureInfo.GetScale();
+
+                (float xFrom, float yTo) = firstWall.PointB.Point;
+
+                xFrom *= (1f / xScale);
+                yTo *= (1f / yScale);
+
+                int xOffset = float.ConvertToIntegerNative<int>(xFrom % textureInfo.Width);
+                int yOffset = float.ConvertToIntegerNative<int>(yTo % textureInfo.Height);
+
+                xOffset = SharedHelpers.EnsureOffsetIsPositive(textureInfo.Width, xOffset);
+                yOffset = textureInfo.Height - SharedHelpers.EnsureOffsetIsPositive(textureInfo.Height, yOffset);
+
+                return (-xOffset, yOffset);
             }
         }
 
@@ -660,21 +682,60 @@ namespace RenderingEngine.DoomMapLoader
                 float xScale = ((texture.Width * xRepeat) >> 5) / (float)texture.Width;
                 float yScale = textureHeight / texture.Height;
 
-                sprites[i] = new Sprite
+                if (sprite.CStat.HasFlag(SpriteCStat.Wall))
                 {
-                    Id = i,
-                    Angle = angle,
-                    Location = new Point(DetermineXLocation(sprite.X), DetermineYLocation(sprite.Y)),
-                    Height = elevation,
-                    Texture = new Models.TextureInfo
+                    sprites[i] = new WallSprite
                     {
-                        Name = textureName,
-                        RenderingOptions = ToRenderingOptions(sprite.CStat),
-                        XScale = xScale,
-                        YScale = yScale
-                    },
-                    SectorId = sprite.SectorNumber
-                };
+                        Id = i,
+                        Angle = angle,
+                        Location = new Point(DetermineXLocation(sprite.X), DetermineYLocation(sprite.Y)),
+                        Height = elevation,
+                        Texture = new Models.TextureInfo
+                        {
+                            Name = textureName,
+                            RenderingOptions = ToRenderingOptions(sprite.CStat),
+                            XScale = xScale,
+                            YScale = yScale
+                        },
+                        SectorId = sprite.SectorNumber
+                    };
+                }
+                else if (sprite.CStat.HasFlag(SpriteCStat.Floor))
+                {
+                    sprites[i] = new FloorSprite
+                    {
+                        Id = i,
+                        Angle = angle,
+                        Location = new Point(DetermineXLocation(sprite.X), DetermineYLocation(sprite.Y)),
+                        Height = elevation,
+                        Texture = new Models.TextureInfo
+                        {
+                            Name = textureName,
+                            RenderingOptions = ToRenderingOptions(sprite.CStat),
+                            XScale = xScale,
+                            YScale = yScale
+                        },
+                        SectorId = sprite.SectorNumber
+                    };
+                }
+                else
+                {
+                    sprites[i] = new Sprite
+                    {
+                        Id = i,
+                        Angle = angle,
+                        Location = new Point(DetermineXLocation(sprite.X), DetermineYLocation(sprite.Y)),
+                        Height = elevation,
+                        Texture = new Models.TextureInfo
+                        {
+                            Name = textureName,
+                            RenderingOptions = ToRenderingOptions(sprite.CStat),
+                            XScale = xScale,
+                            YScale = yScale
+                        },
+                        SectorId = sprite.SectorNumber
+                    };
+                }
             }
 
             PrecalculateWallSprites(sprites);
@@ -693,16 +754,6 @@ namespace RenderingEngine.DoomMapLoader
                 if (stat.HasFlag(SpriteCStat.YFlipped))
                 {
                     options |= TextureRenderingOptions.FlipY;
-                }
-
-                if (stat.HasFlag(SpriteCStat.Wall))
-                {
-                    options |= TextureRenderingOptions.RenderAsWall;
-                }
-
-                if (stat.HasFlag(SpriteCStat.Floor))
-                {
-                    options |= TextureRenderingOptions.RenderAsFloor;
                 }
 
                 return options;

@@ -48,20 +48,16 @@ namespace RenderingEngine.Models
         FlipX = 32,
         FlipY = 64,
         SwapXY = 128,
-        AlignWithFirstWall = 256,
-        RenderAsWall = 512,
-        RenderAsFloor = 1024
+        AlignWithFirstWall = 256
     }
 
     internal static class TextureRenderingOptionsExtensions
     {
         extension(TextureRenderingOptions options)
         {
-            public bool IsWall => options.HasFlag(TextureRenderingOptions.RenderAsWall);
             public bool IsSkybox => options.HasFlag(TextureRenderingOptions.Skybox);
             public bool IsFlippedX => options.HasFlag(TextureRenderingOptions.FlipX);
             public bool IsFlippedY => options.HasFlag(TextureRenderingOptions.FlipY);
-            public bool IsFloor => options.HasFlag(TextureRenderingOptions.RenderAsFloor);
         }
     }
 }
