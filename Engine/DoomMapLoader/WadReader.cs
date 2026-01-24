@@ -155,18 +155,13 @@ namespace RenderingEngine.DoomMapLoader
                 BGRA[] texture = new BGRA[header.Width * header.Height];
                 ref BGRA textureRef = ref MemoryMarshal.GetArrayDataReference(texture);
 
-                int originX = 0;
-                int originY = 0;
-
                 for (int col = 0; col < header.Width; col++)
                 {
-                    int x = originX + col;
-
                     ReadOnlySpan<Post> column = CollectionsMarshal.AsSpan(header.Columns[col]);
 
                     foreach (Post post in column)
                     {
-                        int y = originY + post.TopDelta;
+                        int y = post.TopDelta;
 
                         for (int i = 0; i < post.Length; i++)
                         {
@@ -175,7 +170,7 @@ namespace RenderingEngine.DoomMapLoader
 
                             BGRA color = palette[paletteIndex];
 
-                            int index = x + (destY) * header.Width;
+                            int index = col + (destY) * header.Width;
 
                             Unsafe.Add(ref textureRef, index) = color;
                         }
@@ -367,8 +362,8 @@ namespace RenderingEngine.DoomMapLoader
                     continue;
                 }
 
-                float ceiling = sector.CeilingHeight;
-                float floor = sector.FloorHeight;
+                short ceiling = sector.CeilingHeight;
+                short floor = sector.FloorHeight;
 
                 MapSector mapSector = new()
                 {
@@ -438,11 +433,11 @@ namespace RenderingEngine.DoomMapLoader
 
                     if (line.SectorTo is int sectorTo)
                     {
-                        int sectorHeight = float.ConvertToIntegerNative<int>(sector.Ceiling - sector.Floor);
+                        int sectorHeight = sector.Ceiling - sector.Floor;
 
                         MapSector neighborSector = sectors[sectorTo];
-                        int floorOffset = float.ConvertToIntegerNative<int>(neighborSector.Floor - sector.Floor);
-                        int ceilOffset = float.ConvertToIntegerNative<int>(neighborSector.Ceiling - sector.Ceiling);
+                        int floorOffset = neighborSector.Floor - sector.Floor;
+                        int ceilOffset = neighborSector.Ceiling - sector.Ceiling;
 
                         if (floorOffset < 0)
                         {
@@ -546,7 +541,7 @@ namespace RenderingEngine.DoomMapLoader
             int offset = textureInfo.YOffset;
             TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
             int textureHeight = wallTexture.Height;
-            int sectorHeight = float.ConvertToIntegerNative<int>(sector.Ceiling - sector.Floor);
+            int sectorHeight = sector.Ceiling - sector.Floor;
 
             offset = EnsureOffsetIsPositive(textureHeight, offset);
 
@@ -616,7 +611,7 @@ namespace RenderingEngine.DoomMapLoader
                 float ry1 = y;
                 float ry2 = y;
 
-                if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.RenderAsWall))
+                if (sprite is WallSprite)
                 {
                     (float sin, float cos) = MathF.SinCos(sprite.Angle);
 
@@ -869,8 +864,8 @@ namespace RenderingEngine.DoomMapLoader
                     continue;
                 }
 
-                float ceiling = sector.HeightCeiling;
-                float floor = sector.HeightFloor;
+                int ceiling = sector.HeightCeiling;
+                int floor = sector.HeightFloor;
 
                 MapSector mapSector = new()
                 {

@@ -130,8 +130,8 @@ namespace RenderingEngine.DoomMapLoader
             {
                 ref SectorType sector = ref grpSectors[i];
 
-                float ceiling = DetermineZLocation(sector.CeilingZ);
-                float floor = DetermineZLocation(sector.FloorZ);
+                int ceiling = DetermineZLocation(sector.CeilingZ);
+                int floor = DetermineZLocation(sector.FloorZ);
 
                 string floorTexture = ToTile(sector.FloorPicNum);
                 string ceilingTexture = ToTile(sector.CeilingPicNum);
@@ -390,11 +390,11 @@ namespace RenderingEngine.DoomMapLoader
                 {
                     if (line.SectorTo is int sectorTo && sectorTo != -1)
                     {
-                        float sectorHeight = sector.Ceiling - sector.Floor;
+                        int sectorHeight = sector.Ceiling - sector.Floor;
 
                         MapSector neighborSector = sectors[sectorTo];
-                        float floorOffset = neighborSector.Floor - sector.Floor;
-                        float ceilOffset = neighborSector.Ceiling - sector.Ceiling;
+                        int floorOffset = neighborSector.Floor - sector.Floor;
+                        int ceilOffset = neighborSector.Ceiling - sector.Ceiling;
 
                         if (floorOffset < 0)
                         {
@@ -464,9 +464,9 @@ namespace RenderingEngine.DoomMapLoader
                     else
                     {
                         Models.TextureInfo middleTexture = line.MiddleTexture!;
-                        float sectorHeight = sector.Ceiling - sector.Floor;
+                        int sectorHeight = sector.Ceiling - sector.Floor;
 
-                        if (sectorHeight == 0f)
+                        if (sectorHeight == 0)
                         {
                             continue;
                         }
@@ -896,6 +896,13 @@ namespace RenderingEngine.DoomMapLoader
         private static float DetermineZLocation(float coordinate)
         {
             coordinate /= 128f;
+            // build engine coordinates are upside down
+            return coordinate * -1;
+        }
+
+        private static int DetermineZLocation(int coordinate)
+        {
+            coordinate /= 128;
             // build engine coordinates are upside down
             return coordinate * -1;
         }

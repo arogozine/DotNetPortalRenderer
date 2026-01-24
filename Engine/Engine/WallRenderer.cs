@@ -664,7 +664,7 @@ namespace RenderingEngine.Engine
             }
             else
             {
-                scaledTextureWidth = float.ConvertToIntegerNative<int>(sector.Ceil - sector.Floor) << 16;
+                scaledTextureWidth = (sector.Ceil - sector.Floor) << 16;
             }
 
             return (textureWidth, textureHeight, xScale, scaledTextureWidth);
@@ -678,9 +678,9 @@ namespace RenderingEngine.Engine
         {
             Sector sector = wall.Sector;
             Sector neighborSector = sectors[wall.Neighbor];
-            int sectorHeight = float.ConvertToIntegerNative<int>(sector.Ceil - sector.Floor);
-            int floorOffset = float.ConvertToIntegerNative<int>(neighborSector.Floor - sector.Floor);
-            int ceilOffset = float.ConvertToIntegerNative<int>(neighborSector.Ceil - sector.Ceil);
+            int sectorHeight = sector.Ceil - sector.Floor;
+            int floorOffset = neighborSector.Floor - sector.Floor;
+            int ceilOffset = neighborSector.Ceil - sector.Ceil;
 
             if (floorOffset < 0)
             {
