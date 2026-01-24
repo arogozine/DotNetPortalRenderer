@@ -516,7 +516,7 @@ namespace RenderingEngine.Engine
 
                 (sprite.R1, sprite.R2) = (sprite.R2, sprite.R1);
 
-                // sprite.Flipped = true;
+                sprite.Flipped = true;
             }
 
             // part of the wall is in the back

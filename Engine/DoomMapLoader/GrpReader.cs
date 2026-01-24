@@ -189,9 +189,9 @@ namespace RenderingEngine.DoomMapLoader
                         PointA = new LineVector(j, GetPoint(ref wall)),
                         PointB = new LineVector(wall.Point2, GetPoint(ref point2Wall)),
                         SectorTo = wall.NextSector,
-                        UpperTexture = GetTextureInfo(wall, false),
-                        MiddleTexture = GetTextureInfo(wall, true),
-                        LowerTexture = GetTextureInfo(nextWall, false)
+                        UpperTexture = GetTextureInfo(in wall, in wall, false),
+                        MiddleTexture = GetTextureInfo(in wall, in wall, true),
+                        LowerTexture = GetTextureInfo(in wall, in nextWall, false)
                     };
 
                     ij++;
@@ -278,7 +278,7 @@ namespace RenderingEngine.DoomMapLoader
         }
 
 
-        private static Models.TextureInfo? GetTextureInfo(in WallType wall, bool middleTexture)
+        private static Models.TextureInfo? GetTextureInfo(in WallType wall, in WallType textureWall, bool middleTexture)
         {
             short picNum;
 
@@ -289,19 +289,19 @@ namespace RenderingEngine.DoomMapLoader
                     return null;
                 }
 
-                picNum = wall.OverPicNum;
+                picNum = textureWall.OverPicNum;
             }
             else
             {
-                picNum = wall.PicNum;
+                picNum = textureWall.PicNum;
             }
 
             string textureName = ToTile(picNum);
             (int xOffset, int yOffset) = CalculateOffset(in wall, textureName);
 
-            TextureRenderingOptions renderingOptions = ToTextureRenderingOptions(wall.CStat);
+            TextureRenderingOptions renderingOptions = ToTextureRenderingOptions(textureWall.CStat);
 
-            float alpha = wall.CStat.HasFlag(WallCStat.Transluscence) ? 0.5f : 1.0f;
+            float alpha = textureWall.CStat.HasFlag(WallCStat.Transluscence) ? 0.5f : 1.0f;
 
             int scaleX = wall.XRepeat;
             int scaleY = wall.YRepeat;

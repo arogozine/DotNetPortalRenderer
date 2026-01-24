@@ -767,11 +767,9 @@ namespace RenderingEngine.Engine
 
                 Vector<int> textureIndex = _y1 * textureWidthV + _x1;
 
-                ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
-
                 for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
-                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
+                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, textureIndex[i]);
                     ShadeByPrecalc(in tex, ref screenTex, lightLevel);
                 }
 
@@ -823,11 +821,9 @@ namespace RenderingEngine.Engine
 
                 Vector<int> textureIndex = _y1 * textureWidthV + _x1;
 
-                ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
-
                 for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
-                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
+                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, textureIndex[i]);
                     ShadeByPrecalc(in tex, ref screenTex, lightLevel);
                 }
             }

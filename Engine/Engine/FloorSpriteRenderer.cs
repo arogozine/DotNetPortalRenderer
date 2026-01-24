@@ -34,8 +34,7 @@ namespace RenderingEngine.Engine
             spriteWindowTop.Span[from..to].Fill(int.MaxValue);
             spriteWindowBottom.Span[from..to].Fill(int.MinValue);
 
-            TextureInfo textureInfo = sprite.Texture;
-            Texture texture = TextureCache.GetTexture(textureInfo.Name);
+            TextureInfo texture = sprite.Texture;
 
             int textureWidth = texture.Width;
 
@@ -52,8 +51,8 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthMaskV = Vector.Create(texture.Width - 1);
             Vector<int> textureWidthV = Vector.Create(textureWidth);
 
-            int xOffset = -textureInfo.XOffset;
-            int yOffset = textureInfo.YOffset;
+            int xOffset = -texture.XOffset;
+            int yOffset = texture.YOffset;
 
             int halfHeightInt = height / 2;
 
@@ -63,6 +62,7 @@ namespace RenderingEngine.Engine
             Vector<float> incramentVector;
 
             PopulateFloorTextureBounds(spriteWindowTop, spriteWindowBottom, sprite);
+            LimitToDepth(yFloorV, sprite, spriteWindowTop, spriteWindowBottom, distance);
 
             (int a, int b) = DetermineOffset(sprite);
             xOffset += a;
@@ -249,6 +249,61 @@ namespace RenderingEngine.Engine
                         ShadeByPrecalc(in tex, ref screenTex, lightLevel);
                     }
                 }
+            }
+        }
+
+        private void LimitToDepth(
+            Vector<float> yCeilV,
+            RenderableFloorSprite sprite,
+            Span<int> spriteWindowTop,
+            Span<int> spriteWindowBottom,
+            ReadOnlySpan<float> depth)
+        {
+            int halfHeightInt = PixelHeight / 2;
+            bool next;
+
+            for (int x = sprite.XLeft; x < sprite.XRight; x++)
+            {
+                next = false;
+
+                int spriteFromY = spriteWindowTop[x];
+                int spriteToY = spriteWindowBottom[x];
+
+                if (spriteFromY >= spriteToY)
+                {
+                    continue;
+                }
+
+                float y = depth[x];
+
+                // calculate Y position
+                Vector<float> incramentVector = Vector.CreateSequence(halfHeightInt - spriteFromY, -1f);
+                incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
+                Vector<float> yMapPosR = yCeilV / incramentVector;
+
+                // compare Y position of pixel to depth
+                while (spriteFromY < spriteToY)
+                {
+                    for (int i = 0; i < Vector<float>.Count; i++)
+                    {
+                        if (yMapPosR[i] < y)
+                        {
+                            next = true;
+                            break;
+                        }
+
+                        spriteFromY++;
+                    }
+
+                    if (next)
+                    {
+                        break;
+                    }
+
+                    incramentVector -= ivIncrF;
+                }
+
+                spriteWindowTop[x] = spriteFromY;
             }
         }
 
