@@ -58,6 +58,8 @@ namespace RenderingEngine.Models
             public bool IsSkybox => options.HasFlag(TextureRenderingOptions.Skybox);
             public bool IsFlippedX => options.HasFlag(TextureRenderingOptions.FlipX);
             public bool IsFlippedY => options.HasFlag(TextureRenderingOptions.FlipY);
+            public bool IsSwappedXY => options.HasFlag(TextureRenderingOptions.SwapXY);
+            public bool IsAlignedWithWall => options.HasFlag(TextureRenderingOptions.AlignWithFirstWall);
         }
     }
 }

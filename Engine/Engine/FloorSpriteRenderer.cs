@@ -21,13 +21,12 @@ namespace RenderingEngine.Engine
             Sector sector = sectors[sprite.SectorId];
 
             (float xScale, float yScale) = sprite.Texture.GetScale();
+            (int from, int to) = (sprite.XLeft, sprite.XRight);
 
             float yFloor = sector.Floor - player.Z + sprite.Height;
 
             using var spriteWindowTop = TempBuffer<int>.GetBuffer(width);
             using var spriteWindowBottom = TempBuffer<int>.GetBuffer(width);
-
-            (int from, int to) = (sprite.XLeft, sprite.XRight);
 
             spriteWindowTop.Span[from..to].Fill(int.MaxValue);
             spriteWindowBottom.Span[from..to].Fill(int.MinValue);
@@ -35,10 +34,6 @@ namespace RenderingEngine.Engine
             TextureInfo texture = sprite.Texture;
 
             int textureWidth = texture.Width;
-
-            int widthDiv2 = width / 2;
-
-            float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
 
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Data);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
@@ -131,7 +126,7 @@ namespace RenderingEngine.Engine
             Vector<float> yScaleV
         )
         {
-            Span<float> incrVectorCache = this.incrVectorCache;
+            Span<float> incrVectorCache = this.cameraHeightToMapYPos;
             Vector<float> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
 
             int rem = (floorToY - floorFromY) % Vector<int>.Count;
@@ -255,7 +250,7 @@ namespace RenderingEngine.Engine
             Span<int> spriteWindowBottom,
             ReadOnlySpan<float> depth)
         {
-            Span<float> incrVectorCache = this.incrVectorCache;
+            Span<float> incrVectorCache = this.cameraHeightToMapYPos;
 
             bool next;
 

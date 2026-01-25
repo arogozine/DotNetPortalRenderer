@@ -11,9 +11,6 @@ namespace RenderingEngine.Engine
         private Vector<float> pyV = default;
         private Vector<float> pSinV = default;
         private Vector<float> pCosV = default;
-        private Vector<float> ivIncrF = default;
-        private Vector<float> yawV = default;
-        private Vector<float> oneOverHeightV = default;
 
         [SkipLocalsInit]
         public void InitializeSharedVectors(PortalPlayerSnapshot player)
@@ -22,17 +19,11 @@ namespace RenderingEngine.Engine
             float py = player.Y;
             float pSin = player.Sin;
             float pCos = player.Cos;
-            float yaw = player.Yaw;
-
-            float oneOverHeight = 1f / PixelHeight;
 
             pxV = Vector.Create(px);
             pyV = Vector.Create(py);
             pSinV = Vector.Create(pSin);
             pCosV = Vector.Create(pCos);
-            ivIncrF = new(oneOverHeight * Vector<float>.Count);
-            yawV = Vector.Create(yaw);
-            oneOverHeightV = Vector.Create(oneOverHeight);
         }
 
         #endregion
@@ -42,7 +33,7 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             Sector sector)
         {
-            bool rotated = sector.RotationCeiling != 0f;
+            bool rotated = sector.RotationCeiling is not null;
 
             byte lightLevel = sector.LightLevel;
 
@@ -63,19 +54,26 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
             Vector<int> textureWidthV = Vector.Create(textureWidth);
 
-            int xOffset = -ceilingTexture.XOffset;
+            int xOffset = ceilingTexture.XOffset;
             int yOffset = ceilingTexture.YOffset;
             Vector<int> xOffSetV = Vector.Create(xOffset);
             Vector<int> yOffSetV = Vector.Create(yOffset);
 
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
+            Unsafe.SkipInit(out Vector<float> alignXV);
+            Unsafe.SkipInit(out Vector<float> alignYV);
 
             if (rotated)
             {
-                (float rSin, float rCos) = MathF.SinCos(sector.RotationFloor + MathF.PI);
+                (float rSin, float rCos) = MathF.SinCos(sector.RotationCeiling!.Value);
                 rSinV = Vector.Create(rSin);
                 rCosV = Vector.Create(rCos);
+
+                (float aX, float aY) = sector.Walls[0].PointA;
+
+                alignXV = Vector.Create(aX);
+                alignYV = Vector.Create(aY);
             }
 
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
@@ -103,14 +101,14 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, ceilingStart, width,
                     x, lightLevel, yCeilV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, doubleSize);
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, doubleSize);
             }
         }
 
         [SkipLocalsInit]
         public void RenderFloorVector(PortalPlayerSnapshot player, Sector sector)
         {
-            bool rotated = sector.RotationFloor != 0f;
+            bool rotated = sector.RotationFloor is not null;
             TextureInfo floorTexture = sector.FloorTexture;
 
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
@@ -139,19 +137,28 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
             Vector<int> textureWidthV = Vector.Create(textureWidth);
 
-            int xOffset = -floorTexture.XOffset;
-            int yOffset = floorTexture.YOffset;
+            int xOffset = floorTexture.XOffset;
+            int yOffset = floorTexture.YOffset;// flipY ? floorTexture.YOffset : -floorTexture.YOffset;
+
             Vector<int> xOffSetV = Vector.Create(xOffset);
             Vector<int> yOffSetV = Vector.Create(yOffset);
 
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
 
+            Unsafe.SkipInit(out Vector<float> alignWallXV);
+            Unsafe.SkipInit(out Vector<float> alignWallYV);
+
             if (rotated)
             {
-                (float rSin, float rCos) = MathF.SinCos(sector.RotationFloor + MathF.PI);
+                (float rSin, float rCos) = MathF.SinCos(sector.RotationFloor!.Value);
                 rSinV = Vector.Create(rSin);
                 rCosV = Vector.Create(rCos);
+
+                (float aX, float aY) = sector.Walls[0].PointA;
+
+                alignWallXV = Vector.Create(aX);
+                alignWallYV = Vector.Create(aY);
             }
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
@@ -202,7 +209,7 @@ namespace RenderingEngine.Engine
 
                         RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
                             x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                            textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, doubleSize);
+                            textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize);
                     }
                 }
 
@@ -230,7 +237,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
                     x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, doubleSize);
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize);
             }
         }
 
@@ -243,7 +250,7 @@ namespace RenderingEngine.Engine
             int width,
             int x,
             uint lightLevel,
-            Vector<float> yCeilV,
+            Vector<float> cameraPosition,
             float xMapPosMultiplier,
             Vector<int> yOffSetV,
             Vector<int> xOffSetV,
@@ -253,13 +260,15 @@ namespace RenderingEngine.Engine
             bool rotated,
             Vector<float> rSinV,
             Vector<float> rCosV,
+            Vector<float> alignXV,
+            Vector<float> alignXY,
             bool flipY,
             bool flipX,
             bool swapXy,
             bool doubleSize
         )
         {
-            Span<float> incrVectorCache = this.incrVectorCache;
+            Span<float> incrVectorCache = this.cameraHeightToMapYPos;
             Vector<float> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
 
             int rem = (floorToY - floorFromY) % Vector<int>.Count;
@@ -272,13 +281,16 @@ namespace RenderingEngine.Engine
 
             while (!Unsafe.AreSame(in screenTex, in toScalePtr))
             {
-                Vector<float> yMapPosR = yCeilV * incramentVector;
+                Vector<float> yMapPosR = cameraPosition * incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
                 if (rotated)
                 {
+                    xMapPos -= alignXV;
+                    yMapPos -= alignXY;
+
                     Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, - yMapPos * rSinV);
                     Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
 
@@ -327,13 +339,16 @@ namespace RenderingEngine.Engine
 
             if (rem > 0)
             {
-                Vector<float> yMapPosR = yCeilV * incramentVector;
+                Vector<float> yMapPosR = cameraPosition * incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
                 if (rotated)
                 {
+                    xMapPos -= alignXV;
+                    yMapPos -= alignXY;
+
                     Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, -yMapPos * rSinV);
                     Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
 

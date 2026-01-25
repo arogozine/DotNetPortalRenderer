@@ -19,7 +19,7 @@ namespace RenderingEngine.Engine
         private PortalPlayerSnapshot? Snapshot = null;
 
         private readonly float[] angleCache;
-        private readonly float[] incrVectorCache;
+        private readonly float[] cameraHeightToMapYPos;
         private readonly float[] xMapPosMultiplierCache;
 
         private readonly BGRA[] buffer;
@@ -34,7 +34,7 @@ namespace RenderingEngine.Engine
             WallHelper = new WallHelper(width, height);
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             angleCache = new float[width + overflowBuffer];
-            incrVectorCache = new float[width + overflowBuffer];
+            cameraHeightToMapYPos = new float[height + overflowBuffer];
             xMapPosMultiplierCache = new float[width + overflowBuffer];
 
             RenderWindowHelper = new RenderWindowHelper(width, height);
@@ -62,16 +62,21 @@ namespace RenderingEngine.Engine
         private void GenerateCache()
         {
             Span<float> xMapPosMultiplierCache = this.xMapPosMultiplierCache;
-            Span<float> incrVectorCache = this.incrVectorCache;
+            Span<float> cameraHeightToMapYPos = this.cameraHeightToMapYPos;
 
             int width = this.PixelWidth;
+            int height = this.PixelHeight;
             int halfHeightInt = this.PixelHeight / 2;
-            float pixelHeight = this.PixelHeight;
 
-            for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++)
             {
-                int upper = halfHeightInt - x;
-                incrVectorCache[x] = pixelHeight / upper;
+                int lower = halfHeightInt - y;
+                if (lower == 0)
+                {
+                    lower = 1;
+                }
+
+                cameraHeightToMapYPos[y] = height / (float)lower;
             }
 
             float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);

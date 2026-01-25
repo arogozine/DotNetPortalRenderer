@@ -17,6 +17,7 @@
   
   <ItemGroup>
     <ProjectReference Include="..\BuildAssetLoader\BuildAssetLoader.csproj" />
+    <ProjectReference Include="..\BuildEngineFormulas\BuildEngineFormulas.csproj" />
     <ProjectReference Include="..\DoomAssetLoader\DoomAssetLoader.csproj" />
   </ItemGroup>
 

@@ -364,27 +364,18 @@ namespace RenderingEngine.DoomMapLoader
                 MapSector sector = sectors[s];
                 Line firstWall = sector.Walls[0];
 
-                if (sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.AlignWithFirstWall))
+                if (sector.FloorTexture.RenderingOptions.IsAlignedWithWall)
                 {
-                    (_, _, float angle) = CalculateAngle(firstWall, sector.FloorTexture);
-
-                    (int xOffset, int yOffset) = DetermineOffset(firstWall, sector.CeilingTexture);
-
-                    sector.RotationFloor = angle;
-                    sector.FloorTexture.XOffset += xOffset;
-                    sector.FloorTexture.YOffset += yOffset;
+                    sector.RotationFloor = CalculateAngle(firstWall);
                 }
 
-                if (sector.CeilingTexture.RenderingOptions.HasFlag(TextureRenderingOptions.AlignWithFirstWall))
+                if (sector.CeilingTexture.RenderingOptions.IsAlignedWithWall)
                 {
-                    (_, _, float angle) = CalculateAngle(firstWall, sector.CeilingTexture);
-
-                    (int xOffset, int yOffset) = DetermineOffset(firstWall, sector.CeilingTexture);
-
-                    sector.RotationCeiling = angle;
-                    sector.CeilingTexture.XOffset += xOffset;
-                    sector.CeilingTexture.YOffset += yOffset;
+                    sector.RotationCeiling = CalculateAngle(firstWall);
                 }
+
+                FixOffsets(sector.CeilingTexture);
+                FixOffsets(sector.FloorTexture);
 
                 foreach (Line line in sector.Walls)
                 {
@@ -499,16 +490,55 @@ namespace RenderingEngine.DoomMapLoader
                 }
             }
 
-            static (int xOffset, int yOffset, float angle) CalculateAngle(Line firstWall, Models.TextureInfo textureInfo)
+            static void FixOffsets(Models.TextureInfo textureInfo)
             {
-                (float x1, float y1) = firstWall.PointB.Point;
-                (float x2, float y2) = firstWall.PointA.Point;
+                (int width, int height) = (textureInfo.Width, textureInfo.Height);
+
+                textureInfo.YOffset *= -1;
+
+                if (textureInfo.RenderingOptions.IsFlippedY)
+                {
+                    textureInfo.YOffset = height - textureInfo.YOffset;
+                }
+
+                /*
+               if (!textureInfo.RenderingOptions.IsFlippedY)
+               {
+                   textureInfo.YOffset = -textureInfo.YOffset;
+               }
+
+               if (!textureInfo.RenderingOptions.IsFlippedX)
+               {
+                   textureInfo.XOffset = -textureInfo.XOffset;
+               }
+
+
+               if (textureInfo.RenderingOptions.IsSwappedXY)
+               {
+                   (textureInfo.XOffset, textureInfo.YOffset) = (textureInfo.YOffset, textureInfo.XOffset);
+                   (width, height) = (height, width);
+               }
+
+                
+                if (textureInfo.YScale == 1f && textureInfo.XScale == 1f)
+               {
+                   textureInfo.YOffset = -textureInfo.YOffset;
+                   textureInfo.XOffset = -textureInfo.XOffset;
+               }
+               
+                */
+                textureInfo.XOffset = SharedHelpers.EnsureOffsetIsPositive(width, textureInfo.XOffset);
+                textureInfo.YOffset = SharedHelpers.EnsureOffsetIsPositive(height, textureInfo.YOffset);
+            }
+
+            static float CalculateAngle(Line firstWall)
+            {
+                (float x1, float y1) = firstWall.PointA.Point;
+                (float x2, float y2) = firstWall.PointB.Point;
 
                 float dy = y2 - y1;
                 float dx = x2 - x1;
 
-                int xOffset = float.ConvertToIntegerNative<int>(x1) % textureInfo.Width;
-                int yOffset = float.ConvertToIntegerNative<int>(y1) % textureInfo.Height;
                 float angle = MathF.Atan(dx / dy);
 
                 if ((x2 - x1) < 0 || (y2 - y1) < 0)
@@ -518,25 +548,7 @@ namespace RenderingEngine.DoomMapLoader
                 if (angle < 0)
                     angle += MathF.PI * 2f;
 
-                return (xOffset, yOffset, angle + MathF.PI * 0.5f);
-            }
-
-            static (int xOffset, int yOffset) DetermineOffset(Line firstWall, Models.TextureInfo textureInfo)
-            {
-                (float xScale, float yScale) = textureInfo.GetScale();
-
-                (float xFrom, float yTo) = firstWall.PointB.Point;
-
-                xFrom *= (1f / xScale);
-                yTo *= (1f / yScale);
-
-                int xOffset = float.ConvertToIntegerNative<int>(xFrom % textureInfo.Width);
-                int yOffset = float.ConvertToIntegerNative<int>(yTo % textureInfo.Height);
-
-                xOffset = SharedHelpers.EnsureOffsetIsPositive(textureInfo.Width, xOffset);
-                yOffset = textureInfo.Height - SharedHelpers.EnsureOffsetIsPositive(textureInfo.Height, yOffset);
-
-                return (-xOffset, yOffset);
+                return angle - MathF.PI * 0.5f;
             }
         }
 

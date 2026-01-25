@@ -119,6 +119,11 @@ namespace RenderingEngine.Engine
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
             // optimize to avoid "%" when possible
+            bool texHeightDivisible2 = SharedHelpers.IsPowerOfTwo(textureHeight);
+            if (texHeightDivisible2)
+            {
+                textureHeight--;
+            }
 
             Sector sector = sectors[sprite.SectorId];
             byte lightLevel = sector.LightLevel;
@@ -334,7 +339,7 @@ namespace RenderingEngine.Engine
         {
             ReadOnlySpan<int> floorEnd = renderableWall.FloorEnd;
             ReadOnlySpan<int> ceilingStart = renderableWall.CeilingStart;
-            ReadOnlySpan<float> distance = renderableWall.Distance;
+            ReadOnlySpan<float> distance = RenderWindowHelper.Distance; // renderableWall.Distance;
             ReadOnlySpan<RenderColumnStatus> columnStatus = renderableWall.ColumnStatus;
 
             int width = PixelWidth;
