@@ -22,9 +22,7 @@ namespace RenderingEngine.Engine
 
             (float xScale, float yScale) = sprite.Texture.GetScale();
 
-            float yCeil = sector.Ceil - player.Z;
             float yFloor = sector.Floor - player.Z + sprite.Height;
-            float yaw = player.Yaw;
 
             using var spriteWindowTop = TempBuffer<int>.GetBuffer(width);
             using var spriteWindowBottom = TempBuffer<int>.GetBuffer(width);
@@ -56,10 +54,8 @@ namespace RenderingEngine.Engine
 
             int halfHeightInt = height / 2;
 
-
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
-            Vector<float> incramentVector;
 
             PopulateFloorTextureBounds(spriteWindowTop, spriteWindowBottom, sprite);
             LimitToDepth(yFloorV, sprite, spriteWindowTop, spriteWindowBottom, distance);
@@ -101,13 +97,10 @@ namespace RenderingEngine.Engine
 
                 int screenIndex = clamptedFromY * width + x;
 
-                float xMapPosMultiplier = (widthDiv2 - x) * xPosIncr;
-
-                incramentVector = Vector.CreateSequence(halfHeightInt - clamptedFromY, -1f);
-                incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
+                float xMapPosMultiplier = this.xMapPosMultiplierCache[x];
 
                 RenderFloorOrCeilingSpriteColumn(ref screenPtr, ref floorTexturePtr, screenIndex, clamptedToY, clamptedFromY, width,
-                    x, lightLevel, yFloorV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    x, lightLevel, yFloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, xScaleV, yScaleV);
             }
         }
@@ -122,7 +115,6 @@ namespace RenderingEngine.Engine
             int x,
             uint lightLevel,
             Vector<float> yCeilV,
-            Vector<float> incramentVector,
             float xMapPosMultiplier,
             Vector<int> yOffSetV,
             Vector<int> xOffSetV,
@@ -139,6 +131,9 @@ namespace RenderingEngine.Engine
             Vector<float> yScaleV
         )
         {
+            Span<float> incrVectorCache = this.incrVectorCache;
+            Vector<float> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
+
             int rem = (floorToY - floorFromY) % Vector<int>.Count;
             floorToY -= rem;
 
@@ -149,15 +144,15 @@ namespace RenderingEngine.Engine
 
             while (!Unsafe.AreSame(in screenTex, in toScalePtr))
             {
-                Vector<float> yMapPosR = yCeilV / incramentVector;
+                Vector<float> yMapPosR = yCeilV * incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
                 if (rotated)
                 {
-                    Vector<float> xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
-                    Vector<float> yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
+                    Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, -yMapPos * rSinV);
+                    Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
 
                     xMapPos = xMapPosSR;
                     yMapPos = yMapPosSR;
@@ -197,20 +192,21 @@ namespace RenderingEngine.Engine
                     }
                 }
 
-                incramentVector -= ivIncrF;
+                floorFromY += Vector<float>.Count;
+                incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
             }
 
             if (rem > 0)
             {
-                Vector<float> yMapPosR = yCeilV / incramentVector;
+                Vector<float> yMapPosR = yCeilV * incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
                 if (rotated)
                 {
-                    Vector<float> xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
-                    Vector<float> yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
+                    Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, -yMapPos * rSinV);
+                    Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
 
                     xMapPos = xMapPosSR;
                     yMapPos = yMapPosSR;
@@ -259,7 +255,8 @@ namespace RenderingEngine.Engine
             Span<int> spriteWindowBottom,
             ReadOnlySpan<float> depth)
         {
-            int halfHeightInt = PixelHeight / 2;
+            Span<float> incrVectorCache = this.incrVectorCache;
+
             bool next;
 
             for (int x = sprite.XLeft; x < sprite.XRight; x++)
@@ -276,14 +273,13 @@ namespace RenderingEngine.Engine
 
                 float y = depth[x];
 
-                // calculate Y position
-                Vector<float> incramentVector = Vector.CreateSequence(halfHeightInt - spriteFromY, -1f);
-                incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
-                Vector<float> yMapPosR = yCeilV / incramentVector;
+                Vector<float> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[spriteFromY]);
 
                 // compare Y position of pixel to depth
                 while (spriteFromY < spriteToY)
                 {
+                    Vector<float> yMapPosR = yCeilV * incramentVector;
+
                     for (int i = 0; i < Vector<float>.Count; i++)
                     {
                         if (yMapPosR[i] < y)
@@ -300,18 +296,20 @@ namespace RenderingEngine.Engine
                         break;
                     }
 
-                    incramentVector -= ivIncrF;
+                    incramentVector = Vector.LoadUnsafe(ref incrVectorCache[spriteFromY]);
                 }
 
                 spriteWindowTop[x] = spriteFromY;
             }
         }
 
-        private static void PopulateFloorTextureBounds(
+        private void PopulateFloorTextureBounds(
             Span<int> spriteWindowTop,
             Span<int> spriteWindowBottom,
             RenderableFloorSprite sprite)
         {
+            int maxHeight = PixelHeight - 1;
+
             foreach (FloorSpriteWallInfo spriteBound in new[] { sprite.Wall1!, sprite.Wall2!, sprite.Wall3!, sprite.Wall4! })
             {
                 if (!spriteBound.IntersectsView)
@@ -328,8 +326,8 @@ namespace RenderingEngine.Engine
                     int yTop = spriteWindowTop[i];
                     int loc = float.ConvertToIntegerNative<int>(bottomLoc);
 
-                    spriteWindowBottom[i] = Math.Max(yBottom, loc);
-                    spriteWindowTop[i] = Math.Min(yTop, loc);
+                    spriteWindowBottom[i] = Math.Min(maxHeight, Math.Max(yBottom, loc));
+                    spriteWindowTop[i] = Math.Max(0, Math.Min(yTop, loc));
                 }
             }
         }

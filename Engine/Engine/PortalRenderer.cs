@@ -19,7 +19,8 @@ namespace RenderingEngine.Engine
         private PortalPlayerSnapshot? Snapshot = null;
 
         private readonly float[] angleCache;
-        private readonly int[] incrVectorCache;
+        private readonly float[] incrVectorCache;
+        private readonly float[] xMapPosMultiplierCache;
 
         private readonly BGRA[] buffer;
 
@@ -33,7 +34,8 @@ namespace RenderingEngine.Engine
             WallHelper = new WallHelper(width, height);
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
             angleCache = new float[width + overflowBuffer];
-            incrVectorCache = new int[width + overflowBuffer];
+            incrVectorCache = new float[width + overflowBuffer];
+            xMapPosMultiplierCache = new float[width + overflowBuffer];
 
             RenderWindowHelper = new RenderWindowHelper(width, height);
 
@@ -59,16 +61,25 @@ namespace RenderingEngine.Engine
 
         private void GenerateCache()
         {
-            Span<int> incrVectorCache = SharedHelpers.AlignSpan(this.incrVectorCache);
+            Span<float> xMapPosMultiplierCache = this.xMapPosMultiplierCache;
+            Span<float> incrVectorCache = this.incrVectorCache;
 
             int width = this.PixelWidth;
             int halfHeightInt = this.PixelHeight / 2;
-            float div = this.PixelHeight * (1 << 8);
+            float pixelHeight = this.PixelHeight;
 
             for (int x = 0; x < width; x++)
             {
                 int upper = halfHeightInt - x;
-                incrVectorCache[x] = float.ConvertToIntegerNative<int>(div / upper);
+                incrVectorCache[x] = pixelHeight / upper;
+            }
+
+            float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
+            int widthDiv2 = width / 2;
+
+            for (int x = 0; x < width; x++)
+            {
+                xMapPosMultiplierCache[x] = (widthDiv2 - x) * xPosIncr;
             }
         }
 

@@ -118,6 +118,7 @@ namespace RenderingEngine.Engine
             int width = PixelWidth;
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
+            // optimize to avoid "%" when possible
 
             Sector sector = sectors[sprite.SectorId];
             byte lightLevel = sector.LightLevel;
@@ -179,7 +180,10 @@ namespace RenderingEngine.Engine
                 textureXLocation += xOffset;
                 textureXLocation *= xScale;
                 int textureXIncr = (textureWidth << 16) / (spriteEndY_Int - spriteStartY_Int);
-                int textureYPos = (float.ConvertToIntegerNative<int>(textureXLocation) % textureHeight) * textureWidth;
+                int textureYPos = float.ConvertToIntegerNative<int>(textureXLocation);
+                textureYPos = texHeightDivisible2 ? (textureYPos & textureHeight) : (textureYPos % textureHeight);
+                textureYPos *= textureWidth;
+
                 int textureXPos = (clamptedFromY - spriteStartY_Int) * textureXIncr;
 
                 CalculateSprite(tempBuffer, ref texturePtr, textureYPos, lightLevel, flipY);
@@ -347,6 +351,12 @@ namespace RenderingEngine.Engine
             ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
+            // optimize to avoid "%" when possible
+            bool texHeightDivisible2 = SharedHelpers.IsPowerOfTwo(textureHeight);
+            if (texHeightDivisible2)
+            {
+                textureHeight--;
+            }
 
             using TempBuffer<uint> tempBuffer = TempBuffer<uint>.GetBuffer(textureWidth);
 
@@ -414,7 +424,9 @@ namespace RenderingEngine.Engine
 
                 // Calculate Middle Texture Position
                 int textureYPos = float.ConvertToIntegerNative<int>(distanceY * xScale);
-                textureYPos = ((textureYPos + xOffset) % textureHeight) * textureWidth;
+                textureYPos += xOffset;
+                textureYPos = texHeightDivisible2 ? (textureYPos & textureHeight) : (textureYPos % textureHeight);
+                textureYPos *= textureWidth;
 
                 float textureXIncr = (textureWidth * yScale) / (wallEndY - wallStartY);
                 float textureXPos = yOffset - textureXIncr * (wallStartY - clampedFromY);

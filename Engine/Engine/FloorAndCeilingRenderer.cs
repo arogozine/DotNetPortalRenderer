@@ -7,11 +7,6 @@ namespace RenderingEngine.Engine
     {
         #region Shared Precalculated Vectors
 
-        private Vector<int> pxVI = default;
-        private Vector<int> pyVI = default;
-        private Vector<int> pSinVI = default;
-        private Vector<int> pCosVI = default;
-
         private Vector<float> pxV = default;
         private Vector<float> pyV = default;
         private Vector<float> pSinV = default;
@@ -38,11 +33,6 @@ namespace RenderingEngine.Engine
             ivIncrF = new(oneOverHeight * Vector<float>.Count);
             yawV = Vector.Create(yaw);
             oneOverHeightV = Vector.Create(oneOverHeight);
-
-            pxVI = Vector.Create(float.ConvertToIntegerNative<int>(px * (1 << 16)));
-            pyVI = Vector.Create(float.ConvertToIntegerNative<int>(py * (1 << 16)));
-            pSinVI = Vector.Create(float.ConvertToIntegerNative<int>(pSin * (1 << 8)));
-            pCosVI = Vector.Create(float.ConvertToIntegerNative<int>(pCos * (1 << 8)));
         }
 
         #endregion
@@ -54,28 +44,15 @@ namespace RenderingEngine.Engine
         {
             bool rotated = sector.RotationCeiling != 0f;
 
-            if (!rotated || sector.RotationCeiling == EngineConstants.NinetyDegrees)
-            {
-                RenderCeilingVector_FixedPoint(player, sector, rotated);
-                return;
-            }
-
             byte lightLevel = sector.LightLevel;
 
-            int height = PixelHeight;
             int width = PixelWidth;
-            int halfHeightInt = height / 2;
-            int widthDiv2 = width / 2;
 
             float pz = player.Z;
-
-            float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
-
             float yCeil = sector.Ceil - pz;
 
             Vector<float> yCeilV = Vector.Create(yCeil);
 
-            Vector<float> incramentVector;
             TextureInfo ceilingTexture = sector.CeilTexture;
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(ceilingTexture);
 
@@ -122,142 +99,11 @@ namespace RenderingEngine.Engine
 
                 int screenIndex = ceilingStart * width + x;
 
-                float xMapPosMultiplier = (widthDiv2 - x) * xPosIncr;
-
-                incramentVector = Vector.CreateSequence(halfHeightInt - ceilingStart, -1f);
-                incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
+                float xMapPosMultiplier = this.xMapPosMultiplierCache[x];
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, ceilingStart, width,
-                    x, lightLevel, yCeilV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    x, lightLevel, yCeilV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, doubleSize);
-            }
-        }
-
-        [SkipLocalsInit]
-        public void RenderCeilingVector_FixedPoint(
-            PortalPlayerSnapshot player,
-            Sector sector,
-            bool rotated)
-        {
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            Span<int> wallStart = RenderWindowHelper.WallStart;
-            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-
-            byte lightLevel = sector.LightLevel;
-
-            int width = PixelWidth;
-
-            int yCeiling = float.ConvertToIntegerNative<int>(sector.Ceil - player.Z);
-
-            float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
-
-            int widthDiv2 = width / 2;
-
-            TextureInfo ceilingTexture = sector.CeilTexture;
-            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(ceilingTexture);
-
-            ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
-            ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
-
-            Vector<int> yCeliningV = Vector.Create(yCeiling);
-
-            int textureWidth = ceilingTexture.Width;
-            int textureHeight = ceilingTexture.Height;
-            int textureHeightMask = ceilingTexture.Height - 1;
-            int textureWidthMask = ceilingTexture.Width - 1;
-
-            Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
-            Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
-            Vector<int> textureWidthV = Vector.Create(textureWidth);
-            Vector<int> textureHeightV = Vector.Create(textureHeight);
-
-            int xOffset = -ceilingTexture.XOffset;
-            int yOffset = ceilingTexture.YOffset;
-            Vector<int> xOffSetV = Vector.Create(xOffset << 16);
-            Vector<int> yOffSetV = Vector.Create(yOffset << 16);
-
-            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
-
-            int length = (sectorToX - sectorFromX);
-
-            if (Vector<float>.IsSupported && length > Vector<float>.Count)
-            {
-                const int canRenderCeilingMask = (int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderCeiling);
-
-                Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
-                Vector<int> widthV = Vector.Create(width);
-                Vector<int> widthDiv2V = Vector.Create(widthDiv2);
-                Vector<float> xPosIncrV = Vector.Create(xPosIncr);
-                Vector<int> canRenderCeilingMaskV = Vector.Create(canRenderCeilingMask);
-
-                Vector<int> sectorFromXV = Vector.CreateSequence(sectorFromX, 1);
-                Vector<int> incr = Vector.Create(Vector<int>.Count);
-
-                int rem = (sectorToX - sectorFromX) % Vector<float>.Count;
-                sectorToX -= rem;
-
-                for (int x = sectorFromX; x < sectorToX; sectorFromXV += incr)
-                {
-                    Vector<int> columnStatusV = Vector.LoadUnsafe(ref statusInt[x]) & canRenderCeilingMaskV;
-
-                    if (columnStatusV == Vector<int>.Zero)
-                    {
-                        x += Vector<int>.Count;
-                        continue;
-                    }
-
-                    Vector<int> ceilingStartV = Vector.LoadUnsafe(ref ceilingStart[x]);
-                    Vector<int> wallStartV = Vector.LoadUnsafe(ref wallStart[x]);
-                    Vector<int> floorEndV = Vector.LoadUnsafe(ref floorEnd[x]);
-
-                    Vector<int> floorToV = Vector.ClampNative(wallStartV, ceilingStartV, floorEndV);
-                    Vector<int> screenIndexV = ceilingStartV * widthV + sectorFromXV;
-                    Vector<int> xMapPosMultiplierV = Vector.ConvertToInt32Native(Vector.ConvertToSingle((widthDiv2V - sectorFromXV) << 10) * xPosIncrV);
-
-                    for (int i = 0; i < Vector<float>.Count; i++, x++)
-                    {
-                        if (columnStatusV[i] != canRenderCeilingMask)
-                        {
-                            continue;
-                        }
-
-                        int ceilingStartY = ceilingStartV[i];
-                        int floorToY = floorToV[i];
-                        int screenIndex = screenIndexV[i];
-                        int xMapPosMultiplier = xMapPosMultiplierV[i];
-
-                        RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, ceilingStartY, width,
-                            x, lightLevel, yCeliningV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV, textureHeightV,
-                            textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy, rotated, doubleSize);
-                    }
-                }
-
-
-                sectorFromX = sectorToX;
-                sectorToX += rem;
-            }
-
-            for (int x = sectorFromX; x <= sectorToX; x++)
-            {
-                RenderColumnStatus columnStatus = status[x];
-
-                if (!columnStatus.CeilingRenderable)
-                {
-                    continue;
-                }
-
-                int ceilingStartY = ceilingStart[x];
-                int wallStartY = wallStart[x];
-                int floorEndY = floorEnd[x];
-                int floorToY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
-
-                int screenIndex = ceilingStartY * width + x;
-                int xMapPosMultiplier = float.ConvertToIntegerNative<int>(((widthDiv2 - x) << 10) * xPosIncr);
-
-                RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorToY, ceilingStartY, width,
-                    x, lightLevel, yCeliningV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV, textureHeightV,
-                    textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy, rotated, doubleSize);
             }
         }
 
@@ -267,12 +113,6 @@ namespace RenderingEngine.Engine
             bool rotated = sector.RotationFloor != 0f;
             TextureInfo floorTexture = sector.FloorTexture;
 
-            if (!rotated || sector.RotationFloor == EngineConstants.NinetyDegrees)
-            {
-                RenderFloorVector_FixedPoint(player, sector, rotated);
-                return;
-            }
-
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
             Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
             Span<int> floorEnd = RenderWindowHelper.FloorEnd;
@@ -280,15 +120,9 @@ namespace RenderingEngine.Engine
 
             byte lightLevel = sector.LightLevel;
 
-            int height = PixelHeight;
             int width = PixelWidth;
 
             float yfloor = sector.Floor - player.Z;
-
-            float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
-
-            int halfHeightInt = height / 2;
-            int widthDiv2 = width / 2;
 
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(floorTexture);
 
@@ -320,8 +154,6 @@ namespace RenderingEngine.Engine
                 rCosV = Vector.Create(rCos);
             }
 
-            Vector<float> incramentVector;
-
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
             int length = (sectorToX - sectorFromX);
@@ -331,8 +163,6 @@ namespace RenderingEngine.Engine
 
                 Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
                 Vector<int> widthV = Vector.Create(width);
-                Vector<int> widthDiv2V = Vector.Create(widthDiv2);
-                Vector<float> xPosIncrV = Vector.Create(xPosIncr);
                 Vector<int> canRenderFloorMaskV = Vector.Create(canRenderFloorMask);
 
                 Vector<int> sectorFromXV = Vector.CreateSequence(sectorFromX, 1);
@@ -356,7 +186,7 @@ namespace RenderingEngine.Engine
                     Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
                     Vector<int> floorFromV = Vector.ClampNative(wallEndV, ceilingStartV, floorEndV);
                     Vector<int> screenIndexV = floorFromV * widthV + sectorFromXV;
-                    Vector<float> xMapPosMultiplierV = Vector.ConvertToSingle(widthDiv2V - sectorFromXV) * xPosIncrV;
+                    Vector<float> xMapPosMultiplierV = Vector.LoadUnsafe(ref this.xMapPosMultiplierCache[x]);
 
                     for (int i = 0; i < Vector<float>.Count; i++, x++)
                     {
@@ -370,11 +200,8 @@ namespace RenderingEngine.Engine
                         int screenIndex = screenIndexV[i];
                         float xMapPosMultiplier = xMapPosMultiplierV[i];
 
-                        incramentVector = Vector.CreateSequence(halfHeightInt - floorFromY, -1f);
-                        incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
-
                         RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
-                            x, lightLevel, yfloorV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                            x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                             textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, doubleSize);
                     }
                 }
@@ -399,294 +226,13 @@ namespace RenderingEngine.Engine
                 int floorFromY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
 
                 int screenIndex = floorFromY * width + x;
-                float xMapPosMultiplier = (widthDiv2 - x) * xPosIncr;
-
-                incramentVector = Vector.CreateSequence(halfHeightInt - floorFromY, -1f);
-                incramentVector = Vector.FusedMultiplyAdd(incramentVector, oneOverHeightV, yawV);
+                float xMapPosMultiplier = this.xMapPosMultiplierCache[x];
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
-                    x, lightLevel, yfloorV, incramentVector, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, doubleSize);
             }
         }
-
-        [SkipLocalsInit]
-        public void RenderFloorVector_FixedPoint(
-            PortalPlayerSnapshot player,
-            Sector sector,
-            bool rotated)
-        {
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-            Span<int> wallEnd = RenderWindowHelper.WallEnd;
-
-            byte lightLevel = sector.LightLevel;
-
-            int width = PixelWidth;
-
-            int yfloor = float.ConvertToIntegerNative<int>(sector.Floor - player.Z);
-
-            float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
-
-            int widthDiv2 = width / 2;
-
-            TextureInfo floorTexture = sector.FloorTexture;
-            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(floorTexture);
-
-            ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
-            ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
-
-            Vector<int> yfloorV = Vector.Create(yfloor);
-
-            int textureWidth = floorTexture.Width;
-            int textureHeight = floorTexture.Height;
-            int textureHeightMask = textureHeight - 1;
-            int textureWidthMask = textureWidth - 1;
-
-            Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
-            Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
-            Vector<int> textureWidthV = Vector.Create(textureWidth);
-            Vector<int> textureHeightV = Vector.Create(textureHeight);
-
-            int xOffset = -floorTexture.XOffset;
-            int yOffset = floorTexture.YOffset;
-            Vector<int> xOffSetV = Vector.Create(xOffset << 16);
-            Vector<int> yOffSetV = Vector.Create(yOffset << 16);
-
-            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
-
-            int length = (sectorToX - sectorFromX);
-
-            if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
-            {
-                const int canRenderFloorMask = (int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderFloor);
-
-                Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
-                Vector<int> widthV = Vector.Create(width);
-                Vector<int> widthDiv2V = Vector.Create(widthDiv2);
-                Vector<float> xPosIncrV = Vector.Create(xPosIncr);
-                Vector<int> canRenderFloorMaskV = Vector.Create(canRenderFloorMask);
-
-                Vector<int> sectorFromXV = Vector.CreateSequence(sectorFromX, 1);
-                Vector<int> incr = Vector.Create(Vector<int>.Count);
-
-                int rem = (sectorToX - sectorFromX) % Vector<float>.Count;
-                sectorToX -= rem;
-
-                for (int x = sectorFromX; x < sectorToX; sectorFromXV += incr)
-                {
-                    Vector<int> columnStatusV = Vector.LoadUnsafe(ref statusInt[x]) & canRenderFloorMaskV;
-
-                    if (columnStatusV == Vector<int>.Zero)
-                    {
-                        x += Vector<int>.Count;
-                        continue;
-                    }
-
-                    Vector<int> ceilingStartV = Vector.LoadUnsafe(ref ceilingStart[x]);
-                    Vector<int> floorEndV = Vector.LoadUnsafe(ref floorEnd[x]);
-                    Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
-                    Vector<int> floorFromV = Vector.ClampNative(wallEndV, ceilingStartV, floorEndV);
-                    Vector<int> screenIndexV = floorFromV * widthV + sectorFromXV;
-                    Vector<int> xMapPosMultiplierV = Vector.ConvertToInt32Native(Vector.ConvertToSingle((widthDiv2V - sectorFromXV) << 10) * xPosIncrV);
-
-                    for (int i = 0; i < Vector<float>.Count; i++, x++)
-                    {
-                        if (columnStatusV[i] != canRenderFloorMask)
-                        {
-                            continue;
-                        }
-
-                        int floorFromY = floorFromV[i];
-                        int floorEndY = floorEndV[i];
-                        int screenIndex = screenIndexV[i];
-                        int xMapPosMultiplier = xMapPosMultiplierV[i];
-
-                        RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
-                            x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV, textureHeightV,
-                            textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy, rotated, doubleSize);
-                    }
-                }
-
-                sectorFromX = sectorToX;
-                sectorToX += rem;
-            }
-
-            for (int x = sectorFromX; x <= sectorToX; x++)
-            {
-                RenderColumnStatus columnStatus = status[x];
-
-                if (!columnStatus.FloorRenderable)
-                {
-                    continue;
-                }
-
-                int ceilingStartY = ceilingStart[x];
-                int floorEndY = floorEnd[x];
-                int wallEndY = wallEnd[x];
-
-                int floorFromY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
-
-                int screenIndex = floorFromY * width + x;
-                int xMapPosMultiplier = float.ConvertToIntegerNative<int>(((widthDiv2 - x) << 10) * xPosIncr);
-
-                RenderFloorOrCeilingColumn_FixedPoint(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
-                    x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV, textureHeightV,
-                    textureHeightMaskV, textureWidthMaskV, flipY, flipX, swapXy, rotated, doubleSize);
-            }
-        }
-
-        private void RenderFloorOrCeilingColumn_FixedPoint(
-            scoped ref BGRA screenPtr,
-            scoped ref BGRA texturePtr,
-            int screenIndex,
-            int floorToY,
-            int floorFromY,
-            int width,
-            int x,
-            uint lightLevel,
-            Vector<int> yCeilV, // 1 << 8
-            int xMapPosMultiplier, // 1 << 10
-            Vector<int> yOffSetV, // 1 << 16
-            Vector<int> xOffSetV, // 1 << 16
-            Vector<int> textureWidthV,
-            Vector<int> textureHeightV,
-            Vector<int> textureHeightMaskV,
-            Vector<int> textureWidthMaskV,
-            bool flipY,
-            bool flipX,
-            bool swapXy,
-            bool rotated,
-            bool doubleSize
-        )
-        {
-            Span<int> incrVectorCache = SharedHelpers.AlignSpan(this.incrVectorCache);
-
-            Vector<int> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
-
-            int rem = (floorToY - floorFromY) % Vector<int>.Count;
-            floorToY -= rem;
-
-            Vector<int> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
-
-            ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-            ref readonly BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
-
-            while (!Unsafe.AreSame(in screenTex, in toScalePtr))
-            {
-                Vector<int> yMapPosR = yCeilV * incramentVector;
-                Vector<int> xMapPosR = yMapPosR * xMapPosMultiplierV;
-
-                (Vector<int> xMapPos, Vector<int> yMapPos) = SharedHelpers.RotateVertexBack(
-                    xMapPosR >> 10,
-                    yMapPosR,
-                    pSinVI, pCosVI, pxVI, pyVI);
-
-                Vector<int> _y1, _x1;
-
-                if (doubleSize)
-                {
-                    xMapPos >>= 1;
-                    yMapPos >>= 1;
-                }
-
-                if (swapXy)
-                {
-                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
-                }
-
-                // for non-floating point rotation, we only support 90 degrees for now
-                if (rotated)
-                {
-                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
-                    yMapPos *= -1;
-                }
-
-                _y1 = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
-                _x1 = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
-                
-                if (flipY)
-                {
-                    _y1 = textureHeightMaskV - _y1;
-                }
-
-                if (flipX)
-                {
-                    _x1 = textureWidthMaskV - _x1;
-                }
-
-                Vector<int> textureIndex = _y1 * textureWidthV + _x1;
-
-                ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
-
-                for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
-                {
-                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
-                    ShadeByPrecalc(in tex, ref screenTex, lightLevel);
-                }
-
-                floorFromY += Vector<float>.Count;
-                incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
-            }
-            
-            // tail that doesn't fit ovenly into a vector
-            if (rem > 0)
-            {
-                Vector<int> yMapPosR = yCeilV * incramentVector;
-                Vector<int> xMapPosR = yMapPosR * xMapPosMultiplierV;
-
-                (Vector<int> xMapPos, Vector<int> yMapPos) = SharedHelpers.RotateVertexBack(
-                    xMapPosR >> 10,
-                    yMapPosR,
-                    pSinVI, pCosVI, pxVI, pyVI);
-
-                Vector<int> _y1, _x1;
-
-                if (doubleSize)
-                {
-                    xMapPos >>= 1;
-                    yMapPos >>= 1;
-                }
-
-                if (swapXy)
-                {
-                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
-                }
-
-                // for non-floating point rotation, we only support 90 degrees for now
-                if (rotated)
-                {
-                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
-                    yMapPos *= -1;
-                }
-
-                _y1 = ((yMapPos + yOffSetV) >> 16) & textureHeightMaskV;
-                _x1 = ((xMapPos + xOffSetV) >> 16) & textureWidthMaskV;
-
-                if (flipY)
-                {
-                    _y1 = textureHeightMaskV - _y1;
-                }
-
-                if (flipX)
-                {
-                    _x1 = textureWidthMaskV - _x1;
-                }
-
-                Vector<int> textureIndex = _y1 * textureWidthV + _x1;
-
-                ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
-
-                for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
-                {
-                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
-                    ShadeByPrecalc(in tex, ref screenTex, lightLevel);
-                }
-            }
-
-        }
-
 
         private void RenderFloorOrCeilingColumn(
             scoped ref BGRA screenPtr,
@@ -698,7 +244,6 @@ namespace RenderingEngine.Engine
             int x,
             uint lightLevel,
             Vector<float> yCeilV,
-            Vector<float> incramentVector,
             float xMapPosMultiplier,
             Vector<int> yOffSetV,
             Vector<int> xOffSetV,
@@ -714,6 +259,9 @@ namespace RenderingEngine.Engine
             bool doubleSize
         )
         {
+            Span<float> incrVectorCache = this.incrVectorCache;
+            Vector<float> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
+
             int rem = (floorToY - floorFromY) % Vector<int>.Count;
             floorToY -= rem;
 
@@ -724,7 +272,7 @@ namespace RenderingEngine.Engine
 
             while (!Unsafe.AreSame(in screenTex, in toScalePtr))
             {
-                Vector<float> yMapPosR = yCeilV / incramentVector;
+                Vector<float> yMapPosR = yCeilV * incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
@@ -773,20 +321,21 @@ namespace RenderingEngine.Engine
                     ShadeByPrecalc(in tex, ref screenTex, lightLevel);
                 }
 
-                incramentVector -= ivIncrF;
+                floorFromY += Vector<float>.Count;
+                incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
             }
 
             if (rem > 0)
             {
-                Vector<float> yMapPosR = yCeilV / incramentVector;
+                Vector<float> yMapPosR = yCeilV * incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
 
                 if (rotated)
                 {
-                    Vector<float> xMapPosSR = xMapPos * rCosV - yMapPos * rSinV;
-                    Vector<float> yMapPosSR = xMapPos * rSinV + yMapPos * rCosV;
+                    Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, -yMapPos * rSinV);
+                    Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
 
                     xMapPos = xMapPosSR;
                     yMapPos = yMapPosSR;
