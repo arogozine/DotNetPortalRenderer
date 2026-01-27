@@ -158,7 +158,6 @@ namespace RenderingEngine.Engine
                     XRight = PixelWidth,
                     CeilingStart = ceilingStart,
                     FloorEnd = floorEnd,
-                    Distance = zBuffer,
                     WallEnd = wallEnd,
                     RenderDepth = renderDepth
                 });
@@ -280,7 +279,7 @@ namespace RenderingEngine.Engine
                 else if (renderableWall is RenderWindowSpriteSnapshot sectorSprites)
                 {
                     // filter sprites based on depth between this and next set of sectors
-                    float[] currentDistance = sectorSprites.Distance;
+                    float[] currentDistance = spriteRenderableAreaCache[sectorSprites.RenderDepth].ZBuffer;
                     float[]? nextDistance = sectorSprites.RenderDepth > 1 ? spriteRenderableAreaCache[sectorSprites.RenderDepth - 1].ZBuffer : null;
 
                     List<RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,

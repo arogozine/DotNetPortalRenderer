@@ -163,8 +163,8 @@ namespace RenderingEngine.MapGen
                 Floor = x.Floor,
                 LightLevel = (byte)(x.LightLevel == 256 ? byte.MaxValue : x.LightLevel),
                 Walls = vertex,
-                RotationCeiling = x.RotationCeiling ?? 0f,
-                RotationFloor = x.RotationFloor ?? 0f
+                RotationCeiling = x.RotationCeiling,
+                RotationFloor = x.RotationFloor
             };
 
             for (int i = 0; i < x.Walls.Count; i++)
