@@ -551,10 +551,10 @@ namespace RenderingEngine.Engine
         {
             // Vertex Points (Wall)
             // point 1 (vx1, vy1), point 2 (vx2, vy2)
-            float vx1 = wall.R1.X;
-            float vy1 = wall.R1.Y;
-            float vx2 = wall.R2.X;
-            float vy2 = wall.R2.Y;
+            float vx1 = wall.PointA.X;
+            float vy1 = wall.PointA.Y;
+            float vx2 = wall.PointB.X;
+            float vy2 = wall.PointB.Y;
 
             // offset by player coordinates for easier calculations
             float tx1 = vx1 - px;
@@ -572,11 +572,11 @@ namespace RenderingEngine.Engine
             float dy = vy1 - vy2;
             float length = MathF.Sqrt((dx * dx) + (dy * dy));
 
-            return new RenderableWall(wall.Line, new Point(rx1, ry1), new Point(rx2, ry2), wall.Sector, wall.Neighbor)
-            {
-                Length = length,
-                Bunch = wall.Bunch
-            };
+            wall.R1 = new Point(rx1, ry1);
+            wall.R2 = new Point(rx2, ry2);
+            wall.Length = length;
+
+            return wall;
         }
     }
 }

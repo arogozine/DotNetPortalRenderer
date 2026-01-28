@@ -85,7 +85,7 @@ namespace RenderingEngine.Engine
                 int clamptedFromY = Math.Clamp(spriteFromY, ceilingStart, floorEnd);
                 int clamptedToY = Math.Clamp(spriteToY, ceilingStart, floorEnd);
 
-                if (clamptedFromY == clamptedToY)
+                if (clamptedFromY >= clamptedToY)
                 {
                     continue;
                 }

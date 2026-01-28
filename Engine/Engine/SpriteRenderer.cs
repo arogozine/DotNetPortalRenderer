@@ -5,19 +5,23 @@ namespace RenderingEngine.Engine
 
     internal sealed partial class PortalRenderer
     {
-        private void DrawSprite(PortalPlayerSnapshot player, ReadOnlySpan<Sector> sectors, RenderableSprite sprite, RenderWindowSpriteSnapshot renderableWall)
+        private void DrawSprite(
+            PortalPlayerSnapshot player,
+            ReadOnlySpan<Sector> sectors,
+            RenderableSprite sprite,
+            RenderWindowSpriteSnapshot renderableWall)
         {
-            if (sprite is RenderableWallSprite renderableWallSprite)
+            switch (sprite)
             {
+                case RenderableWallSprite renderableWallSprite:
                 DrawWallSprite(sectors, renderableWallSprite, renderableWall);
-            }
-            else if (sprite is RenderableFloorSprite renderableFloorSprite)
-            {
+                    break;
+                case RenderableFloorSprite renderableFloorSprite:
                 DrawFloorSprite(player, sectors, renderableFloorSprite, renderableWall);
-            }
-            else if (sprite is RenderableBasicSprite renderableSprite)
-            {
+                    break;
+                case RenderableBasicSprite renderableSprite:
                 DrawSprite(sectors, renderableSprite, renderableWall);
+                    break;
             }
         }
 
@@ -50,7 +54,7 @@ namespace RenderingEngine.Engine
 
             Span<int> floorEndArray = renderableWall.FloorEnd;
             Span<int> ceilingStartArray = renderableWall.CeilingStart;
-            Span<float> distance = renderableWall.Distance;
+            Span<float> distance = RenderWindowHelper.Distance;// renderableWall.Distance;
 
             float fromToYDist = sprite.DistanceMin;
 
@@ -255,7 +259,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                float buffer = renderableWall.Distance[x];
+                float buffer = RenderWindowHelper.Distance[x];
                 int floorEnd = Math.Min(renderableWall.FloorEnd[x], renderableWall.WallEnd[x]);
                 int ceilingStart = renderableWall.CeilingStart[x];
 

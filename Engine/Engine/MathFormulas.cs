@@ -28,7 +28,7 @@ namespace RenderingEngine.Engine
             Unsafe.SkipInit(out distanceX);
             Unsafe.SkipInit(out distanceY);
 
-            float denominator = rayDirX * d2y - d2x;
+            float denominator = MathF.FusedMultiplyAdd(rayDirX, d2y, - d2x);
 
             if (MathF.Abs(denominator) < float.Epsilon)
             {
@@ -42,7 +42,7 @@ namespace RenderingEngine.Engine
                 return false;
             }
 
-            float t = (rx1 * d2y - ry1 * d2x) / denominator;
+            float t = MathF.FusedMultiplyAdd(rx1, d2y, - ry1 * d2x) / denominator;
 
             if (t < 0f)
             {
@@ -63,7 +63,7 @@ namespace RenderingEngine.Engine
             float ry1 = wall.R1.Y;
             float d2x = wall.R2.X - rx1;
             float d2y = wall.R2.Y - ry1;
-            float t1 = rx1 * d2y - ry1 * d2x;
+            float t1 = MathF.FusedMultiplyAdd(rx1, d2y, - ry1 * d2x);
             float cameraRay = -1f;
             cameraRay += cameraWidthIncr * wallFromX;
 
@@ -79,7 +79,7 @@ namespace RenderingEngine.Engine
         {
             bool flipped = flipX ? !sprite.Flipped : sprite.Flipped;
 
-            float denominator = cameraRay * d2y - d2x;
+            float denominator = MathF.FusedMultiplyAdd(cameraRay, d2y, - d2x);
             float fromToYDist = t1 / denominator;
             float fromToXDist = fromToYDist * cameraRay;
 
@@ -94,7 +94,7 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (float X, float Y) CalculateRayIntersection(float cameraRay, float t1, float d2y, float d2x)
         {
-            float denominator = cameraRay * d2y - d2x;
+            float denominator = MathF.FusedMultiplyAdd(cameraRay, d2y, - d2x);
             float fromToYDist = t1 / denominator;
             float fromToXDist = fromToYDist * cameraRay;
 

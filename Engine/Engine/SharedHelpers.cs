@@ -145,10 +145,10 @@ namespace RenderingEngine.Engine
             {
                 RenderableWall wall = walls[i];
 
-                float x1 = wall.R1.X;
-                float y1 = wall.R1.Y;
-                float x2 = wall.R2.X;
-                float y2 = wall.R2.Y;
+                float x1 = wall.PointA.X;
+                float y1 = wall.PointA.Y;
+                float x2 = wall.PointB.X;
+                float y2 = wall.PointB.Y;
 
                 if (MathF.Min(y1, y2) <= y && y < MathF.Max(y1, y2) && x <= MathF.Max(x1, x2))
                 {
