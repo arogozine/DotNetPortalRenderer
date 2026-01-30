@@ -268,12 +268,129 @@ namespace RenderingEngine.Engine
             using TempBuffer<uint> buffer = TempBuffer<uint>.GetBuffer(textureInfo.Height);
 
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            ReadOnlySpan<int> textureXLocation = RenderWindowHelper.TopTextureXLocation;
-            ReadOnlySpan<int> textureYLocation = RenderWindowHelper.TopTextureYLocation;
-            ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
-            ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
-            ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
+            Span<int> textureXLocation = RenderWindowHelper.TopTextureXLocation;
+            Span<int> textureYLocation = RenderWindowHelper.TopTextureYLocation;
+            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
+            Span<int> wallStart = RenderWindowHelper.WallStart;
+            Span<int> wallEnd = RenderWindowHelper.WallEnd;
+            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
+
+            int length = (wallToX - wallFromX) - Vector<int>.Count;
+
+            if (length > Vector<int>.Count)
+            {
+                Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
+                Vector<int> canRenderWallMaskV = Vector.Create((int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall));
+                Vector<int> textureStartV = Vector.Create(textureStart);
+                Vector<int> finishedRendering = Vector.Create((int)RenderColumnStatus.FinishedRendering);
+
+                int rem = length % Vector<int>.Count;
+                wallToX -= rem;
+
+                for (int x = wallFromX; x < wallToX; x += Vector<int>.Count)
+                {
+                    Vector<int> columnStatusV = Vector.LoadUnsafe(ref statusInt[x]) & canRenderWallMaskV;
+
+                    if (columnStatusV == Vector<int>.Zero)
+                    {
+                        Vector.StoreUnsafe(finishedRendering, ref statusInt[x]);
+                        continue;
+                    }
+
+                    Vector<int> textureYPosV = Vector.LoadUnsafe(ref textureXLocation[x]);
+                    Vector<int> textureXIncrV = Vector.LoadUnsafe(ref textureYLocation[x]);
+                    Vector<int> wallStartYV = Vector.LoadUnsafe(ref wallStart[x]);
+                    Vector<int> wallEndYV = Vector.LoadUnsafe(ref wallEnd[x]);
+                    Vector<int> ceilingStartYV = Vector.LoadUnsafe(ref ceilingStart[x]);
+                    Vector<int> floorEndYV = Vector.LoadUnsafe(ref floorEnd[x]);
+
+                    Vector<int> clamptedFromYV = Vector.Clamp(wallStartYV, ceilingStartYV, floorEndYV);
+                    Vector<int> clamptedToYV = Vector.Clamp(wallEndYV, ceilingStartYV, floorEndYV);
+                    Vector<int> textureXPosV = textureStartV - textureXIncrV * (wallStartYV - clamptedFromYV);
+
+                    Span<byte> a = new byte[Vector<int>.Count];
+                    Span<byte> b = new byte[Vector<int>.Count];
+
+                    bool repeat =
+                        PopulateRepeatedValues(a, textureYPosV) &&
+                        PopulateRepeatedValues(b, textureXPosV) &&
+                        RefineRepeatedValues(a, b) &&
+                        PopulateRepeatedValues(b, textureXIncrV) &&
+                        RefineRepeatedValues(a, b) &&
+                        PopulateRepeatedValues(b, clamptedFromYV) &&
+                        RefineRepeatedValues(a, b) &&
+                        PopulateRepeatedValues(b, clamptedToYV) &&
+                        RefineRepeatedValues(a, b);
+
+                    for (int j = 0; j < Vector<int>.Count; )
+                    {
+                        if (columnStatusV[j] == 0)
+                        {
+                            j++;
+                            continue;
+                        }
+
+                        int clamptedFromY = clamptedFromYV[j];
+                        int clamptedToY = clamptedToYV[j];
+
+                        if (clamptedFromY >= clamptedToY)
+                        {
+                            j++;
+                            continue;
+                        }
+
+                        int textureXPos = textureXPosV[j];
+                        int textureYPos = textureYPosV[j];
+                        int textureXIncr = textureXIncrV[j];
+
+                        CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, lightLevel, flipY);
+
+                        textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
+
+                        byte count = a[j];
+
+                        if (repeat && count > 1)
+                        {                            
+                            RenderWallLine(
+                                    count,
+                                    width,
+                                    x + j,
+                                    textureWidth,
+                                    clamptedFromY,
+                                    clamptedToY,
+                                    (uint)textureXPos,
+                                    (uint)textureXIncr,
+                                    ref screenPtr,
+                                    ref buffer.Pointer
+                                );
+
+                            j += count - 1;
+                        }
+                        else
+                        {
+                            RenderWallLine(
+                                width,
+                                x + j,
+                                textureWidth,
+                                clamptedFromY,
+                                clamptedToY,
+                                (uint)textureXPos,
+                                (uint)textureXIncr,
+                                ref screenPtr,
+                                ref buffer.Pointer
+                            );
+                        }
+
+                        j++;
+                    }
+
+
+                    Vector.StoreUnsafe(finishedRendering, ref statusInt[x]);
+                }
+
+                wallFromX = wallToX;
+                wallToX += rem;
+            }
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
@@ -285,7 +402,6 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int textureYPos = textureXLocation[x];
                 int textureXIncr = textureYLocation[x];
                 int wallStartY = wallStart[x];
                 int wallEndY = wallEnd[x];
@@ -295,6 +411,14 @@ namespace RenderingEngine.Engine
                 int clamptedFromY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
                 int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
                 int textureXPos = textureStart - textureXIncr * (wallStartY - clamptedFromY);
+
+                if (clamptedFromY >= clamptedToY)
+                {
+                    status[x] = RenderColumnStatus.FinishedRendering;
+                    continue;
+                }
+
+                int textureYPos = textureXLocation[x];
 
                 CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, lightLevel, flipY);
 
@@ -317,6 +441,222 @@ namespace RenderingEngine.Engine
 
             return true;
         }
+
+        private static bool PopulateRepeatedValues(scoped Span<ushort> repeatedCount, scoped ReadOnlySpan<int> values)
+        {
+            bool repeated = false;
+
+            for (int i = 0; i < values.Length; )
+            {
+                ushort c = 1;
+                int l = values[i];
+
+                for (int j = i + 1; j < values.Length; j++)
+                {
+                    int next = values[j];
+
+                    if (l == next)
+                    {
+                        c++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                if (c == 0)
+                {
+                    repeatedCount[i] = 0;
+                    i++;
+                    continue;
+                }
+
+                repeated = true;
+
+                for (; c > 0; c--, i++)
+                {
+                    repeatedCount[i] = c;
+                }
+            }
+
+            return repeated;
+        }
+
+        private static bool PopulateRepeatedValues(scoped Span<byte> repeatedCount, Vector<int> values)
+        {
+            bool repeated = false;
+
+            for (int i = 0; i < Vector<int>.Count;)
+            {
+                byte c = 1;
+                int l = values[i];
+
+                for (int j = i + 1; j < Vector<int>.Count; j++)
+                {
+                    int next = values[j];
+
+                    if (l == next)
+                    {
+                        c++;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                if (c == 0)
+                {
+                    repeatedCount[i] = 0;
+                    i++;
+                    continue;
+                }
+
+                repeated = true;
+
+                for (; c > 0; c--, i++)
+                {
+                    repeatedCount[i] = c;
+                }
+            }
+
+            return repeated;
+        }
+
+
+        private static bool RefineRepeatedValues(
+            scoped Span<byte> a,
+            scoped ReadOnlySpan<byte> b)
+        {
+            bool repeated = false;
+
+            for (int i = 0; i < a.Length;)
+            {
+                byte repeat_a = a[i];
+
+                if (repeat_a == 0)
+                {
+                    i++;
+                    continue;
+                }
+
+                byte repeat_b = b[i];
+
+                if (repeat_b == 0)
+                {
+                    a[i] = 0;
+                    i++;
+                    continue;
+                }
+
+                if (repeat_a == repeat_b)
+                {
+                    i += repeat_a;
+                    continue;
+                }
+
+                repeat_a = repeat_b < repeat_a ? repeat_b : repeat_a;
+
+                for (; repeat_a > 0 && i < a.Length; repeat_a--, i++)
+                {
+                    a[i] = repeat_a;
+                }
+
+                // i += skip;
+                repeated = true;
+            }
+
+            return repeated;
+        }
+
+        private static bool AccountForHoles(scoped Span<ushort> array, int length)
+        {
+            if (array.Length == 1)
+            {
+                return array[0] != 0;
+            }
+
+            bool renderable = false;
+            int j = 0;
+
+            for (int i = 0; i < array.Length; i++)
+            {
+                ushort val = array[i];
+
+                if (val == length)
+                {
+                    j++;
+                    renderable = true;
+                    continue;
+                }
+
+                int start = i - j;
+                for (int s = start; s < i; s++)
+                {
+                    array[s] = (ushort)(j - s + start);
+                }
+
+                j = 0;
+            }
+
+            if (j != length)
+            {
+                int start = length - j;
+                for (int s = start; s < length; s++)
+                {
+                    array[s] = (ushort)(j - s + start);
+                }
+            }
+
+            return renderable;
+        }
+
+        private static bool RefineRepeatedValues(
+            scoped Span<ushort> a,
+            scoped ReadOnlySpan<ushort> b)
+        {
+            bool repeated = false;
+
+            for (int i = 0; i < a.Length;)
+            {
+                ushort repeat_a = a[i];
+
+                if (repeat_a == 0)
+                {
+                    i++;
+                    continue;
+                }
+
+                ushort repeat_b = b[i];
+
+                if (repeat_b == 0)
+                {
+                    a[i] = 0;
+                    i++;
+                    continue;
+                }
+
+                if (repeat_a == repeat_b)
+                {
+                    i += repeat_a;
+                    continue;
+                }
+
+                repeat_a = repeat_b < repeat_a ? repeat_b : repeat_a;
+
+                for (; repeat_a > 0 && i < a.Length; repeat_a--, i++)
+                {
+                    a[i] = repeat_a;
+                }
+
+                // i += skip;
+                repeated = true;
+            }
+
+            return repeated;
+        }
+
 
         private bool DrawBasicSkyboxWall(
             PortalPlayerSnapshot player,
@@ -423,6 +763,60 @@ namespace RenderingEngine.Engine
             {
                 int index = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
                 screenIndexPtr = Unsafe.Add(ref textureColumnPtr, index);
+            }
+        }
+
+        private static void RenderWallLine(
+            byte count,
+            int width,
+            int x,
+            int textureHeight,
+            int startY,
+            int endY,
+            uint textureXPos_u,
+            uint textureXIncr_u,
+            scoped ref uint screenPtr,
+            scoped ref uint textureBuffer
+        )
+        {
+            ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, startY * width + x);
+            ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, endY * width + x);
+
+            // % is slower than the bitwise &
+            // thus we have two paths to render a wall line
+            // depending if texture is power of two or not
+            if (SharedHelpers.IsPowerOfTwo(textureHeight))
+            {
+                uint textureMask = (uint)(textureHeight - 1);
+
+                while (!Unsafe.AreSame(in screenIndexPtr, in screenIndexPtrEnd))
+                {
+                    uint texelIndex = (textureXPos_u >> 16) & textureMask;
+                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                    for (int i = 0; i <= count; i++)
+                    {
+                        Unsafe.Add(ref screenIndexPtr, i) = shaded;
+                    }
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                    textureXPos_u += textureXIncr_u;
+                }
+            }
+            else
+            {
+                uint textureHeight_u = (uint)textureHeight;
+
+                while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
+                {
+                    uint texelIndex = (textureXPos_u >> 16) % textureHeight_u;
+                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        Unsafe.Add(ref screenIndexPtr, i) = shaded;
+                    }
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                    textureXPos_u += textureXIncr_u;
+                }
             }
         }
 
@@ -565,8 +959,8 @@ namespace RenderingEngine.Engine
                 int rem = (wallToX - wallFromX) % Vector<float>.Count;
                 wallToX -= rem;
 
-                bool even = SharedHelpers.IsPowerOfTwo(textureHeight);
-                Vector<int> heightMask = even ? Vector.Create(textureHeight - 1) : default;
+                bool textureHeightEven = SharedHelpers.IsPowerOfTwo(textureHeight);
+                Vector<int> heightMask = textureHeightEven ? Vector.Create(textureHeight - 1) : default;
 
                 for (int x = wallFromX; x < wallToX; x += Vector<float>.Count)
                 {
@@ -591,7 +985,7 @@ namespace RenderingEngine.Engine
                     Vector.StoreUnsafe(fromToYdist, ref distance[x]);
                     Vector.StoreUnsafe(topYLocationV, ref yLocation[x]);
 
-                    if (even)
+                    if (textureHeightEven)
                     {
                         topXLocationV = (topXLocationV & heightMask) * textureWidthV;
                         Vector.StoreUnsafe(topXLocationV, ref xLocation[x]);

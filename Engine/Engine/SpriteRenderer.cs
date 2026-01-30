@@ -14,13 +14,13 @@ namespace RenderingEngine.Engine
             switch (sprite)
             {
                 case RenderableWallSprite renderableWallSprite:
-                DrawWallSprite(sectors, renderableWallSprite, renderableWall);
+                    DrawWallSprite(sectors, renderableWallSprite, renderableWall);
                     break;
                 case RenderableFloorSprite renderableFloorSprite:
-                DrawFloorSprite(player, sectors, renderableFloorSprite, renderableWall);
+                    DrawFloorSprite(player, sectors, renderableFloorSprite, renderableWall);
                     break;
                 case RenderableBasicSprite renderableSprite:
-                DrawSprite(sectors, renderableSprite, renderableWall);
+                    DrawSprite(sectors, renderableSprite, renderableWall);
                     break;
             }
         }
@@ -61,7 +61,15 @@ namespace RenderingEngine.Engine
             float cameraRay = -1f * EngineConstants.CameraPlaneX;
             cameraRay += cameraWidthIncr * spriteFromX;
 
+            int length = spriteToX - spriteFromX;
+
             using TempBuffer<uint> tempBuffer = TempBuffer<uint>.GetBuffer(textureWidth);
+            Span<int> textureYPosArray = TempBuffer<int>.GetBuffer(length);
+            Span<int> textureXPosArray = TempBuffer<int>.GetBuffer(length);
+            Span<int> clampedFromYArray = TempBuffer<int>.GetBuffer(length);
+            Span<int> clampedToYArray = TempBuffer<int>.GetBuffer(length);
+            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
+            Span<ushort> repeatedCountB = TempBuffer<ushort>.GetBuffer(length);
 
             int textureXIncr = (textureWidth << 16) / (spriteEndY - spriteStartY);
 
@@ -69,33 +77,87 @@ namespace RenderingEngine.Engine
             bool flipX = sprite.Texture.RenderingOptions.IsFlippedX;
 
             float textureLen = texture.Width / sprite.Length;
+            repeatedCount.Fill((ushort)length);
 
-            for (int x = spriteFromX; x < spriteToX; x++, cameraRay += cameraWidthIncr)
+            // offset to start at 0
+            ceilingStartArray = ceilingStartArray[spriteFromX..];
+            floorEndArray = floorEndArray[spriteFromX..];
+            distance = distance[spriteFromX..];
+
+            for (int x = 0; x < length; x++, cameraRay += cameraWidthIncr)
             {
                 int ceilingStart = ceilingStartArray[x];
                 int floorEnd = floorEndArray[x];
 
                 if (floorEnd <= ceilingStart || distance[x] < fromToYDist)
                 {
+                    clampedFromYArray[x] = 0;
+                    clampedToYArray[x] = 0;
+                    repeatedCount[x] = 0;
+
                     continue;
                 }
 
                 int clamptedFromY = Math.Clamp(spriteStartY, ceilingStart, floorEnd);
                 int clamptedToY = Math.Clamp(spriteEndY, ceilingStart, floorEnd);
+                clampedFromYArray[x] = clamptedFromY;
+                clampedToYArray[x] = clamptedToY;
 
                 if (clamptedFromY >= clamptedToY)
                 {
+                    repeatedCount[x] = 0;
                     continue;
                 }
 
                 int textureXLocation = CalculateTextureXPosition(cameraRay);
+                textureYPosArray[x] = textureXLocation * textureWidth;
+                textureXPosArray[x] = (clamptedFromY - spriteStartY) * textureXIncr;
+            }
 
-                int textureYPos = textureXLocation * textureWidth;
-                int textureXPos = (clamptedFromY - spriteStartY) * textureXIncr;
+            // var test = repeatedCount.ToArray();
+
+            if (!AccountForHoles(repeatedCount, length))
+            {
+                return;
+            }
+
+           // var test2 = repeatedCount.ToArray();
+
+
+            bool repeat =
+                   PopulateRepeatedValues(repeatedCountB, textureYPosArray)
+                && RefineRepeatedValues(repeatedCount, repeatedCountB)
+                && PopulateRepeatedValues(repeatedCountB, textureXPosArray)
+                && RefineRepeatedValues(repeatedCount, repeatedCountB)
+                && PopulateRepeatedValues(repeatedCountB, clampedFromYArray)
+                && RefineRepeatedValues(repeatedCount, repeatedCountB)
+                && PopulateRepeatedValues(repeatedCountB, clampedToYArray);
+
+            for (int x = 0; x < length; x++)
+            {
+                ushort count = repeatedCount[x];
+
+                if (count == 0)
+                {
+                    continue;
+                }
+
+                int clamptedFromY = clampedFromYArray[x];
+                int clamptedToY = clampedToYArray[x];
+                int textureYPos = textureYPosArray[x];
+                int textureXPos = textureXPosArray[x];
 
                 CalculateSprite(tempBuffer, ref texturePtr, textureYPos, lightLevel, flipY);
 
-                DrawSpriteLine(width, x, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
+                if (repeat && count > 0)
+                {
+                    DrawSpriteLine(count, width, x + spriteFromX, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
+                        ref screenPtr, ref tempBuffer.Pointer);
+                    x += count - 1;
+                    continue;
+                }
+
+                DrawSpriteLine(width, x + spriteFromX, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
                     ref screenPtr, ref tempBuffer.Pointer);
             }
 
@@ -523,6 +585,40 @@ namespace RenderingEngine.Engine
                 if (shaded != 0U)
                 {
                     screenIndexPtr = BlendBGRA(ref screenIndexPtr, ref shaded, a, aInv);
+                }
+
+                screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                textureXPos_u += textureXIncr_u;
+            }
+        }
+
+        private static void DrawSpriteLine(
+            int count,
+            int width,
+            int x,
+            int textureStartYClamped, int textureEndYClamped,
+            int textureXPos,
+            int textureXIncr,
+            scoped ref uint screenPtr,
+            scoped ref uint textureBuffer
+        )
+        {
+            ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, textureStartYClamped * width + x);
+            ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, textureEndYClamped * width + x);
+            uint textureXPos_u = (uint)(textureXPos);
+            uint textureXIncr_u = (uint)(textureXIncr);
+
+            while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
+            {
+                uint texelIndex = textureXPos_u >> 16;
+                uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+
+                if (shaded != 0U)
+                {
+                    for (int i = 0; i < count; i++)
+                    {
+                        Unsafe.Add(ref screenIndexPtr, i) = shaded;
+                    }
                 }
 
                 screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
