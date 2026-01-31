@@ -35,7 +35,7 @@ namespace RenderingEngine.DoomMapLoader
         public static void ExtractAllTextures(GrpFile grp, PaletteFile paletteFile)
         {
             List<ArtFile> artFiles = BuildFileParser.ExtractArtFiles(grp);
-            Dictionary<string, TextureInfo> textures = ExtractTextures(artFiles, paletteFile);
+            Dictionary<string, TextureInfo> textures = ExtractTextures(artFiles);
 
             ReadOnlySpan<BGRA> pal = ToBGRA(MemoryMarshal.Cast<byte, RGB>(paletteFile.Palette));
 
@@ -797,7 +797,7 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
-        private static Dictionary<string, TextureInfo> ExtractTextures(List<ArtFile> artFiles, PaletteFile paletteFile)
+        private static Dictionary<string, TextureInfo> ExtractTextures(List<ArtFile> artFiles)
         {
             Dictionary<string, TextureInfo> textures = [];
 

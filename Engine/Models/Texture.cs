@@ -90,16 +90,17 @@ internal class DoomTexture : Texture
     {
         const uint Alpha = (uint)byte.MaxValue << 24;
 
-        if (brightness == byte.MinValue)
-        {
-            texture.Fill(Alpha);
-            return;
-        }
-
         uint scale = (uint)brightness;
+
         for (int i = 0; i < texture.Length; i++)
         {
             BGRA value = texture[i];
+
+            if (value.Value == 0L)
+            {
+                continue;
+            }
+
             uint b = value.B * scale >> 8;
             uint g = value.G * scale >> 8 << 8;
             uint r = value.R * scale >> 8 << 16;

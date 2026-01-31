@@ -100,7 +100,7 @@ namespace RenderingEngine.Engine
                 float xMapPosMultiplier = this.xMapPosMultiplierCache[x];
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, ceilingStart, width,
-                    x, lightLevel, yCeilV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    x, yCeilV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, doubleSize);
             }
         }
@@ -208,7 +208,7 @@ namespace RenderingEngine.Engine
                         float xMapPosMultiplier = xMapPosMultiplierV[i];
 
                         RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
-                            x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                            x, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                             textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize);
                     }
                 }
@@ -236,7 +236,7 @@ namespace RenderingEngine.Engine
                 float xMapPosMultiplier = this.xMapPosMultiplierCache[x];
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
-                    x, lightLevel, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    x, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize);
             }
         }
@@ -249,7 +249,6 @@ namespace RenderingEngine.Engine
             int floorFromY,
             int width,
             int x,
-            uint lightLevel,
             Vector<float> cameraPosition,
             float xMapPosMultiplier,
             Vector<int> yOffSetV,

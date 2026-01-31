@@ -7,7 +7,6 @@ namespace RenderingEngine.Engine
     {
         private void RenderSkyboxVector(PortalPlayerSnapshot player, Sector sector)
         {
-            const float twoPi = 2 * MathF.PI;
             const float oneOverTwoPi = 1f / (2 * MathF.PI);
 
             int width = PixelWidth;
@@ -16,7 +15,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = sector.CeilTexture;
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
-            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(false, 0));
+            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(false, sector.LightLevel));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
@@ -45,15 +44,7 @@ namespace RenderingEngine.Engine
 
                 // calculate angle between 0 to 2 PI
                 float angleX = Unsafe.Add(ref angleCachePtr, x) - viewAngle;
-
-                if (angleX > twoPi)
-                {
-                    angleX -= twoPi;
-                }
-                else if (angleX < 0f)
-                {
-                    angleX = twoPi + angleX;
-                }
+                angleX = MathFormulas.ClampAngle(angleX);
 
                 int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
@@ -103,7 +94,6 @@ namespace RenderingEngine.Engine
             Sector sector
             )
         {
-            const float twoPi = 2 * MathF.PI;
             const float oneOverTwoPi = 1f / (2 * MathF.PI);
 
             int width = PixelWidth;
