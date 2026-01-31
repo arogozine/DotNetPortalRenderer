@@ -96,10 +96,10 @@ namespace RenderingEngine.Engine
             (bool upperSkybox, _, bool upperFlipY) = GetFlags(upperTexture);
             (bool lowerSkybox, _, bool lowerFlipY) = GetFlags(lowerTexture);
 
-            ref BGRA upperTexturePtr = ref MemoryMarshal.GetArrayDataReference(upperSkybox ? upperTexture.Data : upperTexture.Rotated);
+            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(!upperSkybox, lightLevel));
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
 
-            ref BGRA lowerTexturePtr = ref MemoryMarshal.GetArrayDataReference(lowerTexture.Rotated);
+            ref BGRA lowerTexturePtr = ref MemoryMarshal.GetReference(lowerTexture.Texture.GetBinary(true, lightLevel));
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
@@ -259,9 +259,9 @@ namespace RenderingEngine.Engine
 
             byte lightLevel = sector.LightLevel;
 
-            ref uint screenPtr = ref GetScreenPtr<uint>();
+            ref uint screenPtr = ref GetScreenPtr<uint>();            
 
-            ref BGRA wallTexturePtr = ref MemoryMarshal.GetArrayDataReference(textureInfo.Rotated);
+            ref BGRA wallTexturePtr = ref MemoryMarshal.GetReference(textureInfo.Texture.GetBinary(true, lightLevel));
             int textureWidth = textureInfo.Height;
 
             int textureStart = textureInfo.YOffset << 16;
@@ -673,7 +673,7 @@ namespace RenderingEngine.Engine
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             TextureInfo wallTexture = wall.MiddleTexture!;
-            ref uint wallTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetArrayDataReference(wallTexture.Data));
+            ref uint wallTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(wallTexture.Texture.GetBinary(false, 0)));
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
@@ -1112,16 +1112,7 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            const uint Alpha = (uint)byte.MaxValue << 24;
-
             tempBuffer.Index = textureYPos;
-
-            // avoid calculating if too far away (all black)
-            if (brightness == byte.MinValue)
-            {
-                tempBuffer.Span.Fill(Alpha);
-                return;
-            }
 
             Span<uint> buffer = tempBuffer.Span;
             ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
@@ -1131,11 +1122,7 @@ namespace RenderingEngine.Engine
             {
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {
-                    uint b = columnPtr.B * scale >> 8;
-                    uint g = columnPtr.G * scale >> 8 << 8;
-                    uint r = columnPtr.R * scale >> 8 << 16;
-                    buffer[i] = b | g | r | Alpha;
-
+                    buffer[i] = columnPtr.Value;
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);
                 }
             }
@@ -1143,10 +1130,7 @@ namespace RenderingEngine.Engine
             {
                 for (int i = 0; i < buffer.Length; i++)
                 {
-                    uint b = columnPtr.B * scale >> 8;
-                    uint g = columnPtr.G * scale >> 8 << 8;
-                    uint r = columnPtr.R * scale >> 8 << 16;
-                    buffer[i] = b | g | r | Alpha;
+                    buffer[i] = columnPtr.Value; //  b | g | r | Alpha;
 
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);
                 }

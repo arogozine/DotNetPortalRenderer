@@ -139,6 +139,23 @@ namespace RenderingEngine.Engine
             return new RenderablePlaneInfo(wallStartY, wallEndY, ceilDistIncr, floorDistIncr);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static float ClampAngle(float angle)
+        {
+            const float twoPi = 2 * MathF.PI;
+
+            if (angle > twoPi)
+            {
+                angle -= twoPi;
+            }
+            else if (angle < 0f)
+            {
+                angle = twoPi + angle;
+            }
+
+            return angle;
+        }
+
         internal static bool CalculatePlaneIntersectionsForWall(int width, float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
         {
             // Nothing To Render

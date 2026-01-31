@@ -30,7 +30,6 @@ namespace RenderingEngine.Engine
             TextureInfo texture = sprite.Texture;
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
-            ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
 
             int width = PixelWidth;
             int textureWidth = texture.Height;
@@ -39,6 +38,8 @@ namespace RenderingEngine.Engine
 
             Sector sector = sectors[sprite.SectorId];
             byte lightLevel = sector.LightLevel;
+
+            ref BGRA texturePtr = ref MemoryMarshal.GetReference(texture.Texture.GetBinary(true, lightLevel));
 
             float rx1 = sprite.R1.X;
             float rx2 = sprite.R2.X;
@@ -179,7 +180,6 @@ namespace RenderingEngine.Engine
             TextureInfo texture = sprite.Texture;
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
-            ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
 
             int width = PixelWidth;
             int textureWidth = texture.Height;
@@ -193,6 +193,8 @@ namespace RenderingEngine.Engine
 
             Sector sector = sectors[sprite.SectorId];
             byte lightLevel = sector.LightLevel;
+
+            ref BGRA texturePtr = ref MemoryMarshal.GetReference(texture.Texture.GetBinary(true, lightLevel));
 
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;
@@ -284,7 +286,7 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
 
             Texture texture = TextureCache.GetTexture(textureInfo);
-            ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
+            ref BGRA texturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(true, sector.LightLevel));
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
 
@@ -419,7 +421,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = wall.MiddleTexture!;
             Texture texture = TextureCache.GetTexture(textureInfo);
-            ref BGRA texturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Rotated);
+            ref BGRA texturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(true, sector.LightLevel));
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
             // optimize to avoid "%" when possible
@@ -689,8 +691,6 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            const uint Alpha = (uint)byte.MaxValue << 24;
-
             buffer.Index = textureYPos;
 
             Span<uint> spriteTexturePtr = buffer.Span;
@@ -701,18 +701,7 @@ namespace RenderingEngine.Engine
             {
                 for (int i = spriteTexturePtr.Length - 1; i >= 0; i--)
                 {
-                    if (columnPtr.IsTransparent)
-                    {
-                        spriteTexturePtr[i] = default;
-                    }
-                    else
-                    {
-                        uint b = columnPtr.B * scale >> 8;
-                        uint g = columnPtr.G * scale >> 8 << 8;
-                        uint r = columnPtr.R * scale >> 8 << 16;
-                        spriteTexturePtr[i] = b | g | r | Alpha;
-                    }
-
+                    spriteTexturePtr[i] = columnPtr.Value;
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);
                 }
             }
@@ -720,18 +709,7 @@ namespace RenderingEngine.Engine
             {
                 for (int i = 0; i < spriteTexturePtr.Length; i++)
                 {
-                    if (columnPtr.IsTransparent)
-                    {
-                        spriteTexturePtr[i] = default;
-                    }
-                    else
-                    {
-                        uint b = columnPtr.B * scale >> 8;
-                        uint g = columnPtr.G * scale >> 8 << 8;
-                        uint r = columnPtr.R * scale >> 8 << 16;
-                        spriteTexturePtr[i] = b | g | r | Alpha;
-                    }
-
+                    spriteTexturePtr[i] = columnPtr.Value;
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);
                 }
             }

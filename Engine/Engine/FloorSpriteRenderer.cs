@@ -35,9 +35,9 @@ namespace RenderingEngine.Engine
 
             int textureWidth = texture.Width;
 
-            ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Data);
-            ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
             byte lightLevel = sector.LightLevel;
+            ref BGRA floorTexturePtr = ref MemoryMarshal.GetReference(texture.Texture.GetBinary(false, lightLevel));
+            ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
             Vector<float> yFloorV = Vector.Create(yFloor);
             Vector<int> textureHeightMaskV = Vector.Create(texture.Height - 1);
@@ -181,9 +181,10 @@ namespace RenderingEngine.Engine
                 for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
                     ref BGRA tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
+
                     if (tex.Value != 0U)
                     {
-                        ShadeByPrecalc(in tex, ref screenTex, lightLevel);
+                        screenTex = tex;
                     }
                 }
 
@@ -235,9 +236,10 @@ namespace RenderingEngine.Engine
                 for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
                     ref BGRA tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
+
                     if (tex.Value != 0U)
                     {
-                        ShadeByPrecalc(in tex, ref screenTex, lightLevel);
+                        screenTex = tex;
                     }
                 }
             }

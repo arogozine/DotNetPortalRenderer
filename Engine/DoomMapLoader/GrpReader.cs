@@ -37,9 +37,35 @@ namespace RenderingEngine.DoomMapLoader
             List<ArtFile> artFiles = BuildFileParser.ExtractArtFiles(grp);
             Dictionary<string, TextureInfo> textures = ExtractTextures(artFiles, paletteFile);
 
+            ReadOnlySpan<BGRA> pal = ToBGRA(MemoryMarshal.Cast<byte, RGB>(paletteFile.Palette));
+
+            for (int i = 0; i < paletteFile.PalLookups.Length; i++)
+            {
+                Span<byte> lookup = paletteFile.PalLookups[i];
+
+                BGRA[] palette = new BGRA[lookup.Length];
+
+                for (int j = 0; j < lookup.Length; j++)
+                {
+                    byte palIndex = lookup[j];
+
+                    // 255th index is used for transparency
+                    if (palIndex == byte.MaxValue)
+                    {
+                        palette[j] = BGRA.Transparent;
+                    }
+                    else
+                    {
+                        palette[j] = pal[palIndex];
+                    }
+                }
+
+                TextureCache.AddPallette(i, palette);
+            }
+
             foreach ((string name, var info) in textures)
             {
-                TextureCache.Add(name, info.Width, info.Height, info.Data);
+                TextureCache.Add(name, new BuildTexture(info.Width, info.Height, info.Data));
             }
         }
 
@@ -165,8 +191,7 @@ namespace RenderingEngine.DoomMapLoader
                         RenderingOptions = ceilingRenderingOptions,
                         Alpha = 1f
                     },
-                    LightLevel = DetermineShade(sector.FloorShade)
-                };
+                    LightLevel = sector.FloorShade                };
 
                 int wallStart = sector.WallPtr;
                 int wallEnd = wallStart + sector.WallNum;
@@ -495,13 +520,13 @@ namespace RenderingEngine.DoomMapLoader
                 (int width, int height) = (textureInfo.Width, textureInfo.Height);
 
                 textureInfo.YOffset *= -1;
-
+                /*
                 if (textureInfo.RenderingOptions.IsFlippedY)
                 {
                     textureInfo.YOffset = height - textureInfo.YOffset;
                 }
 
-                /*
+                
                if (!textureInfo.RenderingOptions.IsFlippedY)
                {
                    textureInfo.YOffset = -textureInfo.YOffset;
@@ -776,8 +801,6 @@ namespace RenderingEngine.DoomMapLoader
         {
             Dictionary<string, TextureInfo> textures = [];
 
-            ReadOnlySpan<BGRA> pal = ToBGRA(MemoryMarshal.Cast<byte, RGB>(paletteFile.Palette));
-
             Span<ArtFile> artFileSpan = CollectionsMarshal.AsSpan(artFiles);
 
             // Art File can have many tiles (textures)
@@ -794,11 +817,11 @@ namespace RenderingEngine.DoomMapLoader
                 {
                     TileType tile = artFile.Tiles[j];
 
-                    Span<byte> pixels = tile.Pixels;
+                    ReadOnlySpan<byte> pixels = tile.Pixels;
 
                     if (pixels.Length != 0)
                     {
-                        BGRA[] texture = new BGRA[pixels.Length];
+                        byte[] texture = new byte[pixels.Length];
 
                         int i = 0;
 
@@ -809,13 +832,7 @@ namespace RenderingEngine.DoomMapLoader
                             for (int x = 0; x < tile.XSize; x++)
                             {
                                 byte palIndex = pixels[index];
-
-                                // 255th index is used for transparency
-                                if (palIndex != byte.MaxValue)
-                                {
-                                    texture[i] = pal[palIndex];
-                                }
-
+                                texture[i] = palIndex;
                                 i++;
                                 index += tile.YSize;
                             }
@@ -842,11 +859,11 @@ namespace RenderingEngine.DoomMapLoader
         {
             public int Width { get; }
             public int Height { get; }
-            public BGRA[] Data { get; }
+            public byte[] Data { get; }
             public short LeftOffset { get; init; }
             public short TopOffset { get; init; }
 
-            public TextureInfo(int width, int height, BGRA[] data)
+            public TextureInfo(int width, int height, byte[] data)
             {
                 Width = width;
                 Height = height;
@@ -886,13 +903,6 @@ namespace RenderingEngine.DoomMapLoader
 
         private static string ToTile(short tileNumber) => $"TILE_{tileNumber}";
 
-        private static short DetermineShade(int floorShade)
-        {
-            floorShade = ((floorShade << 16) / 32) * byte.MaxValue;
-
-            return (short)(byte.MaxValue - (floorShade >> 16));
-        }
-
         private static float DetermineYLocation(float coordinate)
         {
             coordinate /= 8f;
@@ -902,13 +912,6 @@ namespace RenderingEngine.DoomMapLoader
         private static float DetermineXLocation(float coordinate)
         {
             coordinate /= 8f;
-            return coordinate * -1;
-        }
-
-        private static float DetermineZLocation(float coordinate)
-        {
-            coordinate /= 128f;
-            // build engine coordinates are upside down
             return coordinate * -1;
         }
 

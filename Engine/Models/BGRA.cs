@@ -19,6 +19,8 @@
 
         public static readonly BGRA Black = new(0, 0, 0, byte.MaxValue);
 
+        public static readonly BGRA Transparent = new(0U);
+
         [FieldOffset(0)]
         public readonly uint Value;
         [FieldOffset(0)]

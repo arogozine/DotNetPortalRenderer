@@ -12,8 +12,6 @@ namespace RenderingEngine.Models
 
         public int Width => Texture.Width;
         public int Height => Texture.Height;
-        public BGRA[] Data => Texture.Data;
-        public BGRA[] Rotated => Texture.Rotated;
 
         public required string Name { get; set; }
         public int XOffset { get; set; }

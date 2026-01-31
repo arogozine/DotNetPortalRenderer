@@ -76,7 +76,7 @@ namespace RenderingEngine.Engine
                 alignYV = Vector.Create(aY);
             }
 
-            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(ceilingTexture.Data);
+            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(ceilingTexture.Texture.GetBinary(false, lightLevel));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
             (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
@@ -124,7 +124,7 @@ namespace RenderingEngine.Engine
 
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(floorTexture);
 
-            ref BGRA floorTexturePtr = ref MemoryMarshal.GetArrayDataReference(floorTexture.Data);
+            ref BGRA floorTexturePtr = ref MemoryMarshal.GetReference(floorTexture.Texture.GetBinary(false, lightLevel));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
             Vector<float> yfloorV = Vector.Create(yfloor);
@@ -330,7 +330,7 @@ namespace RenderingEngine.Engine
                 for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
                     ref BGRA tex = ref Unsafe.Add(ref texturePtr, textureIndex[i]);
-                    ShadeByPrecalc(in tex, ref screenTex, lightLevel);
+                    screenTex = tex;
                 }
 
                 floorFromY += Vector<float>.Count;
@@ -387,8 +387,7 @@ namespace RenderingEngine.Engine
 
                 for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
-                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, textureIndex[i]);
-                    ShadeByPrecalc(in tex, ref screenTex, lightLevel);
+                    screenTex = Unsafe.Add(ref texturePtr, textureIndex[i]);
                 }
             }
         }
@@ -404,20 +403,6 @@ namespace RenderingEngine.Engine
             bool doubleSize = textureInfo.XScale == 2 && textureInfo.YScale == 2;
 
             return (swapXy, flipX, flipY, doubleSize);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ShadeByPrecalc(in BGRA inColor, ref BGRA outColor, uint scale)
-        {
-            const uint Alpha = (uint)byte.MaxValue << 24;
-
-            uint b = inColor.B * scale >> 8;
-            uint g = inColor.G * scale >> 8 << 8;
-            uint r = inColor.R * scale >> 8 << 16;
-
-            uint bgra = b | g | r | Alpha;
-
-            Unsafe.As<BGRA, uint>(ref outColor) = bgra;
         }
     }
 }

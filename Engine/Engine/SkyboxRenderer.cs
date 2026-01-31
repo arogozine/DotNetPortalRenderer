@@ -16,7 +16,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = sector.CeilTexture;
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
-            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Data);
+            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(false, 0));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
@@ -112,7 +112,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = sector.FloorTexture;
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
-            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetArrayDataReference(texture.Data);
+            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(false, 0));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
             ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
 
@@ -141,15 +141,7 @@ namespace RenderingEngine.Engine
 
                 // calculate angle between 0 to 2 PI
                 float angleX = Unsafe.Add(ref angleCachePtr, x) - viewAngle;
-
-                if (angleX > twoPi)
-                {
-                    angleX -= twoPi;
-                }
-                else if (angleX < 0f)
-                {
-                    angleX = twoPi + angleX;
-                }
+                angleX = MathFormulas.ClampAngle(angleX);
 
                 int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 

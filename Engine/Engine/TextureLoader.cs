@@ -2,29 +2,55 @@
 
 namespace RenderingEngine.Engine;
 
+internal static partial class TextureCache
+{
+    private static readonly Dictionary<int, BGRA[]> PalletteLookup = [];
+
+    public static void AddPallette(int id, BGRA[] lookup)
+    {
+        PalletteLookup[id] = lookup;
+    }
+
+    public static BGRA[] GetTexture(Span<byte> lookup, int palletteId)
+    {
+        if (!PalletteLookup.ContainsKey(palletteId))
+        {
+            palletteId = 0;
+        }
+
+        ReadOnlySpan<BGRA> pallette = PalletteLookup[palletteId];
+        BGRA[] texture = new BGRA[lookup.Length];
+
+        for (int i = 0; i < lookup.Length; i++)
+        {
+            byte index = lookup[i];
+            texture[i] = pallette[index];
+        }
+
+        return texture;
+    }
+}
+
 [SkipLocalsInit]
-internal static class TextureCache
+internal static partial class TextureCache
 {
     private const string FallBack = "-";
     private static readonly Dictionary<string, Texture> Cache = [];
 
     static TextureCache()
     {
-        var data = new BGRA[128 * 128];
-        data.AsSpan().Fill(BGRA.Green);
+        var data = new byte[128 * 128];
 
-        Cache[FallBack] = new Texture(128, 128, data, data);
+        Cache[FallBack] = (Texture)new DoomTexture(128, 128, data);
     }
 
-    public static void Add(string name, int width, int height, BGRA[] data)
+    public static void Add(string name, Texture texture)
     {
         name = name.ToUpperInvariant();
-
-        BGRA[] rotated = RotateTexture(height, width, data);
-        Cache[name] = new Texture(width, height, data, rotated);
+        Cache[name] = texture;
     }
 
-    private static BGRA[] RotateTexture(int height, int width, scoped Span<BGRA> input)
+    internal static BGRA[] RotateTexture(int height, int width, scoped Span<BGRA> input)
     {
         // build engine rotates textures for better memory locality
         BGRA[] output = new BGRA[height * width];
