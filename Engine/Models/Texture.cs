@@ -9,37 +9,35 @@ internal abstract class Texture
 
     protected readonly Dictionary<int, BGRA[]> PalletteToImage = [];
     protected readonly Dictionary<int, BGRA[]> PalletteToImageRotated = [];
-    protected readonly byte[] _lookup;
 
-    public Texture(int width, int height, byte[] lookup)
+    public Texture(int width, int height)
     {
         Width = width;
         Height = height;
-        _lookup = lookup;
     }
 
-    public Span<BGRA> GetBinary(bool rotated, int palletteId)
+    public Span<BGRA> GetBinary(bool rotated, int shade)
     {
         if (rotated)
         {
-            if (PalletteToImageRotated.TryGetValue(palletteId, out BGRA[]? value))
+            if (PalletteToImageRotated.TryGetValue(shade, out BGRA[]? value))
             {
                 return value;
             }
 
-            value = CalculateRotatedTexture(palletteId);
-            PalletteToImageRotated[palletteId] = value;
+            value = CalculateRotatedTexture(shade);
+            PalletteToImageRotated[shade] = value;
             return value;
         }
         else
         {
-            if (PalletteToImage.TryGetValue(palletteId, out BGRA[]? value))
+            if (PalletteToImage.TryGetValue(shade, out BGRA[]? value))
             {
                 return value;
             }
 
-            value = CalculateTexture(palletteId);
-            PalletteToImage[palletteId] = value;
+            value = CalculateTexture(shade);
+            PalletteToImage[shade] = value;
             return value;
         }
     }
@@ -48,24 +46,42 @@ internal abstract class Texture
     protected abstract BGRA[] CalculateRotatedTexture(int palletteId);
 }
 
+internal abstract class PalletteTexture : Texture
+{
+    protected readonly byte[] _lookup;
+
+    public PalletteTexture(int width, int height, byte[] lookup)
+        : base (width, height)
+    {;
+        _lookup = lookup;
+    }
+}
+
 internal class DoomTexture : Texture
 {
-    public DoomTexture(int width, int height, byte[] lookup) : base(width, height, lookup)
+    private readonly BGRA[] _texture;
+
+    public DoomTexture(int width, int height, BGRA[] texture)
+        : base(width, height)
     {
+        _texture = texture;
     }
 
-    protected override BGRA[] CalculateRotatedTexture(int palletteId)
+    protected override BGRA[] CalculateRotatedTexture(int brightness)
     {
-        BGRA[] texture = TextureCache.GetTexture(_lookup, 0);
-        Shade(texture, palletteId);
+        BGRA[] texture = TextureCache.RotateTexture(Height, Width, _texture);
 
-        return TextureCache.RotateTexture(Height, Width, texture);
+        Shade(texture, brightness);
+
+        return texture;
     }
 
-    protected override BGRA[] CalculateTexture(int palletteId)
+    protected override BGRA[] CalculateTexture(int brightness)
     {
-        BGRA[] texture = TextureCache.GetTexture(_lookup, 0);
-        Shade(texture, palletteId);
+        BGRA[] texture = new BGRA[_texture.Length];
+        _texture.AsSpan().CopyTo(texture);
+
+        Shade(texture, brightness);
 
         return texture;
     }
@@ -92,7 +108,7 @@ internal class DoomTexture : Texture
     }
 }
 
-internal class BuildTexture : Texture
+internal class BuildTexture : PalletteTexture
 {
     public BuildTexture(int width, int height, byte[] lookup) : base(width, height, lookup)
     {

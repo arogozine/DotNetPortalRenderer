@@ -2,46 +2,19 @@
 
 namespace RenderingEngine.Engine;
 
-internal static partial class TextureCache
-{
-    private static readonly Dictionary<int, BGRA[]> PalletteLookup = [];
-
-    public static void AddPallette(int id, BGRA[] lookup)
-    {
-        PalletteLookup[id] = lookup;
-    }
-
-    public static BGRA[] GetTexture(Span<byte> lookup, int palletteId)
-    {
-        if (!PalletteLookup.ContainsKey(palletteId))
-        {
-            palletteId = 0;
-        }
-
-        ReadOnlySpan<BGRA> pallette = PalletteLookup[palletteId];
-        BGRA[] texture = new BGRA[lookup.Length];
-
-        for (int i = 0; i < lookup.Length; i++)
-        {
-            byte index = lookup[i];
-            texture[i] = pallette[index];
-        }
-
-        return texture;
-    }
-}
-
 [SkipLocalsInit]
 internal static partial class TextureCache
 {
     private const string FallBack = "-";
     private static readonly Dictionary<string, Texture> Cache = [];
+    private static readonly Dictionary<int, BGRA[]> PalletteLookup = [];
 
     static TextureCache()
     {
-        var data = new byte[128 * 128];
+        var data = new BGRA[128 * 128];
+        data.AsSpan().Fill(BGRA.Green);
 
-        Cache[FallBack] = (Texture)new DoomTexture(128, 128, data);
+        Cache[FallBack] = new DoomTexture(128, 128, data);
     }
 
     public static void Add(string name, Texture texture)
@@ -95,6 +68,30 @@ internal static partial class TextureCache
         if (!Cache.TryGetValue(name, out Texture? texture))
         {
             texture = Cache[FallBack];
+        }
+
+        return texture;
+    }
+
+    public static void AddPallette(int id, BGRA[] lookup)
+    {
+        PalletteLookup[id] = lookup;
+    }
+
+    public static BGRA[] GetTexture(Span<byte> lookup, int palletteId)
+    {
+        if (!PalletteLookup.ContainsKey(palletteId))
+        {
+            palletteId = 0;
+        }
+
+        ReadOnlySpan<BGRA> pallette = PalletteLookup[palletteId];
+        BGRA[] texture = new BGRA[lookup.Length];
+
+        for (int i = 0; i < lookup.Length; i++)
+        {
+            byte index = lookup[i];
+            texture[i] = pallette[index];
         }
 
         return texture;

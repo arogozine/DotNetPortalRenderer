@@ -166,7 +166,7 @@ namespace RenderingEngine.Engine
 
                         textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
-                        CalculateAndCacheWallColumn(upperBuffer, ref upperTexturePtr, textureYPos, lightLevel, upperFlipY);
+                        CalculateAndCacheWallColumn(upperBuffer, ref upperTexturePtr, textureYPos, upperFlipY);
 
                         RenderWallLine(
                             width,
@@ -209,7 +209,7 @@ namespace RenderingEngine.Engine
 
                         textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
-                        CalculateAndCacheWallColumn(lowerBuffer, ref lowerTexturePtr, textureYPos, lightLevel, lowerFlipY);
+                        CalculateAndCacheWallColumn(lowerBuffer, ref lowerTexturePtr, textureYPos, lowerFlipY);
 
                         RenderWallLine(
                             width,
@@ -343,7 +343,7 @@ namespace RenderingEngine.Engine
                         int textureYPos = textureYPosV[j];
                         int textureXIncr = textureXIncrV[j];
 
-                        CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, lightLevel, flipY);
+                        CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, flipY);
 
                         textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
@@ -420,7 +420,7 @@ namespace RenderingEngine.Engine
 
                 int textureYPos = textureXLocation[x];
 
-                CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, lightLevel, flipY);
+                CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, flipY);
 
                 textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
@@ -1104,7 +1104,7 @@ namespace RenderingEngine.Engine
         private static void CalculateAndCacheWallColumn(
             TempBuffer<uint> tempBuffer,
             scoped ref BGRA wallTexturePtr,
-            int textureYPos, byte brightness, bool flipY)
+            int textureYPos, bool flipY)
         {
             // reuse the cached column
             if (tempBuffer.Index == textureYPos)
@@ -1116,7 +1116,6 @@ namespace RenderingEngine.Engine
 
             Span<uint> buffer = tempBuffer.Span;
             ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
-            uint scale = brightness;
 
             if (flipY)
             {
@@ -1130,7 +1129,7 @@ namespace RenderingEngine.Engine
             {
                 for (int i = 0; i < buffer.Length; i++)
                 {
-                    buffer[i] = columnPtr.Value; //  b | g | r | Alpha;
+                    buffer[i] = columnPtr.Value;
 
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);
                 }

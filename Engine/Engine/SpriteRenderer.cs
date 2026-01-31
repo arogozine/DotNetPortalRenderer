@@ -115,15 +115,10 @@ namespace RenderingEngine.Engine
                 textureXPosArray[x] = (clamptedFromY - spriteStartY) * textureXIncr;
             }
 
-            // var test = repeatedCount.ToArray();
-
             if (!AccountForHoles(repeatedCount, length))
             {
                 return;
             }
-
-           // var test2 = repeatedCount.ToArray();
-
 
             bool repeat =
                    PopulateRepeatedValues(repeatedCountB, textureYPosArray)
@@ -148,7 +143,7 @@ namespace RenderingEngine.Engine
                 int textureYPos = textureYPosArray[x];
                 int textureXPos = textureXPosArray[x];
 
-                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, lightLevel, flipY);
+                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, flipY);
 
                 if (repeat && count > 0)
                 {
@@ -259,7 +254,7 @@ namespace RenderingEngine.Engine
 
                 int textureXPos = (clamptedFromY - spriteStartY_Int) * textureXIncr;
 
-                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, lightLevel, flipY);
+                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, flipY);
 
                 DrawSpriteLine(width, x, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
                     ref screenPtr, ref tempBuffer.Pointer);
@@ -379,7 +374,7 @@ namespace RenderingEngine.Engine
 
                 float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, offset, textureWidth);
 
-                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, lightLevel, false);
+                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, false);
 
                 if (alpha == 1f)
                 {
@@ -504,7 +499,7 @@ namespace RenderingEngine.Engine
                 float textureXIncr = (textureWidth * yScale) / (wallEndY - wallStartY);
                 float textureXPos = yOffset - textureXIncr * (wallStartY - clampedFromY);
 
-                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, lightLevel, flipY);
+                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, flipY);
 
                 if (alpha == 1f)
                 {
@@ -682,7 +677,6 @@ namespace RenderingEngine.Engine
             TempBuffer<uint> buffer,
             ref BGRA wallTexturePtr,
             int textureYPos,
-            byte brightness,
             bool flipY)
         {
             // reuse the cached column
@@ -695,7 +689,6 @@ namespace RenderingEngine.Engine
 
             Span<uint> spriteTexturePtr = buffer.Span;
             ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
-            uint scale = (uint)brightness;
 
             if (flipY)
             {

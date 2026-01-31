@@ -162,7 +162,7 @@ namespace DoomAssetLoader
 
             for (int i = 0; i < bytes.Length; i += setSize)
             {
-                colorSets[i] = bytes[0..(i + setSize)].ToArray();
+                colorSets[i >> 8] = bytes[0..(i + setSize)].ToArray();
             }
 
             return colorSets;

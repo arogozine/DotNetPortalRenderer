@@ -107,11 +107,12 @@ namespace RenderingEngine.DoomMapLoader
         {
             public int Width { get; }
             public int Height { get; }
-            public byte[] Data { get; }
+            public BGRA[] Data { get; }
+
             public short LeftOffset { get; init; }
             public short TopOffset { get; init; }
 
-            public TextureInfo(int width, int height, byte[] data)
+            public TextureInfo(int width, int height, BGRA[] data)
             {
                 Width = width;
                 Height = height;
@@ -147,7 +148,12 @@ namespace RenderingEngine.DoomMapLoader
 
         public static Dictionary<string, TextureInfo> ExtractSprites(WadFile wad)
         {
+            Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
+
             Dictionary<string, TextureInfo> textures = [];
+
+            const int normalPalette = 0;
+            ReadOnlySpan<BGRA> palette = ToBGRA(playPal[normalPalette]);
 
             for (int l = 0; l < wad.Lumps.Count; l++)
             {
@@ -158,7 +164,6 @@ namespace RenderingEngine.DoomMapLoader
                     continue;
                 }
 
-                /*
                 // PNG
                 if (WadLumpParser.IsPng(wadLump) && TryDecodeImage(wadLump.Bytes, out BGRA[]? png, out int width, out int height))
                 {
@@ -170,12 +175,11 @@ namespace RenderingEngine.DoomMapLoader
 
                     continue;
                 }
-                */
 
                 PatchHeader header = WadLumpParser.ReadPatchOrSprite(wadLump);
 
-                byte[] texture = new byte[header.Width * header.Height];
-                ref byte textureRef = ref MemoryMarshal.GetArrayDataReference(texture);
+                BGRA[] texture = new BGRA[header.Width * header.Height];
+                ref BGRA textureRef = ref MemoryMarshal.GetArrayDataReference(texture);
 
                 for (int col = 0; col < header.Width; col++)
                 {
@@ -190,9 +194,11 @@ namespace RenderingEngine.DoomMapLoader
                             byte paletteIndex = post.Data[i];
                             int destY = y + i;
 
+                            BGRA color = palette[paletteIndex];
+
                             int index = col + (destY) * header.Width;
 
-                            Unsafe.Add(ref textureRef, index) = paletteIndex;
+                            Unsafe.Add(ref textureRef, index) = color;
                         }
                     }
 
@@ -227,8 +233,12 @@ namespace RenderingEngine.DoomMapLoader
 
         private static void ExtractTextures(WadFile wad, WadLump textureLump, Dictionary<string, TextureInfo> textures)
         {
+            Dictionary<int, RGB[]> playPal = WadLumpParser.ReadPlaypal(wad[LumpType.PlayPal]);
             Span<string> patchNames = WadLumpParser.ReadPNames(wad[LumpType.PNames]);
             Span<TextureDefinition> textureList = WadLumpParser.ReadTexture(textureLump);
+
+            const int normalPalette = 0;
+            ReadOnlySpan<BGRA> palette = ToBGRA(playPal[normalPalette]);
 
             for (int t = 0; t < textureList.Length; t++)
             {
@@ -236,8 +246,8 @@ namespace RenderingEngine.DoomMapLoader
                 int height = textureDefinition.Height;
                 int width = textureDefinition.Width;
 
-                byte[] texture = new byte[textureDefinition.Width * textureDefinition.Height];
-                ref byte textureRef = ref MemoryMarshal.GetArrayDataReference(texture);
+                BGRA[] texture = new BGRA[textureDefinition.Width * textureDefinition.Height];
+                ref BGRA textureRef = ref MemoryMarshal.GetArrayDataReference(texture);
 
                 for (int patchIndex = 0; patchIndex < textureDefinition.Patches.Length; patchIndex++)
                 {
@@ -272,9 +282,12 @@ namespace RenderingEngine.DoomMapLoader
                                     byte paletteIndex = post.Data[i];
 
                                     int destY = y + i;
+
+                                    BGRA color = palette[paletteIndex];
+
                                     int index = x + (destY) * width;
 
-                                    Unsafe.Add(ref textureRef, index) = paletteIndex;
+                                    Unsafe.Add(ref textureRef, index) = color;
                                 }
                             }
 
@@ -311,25 +324,23 @@ namespace RenderingEngine.DoomMapLoader
                     continue;
                 }
 
-                /*
                 // PNG
                 if (WadLumpParser.IsPng(wadLump) && TryDecodeImage(wadLump.Bytes, out BGRA[]? png, out int width, out int height))
                 {
                     flats[wadLump.Name] = new TextureInfo(width, height, png);
                     continue;
                 }
-                */
 
                 ReadOnlySpan<byte> bytes = wadLump.Bytes;
-                byte[] texture = new byte[bytes.Length];
-                ref byte textureRef = ref MemoryMarshal.GetArrayDataReference(texture);
+                BGRA[] texture = new BGRA[bytes.Length];
+                ref BGRA textureRef = ref MemoryMarshal.GetArrayDataReference(texture);
 
                 for (int c = 0; c < bytes.Length; c++)
                 {
                     int colorMapIndex = bytes[c];
-                    byte paletteIndex = colorMap[colorMapIndex];
-
-                    Unsafe.Add(ref textureRef, c) = paletteIndex;
+                    int paletteIndex = colorMap[colorMapIndex];
+                    BGRA color = palette[paletteIndex];
+                    Unsafe.Add(ref textureRef, c) = color;
                 }
 
                 flats[wadLump.Name] = new TextureInfo(64, 64, texture);
