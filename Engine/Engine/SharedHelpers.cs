@@ -168,5 +168,17 @@ namespace RenderingEngine.Engine
 
             return inside;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static Vector<int> EnsureOffsetIsPositive(Vector<int> length, Vector<int> offset)
+        {
+            Vector<int> quotient = offset / length;
+            Vector<int> rem = offset - quotient * length;
+
+            Vector<int> mask = Vector.LessThan(rem, Vector<int>.Zero);
+            Vector<int> adjusted = Vector.ConditionalSelect(mask, rem + length, rem);
+
+            return adjusted;
+        }
     }
 }
