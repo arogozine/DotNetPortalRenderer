@@ -3,8 +3,25 @@ using System.Diagnostics;
 
 namespace Tests
 {
-    public class MathUnitTests
+    public class MathFormulaUnitTests
     {
+
+        [Fact]
+        public void ClampAngle_Works()
+        {
+            for (float i = -9.9f; i < 9.9f; i += 0.1f)
+            {
+                (float expectedA, float expectedB) = MathF.SinCos(i);
+
+                float iClamped = MathFormulas.ClampAngle(i);
+                Assert.True(iClamped >= 0f);
+
+                (float a, float b) = MathF.SinCos(i);
+                Assert.Equal(expectedA, a);
+                Assert.Equal(expectedB, b);
+            }
+        }
+
         [Fact]
         public void FastConvertionFloatToIntNative()
         {

@@ -144,13 +144,14 @@ namespace RenderingEngine.Engine
         {
             const float twoPi = 2 * MathF.PI;
 
-            if (angle > twoPi)
+            while (angle > twoPi)
             {
                 angle -= twoPi;
             }
-            else if (angle < 0f)
+
+            while (angle < 0f)
             {
-                angle = twoPi + angle;
+                angle += twoPi;
             }
 
             return angle;

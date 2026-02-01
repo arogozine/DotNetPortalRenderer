@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using RenderingEngine.Tooling;
 using System.Numerics;
 
 namespace RenderingEngine.Engine
@@ -11,6 +12,8 @@ namespace RenderingEngine.Engine
             RenderableFloorSprite sprite,
             RenderWindowSpriteSnapshot renderableWall)
         {
+            Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
+
             int height = PixelHeight;
             int width = PixelWidth;
 
@@ -92,7 +95,7 @@ namespace RenderingEngine.Engine
 
                 int screenIndex = clamptedFromY * width + x;
 
-                float xMapPosMultiplier = this.xMapPosMultiplierCache[x];
+                float xMapPosMultiplier = xMapPosMultiplierCache[x];
 
                 RenderFloorOrCeilingSpriteColumn(ref screenPtr, ref floorTexturePtr, screenIndex, clamptedToY, clamptedFromY, width,
                     x, lightLevel, yFloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
@@ -126,7 +129,7 @@ namespace RenderingEngine.Engine
             Vector<float> yScaleV
         )
         {
-            Span<float> incrVectorCache = this.cameraHeightToMapYPos;
+            Span<float> incrVectorCache = memoryPool.GetBucket<float>(MemoryPoolBucket.CameraHeightToMapYPos);
             Vector<float> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
 
             int rem = (floorToY - floorFromY) % Vector<int>.Count;
@@ -252,7 +255,7 @@ namespace RenderingEngine.Engine
             Span<int> spriteWindowBottom,
             ReadOnlySpan<float> depth)
         {
-            Span<float> incrVectorCache = this.cameraHeightToMapYPos;
+            Span<float> incrVectorCache = memoryPool.GetBucket<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
             bool next;
 

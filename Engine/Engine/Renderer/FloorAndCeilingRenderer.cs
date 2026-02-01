@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using RenderingEngine.Tooling;
 using System.Numerics;
 
 namespace RenderingEngine.Engine
@@ -76,6 +77,7 @@ namespace RenderingEngine.Engine
                 alignYV = Vector.Create(aY);
             }
 
+            Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(ceilingTexture.Texture.GetBinary(false, lightLevel));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
@@ -97,7 +99,7 @@ namespace RenderingEngine.Engine
 
                 int screenIndex = ceilingStart * width + x;
 
-                float xMapPosMultiplier = this.xMapPosMultiplierCache[x];
+                float xMapPosMultiplier = xMapPosMultiplierCache[x];
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, ceilingStart, width,
                     x, yCeilV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
@@ -124,6 +126,7 @@ namespace RenderingEngine.Engine
 
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(floorTexture);
 
+            Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
             ref BGRA floorTexturePtr = ref MemoryMarshal.GetReference(floorTexture.Texture.GetBinary(false, lightLevel));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
@@ -138,7 +141,7 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthV = Vector.Create(textureWidth);
 
             int xOffset = floorTexture.XOffset;
-            int yOffset = floorTexture.YOffset;// flipY ? floorTexture.YOffset : -floorTexture.YOffset;
+            int yOffset = floorTexture.YOffset;
 
             Vector<int> xOffSetV = Vector.Create(xOffset);
             Vector<int> yOffSetV = Vector.Create(yOffset);
@@ -193,7 +196,7 @@ namespace RenderingEngine.Engine
                     Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
                     Vector<int> floorFromV = Vector.ClampNative(wallEndV, ceilingStartV, floorEndV);
                     Vector<int> screenIndexV = floorFromV * widthV + sectorFromXV;
-                    Vector<float> xMapPosMultiplierV = Vector.LoadUnsafe(ref this.xMapPosMultiplierCache[x]);
+                    Vector<float> xMapPosMultiplierV = Vector.LoadUnsafe(ref xMapPosMultiplierCache[x]);
 
                     for (int i = 0; i < Vector<float>.Count; i++, x++)
                     {
@@ -233,7 +236,7 @@ namespace RenderingEngine.Engine
                 int floorFromY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
 
                 int screenIndex = floorFromY * width + x;
-                float xMapPosMultiplier = this.xMapPosMultiplierCache[x];
+                float xMapPosMultiplier = xMapPosMultiplierCache[x];
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
                     x, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
@@ -267,7 +270,7 @@ namespace RenderingEngine.Engine
             bool doubleSize
         )
         {
-            Span<float> incrVectorCache = this.cameraHeightToMapYPos;
+            Span<float> incrVectorCache = memoryPool.GetBucket<float>(MemoryPoolBucket.CameraHeightToMapYPos);
             Vector<float> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
 
             int rem = (floorToY - floorFromY) % Vector<int>.Count;

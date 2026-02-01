@@ -1,5 +1,5 @@
 ﻿using RenderingEngine.Models;
-using System.Numerics;
+using RenderingEngine.Tooling;
 
 namespace RenderingEngine.Engine
 {
@@ -18,26 +18,20 @@ namespace RenderingEngine.Engine
 
         private PortalPlayerSnapshot? Snapshot = null;
 
-        private readonly float[] angleCache;
-        private readonly float[] cameraHeightToMapYPos;
-        private readonly float[] xMapPosMultiplierCache;
+        private readonly AlignedMemoryPool memoryPool;
 
         private readonly BGRA[] buffer;
 
         public PortalRenderer(int width, int height)
         {
-            int overflowBuffer = (Vector<float>.Count - width % Vector<float>.Count) + Vector<float>.Count;
-
             PixelWidth = width;
             PixelHeight = height;
             SpriteHelper = new SpriteHelper(width, height);
             WallHelper = new WallHelper(width, height);
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
-            angleCache = new float[width + overflowBuffer];
-            cameraHeightToMapYPos = new float[height + overflowBuffer];
-            xMapPosMultiplierCache = new float[width + overflowBuffer];
 
             RenderWindowHelper = new RenderWindowHelper(width, height);
+            memoryPool = AlignedMemoryPool.GeneratePool(width, 3);
 
             GenerateAngleCache();
             GenerateCache();
@@ -48,7 +42,9 @@ namespace RenderingEngine.Engine
         /// </summary>
         private void GenerateAngleCache()
         {
-            int width = this.angleCache.Length;
+            Span<float> angleCache = memoryPool.GetBucket<float>(MemoryPoolBucket.AngleCache);
+
+            int width = angleCache.Length;
 
             float cameraWidthIncr = 2.0f / width;
             float cameraRay = -EngineConstants.CameraPlaneX;
@@ -61,8 +57,8 @@ namespace RenderingEngine.Engine
 
         private void GenerateCache()
         {
-            Span<float> xMapPosMultiplierCache = this.xMapPosMultiplierCache;
-            Span<float> cameraHeightToMapYPos = this.cameraHeightToMapYPos;
+            Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
+            Span<float> cameraHeightToMapYPos = memoryPool.GetBucket<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
             int width = this.PixelWidth;
             int height = this.PixelHeight;

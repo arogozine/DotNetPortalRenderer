@@ -17,7 +17,9 @@ namespace RenderingEngine.Engine
         public int[] BottomTextureXLocation { get; }
         public int[] TopTextureYLocation { get; }
         public int[] BottomTextureYLocation { get; }
-
+        public int[] ClampedFrom { get; }
+        public int[] ClampedTo { get; }
+        public int[] TextureXPos { get; }
 
 
         private int sectorFromX;
@@ -45,6 +47,9 @@ namespace RenderingEngine.Engine
             BottomTextureXLocation = new int[width];
             TopTextureYLocation = new int[width];
             BottomTextureYLocation = new int[width];
+            ClampedFrom = new int[width];
+            ClampedTo = new int[width];
+            TextureXPos = new int[width];
 
             sectorFromX = 0;
             sectorToX = width;

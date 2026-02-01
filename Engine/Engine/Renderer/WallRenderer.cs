@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using RenderingEngine.Tooling;
 using System.Numerics;
 
 namespace RenderingEngine.Engine
@@ -106,7 +107,7 @@ namespace RenderingEngine.Engine
             using TempBuffer<uint> lowerBuffer = TempBuffer<uint>.GetBuffer(lowerTexture.Height);
             using TempBuffer<uint> upperBuffer = TempBuffer<uint>.GetBuffer(upperTexture.Height);
 
-            ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
+            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
             int lowerTextureStart = lowerTexture.YOffset << 16;
             int upperTextureStart = upperTexture.YOffset << 16;
@@ -264,7 +265,6 @@ namespace RenderingEngine.Engine
             ref BGRA wallTexturePtr = ref MemoryMarshal.GetReference(textureInfo.Texture.GetBinary(true, lightLevel));
             int textureWidth = textureInfo.Height;
 
-            int textureStart = textureInfo.YOffset << 16;
             using TempBuffer<uint> buffer = TempBuffer<uint>.GetBuffer(textureInfo.Height);
 
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
@@ -275,122 +275,10 @@ namespace RenderingEngine.Engine
             Span<int> wallEnd = RenderWindowHelper.WallEnd;
             Span<int> floorEnd = RenderWindowHelper.FloorEnd;
 
-            int length = (wallToX - wallFromX) - Vector<int>.Count;
 
-            if (length > Vector<int>.Count)
-            {
-                Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
-                Vector<int> canRenderWallMaskV = Vector.Create((int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall));
-                Vector<int> textureStartV = Vector.Create(textureStart);
-                Vector<int> finishedRendering = Vector.Create((int)RenderColumnStatus.FinishedRendering);
-
-                int rem = length % Vector<int>.Count;
-                wallToX -= rem;
-
-                for (int x = wallFromX; x < wallToX; x += Vector<int>.Count)
-                {
-                    Vector<int> columnStatusV = Vector.LoadUnsafe(ref statusInt[x]) & canRenderWallMaskV;
-
-                    if (columnStatusV == Vector<int>.Zero)
-                    {
-                        Vector.StoreUnsafe(finishedRendering, ref statusInt[x]);
-                        continue;
-                    }
-
-                    Vector<int> textureYPosV = Vector.LoadUnsafe(ref textureXLocation[x]);
-                    Vector<int> textureXIncrV = Vector.LoadUnsafe(ref textureYLocation[x]);
-                    Vector<int> wallStartYV = Vector.LoadUnsafe(ref wallStart[x]);
-                    Vector<int> wallEndYV = Vector.LoadUnsafe(ref wallEnd[x]);
-                    Vector<int> ceilingStartYV = Vector.LoadUnsafe(ref ceilingStart[x]);
-                    Vector<int> floorEndYV = Vector.LoadUnsafe(ref floorEnd[x]);
-
-                    Vector<int> clamptedFromYV = Vector.Clamp(wallStartYV, ceilingStartYV, floorEndYV);
-                    Vector<int> clamptedToYV = Vector.Clamp(wallEndYV, ceilingStartYV, floorEndYV);
-                    Vector<int> textureXPosV = textureStartV - textureXIncrV * (wallStartYV - clamptedFromYV);
-
-                    Span<byte> a = new byte[Vector<int>.Count];
-                    Span<byte> b = new byte[Vector<int>.Count];
-
-                    bool repeat =
-                        PopulateRepeatedValues(a, textureYPosV) &&
-                        PopulateRepeatedValues(b, textureXPosV) &&
-                        RefineRepeatedValues(a, b) &&
-                        PopulateRepeatedValues(b, textureXIncrV) &&
-                        RefineRepeatedValues(a, b) &&
-                        PopulateRepeatedValues(b, clamptedFromYV) &&
-                        RefineRepeatedValues(a, b) &&
-                        PopulateRepeatedValues(b, clamptedToYV) &&
-                        RefineRepeatedValues(a, b);
-
-                    for (int j = 0; j < Vector<int>.Count; )
-                    {
-                        if (columnStatusV[j] == 0)
-                        {
-                            j++;
-                            continue;
-                        }
-
-                        int clamptedFromY = clamptedFromYV[j];
-                        int clamptedToY = clamptedToYV[j];
-
-                        if (clamptedFromY >= clamptedToY)
-                        {
-                            j++;
-                            continue;
-                        }
-
-                        int textureXPos = textureXPosV[j];
-                        int textureYPos = textureYPosV[j];
-                        int textureXIncr = textureXIncrV[j];
-
-                        CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, flipY);
-
-                        textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
-
-                        byte count = a[j];
-
-                        if (repeat && count > 1)
-                        {                            
-                            RenderWallLine(
-                                    count,
-                                    width,
-                                    x + j,
-                                    textureWidth,
-                                    clamptedFromY,
-                                    clamptedToY,
-                                    (uint)textureXPos,
-                                    (uint)textureXIncr,
-                                    ref screenPtr,
-                                    ref buffer.Pointer
-                                );
-
-                            j += count - 1;
-                        }
-                        else
-                        {
-                            RenderWallLine(
-                                width,
-                                x + j,
-                                textureWidth,
-                                clamptedFromY,
-                                clamptedToY,
-                                (uint)textureXPos,
-                                (uint)textureXIncr,
-                                ref screenPtr,
-                                ref buffer.Pointer
-                            );
-                        }
-
-                        j++;
-                    }
-
-
-                    Vector.StoreUnsafe(finishedRendering, ref statusInt[x]);
-                }
-
-                wallFromX = wallToX;
-                wallToX += rem;
-            }
+            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
+            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
+            Span<int> textureXPosArray = RenderWindowHelper.TextureXPos;
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
@@ -398,31 +286,16 @@ namespace RenderingEngine.Engine
 
                 if (!columnStatus.WallRenderable)
                 {
-                    status[x] = RenderColumnStatus.FinishedRendering;
                     continue;
                 }
 
+                int clamptedFromY = clampedFrom[x];
+                int clamptedToY = clampedTo[x];
                 int textureXIncr = textureYLocation[x];
-                int wallStartY = wallStart[x];
-                int wallEndY = wallEnd[x];
-                int ceilingStartY = ceilingStart[x];
-                int floorEndY = floorEnd[x];
-
-                int clamptedFromY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
-                int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
-                int textureXPos = textureStart - textureXIncr * (wallStartY - clamptedFromY);
-
-                if (clamptedFromY >= clamptedToY)
-                {
-                    status[x] = RenderColumnStatus.FinishedRendering;
-                    continue;
-                }
-
+                int textureXPos = textureXPosArray[x];
                 int textureYPos = textureXLocation[x];
 
                 CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, flipY);
-
-                textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
                 RenderWallLine(
                     width,
@@ -674,7 +547,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo wallTexture = wall.MiddleTexture!;
             ref uint wallTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(wallTexture.Texture.GetBinary(false, 0)));
-            ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
+            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
 
@@ -721,7 +594,6 @@ namespace RenderingEngine.Engine
             ref uint screenIndexPtr,
             ref readonly uint screenIndexPtrEnd)
         {
-            const float twoPi = 2 * MathF.PI;
             const float oneOverTwoPi = 1f / (2 * MathF.PI);
 
             int width = PixelWidth;
@@ -737,14 +609,7 @@ namespace RenderingEngine.Engine
 
             // calculate angle between 0 to 2 PI
             float angleX = Unsafe.Add(ref angleCachePtr, x) - viewAngle;
-            if (angleX > twoPi)
-            {
-                angleX -= twoPi;
-            }
-            else if (angleX < 0f)
-            {
-                angleX = twoPi + angleX;
-            }
+            angleX = MathFormulas.ClampAngle(angleX);
 
             int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
@@ -763,60 +628,6 @@ namespace RenderingEngine.Engine
             {
                 int index = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
                 screenIndexPtr = Unsafe.Add(ref textureColumnPtr, index);
-            }
-        }
-
-        private static void RenderWallLine(
-            byte count,
-            int width,
-            int x,
-            int textureHeight,
-            int startY,
-            int endY,
-            uint textureXPos_u,
-            uint textureXIncr_u,
-            scoped ref uint screenPtr,
-            scoped ref uint textureBuffer
-        )
-        {
-            ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, startY * width + x);
-            ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, endY * width + x);
-
-            // % is slower than the bitwise &
-            // thus we have two paths to render a wall line
-            // depending if texture is power of two or not
-            if (SharedHelpers.IsPowerOfTwo(textureHeight))
-            {
-                uint textureMask = (uint)(textureHeight - 1);
-
-                while (!Unsafe.AreSame(in screenIndexPtr, in screenIndexPtrEnd))
-                {
-                    uint texelIndex = (textureXPos_u >> 16) & textureMask;
-                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
-                    for (int i = 0; i <= count; i++)
-                    {
-                        Unsafe.Add(ref screenIndexPtr, i) = shaded;
-                    }
-                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
-                    textureXPos_u += textureXIncr_u;
-                }
-            }
-            else
-            {
-                uint textureHeight_u = (uint)textureHeight;
-
-                while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
-                {
-                    uint texelIndex = (textureXPos_u >> 16) % textureHeight_u;
-                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
-
-                    for (int i = 0; i < count; i++)
-                    {
-                        Unsafe.Add(ref screenIndexPtr, i) = shaded;
-                    }
-                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
-                    textureXPos_u += textureXIncr_u;
-                }
             }
         }
 
@@ -904,7 +715,180 @@ namespace RenderingEngine.Engine
         {
             RenderableWall wall = renderableWall.Wall;
 
-            PrecalculateWallDistanceShared(renderableWall, sector, wall.MiddleTexture!, RenderWindowHelper.TopTextureXLocation, RenderWindowHelper.TopTextureYLocation);
+            PrecalculateWallDistanceShared2(renderableWall, sector, wall.MiddleTexture!, RenderWindowHelper.TopTextureXLocation, RenderWindowHelper.TopTextureYLocation);
+        }
+
+        private void PrecalculateWallDistanceShared2(
+            RenderablePortalWall renderableWall, Sector sector, TextureInfo textureInfo,
+            scoped Span<int> xLocation, scoped Span<int> yLocation)
+        {
+            Span<float> distance = RenderWindowHelper.Distance;
+            Span<int> wallStart = RenderWindowHelper.WallStart;
+            Span<int> wallEnd = RenderWindowHelper.WallEnd;
+
+            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
+            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
+            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
+            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
+            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
+            Span<int> textureXPos = RenderWindowHelper.TextureXPos;
+
+            RenderableWall wall = renderableWall.Wall;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+            int width = PixelWidth;
+            bool flipX = textureInfo.RenderingOptions.IsFlippedX;
+            flipX = wall.Flipped ? !flipX : flipX;
+            float xOffset = textureInfo.XOffset;
+
+            (int textureWidth, int textureHeight, float xScale, float scaledTextureWidth) = CalculateScale(sector, wall, textureInfo);
+
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
+
+            float rX = flipX ? wall.R2.X : wall.R1.X;
+            float rY = flipX ? wall.R2.Y : wall.R1.Y;
+
+            int length = (wallToX - wallFromX);
+            int textureStart = textureInfo.YOffset << 16;
+
+            if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
+            {
+                Vector<int> canRenderWallMaskV = Vector.Create((int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall));
+
+                Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
+
+                Vector<float> t1V = Vector.Create(t1);
+                Vector<float> d2yV = Vector.Create(d2y);
+                Vector<float> d2xV = Vector.Create(d2x);
+                Vector<float> rXV = Vector.Create(rX);
+                Vector<float> rYV = Vector.Create(rY);
+
+                Vector<float> xScaleV = Vector.Create(xScale);
+                Vector<float> xOffsetV = Vector.Create(xOffset);
+                Vector<float> scaledTextureWidthV = Vector.Create(scaledTextureWidth);
+                Vector<int> textureWidthV = Vector.Create(textureWidth);
+
+                Vector<int> textureStartV = Vector.Create(textureStart);
+                Vector<int> finishedRendering = Vector.Create((int)RenderColumnStatus.FinishedRendering);
+
+                Vector<float> cameraRayV = Vector.CreateSequence(cameraRay, cameraWidthIncr);
+                Vector<float> cameraWidthIncrV = Vector.Create(cameraWidthIncr * Vector<float>.Count);
+
+                int rem = (wallToX - wallFromX) % Vector<float>.Count;
+                wallToX -= rem;
+
+                bool textureHeightEven = SharedHelpers.IsPowerOfTwo(textureHeight);
+                Vector<int> heightMask = textureHeightEven ? Vector.Create(textureHeight - 1) : default;
+
+                for (int x = wallFromX; x < wallToX; x += Vector<float>.Count)
+                {
+                    Vector<int> columnStatusV = Vector.LoadUnsafe(ref statusInt[x]) & canRenderWallMaskV;
+
+                    if (columnStatusV == Vector<int>.Zero)
+                    {
+                        Vector.StoreUnsafe(finishedRendering, ref statusInt[x]);
+                        continue;
+                    }
+
+                    (Vector<float> fromToXdist, Vector<float> fromToYdist) = MathFormulas.CalculateRayIntersection(cameraRayV, t1V, d2yV, d2xV);
+                    Vector<float> distX = rXV - fromToXdist;
+                    Vector<float> distY = rYV - fromToYdist;
+
+                    Vector<int> wallStartV = Vector.LoadUnsafe(ref wallStart[x]);
+                    Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
+
+                    Vector<float> textureDist = Vector.SquareRoot(distX * distX + distY * distY);
+                    Vector<int> topXLocationV = Vector.ConvertToInt32Native(Vector.FusedMultiplyAdd(textureDist, xScaleV, xOffsetV));
+                    Vector<int> topYLocationV = Vector.ConvertToInt32Native(scaledTextureWidthV / Vector.ConvertToSingle(wallEndV - wallStartV));
+
+                    Vector.StoreUnsafe(fromToYdist, ref distance[x]);
+                    Vector.StoreUnsafe(topYLocationV, ref yLocation[x]);
+
+                    if (textureHeightEven)
+                    {
+                        topXLocationV = (topXLocationV & heightMask) * textureWidthV;
+                        Vector.StoreUnsafe(topXLocationV, ref xLocation[x]);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < Vector<float>.Count; i++)
+                        {
+                            xLocation[x + i] = (topXLocationV[i] % textureHeight) * textureWidth;
+                        }
+                    }
+
+                    Vector<int> ceilingStartYV = Vector.LoadUnsafe(ref ceilingStart[x]);
+                    Vector<int> floorEndYV = Vector.LoadUnsafe(ref floorEnd[x]);
+
+                    Vector<int> clamptedFromYV = Vector.Clamp(wallStartV, ceilingStartYV, floorEndYV);
+                    Vector<int> clamptedToYV = Vector.Clamp(wallEndV, ceilingStartYV, floorEndYV);
+                    Vector<int> textureXPosV = textureStartV - topYLocationV * (wallStartV - clamptedFromYV);
+                    textureXPosV = SharedHelpers.EnsureOffsetIsPositive(textureWidthV << 16, textureXPosV);
+
+                    Vector.StoreUnsafe(clamptedFromYV, ref clampedFrom[x]);
+                    Vector.StoreUnsafe(clamptedToYV, ref clampedTo[x]);
+                    Vector.StoreUnsafe(textureXPosV, ref textureXPos[x]);
+
+                    for (int i = 0; i < Vector<int>.Count; i++)
+                    {
+                        int clamptedFromY = clamptedFromYV[i];
+                        int clamptedToY = clamptedToYV[i];
+                        if (clamptedFromY >= clamptedToY)
+                        {
+                            statusInt[x + i] = (int)RenderColumnStatus.FinishedRendering;
+                        }
+                    }
+
+                    cameraRayV += cameraWidthIncrV;
+                }
+
+                wallFromX = wallToX;
+                wallToX += rem;
+                cameraRay = cameraRayV[0];
+            }
+
+            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
+            {
+                RenderColumnStatus columnStatus = status[x];
+
+                if (!columnStatus.WallRenderable)
+                {
+                    status[x] = RenderColumnStatus.FinishedRendering;
+                    continue;
+                }
+
+                (float fromToXdist, float fromToYdist) = MathFormulas.CalculateRayIntersection(cameraRay, t1, d2y, d2x);
+
+                int wallStartY = wallStart[x];
+                int wallEndY = wallEnd[x];
+
+                float distX = rX - fromToXdist;
+                float distY = rY - fromToYdist;
+                float textureDist = MathF.Sqrt(distX * distX + distY * distY);
+                int textureXIncr = float.ConvertToIntegerNative<int>(scaledTextureWidth / (wallEndY - wallStartY));
+
+                distance[x] = fromToYdist;
+                xLocation[x] = float.ConvertToIntegerNative<int>(MathF.FusedMultiplyAdd(textureDist, xScale, xOffset));
+                yLocation[x] = textureXIncr;
+                xLocation[x] = (xLocation[x] % textureHeight) * textureWidth;
+
+                int ceilingStartY = ceilingStart[x];
+                int floorEndY = floorEnd[x];
+
+                int clamptedFromY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
+                int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
+                int textureXPosY = textureStart - textureXIncr * (wallStartY - clamptedFromY);
+                textureXPosY = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPosY);
+
+                clampedFrom[x] = clamptedFromY;
+                clampedTo[x] = clamptedToY;
+                textureXPos[x] = textureXPosY;
+
+                if (clamptedFromY >= clamptedToY)
+                {
+                    status[x] = RenderColumnStatus.FinishedRendering;
+                }
+            }
         }
 
         private void PrecalculateWallDistanceShared(

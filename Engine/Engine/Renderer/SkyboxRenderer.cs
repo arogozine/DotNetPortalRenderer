@@ -17,7 +17,7 @@ namespace RenderingEngine.Engine
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(false, sector.LightLevel));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
-            ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
+            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(Tooling.MemoryPoolBucket.AngleCache);
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
@@ -104,7 +104,7 @@ namespace RenderingEngine.Engine
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(false, 0));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
-            ref float angleCachePtr = ref MemoryMarshal.GetArrayDataReference(angleCache);
+            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(Tooling.MemoryPoolBucket.AngleCache);
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
