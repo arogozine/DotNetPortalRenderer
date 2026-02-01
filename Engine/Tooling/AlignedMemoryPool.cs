@@ -26,6 +26,7 @@ namespace RenderingEngine.Tooling
     {
         internal readonly IntPtr _ptr;
         internal readonly int _byteCount;
+        internal readonly int _rem;
 
         internal readonly (int StartByte, int EndByte)[] Buckets;
 
@@ -39,8 +40,8 @@ namespace RenderingEngine.Tooling
 
             bucketSize *= sizeof(int);
             int alignment = Vector<byte>.Count;
-            int rem = bucketSize % alignment;
-            bucketSize += rem;
+            _rem = bucketSize % alignment;
+            bucketSize += _rem;
 
             _byteCount = bucketSize * numberOfBuckets;
             _ptr = (IntPtr)NativeMemory.AlignedAlloc((nuint)_byteCount, (nuint)alignment);
@@ -57,7 +58,7 @@ namespace RenderingEngine.Tooling
             where T : unmanaged
         {
             (int byteStart, int byteEnd) = Buckets[(int)bucket];
-            return MemoryMarshal.Cast<byte, T>(Span[byteStart..byteEnd]);
+            return MemoryMarshal.Cast<byte, T>(Span[byteStart..(byteEnd - _rem)]);
         }
 
         public ref T GetBucketRef<T>(MemoryPoolBucket bucket)

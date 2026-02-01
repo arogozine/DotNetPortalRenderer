@@ -39,7 +39,7 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();            
 
-            ref BGRA wallTexturePtr = ref MemoryMarshal.GetReference(textureInfo.Texture.GetBinary(true, lightLevel));
+            ref uint wallTexturePtr = ref textureInfo.Texture.GetBinaryRef<uint>(true, lightLevel);
             int textureWidth = textureInfo.Height;
 
             using TempBuffer<uint> buffer = TempBuffer<uint>.GetBuffer(textureInfo.Height);
@@ -713,7 +713,7 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void CalculateAndCacheWallColumn(
             TempBuffer<uint> tempBuffer,
-            scoped ref BGRA wallTexturePtr,
+            scoped ref uint wallTexturePtr,
             int textureYPos, bool flipY)
         {
             // reuse the cached column
@@ -725,13 +725,13 @@ namespace RenderingEngine.Engine
             tempBuffer.Index = textureYPos;
 
             Span<uint> buffer = tempBuffer.Span;
-            ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
+            ref uint columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
 
             if (flipY)
             {
                 for (int i = buffer.Length - 1; i >= 0; i--)
                 {
-                    buffer[i] = columnPtr.Value;
+                    buffer[i] = columnPtr;
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);
                 }
             }
@@ -739,8 +739,7 @@ namespace RenderingEngine.Engine
             {
                 for (int i = 0; i < buffer.Length; i++)
                 {
-                    buffer[i] = columnPtr.Value;
-
+                    buffer[i] = columnPtr;
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);
                 }
             }

@@ -16,6 +16,13 @@ internal abstract class Texture
         Height = height;
     }
 
+    public ref T GetBinaryRef<T>(bool rotated, int shade)
+        where T : unmanaged
+    {
+        Span<T> span = MemoryMarshal.Cast<BGRA, T>(GetBinary(rotated, shade));
+        return ref MemoryMarshal.GetReference(span);
+    }
+
     public Span<BGRA> GetBinary(bool rotated, int shade)
     {
         if (rotated)

@@ -44,91 +44,59 @@ namespace RenderingEngine.Engine
             RenderablePortalWall renderableWall)
         {
             (int sectorHeight, int ceilOffset, int floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
+            bool renderLower = floorOffset != 0;
+            bool renderUpper = ceilOffset != 0;
 
             // ceiling and floor of the sector are the same
             // so no wall is drawn
-            if (floorOffset == 0 && ceilOffset == 0)
+            if (!renderLower && !renderUpper)
             {
                 CalculateDistance(renderableWall);
                 return true;
             }
 
-
-            bool renderLower = floorOffset != 0;
-            bool renderUpper = ceilOffset != 0;
-
-            if (renderLower && renderUpper)
-            {
-                PrecalculatePortalWallDistance(sector, renderableWall);
-            }
-            else if (renderLower)
-            {
-                PrecalculateLowerWallDistance(sector, renderableWall);
-            }
-            else
-            {
-                PrecalculateUpperWallDistance(sector, renderableWall);
-            }
-
             RenderableWall wall = renderableWall.Wall;
-            TextureInfo upperTexture = wall.UpperTexture!;
-            TextureInfo lowerTexture = wall.LowerTexture!;
-
-            (bool upperSkybox, _, _) = GetFlags(upperTexture);
-            (bool lowerSkybox, _, _) = GetFlags(lowerTexture);
 
             if (renderUpper)
             {
-                if (upperSkybox)
+                TextureInfo upperTexture = wall.UpperTexture!;
+                PrecalculateUpperWallDistance(sector, renderableWall);
+
+                if (upperTexture.RenderingOptions.IsSkybox)
                 {
                     DrawUpperSkyboxPortalWall(player, sector, sectors, renderableWall);
                 }
                 else
                 {
-                    DrawUpperPortalWall(player, sector, sectors, renderableWall);
+                    DrawUpperPortalWall(sector, sectors, renderableWall);
                 }
             }
 
             if (renderLower)
             {
-                if (lowerSkybox)
+                TextureInfo lowerTexture = wall.LowerTexture!;
+                PrecalculateLowerWallDistance(sector, renderableWall);
+
+                if (lowerTexture.RenderingOptions.IsSkybox)
                 {
                     DrawLowerSkyboxPortalWall(player, sector, sectors, renderableWall);
                 }
                 else
                 {
-                    DrawLowerPortalWall(player, sector, sectors, renderableWall);
+                    DrawLowerPortalWall(sector, sectors, renderableWall);
                 }
             }
 
             float oneOverSectorHeight = 1f / sectorHeight;
-            // byte lightLevel = sector.LightLevel;
 
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            // ReadOnlySpan<int> bottomTextureYLocation = RenderWindowHelper.BottomTextureYLocation;
-            // ReadOnlySpan<int> topTextureYLocation = RenderWindowHelper.TopTextureYLocation;
             Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
             ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
             ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
             Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-            // Span<int> bottomTextureXLocation = RenderWindowHelper.BottomTextureXLocation;
-            // Span<int> topTextureXLocation = RenderWindowHelper.TopTextureXLocation;
 
-            // int width = PixelWidth;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
-
-            // ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(!upperSkybox, lightLevel));
-            // ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
-
-            // ref BGRA lowerTexturePtr = ref MemoryMarshal.GetReference(lowerTexture.Texture.GetBinary(true, lightLevel));
-
-            // ref uint screenPtr = ref GetScreenPtr<uint>();
-
-            // using TempBuffer<uint> lowerBuffer = TempBuffer<uint>.GetBuffer(lowerTexture.Height);
-            // using TempBuffer<uint> upperBuffer = TempBuffer<uint>.GetBuffer(upperTexture.Height);
-            // int lowerTextureStart = lowerTexture.YOffset << 16;
-            // int upperTextureStart = upperTexture.YOffset << 16;
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
@@ -146,9 +114,6 @@ namespace RenderingEngine.Engine
                 int ceilingStartY = ceilingStart[x];
 
                 float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
-
-                // Wall Calculation
-                // (int fromYClamped, int toYClamped) = RenderWindowHelper.GetClampedWallFromTo(x);
 
                 // Portal Calculation
                 int floorPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * floorOffset);
@@ -186,10 +151,12 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
             ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
             Span<int> floorEnd = RenderWindowHelper.FloorEnd;
+            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
 
             byte lightLevel = sector.LightLevel;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
+            int width = PixelWidth;
 
             RenderableWall wall = renderableWall.Wall;
             TextureInfo upperTexture = wall.UpperTexture!;
@@ -197,14 +164,12 @@ namespace RenderingEngine.Engine
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
             ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
-
             for (int x = wallFromX; x <= wallToX; x++)
             {
                 RenderColumnStatus columnStatus = status[x];
 
                 if (!columnStatus.WallRenderable)
                 {
-                    status[x] = RenderColumnStatus.FinishedRendering;
                     continue;
                 }
 
@@ -212,20 +177,15 @@ namespace RenderingEngine.Engine
                 int wallEndY = wallEnd[x];
                 int floorEndY = floorEnd[x];
                 int ceilingStartY = ceilingStart[x];
+                int fromYClamped = clampedFrom[x];
 
-                int width = PixelWidth;
                 float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
 
-                // Wall Calculation
-                (int fromYClamped, int _toYClamped) = RenderWindowHelper.GetClampedWallFromTo(x);
 
                 // Portal Calculation
-                // int floorPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * floorOffset);
                 int ceilPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * ceilOffset);
                 int portalFromY = wallStartY - ceilPixelOffset;
-                // int portalToY = wallEndY - floorPixelOffset;
                 int portalFromYClamped = Math.Clamp(portalFromY, ceilingStartY, floorEndY);
-                // int portalToYClamped = Math.Clamp(portalToY, ceilingStartY, floorEndY);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, fromYClamped * width + x);
                 ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, portalFromYClamped * width + x);
@@ -237,14 +197,6 @@ namespace RenderingEngine.Engine
                     ref angleCachePtr,
                     ref screenIndexPtr,
                     ref screenIndexPtrEnd);
-
-                // ceilingStart[x] = portalFromYClamped;
-
-
-                /*
-                floorEnd[x] = portalToYClamped;
-                status[x] ^= RenderColumnStatus.CanRenderWall;
-                */
             }
         }
 
@@ -265,10 +217,12 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
             ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
             Span<int> floorEnd = RenderWindowHelper.FloorEnd;
+            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
 
             byte lightLevel = sector.LightLevel;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
+            int width = PixelWidth;
 
             RenderableWall wall = renderableWall.Wall;
             TextureInfo upperTexture = wall.UpperTexture!;
@@ -276,14 +230,12 @@ namespace RenderingEngine.Engine
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
             ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
-
             for (int x = wallFromX; x <= wallToX; x++)
             {
                 RenderColumnStatus columnStatus = status[x];
 
                 if (!columnStatus.WallRenderable)
                 {
-                    // status[x] = RenderColumnStatus.FinishedRendering;
                     continue;
                 }
 
@@ -291,19 +243,13 @@ namespace RenderingEngine.Engine
                 int wallEndY = wallEnd[x];
                 int floorEndY = floorEnd[x];
                 int ceilingStartY = ceilingStart[x];
+                int toYClamped = clampedTo[x];
 
-                int width = PixelWidth;
                 float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
-
-                // Wall Calculation
-                (_, int toYClamped) = RenderWindowHelper.GetClampedWallFromTo(x);
 
                 // Portal Calculation
                 int floorPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * floorOffset);
-                // int ceilPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * ceilOffset);
-                // int portalFromY = wallStartY - ceilPixelOffset;
                 int portalToY = wallEndY - floorPixelOffset;
-                // int portalFromYClamped = Math.Clamp(portalFromY, ceilingStartY, floorEndY);
                 int portalToYClamped = Math.Clamp(portalToY, ceilingStartY, floorEndY);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * width + x);
@@ -316,18 +262,10 @@ namespace RenderingEngine.Engine
                     ref angleCachePtr,
                     ref screenIndexPtr,
                     in screenIndexPtrEnd);
-
-                // floorEnd[x] = portalToYClamped;
-
-                /*
-                ceilingStart[x] = portalFromYClamped;
-                status[x] ^= RenderColumnStatus.CanRenderWall;
-                */
             }
         }
 
         private void DrawUpperPortalWall(
-            PortalPlayerSnapshot player,
             Sector sector,
             ReadOnlySpan<Sector> sectors,
             RenderablePortalWall renderableWall)
@@ -336,7 +274,6 @@ namespace RenderingEngine.Engine
 
             RenderableWall wall = renderableWall.Wall;
             TextureInfo upperTexture = wall.UpperTexture!;
-            //TextureInfo lowerTexture = wall.LowerTexture!;
 
             (_, _, bool upperFlipY) = GetFlags(upperTexture);
 
@@ -351,18 +288,21 @@ namespace RenderingEngine.Engine
             Span<int> floorEnd = RenderWindowHelper.FloorEnd;
             Span<int> topTextureXLocation = RenderWindowHelper.TopTextureXLocation;
 
+            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
+            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
+
             int width = PixelWidth;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(true, lightLevel));
-            ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
+            ref uint upperTexturePtr = ref upperTexture.Texture.GetBinaryRef<uint>(true, lightLevel);
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             using TempBuffer<uint> upperBuffer = TempBuffer<uint>.GetBuffer(upperTexture.Height);
 
             int upperTextureStart = upperTexture.YOffset << 16;
+            int textureWidth = upperTexture.Height;
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
@@ -382,7 +322,8 @@ namespace RenderingEngine.Engine
                 float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
 
                 // Wall Calculation
-                (int fromYClamped, int toYClamped) = RenderWindowHelper.GetClampedWallFromTo(x);
+                int fromYClamped = clampedFrom[x];
+                int toYClamped = clampedTo[x];
 
                 // Portal Calculation
                 int floorPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * floorOffset);
@@ -396,7 +337,6 @@ namespace RenderingEngine.Engine
                 int textureXIncr = topTextureYLocation[x];
 
                 // Calculate Upper  Texture Position
-                int textureWidth = upperTexture.Height;
                 int textureXPos = upperTextureStart - textureXIncr * (wallStartY - fromYClamped);
 
                 textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
@@ -418,18 +358,13 @@ namespace RenderingEngine.Engine
         }
 
         private void DrawLowerPortalWall(
-                PortalPlayerSnapshot player,
                 Sector sector,
                 ReadOnlySpan<Sector> sectors,
                 RenderablePortalWall renderableWall)
         {
             (int sectorHeight, int ceilOffset, int floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
 
-            // bool renderLower = floorOffset != 0;
-            // bool renderUpper = ceilOffset != 0;
-
             RenderableWall wall = renderableWall.Wall;
-            TextureInfo upperTexture = wall.UpperTexture!;
             TextureInfo lowerTexture = wall.LowerTexture!;
 
             (_, _, bool lowerFlipY) = GetFlags(lowerTexture);
@@ -439,27 +374,27 @@ namespace RenderingEngine.Engine
 
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
             ReadOnlySpan<int> bottomTextureYLocation = RenderWindowHelper.BottomTextureYLocation;
-            // ReadOnlySpan<int> topTextureYLocation = RenderWindowHelper.TopTextureYLocation;
             Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
             ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
             ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
             Span<int> floorEnd = RenderWindowHelper.FloorEnd;
             Span<int> bottomTextureXLocation = RenderWindowHelper.BottomTextureXLocation;
-            // Span<int> topTextureXLocation = RenderWindowHelper.TopTextureXLocation;
+
+            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
+            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
 
             int width = PixelWidth;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            ref BGRA lowerTexturePtr = ref MemoryMarshal.GetReference(lowerTexture.Texture.GetBinary(true, lightLevel));
+            ref uint lowerTexturePtr = ref lowerTexture.Texture.GetBinaryRef<uint>(true, lightLevel);
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             using TempBuffer<uint> lowerBuffer = TempBuffer<uint>.GetBuffer(lowerTexture.Height);
-            using TempBuffer<uint> upperBuffer = TempBuffer<uint>.GetBuffer(upperTexture.Height);
 
             int lowerTextureStart = lowerTexture.YOffset << 16;
-            int upperTextureStart = upperTexture.YOffset << 16;
+            int textureWidth = lowerTexture.Height;
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
@@ -475,11 +410,10 @@ namespace RenderingEngine.Engine
                 int wallEndY = wallEnd[x];
                 int floorEndY = floorEnd[x];
                 int ceilingStartY = ceilingStart[x];
+                int fromYClamped = clampedFrom[x];
+                int toYClamped = clampedTo[x];
 
                 float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
-
-                // Wall Calculation
-                (int fromYClamped, int toYClamped) = RenderWindowHelper.GetClampedWallFromTo(x);
 
                 // Portal Calculation
                 int floorPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * floorOffset);
@@ -492,7 +426,6 @@ namespace RenderingEngine.Engine
                 int textureYPos = bottomTextureXLocation[x];
                 int textureXIncr = bottomTextureYLocation[x];
 
-                int textureWidth = lowerTexture.Height;
 
                 int textureXPos = textureXIncr * (portalToYClamped - portalToY) + lowerTextureStart;
 
@@ -532,16 +465,6 @@ namespace RenderingEngine.Engine
             PrecalculateWallDistanceShared(renderableWall, sector, wall.LowerTexture!, RenderWindowHelper.BottomTextureXLocation, RenderWindowHelper.BottomTextureYLocation);
         }
 
-        private void PrecalculatePortalWallDistance(
-            Sector sector,
-            RenderablePortalWall renderableWall)
-        {
-            RenderableWall wall = renderableWall.Wall;
-
-            PrecalculateWallDistanceShared(renderableWall, sector, wall.LowerTexture!, RenderWindowHelper.BottomTextureXLocation, RenderWindowHelper.BottomTextureYLocation);
-            PrecalculateWallDistanceShared(renderableWall, sector, wall.UpperTexture!, RenderWindowHelper.TopTextureXLocation, RenderWindowHelper.TopTextureYLocation);
-        }
-
         private void PrecalculateWallDistanceShared(
             RenderablePortalWall renderableWall, Sector sector, TextureInfo textureInfo,
             scoped Span<int> xLocation, scoped Span<int> yLocation)
@@ -550,6 +473,11 @@ namespace RenderingEngine.Engine
             Span<int> wallStart = RenderWindowHelper.WallStart;
             Span<int> wallEnd = RenderWindowHelper.WallEnd;
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
+
+            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
+            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
+            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
+            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
 
             RenderableWall wall = renderableWall.Wall;
             int wallFromX = renderableWall.XLeft;
@@ -633,6 +561,15 @@ namespace RenderingEngine.Engine
                         }
                     }
 
+                    Vector<int> ceilingStartYV = Vector.LoadUnsafe(ref ceilingStart[x]);
+                    Vector<int> floorEndYV = Vector.LoadUnsafe(ref floorEnd[x]);
+
+                    Vector<int> clamptedFromYV = Vector.Clamp(wallStartV, ceilingStartYV, floorEndYV);
+                    Vector<int> clamptedToYV = Vector.Clamp(wallEndV, ceilingStartYV, floorEndYV);
+
+                    Vector.StoreUnsafe(clamptedFromYV, ref clampedFrom[x]);
+                    Vector.StoreUnsafe(clamptedToYV, ref clampedTo[x]);
+
                     cameraRayV += cameraWidthIncrV;
                 }
 
@@ -663,6 +600,18 @@ namespace RenderingEngine.Engine
                 xLocation[x] = float.ConvertToIntegerNative<int>(MathF.FusedMultiplyAdd(textureDist, xScale, xOffset));
                 yLocation[x] = float.ConvertToIntegerNative<int>(scaledTextureWidth / (wallEndY - wallStartY));
                 xLocation[x] = (xLocation[x] % textureHeight) * textureWidth;
+
+                int ceilingStartY = ceilingStart[x];
+                int floorEndY = floorEnd[x];
+
+                int clamptedFromY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
+                int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
+                // int textureXPosY = textureStart - textureXIncr * (wallStartY - clamptedFromY);
+                // textureXPosY = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPosY);
+
+                clampedFrom[x] = clamptedFromY;
+                clampedTo[x] = clamptedToY;
+                // textureXPos[x] = textureXPosY;
             }
         }
 
