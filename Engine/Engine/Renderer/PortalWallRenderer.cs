@@ -146,12 +146,12 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
+            ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
+            ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
             ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
             ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
-            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
+            ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
+            ReadOnlySpan<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
 
             byte lightLevel = sector.LightLevel;
             int wallFromX = renderableWall.XLeft;
@@ -212,12 +212,12 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
+            ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
+            ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
             ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
             ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
-            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
+            ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
+            ReadOnlySpan<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
 
             byte lightLevel = sector.LightLevel;
             int wallFromX = renderableWall.XLeft;
@@ -280,16 +280,15 @@ namespace RenderingEngine.Engine
             float oneOverSectorHeight = 1f / sectorHeight;
             byte lightLevel = sector.LightLevel;
 
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            ReadOnlySpan<int> topTextureYLocation = RenderWindowHelper.TopTextureYLocation;
-            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
+            ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
+            ReadOnlySpan<int> topTextureYLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureYLocation);
+            ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
             ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
             ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
-            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-            Span<int> topTextureXLocation = RenderWindowHelper.TopTextureXLocation;
-
-            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
-            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
+            ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
+            ReadOnlySpan<int> topTextureXLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation);
+            ReadOnlySpan<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
+            ReadOnlySpan<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
 
             int width = PixelWidth;
             int wallFromX = renderableWall.XLeft;
@@ -306,11 +305,10 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
+                RenderColumnStatus columnStatus = status[x];
 
                 if (!columnStatus.WallRenderable)
                 {
-                    status[x] = RenderColumnStatus.FinishedRendering;
                     continue;
                 }
 
@@ -372,16 +370,16 @@ namespace RenderingEngine.Engine
             float oneOverSectorHeight = 1f / sectorHeight;
             byte lightLevel = sector.LightLevel;
 
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            ReadOnlySpan<int> bottomTextureYLocation = RenderWindowHelper.BottomTextureYLocation;
+            ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
+            ReadOnlySpan<int> bottomTextureYLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureYLocation);
             Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
             ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
             ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
             Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-            Span<int> bottomTextureXLocation = RenderWindowHelper.BottomTextureXLocation;
+            Span<int> bottomTextureXLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureXLocation);
 
-            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
-            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
+            Span<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
+            Span<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
 
             int width = PixelWidth;
             int wallFromX = renderableWall.XLeft;
@@ -398,11 +396,10 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
+                RenderColumnStatus columnStatus = status[x];
 
                 if (!columnStatus.WallRenderable)
                 {
-                    status[x] = RenderColumnStatus.FinishedRendering;
                     continue;
                 }
 
@@ -453,7 +450,7 @@ namespace RenderingEngine.Engine
         {
             RenderableWall wall = renderableWall.Wall;
 
-            PrecalculateWallDistanceShared(renderableWall, sector, wall.UpperTexture!, RenderWindowHelper.TopTextureXLocation, RenderWindowHelper.TopTextureYLocation);
+            PrecalculateWallDistanceShared(renderableWall, sector, wall.UpperTexture!, memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation), memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureYLocation));
         }
 
         private void PrecalculateLowerWallDistance(
@@ -462,7 +459,7 @@ namespace RenderingEngine.Engine
         {
             RenderableWall wall = renderableWall.Wall;
 
-            PrecalculateWallDistanceShared(renderableWall, sector, wall.LowerTexture!, RenderWindowHelper.BottomTextureXLocation, RenderWindowHelper.BottomTextureYLocation);
+            PrecalculateWallDistanceShared(renderableWall, sector, wall.LowerTexture!, memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureXLocation), memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureYLocation));
         }
 
         private void PrecalculateWallDistanceShared(
@@ -476,8 +473,8 @@ namespace RenderingEngine.Engine
 
             Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
             Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
-            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
+            Span<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
+            Span<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
 
             RenderableWall wall = renderableWall.Wall;
             int wallFromX = renderableWall.XLeft;

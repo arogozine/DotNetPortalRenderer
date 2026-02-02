@@ -45,17 +45,15 @@ namespace RenderingEngine.Engine
             using TempBuffer<uint> buffer = TempBuffer<uint>.GetBuffer(textureInfo.Height);
 
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            Span<int> textureXLocation = RenderWindowHelper.TopTextureXLocation;
-            Span<int> textureYLocation = RenderWindowHelper.TopTextureYLocation;
-            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            Span<int> wallStart = RenderWindowHelper.WallStart;
-            Span<int> wallEnd = RenderWindowHelper.WallEnd;
-            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-
-
-            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
-            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
-            Span<int> textureXPosArray = RenderWindowHelper.TextureXPos;
+            ReadOnlySpan<int> textureXLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation);
+            ReadOnlySpan<int> textureYLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureYLocation);
+            ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
+            ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
+            ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
+            ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
+            ReadOnlySpan<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
+            ReadOnlySpan<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
+            ReadOnlySpan<int> textureXPosArray = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXPos);
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
@@ -464,7 +462,7 @@ namespace RenderingEngine.Engine
         {
             RenderableWall wall = renderableWall.Wall;
 
-            PrecalculateWallDistanceShared2(renderableWall, sector, wall.MiddleTexture!, RenderWindowHelper.TopTextureXLocation, RenderWindowHelper.TopTextureYLocation);
+            PrecalculateWallDistanceShared2(renderableWall, sector, wall.MiddleTexture!, memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation), memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureYLocation));
         }
 
         private void PrecalculateWallDistanceShared2(
@@ -478,9 +476,10 @@ namespace RenderingEngine.Engine
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
             Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
             Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-            Span<int> clampedFrom = RenderWindowHelper.ClampedFrom;
-            Span<int> clampedTo = RenderWindowHelper.ClampedTo;
-            Span<int> textureXPos = RenderWindowHelper.TextureXPos;
+
+            Span<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
+            Span<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
+            Span<int> textureXPos = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXPos);
 
             RenderableWall wall = renderableWall.Wall;
             int wallFromX = renderableWall.XLeft;

@@ -78,8 +78,8 @@ namespace RenderingEngine.Engine
             }
 
             Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
-            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(ceilingTexture.Texture.GetBinary(false, lightLevel));
-            ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
+            ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(false, lightLevel);
+            ref uint screenPtr = ref GetScreenPtr<uint>();
 
             (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
@@ -127,8 +127,8 @@ namespace RenderingEngine.Engine
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(floorTexture);
 
             Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
-            ref BGRA floorTexturePtr = ref MemoryMarshal.GetReference(floorTexture.Texture.GetBinary(false, lightLevel));
-            ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
+            ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(false, lightLevel);
+            ref uint screenPtr = ref GetScreenPtr<uint>();
 
             Vector<float> yfloorV = Vector.Create(yfloor);
 
@@ -245,8 +245,8 @@ namespace RenderingEngine.Engine
         }
 
         private void RenderFloorOrCeilingColumn(
-            scoped ref BGRA screenPtr,
-            scoped ref BGRA texturePtr,
+            scoped ref uint screenPtr,
+            scoped ref uint texturePtr,
             int screenIndex,
             int floorToY,
             int floorFromY,
@@ -278,8 +278,8 @@ namespace RenderingEngine.Engine
 
             Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
 
-            ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-            ref readonly BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
+            ref uint screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
+            ref readonly uint toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
 
             while (!Unsafe.AreSame(in screenTex, in toScalePtr))
             {
@@ -331,8 +331,7 @@ namespace RenderingEngine.Engine
 
                 for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
-                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, textureIndex[i]);
-                    screenTex = tex;
+                    screenTex = Unsafe.Add(ref texturePtr, textureIndex[i]);
                 }
 
                 floorFromY += Vector<float>.Count;

@@ -33,13 +33,14 @@ namespace RenderingEngine.Engine
 
             int width = PixelWidth;
             int textureWidth = texture.Height;
+            int textureHeight = texture.Width;
 
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
 
             Sector sector = sectors[sprite.SectorId];
             byte lightLevel = sector.LightLevel;
 
-            ref BGRA texturePtr = ref MemoryMarshal.GetReference(texture.Texture.GetBinary(true, lightLevel));
+            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, lightLevel);
 
             float rx1 = sprite.R1.X;
             float rx2 = sprite.R2.X;
@@ -111,6 +112,9 @@ namespace RenderingEngine.Engine
                 }
 
                 int textureXLocation = CalculateTextureXPosition(cameraRay);
+                if (textureXLocation >= textureHeight) {
+                    textureXLocation = 0;
+                }
                 textureYPosArray[x] = textureXLocation * textureWidth;
                 textureXPosArray[x] = (clamptedFromY - spriteStartY) * textureXIncr;
             }
@@ -162,8 +166,8 @@ namespace RenderingEngine.Engine
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             int CalculateTextureXPosition(float cameraRay)
             {
-                float fromToXDist = fromToYDist * cameraRay;
-                float distX = flipX ? (rx2 - fromToXDist) : (fromToXDist - rx1);
+                float distX =
+                    flipX ? MathF.FusedMultiplyAdd(-fromToYDist, cameraRay, rx2): MathF.FusedMultiplyAdd(fromToYDist, cameraRay, - rx1);
 
                 return float.ConvertToIntegerNative<int>(MathF.Abs(distX) * textureLen);
             }
@@ -187,9 +191,8 @@ namespace RenderingEngine.Engine
             }
 
             Sector sector = sectors[sprite.SectorId];
-            byte lightLevel = sector.LightLevel;
 
-            ref BGRA texturePtr = ref MemoryMarshal.GetReference(texture.Texture.GetBinary(true, lightLevel));
+            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, sector.LightLevel);
 
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;
@@ -281,7 +284,7 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
 
             Texture texture = TextureCache.GetTexture(textureInfo);
-            ref BGRA texturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(true, sector.LightLevel));
+            ref uint texturePtr = ref texture.GetBinaryRef<uint>(true, sector.LightLevel);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
 
@@ -416,7 +419,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = wall.MiddleTexture!;
             Texture texture = TextureCache.GetTexture(textureInfo);
-            ref BGRA texturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(true, sector.LightLevel));
+            ref uint texturePtr = ref texture.GetBinaryRef<uint>(true, sector.LightLevel);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
             // optimize to avoid "%" when possible
@@ -675,7 +678,7 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void CalculateSprite(
             TempBuffer<uint> buffer,
-            ref BGRA wallTexturePtr,
+            ref uint wallTexturePtr,
             int textureYPos,
             bool flipY)
         {
@@ -688,13 +691,13 @@ namespace RenderingEngine.Engine
             buffer.Index = textureYPos;
 
             Span<uint> spriteTexturePtr = buffer.Span;
-            ref BGRA columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
+            ref uint columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
 
             if (flipY)
             {
                 for (int i = spriteTexturePtr.Length - 1; i >= 0; i--)
                 {
-                    spriteTexturePtr[i] = columnPtr.Value;
+                    spriteTexturePtr[i] = columnPtr;
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);
                 }
             }
@@ -702,7 +705,7 @@ namespace RenderingEngine.Engine
             {
                 for (int i = 0; i < spriteTexturePtr.Length; i++)
                 {
-                    spriteTexturePtr[i] = columnPtr.Value;
+                    spriteTexturePtr[i] = columnPtr;
                     columnPtr = ref Unsafe.Add(ref columnPtr, 1);
                 }
             }

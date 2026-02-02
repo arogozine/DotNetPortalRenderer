@@ -31,7 +31,7 @@ namespace RenderingEngine.Engine
             buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
 
             RenderWindowHelper = new RenderWindowHelper(width, height);
-            memoryPool = AlignedMemoryPool.GeneratePool(width, 3);
+            memoryPool = AlignedMemoryPool.GeneratePool(width, 16);
 
             GenerateAngleCache();
             GenerateCache();

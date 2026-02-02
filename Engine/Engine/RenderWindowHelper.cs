@@ -13,13 +13,6 @@ namespace RenderingEngine.Engine
         public int[] WallEnd { get; }
         public int[] FloorEnd { get; }
         public float[] Distance { get; }
-        public int[] TopTextureXLocation { get; }
-        public int[] BottomTextureXLocation { get; }
-        public int[] TopTextureYLocation { get; }
-        public int[] BottomTextureYLocation { get; }
-        public int[] ClampedFrom { get; }
-        public int[] ClampedTo { get; }
-        public int[] TextureXPos { get; }
 
 
         private int sectorFromX;
@@ -43,13 +36,6 @@ namespace RenderingEngine.Engine
             WallEnd = new int[width];
             FloorEnd = new int[width];
             Distance = new float[width];
-            TopTextureXLocation = new int[width];
-            BottomTextureXLocation = new int[width];
-            TopTextureYLocation = new int[width];
-            BottomTextureYLocation = new int[width];
-            ClampedFrom = new int[width];
-            ClampedTo = new int[width];
-            TextureXPos = new int[width];
 
             sectorFromX = 0;
             sectorToX = width;
@@ -62,10 +48,6 @@ namespace RenderingEngine.Engine
             FloorEnd.AsSpan().Fill(height - 1);
             WallEnd.AsSpan().Fill(height - 1);
             Distance.AsSpan().Fill(float.MaxValue);
-            TopTextureXLocation.AsSpan().Clear();
-            BottomTextureXLocation.AsSpan().Clear();
-            TopTextureYLocation.AsSpan().Clear();
-            BottomTextureYLocation.AsSpan().Clear();
         }
 
         public RenderColumnStatus NewDepth()
