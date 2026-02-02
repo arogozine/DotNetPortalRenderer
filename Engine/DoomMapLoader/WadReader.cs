@@ -398,7 +398,8 @@ namespace RenderingEngine.DoomMapLoader
                     Floor = floor,
                     FloorTexture = new Models.TextureInfo { Name = sector.FloorTexture },
                     CeilingTexture = new Models.TextureInfo { Name = sector.CeilingTexture },
-                    LightLevel = sector.LightLevel
+                    FloorShade = sector.LightLevel,
+                    CeilingShade = sector.LightLevel
                 };
 
                 foreach (LineInfo lineInfo in lines)
@@ -415,7 +416,8 @@ namespace RenderingEngine.DoomMapLoader
                         SectorTo = lineInfo.ParentSectorId,
                         UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, !linedef.Flags.HasFlag(LinedefFlags.DontPegTop)),
                         MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffsetMid, lineInfo.YOffsetMid, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom)),
-                        LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom))
+                        LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom)),
+                        Shade = sector.LightLevel
                     };
 
                     mapSector.Walls.Add(line);
@@ -900,7 +902,8 @@ namespace RenderingEngine.DoomMapLoader
                     Floor = floor,
                     FloorTexture = GetFloorTextureInfo(sector),
                     CeilingTexture = GetCeilingTextureInfo(sector),
-                    LightLevel = sector.LightLevel,
+                    FloorShade = sector.LightLevel,
+                    CeilingShade = sector.LightLevel,
                     RotationCeiling = ToRadians(sector.RotationCeiling),
                     RotationFloor = ToRadians(sector.RotationFloor)
                 };
@@ -925,7 +928,8 @@ namespace RenderingEngine.DoomMapLoader
                         SectorTo = lineInfo.ParentSectorId,
                         UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, !lineInfo.LowerUnpegged),
                         MiddleTexture = middleTexture,
-                        LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, lineInfo.UpperUnpegged)
+                        LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, lineInfo.UpperUnpegged),
+                        Shade = sector.LightLevel
                     };
 
                     mapSector.Walls.Add(line);

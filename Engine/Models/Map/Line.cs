@@ -11,6 +11,8 @@ internal sealed class Line : IEquatable<Line>
     public required TextureInfo? MiddleTexture { get; set; }
     public required TextureInfo? LowerTexture { get; set; }
 
+    public required short Shade { get; set; }
+
     public override bool Equals(object? obj) => Equals(obj as Line);
     public bool Equals(Line? other) => other?.Id == Id;
     public override int GetHashCode() => Id.GetHashCode();

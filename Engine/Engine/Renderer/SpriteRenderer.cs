@@ -38,9 +38,8 @@ namespace RenderingEngine.Engine
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
 
             Sector sector = sectors[sprite.SectorId];
-            byte lightLevel = sector.LightLevel;
 
-            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, lightLevel);
+            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, sector.FloorShade);
 
             float rx1 = sprite.R1.X;
             float rx2 = sprite.R2.X;
@@ -192,7 +191,7 @@ namespace RenderingEngine.Engine
 
             Sector sector = sectors[sprite.SectorId];
 
-            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, sector.LightLevel);
+            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, sector.FloorShade);
 
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;
@@ -284,7 +283,7 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
 
             Texture texture = TextureCache.GetTexture(textureInfo);
-            ref uint texturePtr = ref texture.GetBinaryRef<uint>(true, sector.LightLevel);
+            ref uint texturePtr = ref texture.GetBinaryRef<uint>(true, sector.FloorShade);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
 
@@ -302,7 +301,6 @@ namespace RenderingEngine.Engine
             float oneOverSectorHeight = 1f / sectorHeight;
 
             bool renderFromTop = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromTop);
-            byte lightLevel = sector.LightLevel;
             float alpha = Math.Clamp(textureInfo.Alpha, 0f, 1f);
 
             int xOffset = textureInfo.XOffset;
@@ -419,7 +417,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = wall.MiddleTexture!;
             Texture texture = TextureCache.GetTexture(textureInfo);
-            ref uint texturePtr = ref texture.GetBinaryRef<uint>(true, sector.LightLevel);
+            ref uint texturePtr = ref texture.GetBinaryRef<uint>(true, sector.FloorShade);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
             // optimize to avoid "%" when possible
@@ -440,7 +438,6 @@ namespace RenderingEngine.Engine
             (int sectorHeight, int ceilOffset, int floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
             float oneOverSectorHeight = 1f / sectorHeight;
 
-            byte lightLevel = sector.LightLevel;
             float alpha = Math.Clamp(textureInfo.Alpha, 0f, 1f);
 
             int xOffset = textureInfo.XOffset;

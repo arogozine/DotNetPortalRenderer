@@ -35,11 +35,9 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            byte lightLevel = sector.LightLevel;
-
             ref uint screenPtr = ref GetScreenPtr<uint>();            
 
-            ref uint wallTexturePtr = ref textureInfo.Texture.GetBinaryRef<uint>(true, lightLevel);
+            ref uint wallTexturePtr = ref textureInfo.Texture.GetBinaryRef<uint>(true, wall.Shade);
             int textureWidth = textureInfo.Height;
 
             using TempBuffer<uint> buffer = TempBuffer<uint>.GetBuffer(textureInfo.Height);

@@ -12,7 +12,7 @@ namespace RenderingEngine.Models
         public Point PointA => Line.PointA;
         public Point PointB => Line.PointB;
         public int? SectorTo => Line.SectorTo;
-
+        public short Shade => Line.Shade;
 
         public Line Line { get; }
 

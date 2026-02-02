@@ -191,7 +191,9 @@ namespace RenderingEngine.DoomMapLoader
                         RenderingOptions = ceilingRenderingOptions,
                         Alpha = 1f
                     },
-                    LightLevel = sector.FloorShade                };
+                    FloorShade = sector.FloorShade,
+                    CeilingShade = sector.CeilingShade
+                };
 
                 int wallStart = sector.WallPtr;
                 int wallEnd = wallStart + sector.WallNum;
@@ -216,7 +218,8 @@ namespace RenderingEngine.DoomMapLoader
                         SectorTo = wall.NextSector,
                         UpperTexture = GetTextureInfo(in wall, in wall, false),
                         MiddleTexture = GetTextureInfo(in wall, in wall, true),
-                        LowerTexture = GetTextureInfo(in wall, in nextWall, false)
+                        LowerTexture = GetTextureInfo(in wall, in nextWall, false),
+                        Shade = wall.Shade
                     };
 
                     ij++;

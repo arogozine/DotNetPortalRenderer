@@ -64,11 +64,11 @@ namespace RenderingEngine.Engine
 
                 if (upperTexture.RenderingOptions.IsSkybox)
                 {
-                    DrawUpperSkyboxPortalWall(player, sector, sectors, renderableWall);
+                    DrawUpperSkyboxPortalWall(player, sectors, renderableWall);
                 }
                 else
                 {
-                    DrawUpperPortalWall(sector, sectors, renderableWall);
+                    DrawUpperPortalWall(sectors, renderableWall);
                 }
             }
 
@@ -79,11 +79,11 @@ namespace RenderingEngine.Engine
 
                 if (lowerTexture.RenderingOptions.IsSkybox)
                 {
-                    DrawLowerSkyboxPortalWall(player, sector, sectors, renderableWall);
+                    DrawLowerSkyboxPortalWall(player, sectors, renderableWall);
                 }
                 else
                 {
-                    DrawLowerPortalWall(sector, sectors, renderableWall);
+                    DrawLowerPortalWall(sectors, renderableWall);
                 }
             }
 
@@ -136,7 +136,6 @@ namespace RenderingEngine.Engine
 
         private void DrawUpperSkyboxPortalWall(
             PortalPlayerSnapshot player,
-            Sector sector,
             ReadOnlySpan<Sector> sectors,
             RenderablePortalWall renderableWall)
         {
@@ -153,14 +152,13 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
             ReadOnlySpan<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
 
-            byte lightLevel = sector.LightLevel;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
             int width = PixelWidth;
 
             RenderableWall wall = renderableWall.Wall;
             TextureInfo upperTexture = wall.UpperTexture!;
-            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(false, lightLevel));
+            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(false, wall.Shade));
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
             ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
@@ -202,7 +200,6 @@ namespace RenderingEngine.Engine
 
         private void DrawLowerSkyboxPortalWall(
                 PortalPlayerSnapshot player,
-                Sector sector,
                 ReadOnlySpan<Sector> sectors,
                 RenderablePortalWall renderableWall)
         {
@@ -219,14 +216,13 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
             ReadOnlySpan<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
 
-            byte lightLevel = sector.LightLevel;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
             int width = PixelWidth;
 
             RenderableWall wall = renderableWall.Wall;
             TextureInfo upperTexture = wall.UpperTexture!;
-            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(false, lightLevel));
+            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(false, wall.Shade));
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
             ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
@@ -266,7 +262,6 @@ namespace RenderingEngine.Engine
         }
 
         private void DrawUpperPortalWall(
-            Sector sector,
             ReadOnlySpan<Sector> sectors,
             RenderablePortalWall renderableWall)
         {
@@ -278,7 +273,6 @@ namespace RenderingEngine.Engine
             (_, _, bool upperFlipY) = GetFlags(upperTexture);
 
             float oneOverSectorHeight = 1f / sectorHeight;
-            byte lightLevel = sector.LightLevel;
 
             ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
             ReadOnlySpan<int> topTextureYLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureYLocation);
@@ -294,7 +288,7 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            ref uint upperTexturePtr = ref upperTexture.Texture.GetBinaryRef<uint>(true, lightLevel);
+            ref uint upperTexturePtr = ref upperTexture.Texture.GetBinaryRef<uint>(true, wall.Shade);
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
@@ -356,9 +350,8 @@ namespace RenderingEngine.Engine
         }
 
         private void DrawLowerPortalWall(
-                Sector sector,
-                ReadOnlySpan<Sector> sectors,
-                RenderablePortalWall renderableWall)
+            ReadOnlySpan<Sector> sectors,
+            RenderablePortalWall renderableWall)
         {
             (int sectorHeight, int ceilOffset, int floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
 
@@ -368,7 +361,6 @@ namespace RenderingEngine.Engine
             (_, _, bool lowerFlipY) = GetFlags(lowerTexture);
 
             float oneOverSectorHeight = 1f / sectorHeight;
-            byte lightLevel = sector.LightLevel;
 
             ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
             ReadOnlySpan<int> bottomTextureYLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureYLocation);
@@ -385,7 +377,7 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            ref uint lowerTexturePtr = ref lowerTexture.Texture.GetBinaryRef<uint>(true, lightLevel);
+            ref uint lowerTexturePtr = ref lowerTexture.Texture.GetBinaryRef<uint>(true, wall.Shade);
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 

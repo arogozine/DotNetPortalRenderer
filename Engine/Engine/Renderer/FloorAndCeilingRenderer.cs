@@ -36,8 +36,6 @@ namespace RenderingEngine.Engine
         {
             bool rotated = sector.RotationCeiling is not null;
 
-            byte lightLevel = sector.LightLevel;
-
             int width = PixelWidth;
 
             float pz = player.Z;
@@ -78,7 +76,7 @@ namespace RenderingEngine.Engine
             }
 
             Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
-            ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(false, lightLevel);
+            ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(false, sector.CeilingShade);
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
@@ -118,8 +116,6 @@ namespace RenderingEngine.Engine
             Span<int> floorEnd = RenderWindowHelper.FloorEnd;
             Span<int> wallEnd = RenderWindowHelper.WallEnd;
 
-            byte lightLevel = sector.LightLevel;
-
             int width = PixelWidth;
 
             float yfloor = sector.Floor - player.Z;
@@ -127,7 +123,7 @@ namespace RenderingEngine.Engine
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(floorTexture);
 
             Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
-            ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(false, lightLevel);
+            ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(false, sector.FloorShade);
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             Vector<float> yfloorV = Vector.Create(yfloor);

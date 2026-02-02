@@ -161,7 +161,8 @@ namespace RenderingEngine.MapGen
                 CeilTexture = x.CeilingTexture,
                 Ceil = x.Ceiling,
                 Floor = x.Floor,
-                LightLevel = (byte)(x.LightLevel == 256 ? byte.MaxValue : x.LightLevel),
+                FloorShade = (byte)(x.FloorShade == 256 ? byte.MaxValue : x.FloorShade),
+                CeilingShade = (byte)(x.CeilingShade == 256 ? byte.MaxValue : x.CeilingShade),
                 Walls = vertex,
                 RotationCeiling = x.RotationCeiling,
                 RotationFloor = x.RotationFloor

@@ -38,8 +38,7 @@ namespace RenderingEngine.Engine
 
             int textureWidth = texture.Width;
 
-            byte lightLevel = sector.LightLevel;
-            ref BGRA floorTexturePtr = ref MemoryMarshal.GetReference(texture.Texture.GetBinary(false, lightLevel));
+            ref BGRA floorTexturePtr = ref MemoryMarshal.GetReference(texture.Texture.GetBinary(false, sector.FloorShade));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
             Vector<float> yFloorV = Vector.Create(yFloor);
@@ -98,7 +97,7 @@ namespace RenderingEngine.Engine
                 float xMapPosMultiplier = xMapPosMultiplierCache[x];
 
                 RenderFloorOrCeilingSpriteColumn(ref screenPtr, ref floorTexturePtr, screenIndex, clamptedToY, clamptedFromY, width,
-                    x, lightLevel, yFloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
+                    x, yFloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, xScaleV, yScaleV);
             }
         }
@@ -111,7 +110,6 @@ namespace RenderingEngine.Engine
             int floorFromY,
             int width,
             int x,
-            uint lightLevel,
             Vector<float> yCeilV,
             float xMapPosMultiplier,
             Vector<int> yOffSetV,
