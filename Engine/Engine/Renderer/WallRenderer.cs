@@ -44,14 +44,14 @@ namespace RenderingEngine.Engine
 
             Span<RenderColumnStatus> status = RenderWindowHelper.Status;
             ReadOnlySpan<int> textureXLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation);
-            ReadOnlySpan<int> textureYLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureYLocation);
+            ReadOnlySpan<uint> textureYLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TopTextureYLocation);
             ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
             ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
             ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
             ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
             ReadOnlySpan<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
             ReadOnlySpan<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
-            ReadOnlySpan<int> textureXPosArray = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXPos);
+            ReadOnlySpan<uint> textureXPosArray = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureXPos);
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
@@ -64,20 +64,20 @@ namespace RenderingEngine.Engine
 
                 int clamptedFromY = clampedFrom[x];
                 int clamptedToY = clampedTo[x];
-                int textureXIncr = textureYLocation[x];
-                int textureXPos = textureXPosArray[x];
+                uint textureXIncr = textureYLocation[x];
+                uint textureXPos = textureXPosArray[x];
                 int textureYPos = textureXLocation[x];
 
                 CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, flipY);
 
-                RenderWallLine(
+                RenderWallLine2(
                     width,
                     x,
                     textureWidth,
                     clamptedFromY,
                     clamptedToY,
-                    (uint)textureXPos,
-                    (uint)textureXIncr,
+                    textureXPos,
+                    textureXIncr,
                     ref screenPtr,
                     ref buffer.Pointer
                 );
@@ -404,6 +404,54 @@ namespace RenderingEngine.Engine
             }
         }
 
+        private static void RenderWallLine2(
+            int width,
+            int x,
+            int textureHeight,
+            int startY,
+            int endY,
+            uint textureXPos_u,
+            uint textureXIncr_u,
+            scoped ref uint screenPtr,
+            scoped ref uint textureBuffer
+            )
+        {
+            ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, startY + x);
+            ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, endY + x);
+
+            // % is slower than the bitwise &
+            // thus we have two paths to render a wall line
+            // depending if texture is power of two or not
+            if (SharedHelpers.IsPowerOfTwo(textureHeight))
+            {
+                uint textureMask = (uint)(textureHeight - 1);
+
+                while (!Unsafe.AreSame(in screenIndexPtr, in screenIndexPtrEnd))
+                {
+                    uint texelIndex = (textureXPos_u >> 16) & textureMask;
+                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+
+                    screenIndexPtr = shaded;
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                    textureXPos_u += textureXIncr_u;
+                }
+            }
+            else
+            {
+                uint textureHeight_u = (uint)textureHeight;
+
+                while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
+                {
+                    uint texelIndex = (textureXPos_u >> 16) % textureHeight_u;
+                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+
+                    screenIndexPtr = shaded;
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                    textureXPos_u += textureXIncr_u;
+                }
+            }
+        }
+
         private static void RenderWallLine(
             int width,
             int x,
@@ -503,6 +551,7 @@ namespace RenderingEngine.Engine
 
                 Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
 
+                Vector<int> widthV = Vector.Create(width);
                 Vector<float> t1V = Vector.Create(t1);
                 Vector<float> d2yV = Vector.Create(d2y);
                 Vector<float> d2xV = Vector.Create(d2x);
@@ -571,6 +620,9 @@ namespace RenderingEngine.Engine
                     Vector<int> textureXPosV = textureStartV - topYLocationV * (wallStartV - clamptedFromYV);
                     textureXPosV = SharedHelpers.EnsureOffsetIsPositive(textureWidthV << 16, textureXPosV);
 
+                    clamptedFromYV *= widthV;
+                    clamptedToYV *= widthV;
+
                     Vector.StoreUnsafe(clamptedFromYV, ref clampedFrom[x]);
                     Vector.StoreUnsafe(clamptedToYV, ref clampedTo[x]);
                     Vector.StoreUnsafe(textureXPosV, ref textureXPos[x]);
@@ -625,6 +677,9 @@ namespace RenderingEngine.Engine
                 int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
                 int textureXPosY = textureStart - textureXIncr * (wallStartY - clamptedFromY);
                 textureXPosY = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPosY);
+
+                clamptedFromY *= width;
+                clamptedToY *= width;
 
                 clampedFrom[x] = clamptedFromY;
                 clampedTo[x] = clamptedToY;

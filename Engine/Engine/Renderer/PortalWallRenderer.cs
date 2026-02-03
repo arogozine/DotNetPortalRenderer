@@ -321,9 +321,7 @@ namespace RenderingEngine.Engine
                 int floorPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * floorOffset);
                 int ceilPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * ceilOffset);
                 int portalFromY = wallStartY - ceilPixelOffset;
-                int portalToY = wallEndY - floorPixelOffset;
                 int portalFromYClamped = Math.Clamp(portalFromY, ceilingStartY, floorEndY);
-                int portalToYClamped = Math.Clamp(portalToY, ceilingStartY, floorEndY);
 
                 int textureYPos = topTextureXLocation[x];
                 int textureXIncr = topTextureYLocation[x];
@@ -407,14 +405,11 @@ namespace RenderingEngine.Engine
                 // Portal Calculation
                 int floorPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * floorOffset);
                 int ceilPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * ceilOffset);
-                int portalFromY = wallStartY - ceilPixelOffset;
                 int portalToY = wallEndY - floorPixelOffset;
-                int portalFromYClamped = Math.Clamp(portalFromY, ceilingStartY, floorEndY);
                 int portalToYClamped = Math.Clamp(portalToY, ceilingStartY, floorEndY);
 
                 int textureYPos = bottomTextureXLocation[x];
                 int textureXIncr = bottomTextureYLocation[x];
-
 
                 int textureXPos = textureXIncr * (portalToYClamped - portalToY) + lowerTextureStart;
 

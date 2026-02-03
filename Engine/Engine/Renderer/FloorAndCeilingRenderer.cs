@@ -192,7 +192,6 @@ namespace RenderingEngine.Engine
                     Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
                     Vector<int> floorFromV = Vector.ClampNative(wallEndV, ceilingStartV, floorEndV);
                     Vector<int> screenIndexV = floorFromV * widthV + sectorFromXV;
-                    Vector<float> xMapPosMultiplierV = Vector.LoadUnsafe(ref xMapPosMultiplierCache[x]);
 
                     for (int i = 0; i < Vector<float>.Count; i++, x++)
                     {
@@ -204,7 +203,7 @@ namespace RenderingEngine.Engine
                         int floorFromY = floorFromV[i];
                         int floorEndY = floorEndV[i];
                         int screenIndex = screenIndexV[i];
-                        float xMapPosMultiplier = xMapPosMultiplierV[i];
+                        float xMapPosMultiplier = xMapPosMultiplierCache[x];
 
                         RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
                             x, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
