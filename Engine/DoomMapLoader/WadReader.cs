@@ -495,24 +495,24 @@ namespace RenderingEngine.DoomMapLoader
                         Texture lowerTexture = TextureCache.GetTexture(lowerTextureInfo);
                         Texture upperTexture = TextureCache.GetTexture(upperTextureInfo);
 
-                        lowerTextureInfo.XOffset = DetermineXOffset(lowerTextureInfo, in lowerTexture);
-                        upperTextureInfo.XOffset = DetermineXOffset(upperTextureInfo, in upperTexture);
+                        lowerTextureInfo.XOffset = DetermineXOffset(lowerTextureInfo, lowerTexture);
+                        upperTextureInfo.XOffset = DetermineXOffset(upperTextureInfo, upperTexture);
 
-                        lowerTextureInfo.YOffset = DetermineLowerTextureYOffset(floorOffset, lowerTextureInfo, in lowerTexture);
-                        upperTextureInfo.YOffset = DetermineUpperTextureYOffset(ceilOffset, upperTextureInfo, in upperTexture);
+                        lowerTextureInfo.YOffset = DetermineLowerTextureYOffset(floorOffset, lowerTextureInfo, lowerTexture);
+                        upperTextureInfo.YOffset = DetermineUpperTextureYOffset(ceilOffset, upperTextureInfo, upperTexture);
 
                         if (middleTextureInfo is not null)
                         {
                             Texture middleTexture = TextureCache.GetTexture(middleTextureInfo);
-                            middleTextureInfo.XOffset = DetermineXOffset(middleTextureInfo, in middleTexture);
+                            middleTextureInfo.XOffset = DetermineXOffset(middleTextureInfo, middleTexture);
                             // middleTextureInfo.YOffset = DetermineTextureYOffset(sector, middleTextureInfo, in middleTexture);
                         }
                     }
                     else if (middleTextureInfo is not null)
                     {
                         Texture middleTexture = TextureCache.GetTexture(middleTextureInfo);
-                        middleTextureInfo.XOffset = DetermineXOffset(middleTextureInfo, in middleTexture);
-                        middleTextureInfo.YOffset = DetermineTextureYOffset(sector, middleTextureInfo, in middleTexture);
+                        middleTextureInfo.XOffset = DetermineXOffset(middleTextureInfo, middleTexture);
+                        middleTextureInfo.YOffset = DetermineTextureYOffset(sector, middleTextureInfo, middleTexture);
                     }
                 }
             }
@@ -521,7 +521,7 @@ namespace RenderingEngine.DoomMapLoader
         private static int DetermineLowerTextureYOffset(
             int floorOffset,
             Models.TextureInfo textureInfo,
-            in Texture wallTexture)
+            Texture wallTexture)
         {
             int offset = textureInfo.YOffset;
             TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
@@ -542,7 +542,7 @@ namespace RenderingEngine.DoomMapLoader
         private static int DetermineUpperTextureYOffset(
             int ceilingOffset,
             Models.TextureInfo textureInfo,
-            in Texture wallTexture)
+            Texture wallTexture)
         {
             int offset = textureInfo.YOffset;
             TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
@@ -564,7 +564,7 @@ namespace RenderingEngine.DoomMapLoader
         private static int DetermineTextureYOffset(
             MapSector sector,
             Models.TextureInfo textureInfo,
-            in Texture wallTexture)
+            Texture wallTexture)
         {
             int offset = textureInfo.YOffset;
             TextureRenderingOptions renderingOptions = textureInfo.RenderingOptions;
@@ -594,7 +594,7 @@ namespace RenderingEngine.DoomMapLoader
             }
         }
 
-        private static int DetermineXOffset(Models.TextureInfo textureInfo, in Texture wallTexture)
+        private static int DetermineXOffset(Models.TextureInfo textureInfo, Texture wallTexture)
         {
             int offset = textureInfo.XOffset;
             int textureWidth = wallTexture.Width;
@@ -920,6 +920,8 @@ namespace RenderingEngine.DoomMapLoader
                         middleTexture.Alpha = linedef.Alpha ?? 1f;
                     }
 
+                    bool twoSided = linedef.TwoSided ?? false;
+
                     var line = new Line
                     {
                         Id = lineInfo.LineDefId,
@@ -929,7 +931,8 @@ namespace RenderingEngine.DoomMapLoader
                         UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, !lineInfo.LowerUnpegged),
                         MiddleTexture = middleTexture,
                         LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, lineInfo.UpperUnpegged),
-                        Shade = sector.LightLevel
+                        Shade = sector.LightLevel,
+                        TwoSided = twoSided
                     };
 
                     mapSector.Walls.Add(line);

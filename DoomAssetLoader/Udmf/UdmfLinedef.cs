@@ -32,5 +32,8 @@
         public bool DontPegBottom => GetValue<bool>(FLAG_UNPEG_BOTTOM) ?? false;
         public bool DontPegTop => GetValue<bool>(FLAG_UNPEG_TOP) ?? false;
 
+        public bool? DontDraw => GetValue<bool>(FLAG_DONT_DRAW);
+
+        public bool? TwoSided => GetValue<bool>(FLAG_TWO_SIDED);
     }
 }

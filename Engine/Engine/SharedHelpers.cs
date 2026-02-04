@@ -19,14 +19,18 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static (float rx1, float ry1) RotateVertex(
+        internal static (float rx1, float ry1) RotateVertexAroundPoint(
             float x, float y,
-            float sin, float cos)
+            float sin, float cos,
+            float px, float py)
         {
-            float rx1 = MathF.FusedMultiplyAdd(x, sin, - y * cos);
-            float ry1 = MathF.FusedMultiplyAdd(x, cos, + y * sin);
+            x -= px;
+            y -= py;
 
-            return (rx1, ry1);
+            float rx1 = MathF.FusedMultiplyAdd(x, sin, -y * cos);
+            float ry1 = MathF.FusedMultiplyAdd(x, cos, +y * sin);
+
+            return (rx1 + px, ry1 + py);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

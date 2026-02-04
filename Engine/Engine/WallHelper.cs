@@ -311,7 +311,7 @@ namespace RenderingEngine.Engine
                 }
 
                 // Backface culling from https://theforceengine.github.io/2020/05/16/DFRender1.html
-                if (x2 * y1 < y2 * x1)
+                if (!wall.TwoSided && x2 * y1 < y2 * x1)
                 {
                     continue;
                 }
@@ -429,6 +429,7 @@ namespace RenderingEngine.Engine
             float xLeft = halfWidth - rx1 / ry1 * scale;
             float xRight = halfWidth - rx2 / ry2 * scale;
 
+            /*
             // order left to right
             if (xLeft > xRight)
             {
@@ -439,8 +440,9 @@ namespace RenderingEngine.Engine
 
                 (wall.R1, wall.R2) = (wall.R2, wall.R1);
 
-                // wall.Flipped = true;
+                wall.Flipped = true;
             }
+            */
 
             // part of the wall is in the back
             if (ry1 <= 0f || ry2 <= 0f)
@@ -466,7 +468,7 @@ namespace RenderingEngine.Engine
                     xRight = width - 1;
 
                     wall.IntersectsView = true;
-                    wall.Flipped = true;
+                    // wall.Flipped = true;
                 }
                 else if (intersectsL || intersectsR)
                 {
@@ -486,7 +488,7 @@ namespace RenderingEngine.Engine
                         xRight = halfWidth - rx2 / ry2 * scale;
                     }
 
-                    wall.Flipped = true;
+                    //wall.Flipped = true;
                 }
                 else
                 {
@@ -516,7 +518,7 @@ namespace RenderingEngine.Engine
 
                 (wall.R1, wall.R2) = (wall.R2, wall.R1);
 
-                wall.Flipped = !wall.Flipped;
+                //wall.Flipped = !wall.Flipped;
             }
 
             wall.IntersectsView |= MathFormulas.CalculatePlaneIntersectionsForWall(width, xLeft, xRight, ref rx1, ref ry1, ref rx2, ref ry2);

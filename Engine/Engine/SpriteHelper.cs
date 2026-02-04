@@ -193,7 +193,6 @@ namespace RenderingEngine.Engine
                     {
                         continue;
                     }
-
                 }
 
                 rotatedSprites[j] = sprite;
@@ -516,7 +515,7 @@ namespace RenderingEngine.Engine
 
                 (sprite.R1, sprite.R2) = (sprite.R2, sprite.R1);
 
-                sprite.Flipped = true;
+                // sprite.Flipped = true;
             }
 
             // part of the wall is in the back
@@ -681,7 +680,7 @@ namespace RenderingEngine.Engine
                     xRight = width - 1;
 
                     sprite.IntersectsView = true;
-                    sprite.Flipped = true;
+                    //sprite.Flipped = true;
                 }
                 else if (intersectsL || intersectsR)
                 {
@@ -701,7 +700,7 @@ namespace RenderingEngine.Engine
                         xRight = halfWidth - rx2 / ry2 * scale;
                     }
 
-                    sprite.Flipped = true;
+                    //sprite.Flipped = true;
                 }
                 else
                 {
@@ -731,7 +730,7 @@ namespace RenderingEngine.Engine
 
                 (sprite.R1, sprite.R2) = (sprite.R2, sprite.R1);
 
-                sprite.Flipped = !sprite.Flipped;
+                //sprite.Flipped = !sprite.Flipped;
             }
 
             sprite.IntersectsView |= MathFormulas.CalculatePlaneIntersectionsForWall(width, xLeft, xRight, ref rx1, ref ry1, ref rx2, ref ry2);

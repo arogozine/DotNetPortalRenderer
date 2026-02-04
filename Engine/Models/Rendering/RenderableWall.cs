@@ -13,6 +13,7 @@ namespace RenderingEngine.Models
         public Point PointB => Line.PointB;
         public int? SectorTo => Line.SectorTo;
         public short Shade => Line.Shade;
+        public bool TwoSided => Line.TwoSided;
 
         public Line Line { get; }
 

@@ -286,15 +286,17 @@ namespace RenderingEngine.DoomMapLoader
                 }
                 else if (sprite is FloorSprite floorSprite)
                 {
+                    (float sin, float cos) = MathF.SinCos(floorSprite.Angle);
+
                     float xFrom = x - width * 0.5f;
                     float xTo = x + width * 0.5f;
                     float yTo = y - height * 0.5f;
                     float yFrom = y + height * 0.5f;
 
-                    floorSprite.PointA = (xFrom, yFrom);
-                    floorSprite.PointB = (xTo, yFrom);
-                    floorSprite.PointC = (xFrom, yTo);
-                    floorSprite.PointD = (xTo, yTo);
+                    floorSprite.PointA = SharedHelpers.RotateVertexAroundPoint(xFrom, yFrom, sin, cos, x, y);
+                    floorSprite.PointB = SharedHelpers.RotateVertexAroundPoint(xTo, yFrom, sin, cos, x, y);
+                    floorSprite.PointC = SharedHelpers.RotateVertexAroundPoint(xFrom, yTo, sin, cos, x, y);
+                    floorSprite.PointD = SharedHelpers.RotateVertexAroundPoint(xTo, yTo, sin, cos, x, y);
 
                     continue;
                 }
