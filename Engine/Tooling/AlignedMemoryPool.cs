@@ -19,7 +19,8 @@ namespace RenderingEngine.Tooling
         BottomTextureYLocation,
         ClampedFrom,
         ClampedTo,
-        TextureXPos
+        TextureXPos,
+        Buffer
     }
 
     internal unsafe class AlignedMemoryPool
@@ -54,6 +55,7 @@ namespace RenderingEngine.Tooling
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Span<T> GetBucket<T>(MemoryPoolBucket bucket)
             where T : unmanaged
         {
@@ -61,6 +63,7 @@ namespace RenderingEngine.Tooling
             return MemoryMarshal.Cast<byte, T>(Span[byteStart..(byteEnd - _rem)]);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetBucketRef<T>(MemoryPoolBucket bucket)
             where T : unmanaged
         {
@@ -70,6 +73,16 @@ namespace RenderingEngine.Tooling
             ptr += byteStart;
 
             return ref Unsafe.AsRef<T>((T*)ptr);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void* GetBucketPtr(MemoryPoolBucket bucket)
+        {
+            (int byteStart, _) = Buckets[(int)bucket];
+
+            byte* ptr = (byte*)_ptr.ToPointer();
+            ptr += byteStart;
+            return (void*)ptr;
         }
 
         internal static AlignedMemoryPool GeneratePool(int bucketSize, int numberOfBuckets)

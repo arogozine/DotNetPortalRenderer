@@ -46,26 +46,20 @@ namespace SoftwareRenderer
         {
             ThrowIfNull(canvas);
 
-            BGRA[]? bytes = Engine.RenderNextFrame();
+            void* bgraPtr = Engine.RenderNextFrame();
 
-            if (bytes is null || bytes.Length == 0)
+            if (bgraPtr == null)
             {
                 return;
             }
 
-            // we avoid using bitmap as it internally creates an SKImage
-            // and copies needlessly
-            SKImage image;
-            fixed (BGRA* bgraPtr = &bytes[0])
+            var info = new SKImageInfo(window.Size.X, window.Size.Y)
             {
-                var info = new SKImageInfo(window.Size.X, window.Size.Y)
-                {
-                    AlphaType = SKAlphaType.Premul,
-                    ColorType = SKColorType.Bgra8888,
-                };
+                AlphaType = SKAlphaType.Premul,
+                ColorType = SKColorType.Bgra8888,
+            };
 
-                image = SKImage.FromPixels(info, (nint)bgraPtr, info.RowBytes);
-            }
+            SKImage image = SKImage.FromPixels(info, (nint)bgraPtr, info.RowBytes);
 
             // prevent crash due to minimizing/maximizing window
             if (image == null)

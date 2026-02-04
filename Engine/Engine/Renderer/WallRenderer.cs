@@ -7,10 +7,10 @@ namespace RenderingEngine.Engine
     internal sealed partial class PortalRenderer
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref T GetScreenPtr<T>()
-            where T : struct
+        private unsafe ref T GetScreenPtr<T>()
+            where T : unmanaged
         {
-            return ref Unsafe.As<BGRA, T>(ref MemoryMarshal.GetReference(this.buffer));
+            return ref Unsafe.AsRef<T>(buffer);
         }
 
         private bool DrawBasicWall(
@@ -515,13 +515,13 @@ namespace RenderingEngine.Engine
             RenderablePortalWall renderableWall, Sector sector, TextureInfo textureInfo,
             scoped Span<int> xLocation, scoped Span<int> yLocation)
         {
-            Span<float> distance = RenderWindowHelper.Distance;
-            Span<int> wallStart = RenderWindowHelper.WallStart;
-            Span<int> wallEnd = RenderWindowHelper.WallEnd;
+            Span<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
+            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
 
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
+            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
             Span<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
             Span<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);

@@ -91,10 +91,14 @@ namespace RenderingEngine.Engine
 
         private void RenderSkyboxFloorVector(
             PortalPlayerSnapshot player,
-            Sector sector
-            )
+            Sector sector)
         {
             const float oneOverTwoPi = 1f / (2 * MathF.PI);
+
+            ReadOnlySpan<RenderColumnStatus> statusSpan = RenderWindowHelper.Status;
+            ReadOnlySpan<int> wallStartSpan = RenderWindowHelper.WallStart;
+            ReadOnlySpan<int> ceilingStartSpan = RenderWindowHelper.CeilingStart;
+            ReadOnlySpan<int> floorEndSpan = RenderWindowHelper.FloorEnd;
 
             int width = PixelWidth;
             int height = PixelHeight;
@@ -122,7 +126,7 @@ namespace RenderingEngine.Engine
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
+                RenderColumnStatus columnStatus = statusSpan[x];
 
                 if (!columnStatus.FloorRenderable)
                 {
@@ -135,9 +139,9 @@ namespace RenderingEngine.Engine
 
                 int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
-                int wallStart = RenderWindowHelper.WallStart[x];
-                int ceilingStart = RenderWindowHelper.CeilingStart[x];
-                int floorEnd = RenderWindowHelper.FloorEnd[x];
+                int wallStart = wallStartSpan[x];
+                int ceilingStart = ceilingStartSpan[x];
+                int floorEnd = floorEndSpan[x];
                 int wallStartClamped = Math.Clamp(wallStart, ceilingStart, floorEnd);
 
                 int rem = (floorEnd - wallStartClamped) % Vector<int>.Count;

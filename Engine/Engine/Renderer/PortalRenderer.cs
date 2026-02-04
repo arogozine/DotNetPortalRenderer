@@ -3,7 +3,7 @@ using RenderingEngine.Tooling;
 
 namespace RenderingEngine.Engine
 {
-    internal sealed partial class PortalRenderer
+    internal sealed unsafe partial class PortalRenderer
     {
         public readonly int PixelWidth;
         public readonly int PixelHeight;
@@ -20,7 +20,7 @@ namespace RenderingEngine.Engine
 
         private readonly AlignedMemoryPool memoryPool;
 
-        private readonly BGRA[] buffer;
+        private readonly void* buffer;
 
         public PortalRenderer(int width, int height)
         {
@@ -28,10 +28,10 @@ namespace RenderingEngine.Engine
             PixelHeight = height;
             SpriteHelper = new SpriteHelper(width, height);
             WallHelper = new WallHelper(width, height);
-            buffer = GC.AllocateUninitializedArray<BGRA>(width * height);
 
-            RenderWindowHelper = new RenderWindowHelper(width, height);
-            memoryPool = AlignedMemoryPool.GeneratePool(width, 16);
+            memoryPool = AlignedMemoryPool.GeneratePool(width, 16 + height);
+            RenderWindowHelper = new RenderWindowHelper(width, height, memoryPool);
+            buffer = memoryPool.GetBucketPtr(MemoryPoolBucket.Buffer);
 
             GenerateAngleCache();
             GenerateCache();
@@ -139,11 +139,11 @@ namespace RenderingEngine.Engine
                 List<RenderablePortalWall> neighborsForDepth = DrawScreenStep(player);
 
                 // 2. Cache Distance and Window for Sprite Rendering
-                RenderWindowHelper.Distance.AsSpan().CopyTo(distance);
-                RenderWindowHelper.FloorEnd.AsSpan().CopyTo(floorEnd);
-                RenderWindowHelper.WallEnd.AsSpan().CopyTo(wallEnd);
-                RenderWindowHelper.CeilingStart.AsSpan().CopyTo(ceilingStart);
-                RenderWindowHelper.Status.AsSpan().CopyTo(columnStatus);
+                RenderWindowHelper.Distance.CopyTo(distance);
+                RenderWindowHelper.FloorEnd.CopyTo(floorEnd);
+                RenderWindowHelper.WallEnd.CopyTo(wallEnd);
+                RenderWindowHelper.CeilingStart.CopyTo(ceilingStart);
+                RenderWindowHelper.Status.CopyTo(columnStatus);
 
                 // 3. We render sprites after all the walls were rendered
                 var renderedSectorsCopy = new HashSet<int>(this.renderedSectors);
@@ -508,13 +508,13 @@ namespace RenderingEngine.Engine
         }
 
         [MemberNotNull(nameof(Snapshot))]
-        public BGRA[] DrawFrame(PortalPlayerSnapshot snapShot)
+        public unsafe void* DrawFrame(PortalPlayerSnapshot snapShot)
         {
             Snapshot = snapShot;
 
             DrawScreen(snapShot);
 
-            return buffer;
+            return this.buffer;
         }
     }
 }

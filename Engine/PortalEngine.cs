@@ -118,9 +118,14 @@ namespace RenderingEngine
             mtRenderer.StartTheGameLoop();
         }
 
-        public BGRA[]? RenderNextFrame()
+        public unsafe void* RenderNextFrame()
         {
-            return mtRenderer?.RenderFrame();
+            if (mtRenderer == null)
+            {
+                return (void*)null;
+            }
+
+            return mtRenderer.RenderFrame();
         }
     }
 }

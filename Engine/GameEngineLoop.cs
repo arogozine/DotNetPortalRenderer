@@ -1,13 +1,12 @@
 ﻿using RenderingEngine.Engine;
-using RenderingEngine.Models;
 
 namespace RenderingEngine
 {
-    public sealed class GameEngineLoop : IDisposable
+    public sealed unsafe class GameEngineLoop : IDisposable
     {
         private readonly PortalEngine Engine;
         private CancellationTokenSource EngineLoopCancellationToken;
-        private BGRA[]? currentFrame = null;
+        private void* currentFrame = null;
         private Task? engineLoopTask = null;
 
         private readonly SemaphoreSlim StartRenderingSemaphore = new(0, 1);
@@ -63,10 +62,11 @@ namespace RenderingEngine
             MainEngineLoop(EngineLoopCancellationToken.Token);
         }
 
-        public BGRA[]? RenderFrame()
+        public unsafe void* RenderFrame()
         {
             _ = StartRenderingSemaphore.Release();
             RenderedFrameSemaphore.Wait();
+
             return currentFrame;
         }
 

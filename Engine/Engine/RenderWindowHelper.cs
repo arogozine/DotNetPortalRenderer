@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using RenderingEngine.Tooling;
 
 namespace RenderingEngine.Engine
 {
@@ -7,13 +8,12 @@ namespace RenderingEngine.Engine
         private readonly int width;
         private readonly int height;
 
-        public RenderColumnStatus[] Status { get; }
-        public int[] CeilingStart { get; }
-        public int[] WallStart { get; }
-        public int[] WallEnd { get; }
-        public int[] FloorEnd { get; }
-        public float[] Distance { get; }
-
+        public Span<RenderColumnStatus> Status => alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+        public Span<int> CeilingStart => alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+        public Span<int> WallStart => alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+        public Span<int> WallEnd => alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+        public Span<int> FloorEnd => alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+        public Span<float> Distance => alignedMemoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
 
         private int sectorFromX;
         private int sectorToX;
@@ -21,33 +21,28 @@ namespace RenderingEngine.Engine
         private RenderableWall? wall;
         private int wallFromX;
         private int wallToX;
+        private readonly AlignedMemoryPool alignedMemoryPool;
 
         public int SectorFrom => sectorFromX;
         public int SectorTo => sectorToX;
 
-        public RenderWindowHelper(int width, int height)
+        public RenderWindowHelper(int width, int height, AlignedMemoryPool alignedMemoryPool)
         {
             this.width = width;
             this.height = height;
 
-            Status = new RenderColumnStatus[width];
-            CeilingStart = new int[width];
-            WallStart = new int[width];
-            WallEnd = new int[width];
-            FloorEnd = new int[width];
-            Distance = new float[width];
-
             sectorFromX = 0;
             sectorToX = width;
+            this.alignedMemoryPool = alignedMemoryPool;
         }
 
         public void NewRender()
         {
-            Status.AsSpan().Fill(RenderColumnStatus.NewRender);
-            CeilingStart.AsSpan().Clear();
-            FloorEnd.AsSpan().Fill(height - 1);
-            WallEnd.AsSpan().Fill(height - 1);
-            Distance.AsSpan().Fill(float.MaxValue);
+            Status.Fill(RenderColumnStatus.NewRender);
+            CeilingStart.Clear();
+            FloorEnd.Fill(height - 1);
+            WallEnd.Fill(height - 1);
+            Distance.Fill(float.MaxValue);
         }
 
         public RenderColumnStatus NewDepth()
@@ -155,37 +150,17 @@ namespace RenderingEngine.Engine
             }
         }
 
-        /*
-        // for transparency
-        public RenderWindow[] CopyRenderWindow(bool partial)
-        {
-            RenderWindow[] renderWindow = new RenderWindow[this.renderWindow.Length];
-            Span<RenderWindow> span = this.renderWindow.AsSpan();
-            Span<RenderWindow> renderWindowSpan = renderWindow.AsSpan();
-
-            if (partial)
-            {
-                span[sectorFromX..sectorToX].CopyTo(renderWindowSpan[sectorFromX..sectorToX]);
-            }
-            else
-            {
-                span.CopyTo(renderWindowSpan);
-            }
-
-            return renderWindow;
-        }
-        */
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public (int SectroFromX, int SectorToX) GetSectorX()
         {
             return (sectorFromX, sectorToX);
         }
 
-
         [MemberNotNull(nameof(wall))]
         public bool SetWallToCalculate(RenderableWall wall)
         {
+            Span<RenderColumnStatus> status = this.Status;
+
             this.wall = wall;
             this.wallFromX = wall.XLeft;
             this.wallToX = wall.XRight;
@@ -198,7 +173,7 @@ namespace RenderingEngine.Engine
 
             for (i = wallFromX; i <= wallToX; i++)
             {
-                RenderColumnStatus columnStatus = Status[i];
+                RenderColumnStatus columnStatus = status[i];
 
                 if (!columnStatus.IsFinished && !columnStatus.IsCalculated)
                 {
@@ -208,7 +183,7 @@ namespace RenderingEngine.Engine
 
             for (j = wallToX; j >= wallFromX; j--)
             {
-                RenderColumnStatus columnStatus = Status[j];
+                RenderColumnStatus columnStatus = status[j];
 
                 if (!columnStatus.IsFinished && !columnStatus.IsCalculated)
                 {

@@ -34,6 +34,11 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             Sector sector)
         {
+            ReadOnlySpan<RenderColumnStatus> statusSpan = RenderWindowHelper.Status;
+            ReadOnlySpan<int> ceilingStartSpan = RenderWindowHelper.CeilingStart;
+            ReadOnlySpan<int> wallStartSpan = RenderWindowHelper.WallStart;
+            ReadOnlySpan<int> floorEndSpan = RenderWindowHelper.FloorEnd;
+
             bool rotated = sector.RotationCeiling is not null;
 
             int width = PixelWidth;
@@ -83,16 +88,16 @@ namespace RenderingEngine.Engine
 
             for (int x = sectroFromX; x <= sectorToX; x++)
             {
-                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
+                RenderColumnStatus columnStatus = statusSpan[x];
 
                 if (!columnStatus.CeilingRenderable)
                 {
                     continue;
                 }
 
-                int ceilingStart = RenderWindowHelper.CeilingStart[x];
-                int wallStart = RenderWindowHelper.WallStart[x];
-                int floorEnd = RenderWindowHelper.FloorEnd[x];
+                int ceilingStart = ceilingStartSpan[x];
+                int wallStart = wallStartSpan[x];
+                int floorEnd = floorEndSpan[x];
                 int floorToY = Math.Clamp(wallStart, ceilingStart, floorEnd);
 
                 int screenIndex = ceilingStart * width + x;
