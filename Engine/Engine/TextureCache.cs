@@ -78,7 +78,7 @@ internal static partial class TextureCache
         PalletteLookup[id] = lookup;
     }
 
-    public static BGRA[] GetTexture(Span<byte> lookup, int palletteId)
+    public static BGRA[] GetTexture(ReadOnlySpan<byte> lookup, int palletteId)
     {
         if (!PalletteLookup.ContainsKey(palletteId))
         {

@@ -1,5 +1,6 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.Tooling;
+using System.Numerics;
 
 namespace RenderingEngine.Engine
 {
@@ -29,7 +30,7 @@ namespace RenderingEngine.Engine
             SpriteHelper = new SpriteHelper(width, height);
             WallHelper = new WallHelper(width, height);
 
-            memoryPool = AlignedMemoryPool.GeneratePool(width, 16 + height);
+            memoryPool = AlignedMemoryPool.GeneratePool(width, (int)MemoryPoolBucket.Buffer + height);
             RenderWindowHelper = new RenderWindowHelper(width, height, memoryPool);
             buffer = memoryPool.GetBucketPtr(MemoryPoolBucket.Buffer);
 
@@ -113,51 +114,28 @@ namespace RenderingEngine.Engine
             do
             {
                 // 0. Cache current renderable area for sprite rendering
-                int[] ceilingStart, floorEnd, wallEnd;
-                float[] distance;
-                RenderColumnStatus[] columnStatus;
-
-                if (spriteRenderableAreaCache[renderDepth] is RenderableAreaAndZBuffer spriteCache)
+                RenderableAreaAndZBuffer spriteCache = spriteRenderableAreaCache[renderDepth];
+                if (spriteCache is null)
                 {
-                    ceilingStart = spriteCache.CeilingStart;
-                    floorEnd = spriteCache.FloorEnd;
-                    distance = spriteCache.ZBuffer;
-                    columnStatus = spriteCache.ColumnStatus;
-                    wallEnd = spriteCache.WallEnd;
-                }
-                else
-                {
-                    ceilingStart = new int[PixelWidth];
-                    floorEnd = new int[PixelWidth];
-                    distance = new float[PixelWidth];
-                    columnStatus = new RenderColumnStatus[PixelWidth];
-                    wallEnd = new int[PixelWidth];
-                    spriteRenderableAreaCache[renderDepth] = new RenderableAreaAndZBuffer(ceilingStart, floorEnd, wallEnd, distance, columnStatus);
+                    spriteCache = new RenderableAreaAndZBuffer(PixelWidth);
+                    spriteRenderableAreaCache[renderDepth] = spriteCache;
                 }
 
                 // 1. Render all sectors at current depth and calculate new z buffer and render window
                 List<RenderablePortalWall> neighborsForDepth = DrawScreenStep(player);
 
                 // 2. Cache Distance and Window for Sprite Rendering
-                RenderWindowHelper.Distance.CopyTo(distance);
-                RenderWindowHelper.FloorEnd.CopyTo(floorEnd);
-                RenderWindowHelper.WallEnd.CopyTo(wallEnd);
-                RenderWindowHelper.CeilingStart.CopyTo(ceilingStart);
-                RenderWindowHelper.Status.CopyTo(columnStatus);
+                PopulateSpriteCacheForRenderDepth(spriteCache);
 
                 // 3. We render sprites after all the walls were rendered
                 var renderedSectorsCopy = new HashSet<int>(this.renderedSectors);
-                transparentWalls.Add(new RenderWindowSpriteSnapshot()
+                transparentWalls.Add(new RenderWindowSpriteSnapshot(spriteCache)
                 {
                     XLeft = 0,
                     XRight = PixelWidth,
-                    CeilingStart = ceilingStart,
-                    FloorEnd = floorEnd,
-                    WallEnd = wallEnd,
                     RenderDepth = renderDepth,
                     RenderedSectors = renderedSectorsCopy
                 });
-
 
                 // 4. We render transparent walls after all the walls were rendered
                 foreach (RenderablePortalWall renderableWall in neighborsForDepth)
@@ -165,16 +143,12 @@ namespace RenderingEngine.Engine
                     _ = renderedSectors.Add(renderableWall.Wall.Neighbor);
                     if (renderableWall.IsPortalWithMiddleTexture)
                     {
-                        transparentWalls.Add(new RenderWindowWallSnapshot
+                        transparentWalls.Add(new RenderWindowWallSnapshot(spriteCache)
                         {
                             Offset = renderableWall.Offset,
                             XLeft = renderableWall.XLeft,
                             XRight = renderableWall.XRight,
-                            Wall = renderableWall.Wall,
-                            CeilingStart = ceilingStart,
-                            ColumnStatus = columnStatus,
-                            WallEnd = wallEnd,
-                            FloorEnd = floorEnd
+                            Wall = renderableWall.Wall
                         });
                     }
                 }
@@ -256,8 +230,58 @@ namespace RenderingEngine.Engine
             return neighborsForDepth;
         }
 
+        private void PopulateSpriteCacheForRenderDepth(RenderableAreaAndZBuffer spriteCache)
+        {
+            RenderWindowHelper.WallStart.CopyTo(spriteCache.WallStart);
+            RenderWindowHelper.WallEnd.CopyTo(spriteCache.WallEnd);
+            RenderWindowHelper.Distance.CopyTo(spriteCache.Depth);
+            RenderWindowHelper.Status.CopyTo(spriteCache.ColumnStatus);
+
+            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            Span<int> wallStart = spriteCache.WallStart;
+            Span<int> wallEnd = spriteCache.WallEnd;
+
+            int start = 0;
+            int length = wallStart.Length;
+
+            if (Vector.IsHardwareAccelerated && length > 128)
+            {
+                int rem = length % Vector<int>.Count;
+                length -= rem;
+
+                Vector<int> ceilingStartV, floorEndV;
+                Vector<int> wallStartV, wallEndV;
+
+                for (int i = 0; i < length; i += Vector<int>.Count)
+                {
+                    ceilingStartV = Vector.LoadUnsafe(ref ceilingStart[i]);
+                    floorEndV = Vector.LoadUnsafe(ref floorEnd[i]);
+
+                    wallStartV = Vector.LoadUnsafe(ref wallStart[i]);
+                    wallStartV = Vector.ClampNative(wallStartV, ceilingStartV, floorEndV);
+                    Vector.StoreUnsafe(wallStartV, ref wallStart[i]);
+
+                    wallEndV = Vector.LoadUnsafe(ref wallEnd[i]);
+                    wallEndV = Vector.ClampNative(wallEndV, ceilingStartV, floorEndV);
+                    Vector.StoreUnsafe(wallEndV, ref wallEnd[i]);
+                }
+
+                start = length;
+                length += rem;
+            }
+
+            for (int i = start; i < length; i++)
+            {
+                wallStart[i] = Math.Clamp(wallStart[i], ceilingStart[i], floorEnd[i]);
+                wallEnd[i] = Math.Clamp(wallEnd[i], ceilingStart[i], floorEnd[i]);
+            }
+        }
+
         public void RenderSpritesAndTransparentWalls(PortalPlayerSnapshot player)
         {
+            HashSet<int> sectorsInt = new HashSet<int>(this.renderedSectors);
+
             ReadOnlySpan<Sector> sectors = Sectors;
 
             Span<RenderableSprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites, sectors);
@@ -275,32 +299,37 @@ namespace RenderingEngine.Engine
                 else if (renderableWall is RenderWindowSpriteSnapshot sectorSprites)
                 {
                     var currentBuffer = spriteRenderableAreaCache[sectorSprites.RenderDepth];
-                    var nextBuffer = sectorSprites.RenderDepth > 1 ? spriteRenderableAreaCache[sectorSprites.RenderDepth - 1] : null;
+                    var nextBuffer = sectorSprites.RenderDepth >= 1 ? spriteRenderableAreaCache[sectorSprites.RenderDepth - 1] : null;
 
-                    float[] currentDistance = currentBuffer.ZBuffer;
-                    float[]? nextDistance = nextBuffer?.ZBuffer;
+                    float[] currentDistance = currentBuffer.Depth;
+                    float[]? nextDistance = nextBuffer?.Depth;
 
                     // first depth, there is no window
                     if (nextDistance is null)
                     {
-                        using var ceilingBuffer = TempBuffer<int>.GetBuffer(currentDistance.Length);
-                        ceilingBuffer.Span.Clear();
+                        using var wallStartBuffer = TempBuffer<int>.GetBuffer(currentDistance.Length);
+                        wallStartBuffer.Span.Clear();
 
-                        using var floorEndBuffer = TempBuffer<int>.GetBuffer(currentDistance.Length);
-                        floorEndBuffer.Span.Fill(PixelHeight - 1);
+                        using var wallEndBuffer = TempBuffer<int>.GetBuffer(currentDistance.Length);
+                        wallEndBuffer.Span.Fill(PixelHeight - 1);
 
-                        sectorSprites = new RenderWindowSpriteSnapshot {
-                            CeilingStart = ceilingBuffer,
-                            FloorEnd = floorEndBuffer,
+                        var renderableArea = new RenderableAreaAndZBuffer() {
+                            ColumnStatus = currentBuffer.ColumnStatus,
+                            Depth = currentBuffer.Depth,
+                            WallStart = wallStartBuffer,
+                            WallEnd = wallEndBuffer,
+                        };
+
+                        sectorSprites = new RenderWindowSpriteSnapshot(renderableArea)
+                        {
                             RenderDepth = sectorSprites.RenderDepth,
-                            WallEnd = floorEndBuffer,
                             XLeft = sectorSprites.XLeft,
                             XRight = sectorSprites.XRight,
                             RenderedSectors = sectorSprites.RenderedSectors
                         };
 
                         List<RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
-                            sectorSprites.RenderedSectors, currentDistance, nextDistance);
+                            sectorsInt, currentDistance, nextDistance);
 
                         foreach (RenderableSprite s in sprites)
                         {
@@ -309,19 +338,24 @@ namespace RenderingEngine.Engine
                     }
                     else
                     {
-                        sectorSprites = new RenderWindowSpriteSnapshot
+                        var renderableArea = new RenderableAreaAndZBuffer()
                         {
-                            CeilingStart = nextBuffer!.CeilingStart,
-                            FloorEnd = nextBuffer.FloorEnd,
-                            RenderDepth = sectorSprites.RenderDepth,
+                            ColumnStatus = currentBuffer.ColumnStatus,
+                            Depth = currentBuffer.Depth,
+                            WallStart = nextBuffer!.WallStart,
                             WallEnd = nextBuffer.WallEnd,
+                        };
+
+                        sectorSprites = new RenderWindowSpriteSnapshot(renderableArea)
+                        {
+                            RenderDepth = sectorSprites.RenderDepth,
                             XLeft = sectorSprites.XLeft,
                             XRight = sectorSprites.XRight,
                             RenderedSectors = sectorSprites.RenderedSectors
                         };
 
                         List<RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
-                            sectorSprites.RenderedSectors, currentDistance, nextDistance);
+                            sectorsInt, currentDistance, nextDistance);
 
                         foreach (RenderableSprite s in sprites)
                         {

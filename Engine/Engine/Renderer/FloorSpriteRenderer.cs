@@ -14,12 +14,11 @@ namespace RenderingEngine.Engine
         {
             Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
 
-            int height = PixelHeight;
             int width = PixelWidth;
 
-            ReadOnlySpan<int> floorEndArray = renderableWall.FloorEnd;
-            ReadOnlySpan<int> ceilingStartArray = renderableWall.CeilingStart;
-            ReadOnlySpan<float> distance = RenderWindowHelper.Distance; // renderableWall.Distance;
+            ReadOnlySpan<int> wallStartSpan = renderableWall.WallStart;
+            ReadOnlySpan<int> wallEndSpan = renderableWall.WallEnd;
+            ReadOnlySpan<float> distance = renderableWall.Depth;
 
             Sector sector = sectors[sprite.SectorId];
 
@@ -28,17 +27,17 @@ namespace RenderingEngine.Engine
 
             float yFloor = sector.Floor - player.Z + sprite.Height;
 
-            using var spriteWindowTop = TempBuffer<int>.GetBuffer(width);
-            using var spriteWindowBottom = TempBuffer<int>.GetBuffer(width);
+            Span<int> spriteWindowTop = TempBuffer<int>.GetBuffer(width);
+            Span<int> spriteWindowBottom = TempBuffer<int>.GetBuffer(width);
 
-            spriteWindowTop.Span[from..to].Fill(int.MaxValue);
-            spriteWindowBottom.Span[from..to].Fill(int.MinValue);
+            spriteWindowTop[from..to].Fill(int.MaxValue);
+            spriteWindowBottom[from..to].Fill(int.MinValue);
 
             TextureInfo texture = sprite.Texture;
 
             int textureWidth = texture.Width;
 
-            ref BGRA floorTexturePtr = ref MemoryMarshal.GetReference(texture.Texture.GetBinary(false, sector.FloorShade));
+            ref BGRA floorTexturePtr = ref texture.Texture.GetBinaryRef<BGRA>(false, sector.FloorShade);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
             Vector<float> yFloorV = Vector.Create(yFloor);
@@ -48,8 +47,6 @@ namespace RenderingEngine.Engine
 
             int xOffset = -texture.XOffset;
             int yOffset = texture.YOffset;
-
-            int halfHeightInt = height / 2;
 
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
@@ -73,19 +70,19 @@ namespace RenderingEngine.Engine
 
             for (int x = from; x < to; x++)
             {
-                int ceilingStart = ceilingStartArray[x];
-                int floorEnd = floorEndArray[x];
+                int wallStart = wallStartSpan[x];
+                int wallEnd = wallEndSpan[x];
 
-                if (floorEnd <= ceilingStart)
+                if (wallEnd <= wallStart)
                 {
                     continue;
                 }
 
-                int spriteFromY = spriteWindowTop.Span[x];
-                int spriteToY = spriteWindowBottom.Span[x];
+                int spriteFromY = spriteWindowTop[x];
+                int spriteToY = spriteWindowBottom[x];
 
-                int clamptedFromY = Math.Clamp(spriteFromY, ceilingStart, floorEnd);
-                int clamptedToY = Math.Clamp(spriteToY, ceilingStart, floorEnd);
+                int clamptedFromY = Math.Clamp(spriteFromY, wallStart, wallEnd);
+                int clamptedToY = Math.Clamp(spriteToY, wallStart, wallEnd);
 
                 if (clamptedFromY >= clamptedToY)
                 {

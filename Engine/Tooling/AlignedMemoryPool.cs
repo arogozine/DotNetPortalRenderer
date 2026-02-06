@@ -64,6 +64,14 @@ namespace RenderingEngine.Tooling
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Span<T> GetBucket<T>(int bucket)
+            where T : unmanaged
+        {
+            (int byteStart, int byteEnd) = Buckets[bucket];
+            return MemoryMarshal.Cast<byte, T>(Span[byteStart..(byteEnd - _rem)]);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T GetBucketRef<T>(MemoryPoolBucket bucket)
             where T : unmanaged
         {

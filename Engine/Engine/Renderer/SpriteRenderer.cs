@@ -53,9 +53,9 @@ namespace RenderingEngine.Engine
             int spriteFromX = xLeft;
             int spriteToX = xRight;
 
-            Span<int> floorEndArray = renderableWall.FloorEnd;
-            Span<int> ceilingStartArray = renderableWall.CeilingStart;
-            Span<float> distance = RenderWindowHelper.Distance;// renderableWall.Distance;
+            Span<int> wallStartSpan = renderableWall.WallStart;
+            Span<int> wallEndSpan = renderableWall.WallEnd;
+            Span<float> distance = renderableWall.Depth;
 
             float fromToYDist = sprite.DistanceMin;
 
@@ -81,16 +81,16 @@ namespace RenderingEngine.Engine
             repeatedCount.Fill((ushort)length);
 
             // offset to start at 0
-            ceilingStartArray = ceilingStartArray[spriteFromX..];
-            floorEndArray = floorEndArray[spriteFromX..];
+            wallStartSpan = wallStartSpan[spriteFromX..];
+            wallEndSpan = wallEndSpan[spriteFromX..];
             distance = distance[spriteFromX..];
 
             for (int x = 0; x < length; x++, cameraRay += cameraWidthIncr)
             {
-                int ceilingStart = ceilingStartArray[x];
-                int floorEnd = floorEndArray[x];
+                int wallStart = wallStartSpan[x];
+                int wallEnd = wallEndSpan[x];
 
-                if (floorEnd <= ceilingStart || distance[x] < fromToYDist)
+                if (wallEnd <= wallStart || distance[x] < fromToYDist)
                 {
                     clampedFromYArray[x] = 0;
                     clampedToYArray[x] = 0;
@@ -99,8 +99,8 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int clamptedFromY = Math.Clamp(spriteStartY, ceilingStart, floorEnd);
-                int clamptedToY = Math.Clamp(spriteEndY, ceilingStart, floorEnd);
+                int clamptedFromY = Math.Clamp(spriteStartY, wallStart, wallEnd);
+                int clamptedToY = Math.Clamp(spriteEndY, wallStart, wallEnd);
                 clampedFromYArray[x] = clamptedFromY;
                 clampedToYArray[x] = clamptedToY;
 
@@ -207,9 +207,9 @@ namespace RenderingEngine.Engine
 
             int xOffset = 0;
 
-            ReadOnlySpan<int> floorEndArray = renderableWall.FloorEnd;
-            ReadOnlySpan<int> ceilingStartArray = renderableWall.CeilingStart;
-            ReadOnlySpan<float> distance = RenderWindowHelper.Distance; // renderableWall.Distance;
+            ReadOnlySpan<int> wallStart = renderableWall.WallStart;
+            ReadOnlySpan<int> wallEnd = renderableWall.WallEnd;
+            ReadOnlySpan<float> distance = renderableWall.Depth;
 
             using TempBuffer<uint> tempBuffer = TempBuffer<uint>.GetBuffer(textureWidth);
 
@@ -222,8 +222,8 @@ namespace RenderingEngine.Engine
 
             for (int x = spriteFromX; x < spriteToX; x++, cameraRay += cameraWidthIncr, spriteStartY += ceilDistIncr, spriteEndY += floorDistIncr)
             {
-                int ceilingStart = ceilingStartArray[x];
-                int floorEnd = floorEndArray[x];
+                int ceilingStart = wallStart[x];
+                int floorEnd = wallEnd[x];
 
                 if (floorEnd <= ceilingStart)
                 {
@@ -320,8 +320,8 @@ namespace RenderingEngine.Engine
                 }
 
                 float buffer = RenderWindowHelper.Distance[x];
-                int floorEnd = Math.Min(renderableWall.FloorEnd[x], renderableWall.WallEnd[x]);
-                int ceilingStart = renderableWall.CeilingStart[x];
+                int floorEnd = renderableWall.WallEnd[x];
+                int ceilingStart = renderableWall.WallStart[x];
 
                 (float distance, float fromToYdist) = MathFormulas.CalculateDistance(wall, cameraRay, t1, d2y, d2x, false);
 
@@ -401,8 +401,8 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors,
             RenderWindowWallSnapshot renderableWall)
         {
-            ReadOnlySpan<int> floorEnd = renderableWall.FloorEnd;
-            ReadOnlySpan<int> ceilingStart = renderableWall.CeilingStart;
+            ReadOnlySpan<int> wallStart = renderableWall.WallStart;
+            ReadOnlySpan<int> wallEnd = renderableWall.WallEnd;
             ReadOnlySpan<float> distance = RenderWindowHelper.Distance; // renderableWall.Distance;
             ReadOnlySpan<RenderColumnStatus> columnStatus = renderableWall.ColumnStatus;
 
@@ -461,8 +461,8 @@ namespace RenderingEngine.Engine
                 }
 
                 float buffer = distance[x];
-                int floorEndY = floorEnd[x];
-                int ceilingStartY = ceilingStart[x];
+                int floorEndY = wallEnd[x];
+                int ceilingStartY = wallStart[x];
 
                 (float distanceY, float fromToYdist) = MathFormulas.CalculateDistance(wall, cameraRay, t1, d2y, d2x, flipX);
 
