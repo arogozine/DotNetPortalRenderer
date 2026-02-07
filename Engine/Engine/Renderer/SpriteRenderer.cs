@@ -39,7 +39,7 @@ namespace RenderingEngine.Engine
 
             Sector sector = sectors[sprite.SectorId];
 
-            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, sector.FloorShade);
+            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, sprite.Shade ?? sector.FloorShade);
 
             float rx1 = sprite.R1.X;
             float rx2 = sprite.R2.X;
@@ -191,7 +191,7 @@ namespace RenderingEngine.Engine
 
             Sector sector = sectors[sprite.SectorId];
 
-            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, sector.FloorShade);
+            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, sprite.Shade ?? sector.FloorShade);
 
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;

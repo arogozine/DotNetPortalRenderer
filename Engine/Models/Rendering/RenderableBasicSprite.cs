@@ -24,6 +24,7 @@ namespace RenderingEngine.Models
         public float Height => Sprite.Height;
         public TextureInfo Texture => Sprite.Texture;
         public float Length => Sprite.Length;
+        public short? Shade => Sprite.Shade;
 
 
         public bool IntersectsView { get; set; }
@@ -53,6 +54,7 @@ namespace RenderingEngine.Models
         public int YLeftFloor { get; set; }
         public int YRightCeil { get; set; }
         public int YRightFloor { get; set; }
+        public bool? TwoSided => ((WallSprite)Sprite).TwoSided;
     }
 
     internal class RenderableFloorSprite : RenderableSprite

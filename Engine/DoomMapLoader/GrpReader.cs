@@ -732,6 +732,7 @@ namespace RenderingEngine.DoomMapLoader
                         Angle = angle,
                         Location = new Point(DetermineXLocation(sprite.X), DetermineYLocation(sprite.Y)),
                         Height = elevation,
+                        TwoSided = !sprite.CStat.HasFlag(SpriteCStat.OneSided),
                         Texture = new Models.TextureInfo
                         {
                             Name = textureName,
@@ -739,7 +740,8 @@ namespace RenderingEngine.DoomMapLoader
                             XScale = xScale,
                             YScale = yScale
                         },
-                        SectorId = sprite.SectorNumber
+                        SectorId = sprite.SectorNumber,
+                        Shade = sprite.Shade
                     };
                 }
                 else if (sprite.CStat.HasFlag(SpriteCStat.Floor))
@@ -757,7 +759,8 @@ namespace RenderingEngine.DoomMapLoader
                             XScale = xScale,
                             YScale = yScale
                         },
-                        SectorId = sprite.SectorNumber
+                        SectorId = sprite.SectorNumber,
+                        Shade = sprite.Shade
                     };
                 }
                 else
@@ -775,7 +778,8 @@ namespace RenderingEngine.DoomMapLoader
                             XScale = xScale,
                             YScale = yScale
                         },
-                        SectorId = sprite.SectorNumber
+                        SectorId = sprite.SectorNumber,
+                        Shade = sprite.Shade
                     };
                 }
             }

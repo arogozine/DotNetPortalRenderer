@@ -37,7 +37,7 @@ namespace RenderingEngine.Engine
 
             int textureWidth = texture.Width;
 
-            ref BGRA floorTexturePtr = ref texture.Texture.GetBinaryRef<BGRA>(false, sector.FloorShade);
+            ref BGRA floorTexturePtr = ref texture.Texture.GetBinaryRef<BGRA>(false, sprite.Shade ?? sector.FloorShade);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
             Vector<float> yFloorV = Vector.Create(yFloor);

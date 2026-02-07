@@ -180,7 +180,6 @@ namespace RenderingEngine.Engine
                     }
 
                 }
-
                 else
                 {
                     if (y1 <= 0f && y2 <= 0f)
@@ -193,6 +192,13 @@ namespace RenderingEngine.Engine
                     {
                         continue;
                     }
+
+                    // backface culling, reversed because I don't know why
+                    if ((sprite is RenderableWallSprite wallSprite) && wallSprite.TwoSided == false && x2 * y1 > y2 * x1)
+                    {
+                        continue;
+                    }
+
                 }
 
                 rotatedSprites[j] = sprite;

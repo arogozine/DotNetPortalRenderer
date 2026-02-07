@@ -12,12 +12,13 @@ internal class Sprite
     public required TextureInfo Texture { get; init; }
 
     public float Length { get; set; }
+    public short? Shade { get; set; }
 
 }
 
 internal sealed class WallSprite : Sprite
 {
-
+    public bool TwoSided { get; set; }
 }
 
 internal sealed class FloorSprite : Sprite
