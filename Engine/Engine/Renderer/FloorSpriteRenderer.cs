@@ -48,19 +48,32 @@ namespace RenderingEngine.Engine
             int xOffset = -texture.XOffset;
             int yOffset = texture.YOffset;
 
+            bool rotated = false;
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
+            Unsafe.SkipInit(out Vector<float> alignXV);
+            Unsafe.SkipInit(out Vector<float> alignYV);
+
+            if (sprite.Angle != 0f)
+            {
+                (float rSin, float rCos) = MathF.SinCos(sprite.Angle + MathF.PI * 0.5f);
+                rSinV = Vector.Create(rSin);
+                rCosV = Vector.Create(rCos);
+
+                (float aX, float aY) = sprite.PointA;
+
+                alignXV = Vector.Create(aX);
+                alignYV = Vector.Create(aY);
+                rotated = true;
+
+            }
 
             PopulateFloorTextureBounds(spriteWindowTop, spriteWindowBottom, sprite);
             LimitToDepth(yFloorV, sprite, spriteWindowTop, spriteWindowBottom, distance);
 
-            (int a, int b) = DetermineOffset(sprite);
-            xOffset += a;
-            yOffset += b;
             Vector<int> xOffSetV = Vector.Create(xOffset);
             Vector<int> yOffSetV = Vector.Create(yOffset);
 
-            bool rotated = false;
             bool flipY = false;
             bool flipX = false;
             bool swapXy = false;
@@ -95,7 +108,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingSpriteColumn(ref screenPtr, ref floorTexturePtr, screenIndex, clamptedToY, clamptedFromY, width,
                     x, yFloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, flipY, flipX, swapXy, xScaleV, yScaleV);
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, xScaleV, yScaleV);
             }
         }
 
@@ -117,6 +130,8 @@ namespace RenderingEngine.Engine
             bool rotated,
             Vector<float> rSinV,
             Vector<float> rCosV,
+            Vector<float> alignXV,
+            Vector<float> alignXY,
             bool flipY,
             bool flipX,
             bool swapXy,
@@ -144,6 +159,9 @@ namespace RenderingEngine.Engine
 
                 if (rotated)
                 {
+                    xMapPos -= alignXV;
+                    yMapPos -= alignXY;
+
                     Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, -yMapPos * rSinV);
                     Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
 
@@ -199,6 +217,9 @@ namespace RenderingEngine.Engine
 
                 if (rotated)
                 {
+                    xMapPos -= alignXV;
+                    yMapPos -= alignXY;
+
                     Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, -yMapPos * rSinV);
                     Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
 
@@ -325,26 +346,6 @@ namespace RenderingEngine.Engine
                     spriteWindowTop[i] = Math.Max(0, Math.Min(yTop, loc));
                 }
             }
-        }
-
-        private static (int xOffset, int yOffset) DetermineOffset(RenderableSprite sprite)
-        {
-            TextureInfo texture = sprite.Texture;
-
-            (float xScale, float yScale) = texture.GetScale();
-
-            (float xFrom, float yTo) = sprite.PointA;
-
-            xFrom *= (1f/xScale);
-            yTo *= (1f/yScale);
-
-            int xOffset = float.ConvertToIntegerNative<int>(xFrom % texture.Width);
-            int yOffset = float.ConvertToIntegerNative<int>(yTo % texture.Height);
-
-            xOffset = SharedHelpers.EnsureOffsetIsPositive(texture.Width, xOffset);
-            yOffset = texture.Height - SharedHelpers.EnsureOffsetIsPositive(texture.Height, yOffset);
-
-            return (-xOffset, yOffset);
         }
     }
 }

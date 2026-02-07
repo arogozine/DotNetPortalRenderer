@@ -277,7 +277,7 @@ namespace RenderingEngine.Engine
                     }
                 }
 
-                    rotatedSprites[j] = sprite;
+                rotatedSprites[j] = sprite;
                 j++;
             }
 
