@@ -323,7 +323,7 @@ namespace RenderingEngine.Engine
             walls = walls[..j];
         }
 
-        public void CalculateWallPlanes(scoped Span<RenderableWall> walls, float yCeil, float yFloor, float yaw)
+        public void CalculateWallPlanes(scoped ReadOnlySpan<RenderableWall> walls, float yCeil, float yFloor, float yaw)
         {
             for (int i = 0; i < walls.Length; i++)
             {
@@ -377,7 +377,7 @@ namespace RenderingEngine.Engine
         }
 
         public Span<RenderableWall> CullHiddenWallsAndCombineBunches(
-            scoped Span<Range> bunches, scoped Span<RenderableWall> rotatedWalls, Span<RenderableWall> parentPortalWallsToOcclude)
+            scoped Span<Range> bunches, scoped Span<RenderableWall> rotatedWalls, ReadOnlySpan<RenderableWall> parentPortalWallsToOcclude)
         {
             Span<RenderableWall> finalWalls = new RenderableWall[rotatedWalls.Length];
 
@@ -397,7 +397,7 @@ namespace RenderingEngine.Engine
             return finalWalls[..i];
         }
 
-        public void CullWallsFromBunch(ref Span<RenderableWall> walls, Span<RenderableWall> parentPortalWallsToOcclude)
+        public void CullWallsFromBunch(ref Span<RenderableWall> walls, ReadOnlySpan<RenderableWall> parentPortalWallsToOcclude)
         {
             for (int i = 0; i < parentPortalWallsToOcclude.Length; i++)
             {

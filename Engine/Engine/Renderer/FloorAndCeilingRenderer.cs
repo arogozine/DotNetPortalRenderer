@@ -246,7 +246,7 @@ namespace RenderingEngine.Engine
 
         private void RenderFloorOrCeilingColumn(
             scoped ref uint screenPtr,
-            scoped ref uint texturePtr,
+            scoped ref uint textureRef,
             int screenIndex,
             int floorToY,
             int floorFromY,
@@ -270,8 +270,8 @@ namespace RenderingEngine.Engine
             bool doubleSize
         )
         {
-            Span<float> incrVectorCache = memoryPool.GetBucket<float>(MemoryPoolBucket.CameraHeightToMapYPos);
-            Vector<float> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
+            ref float incrCacheRef = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.CameraHeightToMapYPos);
+            Vector<float> incramentVector = Vector.LoadUnsafe(ref Unsafe.Add(ref incrCacheRef, floorFromY));
 
             int rem = (floorToY - floorFromY) % Vector<int>.Count;
             floorToY -= rem;
@@ -331,11 +331,11 @@ namespace RenderingEngine.Engine
 
                 for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
-                    screenTex = Unsafe.Add(ref texturePtr, textureIndex[i]);
+                    screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
                 }
 
                 floorFromY += Vector<float>.Count;
-                incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
+                incramentVector = Vector.LoadUnsafe(ref Unsafe.Add(ref incrCacheRef, floorFromY));
             }
 
             if (rem > 0)
@@ -388,7 +388,7 @@ namespace RenderingEngine.Engine
 
                 for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                 {
-                    screenTex = Unsafe.Add(ref texturePtr, textureIndex[i]);
+                    screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
                 }
             }
         }

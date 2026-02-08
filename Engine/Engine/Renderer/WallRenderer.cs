@@ -35,38 +35,33 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            ref uint screenPtr = ref GetScreenPtr<uint>();            
+            ref uint screenPtr = ref GetScreenPtr<uint>();
 
             ref uint wallTexturePtr = ref textureInfo.Texture.GetBinaryRef<uint>(true, wall.Shade);
             int textureWidth = textureInfo.Height;
 
             using TempBuffer<uint> buffer = TempBuffer<uint>.GetBuffer(textureInfo.Height);
-
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            ReadOnlySpan<int> textureXLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation);
-            ReadOnlySpan<uint> textureYLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TopTextureYLocation);
-            ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
-            ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
-            ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
-            ReadOnlySpan<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
-            ReadOnlySpan<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
-            ReadOnlySpan<uint> textureXPosArray = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureXPos);
+            ref RenderColumnStatus statusRef = ref memoryPool.GetBucketRef<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            ref int textureXLocationRef = ref memoryPool.GetBucketRef<int>(MemoryPoolBucket.TopTextureXLocation);
+            ref uint textureYLocationRef = ref memoryPool.GetBucketRef<uint>(MemoryPoolBucket.TopTextureYLocation);
+            ref int clampedFromRef = ref memoryPool.GetBucketRef<int>(MemoryPoolBucket.ClampedFrom);
+            ref int clampedToRef = ref memoryPool.GetBucketRef<int>(MemoryPoolBucket.ClampedTo);
+            ref uint textureXPosRef = ref memoryPool.GetBucketRef<uint>(MemoryPoolBucket.TextureXPos);
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                RenderColumnStatus columnStatus = status[x];
+                ref RenderColumnStatus columnStatus = ref Unsafe.Add(ref statusRef, x);
 
                 if (!columnStatus.WallRenderable)
                 {
                     continue;
                 }
 
-                int clamptedFromY = clampedFrom[x];
-                int clamptedToY = clampedTo[x];
-                uint textureXIncr = textureYLocation[x];
-                uint textureXPos = textureXPosArray[x];
-                int textureYPos = textureXLocation[x];
+                int clamptedFromY = Unsafe.Add(ref clampedFromRef, x);
+                int clamptedToY = Unsafe.Add(ref clampedToRef, x);
+                uint textureXIncr = Unsafe.Add(ref textureYLocationRef, x);
+                uint textureXPos = Unsafe.Add(ref textureXPosRef, x);
+                int textureYPos = Unsafe.Add(ref textureXLocationRef, x);
 
                 CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, textureYPos, flipY);
 
@@ -82,7 +77,7 @@ namespace RenderingEngine.Engine
                     ref buffer.Pointer
                 );
 
-                status[x] = RenderColumnStatus.FinishedRendering;
+                columnStatus = RenderColumnStatus.FinishedRendering;
             }
 
             return true;
@@ -319,7 +314,7 @@ namespace RenderingEngine.Engine
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             TextureInfo wallTexture = wall.MiddleTexture!;
-            ref uint wallTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref MemoryMarshal.GetReference(wallTexture.Texture.GetBinary(false, 0)));
+            ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(false, 0);
             ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
@@ -581,6 +576,7 @@ namespace RenderingEngine.Engine
 
                     if (columnStatusV == Vector<int>.Zero)
                     {
+                        // walls can't be rendered, exit loop
                         Vector.StoreUnsafe(finishedRendering, ref statusInt[x]);
                         continue;
                     }
@@ -627,6 +623,8 @@ namespace RenderingEngine.Engine
                     Vector.StoreUnsafe(clamptedToYV, ref clampedTo[x]);
                     Vector.StoreUnsafe(textureXPosV, ref textureXPos[x]);
 
+                    // if after clamping there is nothing that can be rendered,
+                    // set those columns as finished
                     for (int i = 0; i < Vector<int>.Count; i++)
                     {
                         int clamptedFromY = clamptedFromYV[i];
