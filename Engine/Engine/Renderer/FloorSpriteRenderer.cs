@@ -324,12 +324,16 @@ namespace RenderingEngine.Engine
             Span<int> spriteWindowBottom,
             RenderableFloorSprite sprite)
         {
-            int maxHeight = PixelHeight - 1;
+            FloorSpriteWallInfo[] allWalls = new[] { sprite.Wall1!, sprite.Wall2!, sprite.Wall3!, sprite.Wall4! };
 
-            foreach (FloorSpriteWallInfo spriteBound in new[] { sprite.Wall1!, sprite.Wall2!, sprite.Wall3!, sprite.Wall4! })
+            int maxHeight = PixelHeight - 1;
+            bool partiallyRenderable = false;
+
+            foreach (FloorSpriteWallInfo spriteBound in allWalls)
             {
                 if (!spriteBound.IntersectsView)
                 {
+                    partiallyRenderable = true;
                     continue;
                 }
 
@@ -344,6 +348,17 @@ namespace RenderingEngine.Engine
 
                     spriteWindowBottom[i] = Math.Min(maxHeight, Math.Max(yBottom, loc));
                     spriteWindowTop[i] = Math.Max(0, Math.Min(yTop, loc));
+                }
+            }
+
+            if (partiallyRenderable)
+            {
+                for (int i = sprite.XLeft; i < sprite.XRight; i++)
+                {
+                    if (spriteWindowBottom[i] == spriteWindowTop[i])
+                    {
+                        spriteWindowBottom[i] = maxHeight;
+                    }
                 }
             }
         }
