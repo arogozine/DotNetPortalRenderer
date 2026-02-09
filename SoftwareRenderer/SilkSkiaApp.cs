@@ -159,6 +159,11 @@ namespace SoftwareRenderer
 
         private void StartTheGameLoop()
         {
+            if (window.Size.X == 0 || window.Size.Y == 0)
+            {
+                return;
+            }
+
             Engine.StartTheGameLoop(window.Size.X, window.Size.Y);
         }
 

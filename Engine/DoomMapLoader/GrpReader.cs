@@ -524,39 +524,19 @@ namespace RenderingEngine.DoomMapLoader
             {
                 (int width, int height) = (textureInfo.Width, textureInfo.Height);
 
-                textureInfo.YOffset *= -1;
-                /*
-                if (textureInfo.RenderingOptions.IsFlippedY)
+                if (textureInfo.RenderingOptions.IsFlippedX)
                 {
-                    textureInfo.YOffset = height - textureInfo.YOffset;
+                    if (textureInfo.RenderingOptions.IsSwappedXY)
+                    {
+                        textureInfo.YOffset = height - textureInfo.YOffset;
+                    }
+
+                    if (textureInfo.RenderingOptions.IsFlippedY)
+                    {
+                        textureInfo.YOffset = height - textureInfo.YOffset;
+                    }
                 }
 
-                
-               if (!textureInfo.RenderingOptions.IsFlippedY)
-               {
-                   textureInfo.YOffset = -textureInfo.YOffset;
-               }
-
-               if (!textureInfo.RenderingOptions.IsFlippedX)
-               {
-                   textureInfo.XOffset = -textureInfo.XOffset;
-               }
-
-
-               if (textureInfo.RenderingOptions.IsSwappedXY)
-               {
-                   (textureInfo.XOffset, textureInfo.YOffset) = (textureInfo.YOffset, textureInfo.XOffset);
-                   (width, height) = (height, width);
-               }
-
-                
-                if (textureInfo.YScale == 1f && textureInfo.XScale == 1f)
-               {
-                   textureInfo.YOffset = -textureInfo.YOffset;
-                   textureInfo.XOffset = -textureInfo.XOffset;
-               }
-               
-                */
                 textureInfo.XOffset = SharedHelpers.EnsureOffsetIsPositive(width, textureInfo.XOffset);
                 textureInfo.YOffset = SharedHelpers.EnsureOffsetIsPositive(height, textureInfo.YOffset);
             }

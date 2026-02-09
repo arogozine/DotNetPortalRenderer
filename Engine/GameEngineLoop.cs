@@ -64,6 +64,11 @@ namespace RenderingEngine
 
         public unsafe void* RenderFrame()
         {
+            if (engineLoopTask == null)
+            {
+                return null;
+            }
+
             _ = StartRenderingSemaphore.Release();
             RenderedFrameSemaphore.Wait();
 

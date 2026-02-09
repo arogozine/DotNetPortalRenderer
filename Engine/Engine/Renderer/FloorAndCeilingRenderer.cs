@@ -134,6 +134,8 @@ namespace RenderingEngine.Engine
             Vector<float> yfloorV = Vector.Create(yfloor);
 
             int textureWidth = floorTexture.Width;
+            int textureHeight = floorTexture.Height;
+
             int textureHeightMask = floorTexture.Height - 1;
             int textureWidthMask = floorTexture.Width - 1;
 
@@ -141,11 +143,44 @@ namespace RenderingEngine.Engine
             Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
             Vector<int> textureWidthV = Vector.Create(textureWidth);
 
+            var firstWall = sector.Walls[0];
+            (float x1, float y1) = firstWall.PointA;
+            (float x2, float y2) = firstWall.PointB;
+
             int xOffset = floorTexture.XOffset;
             int yOffset = floorTexture.YOffset;
 
-            Vector<int> xOffSetV = Vector.Create(xOffset);
-            Vector<int> yOffSetV = Vector.Create(yOffset);
+            if (doubleSize)
+            {
+                xOffset <<= 1;
+                yOffset <<= 1;
+            }
+
+            if (swapXy)
+            {
+                /*
+                if (flipY)
+                {
+                    yOffset = -yOffset;
+                }
+
+                if (flipX)
+                {
+                    xOffset = -xOffset;
+                }
+                */
+            }
+            else
+            {
+                if (flipY)
+                {
+                    yOffset = textureHeight - yOffset;
+                }
+
+                flipY = !flipY;
+                flipX = !flipX;
+            }
+
 
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
@@ -155,15 +190,29 @@ namespace RenderingEngine.Engine
 
             if (rotated)
             {
-                (float rSin, float rCos) = MathF.SinCos(sector.RotationFloor!.Value);
+                if (x2 * y1 > y2 * x1)
+                {
+                    yOffset = -yOffset;
+                }
+
+                float angle = MathFormulas.ClampAngle(sector.RotationFloor!.Value);
+
+                if (angle > MathF.PI)
+                {
+                    yOffset = -yOffset;
+                }
+
+                // 1.91, 3.48
+                (float rSin, float rCos) = MathF.SinCos(angle);
+
                 rSinV = Vector.Create(rSin);
                 rCosV = Vector.Create(rCos);
-
-                (float aX, float aY) = sector.Walls[0].PointA;
-
-                alignWallXV = Vector.Create(aX);
-                alignWallYV = Vector.Create(aY);
+                alignWallXV = Vector.Create(x1);
+                alignWallYV = Vector.Create(y1);
             }
+
+            Vector<int> xOffSetV = Vector.Create(xOffset);
+            Vector<int> yOffSetV = Vector.Create(yOffset);
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 

@@ -107,6 +107,7 @@ namespace RenderingEngine
         public void StopTheGameLoop()
         {
             mtRenderer?.StopTheGameLoop();
+            mtRenderer = null;
         }
 
         [MemberNotNull(nameof(mtRenderer))]
