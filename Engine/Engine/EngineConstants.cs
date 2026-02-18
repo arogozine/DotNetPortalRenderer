@@ -9,9 +9,8 @@
         public const int Unset = -1;
 
         // This is DoomGuy height, but as I am working with rendering doom maps at the moment, is a good starting point
-        public const int PlayerHeight = 56;
+        public const int PlayerHeight = 64;// 56;
 
-        // Build and Doom, afaik, use 90degrees - so this can be simplified
         public const float CameraPlaneX = 1f;
         public const float HeightToWidthRatio = 0.5f / CameraPlaneX;
 

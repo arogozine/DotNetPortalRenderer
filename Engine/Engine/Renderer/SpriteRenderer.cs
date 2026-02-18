@@ -118,19 +118,20 @@ namespace RenderingEngine.Engine
                 textureXPosArray[x] = (clamptedFromY - spriteStartY) * textureXIncr;
             }
 
-            if (!AccountForHoles(repeatedCount, length))
-            {
-                return;
-            }
-
+            // basic sprites are always facing the player
+            // so their start and end Y position is the same
+            // throughout.
+            // here we determine how many columns can be rendered
+            // horizontally with the same texture pixel
             bool repeat =
-                   PopulateRepeatedValues(repeatedCountB, textureYPosArray)
-                && RefineRepeatedValues(repeatedCount, repeatedCountB)
-                && PopulateRepeatedValues(repeatedCountB, textureXPosArray)
-                && RefineRepeatedValues(repeatedCount, repeatedCountB)
-                && PopulateRepeatedValues(repeatedCountB, clampedFromYArray)
-                && RefineRepeatedValues(repeatedCount, repeatedCountB)
-                && PopulateRepeatedValues(repeatedCountB, clampedToYArray);
+                SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount)
+                && SharedHelpers.PopulateRepeatedValues(repeatedCountB, textureYPosArray)
+                && SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB)
+                && SharedHelpers.PopulateRepeatedValues(repeatedCountB, textureXPosArray)
+                && SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB)
+                && SharedHelpers.PopulateRepeatedValues(repeatedCountB, clampedFromYArray)
+                && SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB)
+                && SharedHelpers.PopulateRepeatedValues(repeatedCountB, clampedToYArray);
 
             for (int x = 0; x < length; x++)
             {
@@ -148,7 +149,7 @@ namespace RenderingEngine.Engine
 
                 CalculateSprite(tempBuffer, ref texturePtr, textureYPos, flipY);
 
-                if (repeat && count > 0)
+                if (repeat && count > 1)
                 {
                     DrawSpriteLine(count, width, x + spriteFromX, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
                         ref screenPtr, ref tempBuffer.Pointer);
@@ -610,6 +611,7 @@ namespace RenderingEngine.Engine
                 uint texelIndex = textureXPos_u >> 16;
                 uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
 
+                // skip rendering the whole row is transparent
                 if (shaded != 0U)
                 {
                     for (int i = 0; i < count; i++)

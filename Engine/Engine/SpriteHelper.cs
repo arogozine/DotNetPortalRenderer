@@ -44,6 +44,9 @@ namespace RenderingEngine.Engine
         }
     }
 
+    /// <summary>
+    /// Determines which sprites can be seen
+    /// </summary>
     internal sealed class SpriteHelper
     {
         private readonly int width;
@@ -59,8 +62,8 @@ namespace RenderingEngine.Engine
         {
             Span<RenderableSprite> rotatedSprites = RotateSprites(sprites, player);
 
-            FilterOutSpritesBehindPlayer(ref rotatedSprites);
-            FilterOutSpritesWithoutSector(ref rotatedSprites);
+            rotatedSprites = FilterOutSpritesBehindPlayer(rotatedSprites);
+            rotatedSprites = FilterOutSpritesWithoutSector(rotatedSprites);
 
             float yaw = player.Yaw;
             float pz = player.Z;
@@ -150,7 +153,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static void FilterOutSpritesBehindPlayer(ref Span<RenderableSprite> rotatedSprites)
+        public static Span<RenderableSprite> FilterOutSpritesBehindPlayer(Span<RenderableSprite> rotatedSprites)
         {
             // in-place sort out sprites and trim the span
 
@@ -163,6 +166,11 @@ namespace RenderingEngine.Engine
                 (float x1, float y1) = sprite.R1;
                 (float x2, float y2) = sprite.R2;
 
+                // Similar to Walls
+                // 1. We cull sprites that are behind the player
+                // 2. We cull sprites where all points are outside the view cone
+                // 3. We performn backface culling where appropriate
+
                 if (sprite is RenderableFloorSprite floorSprite)
                 {
                     (float x3, float y3) = floorSprite.R3;
@@ -173,27 +181,24 @@ namespace RenderingEngine.Engine
                         continue;
                     }
 
-                    // Render cone culling
                     if ((x1 < -y1 && x2 < -y2 && x3 < -y3 && x4 < -y4) || (x1 > y1 && x2 > y2 && x3 > y3 && y4 > x4))
                     {
                         continue;
                     }
 
                 }
-                else
+                else // Basic or Wall Sprite
                 {
                     if (y1 <= 0f && y2 <= 0f)
                     {
                         continue;
                     }
 
-                    // Render cone culling from https://theforceengine.github.io/2020/05/16/DFRender1.html
                     if ((x1 < -y1 && x2 < -y2) || (x1 > y1 && x2 > y2))
                     {
                         continue;
                     }
 
-                    // backface culling, reversed because I don't know why
                     if ((sprite is RenderableWallSprite wallSprite) && wallSprite.TwoSided == false && x2 * y1 > y2 * x1)
                     {
                         continue;
@@ -205,13 +210,11 @@ namespace RenderingEngine.Engine
                 j++;
             }
 
-            rotatedSprites = rotatedSprites[..j];
+            return rotatedSprites[..j];
         }
 
-        public static void FilterOutSpritesWithoutSector(ref Span<RenderableSprite> rotatedSprites)
+        public static Span<RenderableSprite> FilterOutSpritesWithoutSector(Span<RenderableSprite> rotatedSprites)
         {
-            // in-place sort out sprites and trim the span
-
             int j = 0;
 
             for (int i = 0; i < rotatedSprites.Length; i++)
@@ -227,7 +230,7 @@ namespace RenderingEngine.Engine
                 j++;
             }
 
-            rotatedSprites = rotatedSprites[..j];
+            return rotatedSprites[..j];
         }
 
         public void FilterOutNonIntersectingSprites(ref Span<RenderableSprite> rotatedSprites)
@@ -383,11 +386,10 @@ namespace RenderingEngine.Engine
 
             (float DistanceMin, float DistanceMax) CalculateDistanceForFloorSprite(RenderableFloorSprite sprite)
             {
-                float a = CalculateDistance2(sprite.R1, sprite.R2, sprite.Wall1!.XLeft);
-                float b = CalculateDistance2(sprite.R2, sprite.R3, sprite.Wall2!.XLeft);
-                float c = CalculateDistance2(sprite.R3, sprite.R4, sprite.Wall3!.XLeft);
-                float d = CalculateDistance2(sprite.R4, sprite.R1, sprite.Wall4!.XLeft);
-
+                float a = sprite.Wall1!.IntersectsView ? CalculateDistance2(sprite.R1, sprite.R2, sprite.Wall1!.XLeft) : 0f;
+                float b = sprite.Wall2!.IntersectsView ? CalculateDistance2(sprite.R2, sprite.R3, sprite.Wall2!.XLeft) : 0f;
+                float c = sprite.Wall3!.IntersectsView ? CalculateDistance2(sprite.R3, sprite.R4, sprite.Wall3!.XLeft) : 0f;
+                float d = sprite.Wall4!.IntersectsView ? CalculateDistance2(sprite.R4, sprite.R1, sprite.Wall4!.XLeft) : 0f;
 
                 float distanceMin = MathF.Min(a, MathF.Min(b, MathF.Min(c, d)));
                 float distanceMax = MathF.Max(a, MathF.Max(b, MathF.Max(c, d)));

@@ -3,6 +3,9 @@ using static RenderingEngine.Engine.SharedHelpers;
 
 namespace RenderingEngine.Engine
 {
+    /// <summary>
+    /// Calculates and determines which walls can be rendered
+    /// </summary>
     internal sealed class WallHelper
     {
         private readonly int width;
@@ -10,7 +13,6 @@ namespace RenderingEngine.Engine
         private readonly bool[] visibility;
         private readonly WallComparer wallComparer;
         private PortalPlayerSnapshot? _player;
-        private readonly Dictionary<int, RenderableWall[]> wallCache = [];
 
         public WallHelper(
             int width,
@@ -25,17 +27,12 @@ namespace RenderingEngine.Engine
         [MemberNotNull(nameof(_player))]
         public void SetSnapShot(PortalPlayerSnapshot player)
         {
-            if (_player is PortalPlayerSnapshot old && (old.Angle != player.Angle || old.X != player.X || old.Y != player.Y || old.Z != player.Z))
-            {
-                wallCache.Clear();
-            }
-
             _player = player;
         }
 
         public Span<RenderableWall> DetermineWallsToRender(Sector sector, Span<RenderableWall> portalWallsToOcclude, NeighborsToRender sectorInfo, PortalPlayerSnapshot player)
         {
-            Span<RenderableWall> rotatedWalls = CacheRotatedWallsRelativeToPlayer(sector, player);
+            Span<RenderableWall> rotatedWalls = CalculateRotatedWallsRelativeToPlayer(sector, player);
 
             rotatedWalls = CullWallsOutsideOfWindow(rotatedWalls, sectorInfo);
 
@@ -50,13 +47,16 @@ namespace RenderingEngine.Engine
             }
 
             result.Sort(wallComparer);
-            CullWallsBasedOnVisibility(ref result);
+            result = CullWallsBasedOnVisibility(result);
 
             return result;
         }
 
         private static Span<RenderableWall> CullWallsOutsideOfWindow(Span<RenderableWall> rotatedWalls, NeighborsToRender sectorInfo)
         {
+            // if the horizontal window is smaller then [0..width] (ex, a portal far away)
+            // we can cull all walls that won't show up to increase performance significantly
+
             RenderablePortalWall? renderableWall = sectorInfo.RenderableWall;
 
             if (renderableWall is null)
@@ -82,15 +82,19 @@ namespace RenderingEngine.Engine
             return rotatedWalls[..j];
         }
 
-        private void CullWallsBasedOnVisibility(ref Span<RenderableWall> walls)
+        private Span<RenderableWall> CullWallsBasedOnVisibility(Span<RenderableWall> orderedWalls)
         {
+            // each wall is visible from XLeft to XRight
+            // given a span of sorted walls closest to furthest,
+            // we can determine if further away walls can still be rendered
+
             Span<bool> visibility = this.visibility;
             visibility.Fill(true);
 
             int j = 0;
-            for (int i = 0; i < walls.Length; i++)
+            for (int i = 0; i < orderedWalls.Length; i++)
             {
-                RenderableWall wall = walls[i];
+                RenderableWall wall = orderedWalls[i];
                 int xLeft = wall.XLeft;
                 int xRight = wall.XRight;
 
@@ -100,25 +104,16 @@ namespace RenderingEngine.Engine
 
                 if (visible)
                 {
-                    walls[j] = wall;
+                    orderedWalls[j] = wall;
                     j++;
                 }
             }
 
-            walls = walls[..j];
+            return orderedWalls[..j];
         }
 
-        private Span<RenderableWall> CacheRotatedWallsRelativeToPlayer(Sector sector, PortalPlayerSnapshot player)
+        private Span<RenderableWall> CalculateRotatedWallsRelativeToPlayer(Sector sector, PortalPlayerSnapshot player)
         {
-            RenderableWall[] copy;
-
-            if (wallCache.TryGetValue(sector.Id, out RenderableWall[]? walls))
-            {
-                copy = new RenderableWall[walls.Length];
-                walls.AsSpan().CopyTo(copy);
-                return copy;
-            }
-
             float pSin = player.Sin;
             float pCos = player.Cos;
             float px = player.X;
@@ -129,13 +124,12 @@ namespace RenderingEngine.Engine
             float yFloor = sector.Floor - pz;
 
             Span<RenderableWall> rotatedWalls = RotateSectorWallsRelativeToPlayer(sector, pSin, pCos, px, py);
-            FilterOutWallsBehindPlayer(ref rotatedWalls);
+            rotatedWalls = FilterOutWallsBehindPlayer(rotatedWalls);
             CalculateWallPlanes(rotatedWalls, yCeil, yFloor, yaw);
-            FilterOutWallsOutsideView(ref rotatedWalls);
+            rotatedWalls = FilterOutWallsOutsideView(rotatedWalls);
 
-            copy = new RenderableWall[rotatedWalls.Length];
+            var copy = new RenderableWall[rotatedWalls.Length];
             rotatedWalls.CopyTo(copy);
-            wallCache[sector.Id] = copy;
 
             return rotatedWalls;
         }
@@ -206,7 +200,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private static void FilterParentPortalWall(ref Span<RenderableWall> rotatedWalls, RenderableWall parentSectorWall)
+        private static Span<RenderableWall> FilterParentPortalWall(Span<RenderableWall> rotatedWalls, RenderableWall parentSectorWall)
         {
             for (int i = 0; i < rotatedWalls.Length; i++)
             {
@@ -220,9 +214,11 @@ namespace RenderingEngine.Engine
                     }
 
                     rotatedWalls = rotatedWalls[0..i];
-                    return;
+                    return rotatedWalls;
                 }
             }
+
+            return rotatedWalls;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -246,7 +242,7 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        public static Span<Range> BreakUpIntoBunches(scoped Span<RenderableWall> rotatedWalls)
+        public static Span<Range> BreakUpIntoBunches(scoped ReadOnlySpan<RenderableWall> rotatedWalls)
         {
             // a bunch is a set of connected walls
             // we figure out the range of each bunch here
@@ -285,10 +281,8 @@ namespace RenderingEngine.Engine
             return bunches[..bunchCount];
         }
 
-        public static void FilterOutWallsBehindPlayer(ref Span<RenderableWall> walls)
+        public static Span<RenderableWall> FilterOutWallsBehindPlayer(Span<RenderableWall> walls)
         {
-            // in-place sort out walls and trim the span
-
             int j = 0;
 
             for (int i = 0; i < walls.Length; i++)
@@ -298,19 +292,23 @@ namespace RenderingEngine.Engine
                 (float x1, float y1) = wall.R1;
                 (float x2, float y2) = wall.R2;
 
+                // In 2.5D Game Engines,
+                // 1. Cull walls where both points are behind the player
+                // 2. Cull walls where both points are to the right or to the left of the render cone
+                // 3. Backface culling
+                // See https://theforceengine.github.io/2020/05/16/DFRender1.html
+
                 // wall fully behind the player
                 if (y1 <= 0f && y2 <= 0f)
                 {
                     continue;
                 }
 
-                // Render cone culling from https://theforceengine.github.io/2020/05/16/DFRender1.html
                 if ((x1 < -y1 && x2 < -y2) || (x1 > y1 && x2 > y2))
                 {
                     continue;
                 }
 
-                // Backface culling from https://theforceengine.github.io/2020/05/16/DFRender1.html
                 if (!wall.TwoSided && x2 * y1 < y2 * x1)
                 {
                     continue;
@@ -320,7 +318,7 @@ namespace RenderingEngine.Engine
                 j++;
             }
 
-            walls = walls[..j];
+            return walls[..j];
         }
 
         public void CalculateWallPlanes(scoped ReadOnlySpan<RenderableWall> walls, float yCeil, float yFloor, float yaw)
@@ -333,20 +331,9 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static void FilterOutWallsOutsideView(Span<Range> bunches, Span<RenderableWall> rotatedWalls)
+        private static Span<RenderableWall> FilterOutWallsOutsideView(Span<RenderableWall> walls)
         {
-            for (int s = 0; s < bunches.Length; s++)
-            {
-                Range range = bunches[s];
-                Span<RenderableWall> bunch = rotatedWalls[range];
-                FilterOutWallsOutsideView(ref bunch);
-                bunches[s] = new Range(range.Start, new Index(bunch.Length + range.Start.Value));
-            }
-        }
-
-        private static void FilterOutWallsOutsideView(ref Span<RenderableWall> walls)
-        {
-            // in-place sort out walls and trim the span
+            // we remove walls that do not intersect the view
 
             int j = 0;
 
@@ -364,16 +351,11 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                if (wall.YLeftFloor < 0 && wall.YRightFloor < 0 && wall.YLeftCeil < 0 && wall.YRightCeil < 0)
-                {
-                    //continue;
-                }
-
                 walls[j] = wall;
                 j++;
             }
 
-            walls = walls[..j];
+            return walls[..j];
         }
 
         public Span<RenderableWall> CullHiddenWallsAndCombineBunches(
@@ -386,7 +368,7 @@ namespace RenderingEngine.Engine
             {
                 Span<RenderableWall> visible = rotatedWalls[bunches[s]];
 
-                CullWallsFromBunch(ref visible, parentPortalWallsToOcclude);
+                visible = CullWallsFromBunch(visible, parentPortalWallsToOcclude);
 
                 for (int v = 0; v < visible.Length; v++)
                 {
@@ -397,20 +379,21 @@ namespace RenderingEngine.Engine
             return finalWalls[..i];
         }
 
-        public void CullWallsFromBunch(ref Span<RenderableWall> walls, ReadOnlySpan<RenderableWall> parentPortalWallsToOcclude)
+        public Span<RenderableWall> CullWallsFromBunch(Span<RenderableWall> walls, ReadOnlySpan<RenderableWall> parentPortalWallsToOcclude)
         {
             for (int i = 0; i < parentPortalWallsToOcclude.Length; i++)
             {
-                FilterParentPortalWall(ref walls, parentPortalWallsToOcclude[i]);
+                walls = FilterParentPortalWall(walls, parentPortalWallsToOcclude[i]);
             }
 
             if (walls.Length <= 1)
             {
-                return;
+                return walls;
             }
 
             walls.Sort(wallComparer);
-            CullWallsBasedOnVisibility(ref walls);
+
+            return CullWallsBasedOnVisibility(walls);
         }
 
         public void CalculateWallPlane(RenderableWall wall, float yCeil, float yFloor, float yaw)

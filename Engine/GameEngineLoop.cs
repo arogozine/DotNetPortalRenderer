@@ -62,7 +62,7 @@ namespace RenderingEngine
             MainEngineLoop(EngineLoopCancellationToken.Token);
         }
 
-        public unsafe void* RenderFrame()
+        public void* RenderFrame()
         {
             if (engineLoopTask == null)
             {

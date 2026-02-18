@@ -5,6 +5,121 @@ namespace Tests
     public class SharedHelpersTests
     {
         [Fact]
+        public void RefineRepeatedValues_AllZeros()
+        {
+            int[] valuesA = [0, 0, 0, 0];
+            int[] valuesB = [0, 0, 0, 0];
+
+            bool repeated = SharedHelpers.RefineRepeatedValues(valuesA, valuesB);
+
+            Assert.False(repeated);
+            Assert.Equal(valuesA, valuesB);
+        }
+
+        [Fact]
+        public void RefineRepeatedValues_NoRepeats()
+        {
+            int[] valuesA = [1, 1, 1, 1];
+            int[] valuesB = [1, 1, 1, 1];
+
+            bool repeated = SharedHelpers.RefineRepeatedValues(valuesA, valuesB);
+
+            Assert.False(repeated);
+            Assert.Equal(valuesA, valuesB);
+        }
+
+        [Fact]
+        public void RefineRepeatedValues_Works()
+        {
+            int[] valuesA = [3, 2, 1, 1];
+            int[] valuesB = [2, 1, 1, 1];
+
+            bool repeated = SharedHelpers.RefineRepeatedValues(valuesA, valuesB);
+
+            Assert.True(repeated);
+            Assert.Equal(valuesA, valuesB);
+        }
+
+        [Fact]
+        public void RefineRepeatedValues_SameValues()
+        {
+            int[] valuesA = [3, 2, 1, 1];
+            int[] valuesB = [3, 2, 1, 1];
+
+            bool repeated = SharedHelpers.RefineRepeatedValues(valuesA, valuesB);
+
+            Assert.True(repeated);
+            Assert.Equal(valuesA, valuesB);
+        }
+
+        [Fact]
+        public void PopulateRepeatedValuesInPlace_Works()
+        {
+            int[] values = [3, 3, 3, 4];
+            bool repeated = SharedHelpers.PopulateRepeatedValuesInPlace(values);
+
+            Assert.True(repeated);
+            Assert.Equal(values, new int[] { 3, 2, 1, 1 });
+        }
+
+
+        [Fact]
+        public void PopulateRepeatedValuesInPlace_NoRepeats()
+        {
+            int[] values = [1, 2, 3, 4];
+            bool repeated = SharedHelpers.PopulateRepeatedValuesInPlace(values);
+
+            Assert.False(repeated);
+            Assert.Equal(values, new int[] { 1, 1, 1, 1 });
+        }
+
+        [Fact]
+        public void PopulateRepeatedValues_Works()
+        {
+            ushort[] repeatedValues = new ushort[4];
+            int[] values = [3, 3, 3, 4];
+            bool repeated = SharedHelpers.PopulateRepeatedValues(repeatedValues, values);
+
+            Assert.True(repeated);
+
+            Assert.Equal(repeatedValues, new ushort[] { 3, 2, 1, 1});
+        }
+
+        [Fact]
+        public void PopulateRepeatedValues_NoRepeats()
+        {
+            ushort[] repeatedValues = new ushort[4];
+            int[] values = [1, 2, 3, 4];
+            bool repeated = SharedHelpers.PopulateRepeatedValues(repeatedValues, values);
+
+            Assert.False(repeated);
+
+            Assert.Equal(repeatedValues, new ushort[] { 1, 1, 1, 1 });
+        }
+
+        [Fact]
+        public void PopulateRepeatedValues_SingleValue()
+        {
+            ushort[] repeatedValues = new ushort[1];
+            int[] values = [7];
+            bool repeated = SharedHelpers.PopulateRepeatedValues(repeatedValues, values);
+
+            Assert.False(repeated);
+
+            Assert.Equal(repeatedValues, new ushort[] { 1 });
+        }
+
+        [Fact]
+        public void PopulateRepeatedValues_NoValue()
+        {
+            ushort[] repeatedValues = [];
+            int[] values = [];
+            bool repeated = SharedHelpers.PopulateRepeatedValues(repeatedValues, values);
+
+            Assert.False(repeated);
+        }
+
+        [Fact]
         public void Within_Works()
         {
             Assert.True(SharedHelpers.Within<decimal>(2, 1, 3));
@@ -90,6 +205,7 @@ namespace Tests
         public void IsPowerOfTwo_Works()
         {
             Assert.False(SharedHelpers.IsPowerOfTwo(0));
+            Assert.True(SharedHelpers.IsPowerOfTwo(1));
             Assert.True(SharedHelpers.IsPowerOfTwo(2));
             Assert.True(SharedHelpers.IsPowerOfTwo(4));
             Assert.True(SharedHelpers.IsPowerOfTwo(8));

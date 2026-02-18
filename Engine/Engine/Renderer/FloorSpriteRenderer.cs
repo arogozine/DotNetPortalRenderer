@@ -324,7 +324,7 @@ namespace RenderingEngine.Engine
             Span<int> spriteWindowBottom,
             RenderableFloorSprite sprite)
         {
-            FloorSpriteWallInfo[] allWalls = new[] { sprite.Wall1!, sprite.Wall2!, sprite.Wall3!, sprite.Wall4! };
+            FloorSpriteWallInfo[] allWalls = [sprite.Wall1!, sprite.Wall2!, sprite.Wall3!, sprite.Wall4!];
 
             int maxHeight = PixelHeight - 1;
             bool partiallyRenderable = false;

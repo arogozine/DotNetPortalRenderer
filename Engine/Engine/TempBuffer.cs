@@ -1,5 +1,4 @@
-﻿using RenderingEngine.Models;
-using System.Buffers;
+﻿using System.Buffers;
 
 namespace RenderingEngine.Engine
 {

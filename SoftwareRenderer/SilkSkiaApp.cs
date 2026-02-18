@@ -9,6 +9,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace SoftwareRenderer
 {
+    /// <summary>
+    /// Handles Window Logic and a OpenGL surface
+    /// </summary>
     internal sealed class SilkSkiaApp : IDisposable
     {
         private IWindow window;

@@ -41,7 +41,10 @@ namespace RenderingEngine.Tooling
 
             bucketSize *= sizeof(int);
             int alignment = Vector<byte>.Count;
-            _rem = bucketSize % alignment;
+
+            _rem = (alignment - 1) & bucketSize;
+            _rem = (alignment - 1) & (alignment - _rem);
+
             bucketSize += _rem;
 
             _byteCount = bucketSize * numberOfBuckets;
