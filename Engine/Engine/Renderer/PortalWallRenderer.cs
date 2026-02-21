@@ -274,13 +274,13 @@ namespace RenderingEngine.Engine
 
             float oneOverSectorHeight = 1f / sectorHeight;
 
-            ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
+            ReadOnlySpan<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> statusInt = memoryPool.GetBucket<int>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> topTextureYLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureYLocation);
-            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            Span<int> wallStart = RenderWindowHelper.WallStart;
-            Span<int> wallEnd = RenderWindowHelper.WallEnd;
-            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
+            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             Span<int> topTextureXLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation);
             Span<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
             Span<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
@@ -459,13 +459,12 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
             Span<int> statusInt = memoryPool.GetBucket<int>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> bottomTextureYLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureYLocation);
-            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            Span<int> wallStart = RenderWindowHelper.WallStart;
-            Span<int> wallEnd = RenderWindowHelper.WallEnd;
-            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
+            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             Span<int> bottomTextureXLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureXLocation);
 
-            Span<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
             Span<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
 
             int width = PixelWidth;
@@ -497,13 +496,11 @@ namespace RenderingEngine.Engine
                 Vector<int> wallEndYV = Vector.LoadUnsafe(ref wallEnd[x]);
                 Vector<int> floorEndYV = Vector.LoadUnsafe(ref floorEnd[x]);
                 Vector<int> ceilingStartYV = Vector.LoadUnsafe(ref ceilingStart[x]);
-                Vector<int> fromYClampedV = Vector.LoadUnsafe(ref clampedFrom[x]);
                 Vector<int> toYClampedV = Vector.LoadUnsafe(ref clampedTo[x]);
                 Vector<int> textureYPosV = Vector.LoadUnsafe(ref bottomTextureXLocation[x]);
                 Vector<int> textureXIncrV = Vector.LoadUnsafe(ref bottomTextureYLocation[x]);
 
-
-                Vector<float> pixelsPerHeightV = Vector.ConvertToSingle(wallEndYV - wallStartYV) * oneOverSectorHeight;
+                Vector<float> pixelsPerHeightV = Vector.ConvertToSingle(wallEndYV - wallStartYV) * oneOverSectorHeightV;
 
                 // Portal Calculation
                 Vector<int> floorPixelOffsetV = Vector.ConvertToInt32Native(pixelsPerHeightV * floorOffsetV);
@@ -585,7 +582,6 @@ namespace RenderingEngine.Engine
                 int wallEndY = wallEnd[x];
                 int floorEndY = floorEnd[x];
                 int ceilingStartY = ceilingStart[x];
-                int fromYClamped = clampedFrom[x];
                 int toYClamped = clampedTo[x];
 
                 float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
@@ -777,12 +773,9 @@ namespace RenderingEngine.Engine
 
                 int clamptedFromY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
                 int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
-                // int textureXPosY = textureStart - textureXIncr * (wallStartY - clamptedFromY);
-                // textureXPosY = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPosY);
 
                 clampedFrom[x] = clamptedFromY;
                 clampedTo[x] = clamptedToY;
-                // textureXPos[x] = textureXPosY;
             }
         }
 

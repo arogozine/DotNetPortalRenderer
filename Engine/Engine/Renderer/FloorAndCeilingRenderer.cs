@@ -34,10 +34,10 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             Sector sector)
         {
-            ReadOnlySpan<RenderColumnStatus> statusSpan = RenderWindowHelper.Status;
-            ReadOnlySpan<int> ceilingStartSpan = RenderWindowHelper.CeilingStart;
-            ReadOnlySpan<int> wallStartSpan = RenderWindowHelper.WallStart;
-            ReadOnlySpan<int> floorEndSpan = RenderWindowHelper.FloorEnd;
+            ReadOnlySpan<RenderColumnStatus> statusSpan = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            ReadOnlySpan<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            ReadOnlySpan<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            ReadOnlySpan<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
             bool rotated = sector.RotationCeiling is not null;
 
@@ -116,10 +116,10 @@ namespace RenderingEngine.Engine
             bool rotated = sector.RotationFloor is not null;
             TextureInfo floorTexture = sector.FloorTexture;
 
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-            Span<int> wallEnd = RenderWindowHelper.WallEnd;
+            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
 
             int width = PixelWidth;
 
@@ -202,7 +202,6 @@ namespace RenderingEngine.Engine
                     yOffset = -yOffset;
                 }
 
-                // 1.91, 3.48
                 (float rSin, float rCos) = MathF.SinCos(angle);
 
                 rSinV = Vector.Create(rSin);
