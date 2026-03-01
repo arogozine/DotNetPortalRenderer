@@ -112,5 +112,32 @@
         /// Significance is game-specific
         /// </summary>
         public readonly short Extra;
+
+        public SectorType(short wallPtr, short wallNum, int ceilingZ, int floorZ, Stat ceilingStat, Stat floorStat, short ceilingPicNum, short ceilingHeiNum, sbyte ceilingShade, byte ceilingPal, byte ceilingXPanning, byte ceilingYPanning, short floorPicNum, short floorHeiNum, sbyte floorShade, byte floorPal, byte floorXPanning, byte floorYPanning, byte visibility, byte filler, short loTag, short hiTag, short extra)
+        {
+            WallPtr = wallPtr;
+            WallNum = wallNum;
+            CeilingZ = ceilingZ;
+            FloorZ = floorZ;
+            CeilingStat = ceilingStat;
+            FloorStat = floorStat;
+            CeilingPicNum = ceilingPicNum;
+            CeilingHeiNum = ceilingHeiNum;
+            CeilingShade = ceilingShade;
+            CeilingPal = ceilingPal;
+            CeilingXPanning = ceilingXPanning;
+            CeilingYPanning = ceilingYPanning;
+            FloorPicNum = floorPicNum;
+            FloorHeiNum = floorHeiNum;
+            FloorShade = floorShade;
+            FloorPal = floorPal;
+            FloorXPanning = floorXPanning;
+            FloorYPanning = floorYPanning;
+            Visibility = visibility;
+            Filler = filler;
+            LoTag = loTag;
+            HiTag = hiTag;
+            Extra = extra;
+        }
     }
 }

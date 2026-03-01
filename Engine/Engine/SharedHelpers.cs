@@ -204,18 +204,6 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static (Vector<int> rx1, Vector<int> ry1) RotateVertexBack(
-            Vector<int> x, Vector<int> y,
-            Vector<int> psin, Vector<int> pcos,
-            Vector<int> px, Vector<int> py)
-        {
-            Vector<int> rx1 = y * pcos + x * psin;
-            Vector<int> ry1 = y * psin - x * pcos;
-
-            return (rx1 + px, ry1 + py);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (Vector<float> rx1, Vector<float> ry1) RotateVertexBack(
             Vector<float> x, Vector<float> y,
             Vector<float> psin, Vector<float> pcos,

@@ -204,7 +204,7 @@ namespace RenderingEngine.Engine
                 Span<RenderableWall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player);
 
                 // 2. Determine where ceiling, floor, and walls start and end
-                RenderColumnStatus sectorStatus = CalculateRenderWindow(sectorInfo, sector, walls);
+                RenderColumnStatus sectorStatus = CalculateRenderWindow(sectorInfo, sectors, sector, walls);
 
                 // 3. Nothing to render, bail early
                 if (sectorStatus == default || renderableWalls.Count == 0)
@@ -368,6 +368,7 @@ namespace RenderingEngine.Engine
 
         private RenderColumnStatus CalculateRenderWindow(
             NeighborsToRender sectorInfo,
+            ReadOnlySpan<Sector> sectors,
             Sector sector,
             Span<RenderableWall> walls)
         {
@@ -387,7 +388,7 @@ namespace RenderingEngine.Engine
             {
                 RenderableWall wall = walls[s];
 
-                RenderColumnStatus status = CalculateRenderWindow(wall, sector, renderableWalls);
+                RenderColumnStatus status = CalculateRenderWindow(wall, sector, sectors, renderableWalls);
                 sectorStatus |= status;
             }
 
@@ -450,7 +451,11 @@ namespace RenderingEngine.Engine
         }
 
 
-        private RenderColumnStatus CalculateRenderWindow(RenderableWall wall, Sector sector, List<RenderablePortalWall> renderableWalls)
+        private RenderColumnStatus CalculateRenderWindow(
+            RenderableWall wall,
+            Sector sector,
+            ReadOnlySpan<Sector> sectors,
+            List<RenderablePortalWall> renderableWalls)
         {
             if (!RenderWindowHelper.SetWallToCalculate(wall))
             {
@@ -458,13 +463,24 @@ namespace RenderingEngine.Engine
                 return default;
             }
 
+            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
+            Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
+
             (int offset, int wallFromX, int wallToX) = RenderWindowHelper.GetWallRenderWindowX();
 
-            RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo(wall, offset);
+            RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo2(sectors, wall, offset);
             float wallStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float wallEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
+            float? portalStartY = yPlaneInfo.PortalStartY;
+            float? portalEndY = yPlaneInfo.PortalEndY;
+            float? portalStartIncr = yPlaneInfo.PortalStartIncr;
+            float? portalEndIncr = yPlaneInfo.PortalEndIncr;
+
+            bool sloped = wall.IsPortal && portalStartY != null && portalEndY != null && portalStartIncr != null && portalEndIncr != null;
 
             // minor performance hack
             bool upperWallIsSkybox = sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox) &&
@@ -508,19 +524,51 @@ namespace RenderingEngine.Engine
                     wallStatus |= status;
                     status = default;
 
+                    if (sloped)
+                    {
+                        portalStartY += portalStartIncr;
+                        portalEndY += portalEndIncr;
+                    }
+
                     continue;
+                }
+
+                if (sloped)
+                {
+                    portalFrom[x] = float.ConvertToIntegerNative<int>(portalStartY!.Value);
+                    portalTo[x] = float.ConvertToIntegerNative<int>(portalEndY!.Value);
+                }
+                else if (wall.IsPortal)
+                {
+                    (float sectorHeight, float ceilOffset, float floorOffset) = CalculatePortalOffsets(sectors, wall);
+
+                    float pixelsPerHeight = (wallEndY - wallStartY) / sectorHeight;
+
+                    float ceilPixelOffset = pixelsPerHeight * ceilOffset;
+                    float floorPixelOffset = pixelsPerHeight * floorOffset;
+                    float portalToY = wallEndY - floorPixelOffset;
+                    float portalFromY = wallStartY - ceilPixelOffset;
+
+                    portalFrom[x] = float.ConvertToIntegerNative<int>(portalFromY);
+                    portalTo[x] = float.ConvertToIntegerNative<int>(portalToY);
                 }
 
                 int wallStartYInt = float.ConvertToIntegerNative<int>(wallStartY);
                 int wallEndYInt = float.ConvertToIntegerNative<int>(wallEndY);
 
-                RenderWindowHelper.WallStart[x] = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
-                RenderWindowHelper.WallEnd[x] = wallEndYInt;
+                wallStart[x] = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
+                wallEnd[x] = wallEndYInt;
 
                 status |= RenderWindowHelper.RecalculateRenderWindow(x, true);
 
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;
+
+                if (sloped)
+                {
+                    portalStartY += portalStartIncr;
+                    portalEndY += portalEndIncr;
+                }
             }
 
             wallStatus |= status;
@@ -542,7 +590,7 @@ namespace RenderingEngine.Engine
         }
 
         [MemberNotNull(nameof(Snapshot))]
-        public unsafe void* DrawFrame(PortalPlayerSnapshot snapShot)
+        public void* DrawFrame(PortalPlayerSnapshot snapShot)
         {
             Snapshot = snapShot;
 

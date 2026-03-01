@@ -86,5 +86,26 @@
         /// Significance is game-specific
         /// </summary>
         public readonly short Extra;
+
+        public WallType(int x, int y, ushort point2, short nextWall, short nextSector, WallCStat cStat, short picNum, short overPicNum, sbyte shade, byte pal, byte xRepeat, byte yRepeat, byte xPanning, byte yPanning, short loTag, short hiTag, short extra)
+        {
+            X = x;
+            Y = y;
+            Point2 = point2;
+            NextWall = nextWall;
+            NextSector = nextSector;
+            CStat = cStat;
+            PicNum = picNum;
+            OverPicNum = overPicNum;
+            Shade = shade;
+            Pal = pal;
+            XRepeat = xRepeat;
+            YRepeat = yRepeat;
+            XPanning = xPanning;
+            YPanning = yPanning;
+            LoTag = loTag;
+            HiTag = hiTag;
+            Extra = extra;
+        }
     }
 }

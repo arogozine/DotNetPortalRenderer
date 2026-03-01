@@ -120,7 +120,214 @@ namespace RenderingEngine.Engine
             return fromToYDist;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static (float FloorZ, float CeilingZ) CalculateZAtPoint(Sector sector, Point point)
+        {
+            float ceilZ = sector.Ceil;
+            float floorZ = sector.Floor;
+            float floorSlope = sector.FloorSlope ?? 0f;
+            float ceilingSlope = sector.CeilingSlope ?? 0f;
+
+            if (floorSlope == 0f && ceilingSlope == 0f)
+            {
+                return (floorZ, ceilZ);
+            }
+
+            // PointA and PointB of first line
+            RenderableWall firstWall = sector.Walls[0];
+            Point pointA = firstWall.R1;
+            Point pointB = firstWall.R2;
+
+            float dx = pointB.X - pointA.X;
+            float dy = pointB.Y - pointA.Y;
+
+            float distance = MathF.Sqrt(dx * dx + dy * dy);
+
+            if (distance == 0f)
+            {
+                return (floorZ, ceilZ);
+            }
+
+            // compute signed perpendicular from the reference line
+            (float x, float y) = point;
+            float offset = dx * (y - pointA.Y) - dy * (x - pointA.X);
+
+            if (sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling))
+            {
+                ceilZ += (ceilingSlope * offset) / distance;
+            }
+
+            if (sector.Settings.HasFlag(MapSectorSettings.SlopeFloor))
+            {
+                floorZ += (floorSlope * offset) / distance;
+            }
+
+            return (floorZ, ceilZ);
+        }
+
+        public sealed class FloorCeilSlope
+        {
+            public required float FloorZ { get; set; }
+            public required float CeilZ { get; set; }
+            public required float FloorZIncrament { get; init; }
+            public required float CeilZIncrament { get; init; }
+        }
+
+        internal static (float floorZ_a, float ceilingZ_a, float floorZ_b, float ceilingZ_b) Test2(Sector sector, RenderableWall parentWall, bool flipped)
+        {
+
+            flipped = flipped ? !parentWall.Flipped : parentWall.Flipped;
+
+            (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, flipped ? parentWall.C2 : parentWall.C1);
+            (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, flipped ? parentWall.C1 : parentWall.C2);
+
+            return (floorZ_a, ceilingZ_a, floorZ_b, ceilingZ_b);
+        }
+
+        internal static FloorCeilSlope Test(Sector sector, RenderableWall parentWall, int wallFromXOffset, bool flipped)
+        {
+
+            flipped = flipped ? !parentWall.Flipped : parentWall.Flipped;
+
+            (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, flipped ? parentWall.C2 : parentWall.C1);
+            (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, flipped ? parentWall.C1 : parentWall.C2);
+
+            float wallLengthX = parentWall.XRight - parentWall.XLeft;
+
+            float floorSlopeIncr = (floorZ_b - floorZ_a) / wallLengthX;
+            float ceilingSlopeIncr = (ceilingZ_b - ceilingZ_a) / wallLengthX;
+
+            if (wallFromXOffset != 0f)
+            {
+                if (!flipped)
+                {
+                    floorZ_a -= wallFromXOffset * floorSlopeIncr;
+                    ceilingZ_a -= wallFromXOffset * ceilingSlopeIncr;
+                }
+                else
+                {
+                    floorZ_a += wallFromXOffset * floorSlopeIncr;
+                    ceilingZ_a += wallFromXOffset * ceilingSlopeIncr;
+                }
+            }
+
+            return new FloorCeilSlope {
+                CeilZ = ceilingZ_a,
+                FloorZ = floorZ_a,
+                CeilZIncrament = ceilingSlopeIncr,
+                FloorZIncrament = floorSlopeIncr
+            };
+        }
+
+        internal static RenderablePlaneInfo CalculateLeftWallYPlaneInfo2(ReadOnlySpan<Sector> sectors, RenderableWall wall, int wallFromXOffset)
+        {
+            float wallLengthX = wall.XRight - wall.XLeft;
+            float wallStartY = wall.YLeftCeil;
+            float ceilDistIncr = (wall.YRightCeil - wallStartY) / wallLengthX;
+
+            float wallEndY = wall.YLeftFloor;
+            float floorDistIncr = (wall.YRightFloor - wallEndY) / wallLengthX;
+
+            float? portalFromStartY = null, portalToStartY = null;
+            float? portalFromIncr = null, portalToIncr = null;
+
+            Sector? neighborSector = wall.IsPortal ? sectors[wall.Neighbor] : null;
+
+            bool wallSloped = wall.IsPortal && ((wall.Sector.FloorSlope != null || wall.Sector.CeilingSlope != null) ||
+                (neighborSector!.FloorSlope != null || neighborSector.CeilingSlope != null));
+
+            if (wallSloped)
+            {
+                Sector sector = wall.Sector;
+                float sectorHeight = sector.Ceil - sector.Floor;
+
+                float portalFromEndY;
+                float portalToEndY;
+
+                // starting slope
+                {
+
+                    (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, wall.C1);
+                    (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, wall.C2);
+
+                    (float p_floorZ_a, float p_ceilingZ_a) = CalculateZAtPoint(neighborSector!, wall.C1);
+                    (float p_floorZ_b, float p_ceilingZ_b) = CalculateZAtPoint(neighborSector!, wall.C2);
+
+                    float pixelsPerHeightStart = (wall.YLeftFloor - wall.YLeftCeil) / sectorHeight;
+                    float pixelsPerHeightEnd = (wall.YRightFloor - wall.YRightCeil) / sectorHeight;
+
+                    float ceilOffsetStart = p_ceilingZ_a - ceilingZ_a;
+                    float floorOffsetStart = p_floorZ_a - floorZ_a;
+
+                    float ceilOffsetEnd = p_ceilingZ_b - ceilingZ_b;
+                    float floorOffsetEnd = p_floorZ_b - floorZ_b;
+
+                    float ceilPixelOffsetStart = pixelsPerHeightStart * ceilOffsetStart;
+                    float floorPixelOffsetStart = pixelsPerHeightStart * floorOffsetStart;
+
+                    float ceilPixelOffsetEnd = pixelsPerHeightEnd * ceilOffsetEnd;
+                    float floorPixelOffsetEnd = pixelsPerHeightEnd * floorOffsetEnd;
+
+                    portalFromStartY = wall.YLeftCeil - ceilPixelOffsetStart;
+                    portalToStartY = wall.YLeftFloor - floorPixelOffsetStart;
+                    portalFromEndY = wall.YRightCeil - ceilPixelOffsetEnd;
+                    portalToEndY = wall.YRightFloor - floorPixelOffsetEnd;
+                }
+
+                portalFromIncr = (portalFromEndY - portalFromStartY.Value) / wallLengthX;
+                portalToIncr = (portalToEndY - portalToStartY.Value) / wallLengthX;
+
+                if (wallFromXOffset != 0)
+                {
+                    portalFromStartY += wallFromXOffset * portalFromIncr;
+                    portalToStartY += wallFromXOffset * portalToIncr;
+                }
+
+            }
+
+            if (wallFromXOffset != 0)
+            {
+                wallEndY += wallFromXOffset * floorDistIncr;
+                wallStartY += wallFromXOffset * ceilDistIncr;
+            }
+
+            return new RenderablePlaneInfo
+            {
+                WallStartY = wallStartY,
+                WallEndY = wallEndY,
+                CeilDistIncr = ceilDistIncr,
+                FloorDistIncr = floorDistIncr,
+                PortalStartY = portalFromStartY,
+                PortalEndY = portalToStartY,
+                PortalStartIncr = portalFromIncr,
+                PortalEndIncr = portalToIncr
+            };
+        }
+
+        internal static RenderablePlaneInfo CalculateLeftWallYPlaneInfo(RenderableWall wall, int wallFromXOffset)
+        {
+            float wallLengthX = wall.XRight - wall.XLeft;
+            float wallStartY = wall.YLeftCeil;
+            float ceilDistIncr = (wall.YRightCeil - wallStartY) / wallLengthX;
+
+            float wallEndY = wall.YLeftFloor;
+            float floorDistIncr = (wall.YRightFloor - wallEndY) / wallLengthX;
+
+            if (wallFromXOffset != 0)
+            {
+                wallEndY += wallFromXOffset * floorDistIncr;
+                wallStartY += wallFromXOffset * ceilDistIncr;
+            }
+
+            return new RenderablePlaneInfo
+            {
+                WallStartY = wallStartY,
+                WallEndY = wallEndY,
+                CeilDistIncr = ceilDistIncr,
+                FloorDistIncr = floorDistIncr
+
+            };
+        }
+
         internal static RenderablePlaneInfo CalculateLeftWallYPlaneInfo(IWallLike sprite, int wallFromXOffset)
         {
             float wallLengthX = sprite.XRight - sprite.XLeft;
@@ -136,7 +343,13 @@ namespace RenderingEngine.Engine
                 wallStartY += wallFromXOffset * ceilDistIncr;
             }
 
-            return new RenderablePlaneInfo(wallStartY, wallEndY, ceilDistIncr, floorDistIncr);
+            return new RenderablePlaneInfo
+            {
+                WallStartY = wallStartY,
+                WallEndY = wallEndY,
+                CeilDistIncr = ceilDistIncr,
+                FloorDistIncr = floorDistIncr
+            };
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

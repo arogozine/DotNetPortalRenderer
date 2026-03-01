@@ -28,6 +28,8 @@ namespace RenderingEngine.Models
         public Point C1 { get; set; }
         public Point C2 { get; set; }
 
+
+
         //
         public int Neighbor { get; }
         // Plane

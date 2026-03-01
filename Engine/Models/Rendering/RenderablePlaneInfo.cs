@@ -1,18 +1,15 @@
-﻿namespace RenderingEngine.Models
-{
-    public readonly ref struct RenderablePlaneInfo
-    {
-        public readonly float WallStartY;
-        public readonly float WallEndY;
-        public readonly float CeilDistIncr;
-        public readonly float FloorDistIncr;
+﻿namespace RenderingEngine.Models;
 
-        public RenderablePlaneInfo(float wallStartY, float wallEndY, float ceilDistIncr, float floorDistIncr)
-        {
-            WallStartY = wallStartY;
-            WallEndY = wallEndY;
-            CeilDistIncr = ceilDistIncr;
-            FloorDistIncr = floorDistIncr;
-        }
-    }
+public sealed class RenderablePlaneInfo
+{
+    public required float WallStartY { get; init; }
+    public required float WallEndY { get; init; }
+    public required float CeilDistIncr { get; init; }
+    public required float FloorDistIncr { get; init; }
+    public float? PortalStartY { get; init; }
+    public float? PortalEndY { get; init; }
+
+    public float? PortalStartIncr { get; init; }
+    public float? PortalEndIncr { get; init; }
+
 }

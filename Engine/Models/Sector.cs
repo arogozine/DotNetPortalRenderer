@@ -1,18 +1,21 @@
-﻿namespace RenderingEngine.Models
+﻿namespace RenderingEngine.Models;
+
+internal class Sector
 {
-    internal class Sector
-    {
-        public required int Id { get; internal set; }
+    public required MapSector MapSector { get; init; }
 
-        public required TextureInfo FloorTexture { get; init; }
-        public required TextureInfo CeilTexture { get; init; }
+    public int Id => MapSector.Id;
+    public TextureInfo FloorTexture => MapSector.FloorTexture;
+    public TextureInfo CeilTexture => MapSector.CeilingTexture;
+    public MapSectorSettings Settings => MapSector.Settings;
+    public int Floor => MapSector.Floor;
+    public int Ceil => MapSector.Ceiling;
+    public required short FloorShade { get; init; }
+    public required short CeilingShade { get; init; }
+    public float? RotationFloor => MapSector.RotationFloor;
+    public float? RotationCeiling => MapSector.RotationCeiling;
+    public float? CeilingSlope => MapSector.CeilingSlope;
+    public float? FloorSlope => MapSector.FloorSlope;
 
-        public required int Floor { get; init; }
-        public required int Ceil { get; init; }
-        public required RenderableWall[] Walls { get; init; }
-        public required short FloorShade { get; set; }
-        public required short CeilingShade { get; set; }
-        public required float? RotationFloor { get; set; }
-        public required float? RotationCeiling { get; set; }
-    }
+    public required RenderableWall[] Walls { get; init; }
 }

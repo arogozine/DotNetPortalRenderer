@@ -39,7 +39,7 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
             ReadOnlySpan<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
-            bool rotated = sector.RotationCeiling is not null;
+            bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateCeiling);
 
             int width = PixelWidth;
 
@@ -113,21 +113,20 @@ namespace RenderingEngine.Engine
         [SkipLocalsInit]
         public void RenderFloorVector(PortalPlayerSnapshot player, Sector sector)
         {
-            bool rotated = sector.RotationFloor is not null;
-            TextureInfo floorTexture = sector.FloorTexture;
-
             Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
 
+            bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateFloor);
+            TextureInfo floorTexture = sector.FloorTexture;
             int width = PixelWidth;
 
             float yfloor = sector.Floor - player.Z;
 
             (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(floorTexture);
 
-            Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
             ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(false, sector.FloorShade);
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
@@ -199,7 +198,7 @@ namespace RenderingEngine.Engine
 
                 if (angle > MathF.PI)
                 {
-                    yOffset = -yOffset;
+                    yOffset = -yOffset; // likely incorrect?
                 }
 
                 (float rSin, float rCos) = MathF.SinCos(angle);

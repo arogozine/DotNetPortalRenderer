@@ -394,6 +394,7 @@ namespace RenderingEngine.DoomMapLoader
                 MapSector mapSector = new()
                 {
                     Id = i,
+                    Settings = default,
                     Ceiling = ceiling,
                     Floor = floor,
                     FloorTexture = new Models.TextureInfo { Name = sector.FloorTexture },
@@ -898,6 +899,7 @@ namespace RenderingEngine.DoomMapLoader
                 MapSector mapSector = new()
                 {
                     Id = i,
+                    Settings = default,
                     Ceiling = ceiling,
                     Floor = floor,
                     FloorTexture = GetFloorTextureInfo(sector),

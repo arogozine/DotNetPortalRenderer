@@ -9,22 +9,6 @@ namespace RenderingEngine.DoomMapLoader
 {
     internal static class GrpReader
     {
-        // Shade
-        // Legal values are between -128 and 127 with 0 being default brightness
-        // For tiles displayed onscreen only values ranging from 0 to 32 are relevant.
-        // https://wiki.eduke32.com/wiki/Shade
-
-        // XPanning
-        // Values are normalized on a 0-255 scale, meaning that regardless of the sprite's size, a value of 128 will pan it 50%.
-        // https://wiki.eduke32.com/wiki/Xpanning
-
-        // Build Units
-        // The height scale is different. A z coordinate is 16 times that of x-y coordinates.
-        // In other words, a wall with 1024 of length equal in height for a value of 16384.
-        // Build engine uses a 2048-degree scale (as opposed to 360 degrees.)
-        // 90 degree angle is equal to 512 build units
-        // https://wiki.eduke32.com/wiki/Build_units
-
         public static Map LoadBuildMap(GrpFile grp, string mapName)
         {
             var map = BuildFileParser.ExtractMapFiles(grp);
@@ -156,44 +140,7 @@ namespace RenderingEngine.DoomMapLoader
             {
                 ref SectorType sector = ref grpSectors[i];
 
-                int ceiling = DetermineZLocation(sector.CeilingZ);
-                int floor = DetermineZLocation(sector.FloorZ);
-
-                string floorTexture = ToTile(sector.FloorPicNum);
-                string ceilingTexture = ToTile(sector.CeilingPicNum);
-
-                (int cXoffset, int cYOffset) = CalculateCeilingOffset(in sector, ceilingTexture);
-                (int fXoffset, int fYOffset) = CalculateFloorOffset(in sector, floorTexture);
-
-                (TextureRenderingOptions floorRenderingOptions, int floorXScale, int floorYScale) = ToTextureRenderingOptions(sector.FloorStat);
-                (TextureRenderingOptions ceilingRenderingOptions, int ceilXScale, int ceilYScale) = ToTextureRenderingOptions(sector.CeilingStat);
-
-                MapSector mapSector = new()
-                {
-                    Id = i,
-                    Ceiling = ceiling,
-                    Floor = floor,
-                    FloorTexture = new Models.TextureInfo {
-                        Name = floorTexture,
-                        XOffset = fXoffset,
-                        YOffset = fYOffset,
-                        XScale = floorXScale,
-                        YScale = floorYScale,
-                        RenderingOptions = floorRenderingOptions,
-                        Alpha = 1f
-                    },
-                    CeilingTexture = new Models.TextureInfo {
-                        Name = ceilingTexture,
-                        XOffset = cXoffset,
-                        YOffset = cYOffset,
-                        XScale = ceilXScale,
-                        YScale = ceilYScale,
-                        RenderingOptions = ceilingRenderingOptions,
-                        Alpha = 1f
-                    },
-                    FloorShade = sector.FloorShade,
-                    CeilingShade = sector.CeilingShade
-                };
+                MapSector mapSector = ParseSectorType(i, in sector);
 
                 int wallStart = sector.WallPtr;
                 int wallEnd = wallStart + sector.WallNum;
@@ -213,8 +160,8 @@ namespace RenderingEngine.DoomMapLoader
 
                     var line = new Line {
                         Id = ij,
-                        PointA = new LineVector(j, GetPoint(ref wall)),
-                        PointB = new LineVector(wall.Point2, GetPoint(ref point2Wall)),
+                        PointA = new LineVector(j, GetPoint(in wall)),
+                        PointB = new LineVector(wall.Point2, GetPoint(in point2Wall)),
                         SectorTo = wall.NextSector,
                         UpperTexture = GetTextureInfo(in wall, in wall, false),
                         MiddleTexture = GetTextureInfo(in wall, in wall, true),
@@ -228,7 +175,6 @@ namespace RenderingEngine.DoomMapLoader
                 }
 
                 sectors.Add(mapSector);
-
             }
 
             RecalculateOffsets(sectors);
@@ -246,13 +192,84 @@ namespace RenderingEngine.DoomMapLoader
                 Sectors = sectors
             };
 
-            static Point GetPoint(ref WallType wall)
-            {
-                float x = DetermineXLocation(wall.X);
-                float y = DetermineYLocation(wall.Y);
+        }
 
-                return new Point(x, y);
+        internal static Point GetPoint(in WallType wall)
+        {
+            float x = DetermineXLocation(wall.X);
+            float y = DetermineYLocation(wall.Y);
+
+            return new Point(x, y);
+        }
+
+        internal static MapSector ParseSectorType(int index, in SectorType sector)
+        {
+            int ceiling = DetermineZLocation(sector.CeilingZ);
+            int floor = DetermineZLocation(sector.FloorZ);
+
+            string floorTexture = ToTile(sector.FloorPicNum);
+            string ceilingTexture = ToTile(sector.CeilingPicNum);
+
+            (int cXoffset, int cYOffset) = CalculateCeilingOffset(in sector, ceilingTexture);
+            (int fXoffset, int fYOffset) = CalculateFloorOffset(in sector, floorTexture);
+
+            (TextureRenderingOptions floorRenderingOptions, int floorXScale, int floorYScale) = ToTextureRenderingOptions(sector.FloorStat);
+            (TextureRenderingOptions ceilingRenderingOptions, int ceilXScale, int ceilYScale) = ToTextureRenderingOptions(sector.CeilingStat);
+
+            MapSectorSettings settings = default;
+
+            if (sector.CeilingHeiNum != 0f)
+            {
+                settings |= MapSectorSettings.SlopeCeiling;
             }
+
+            if (ceilingRenderingOptions.HasFlag(TextureRenderingOptions.AlignWithFirstWall))
+            {
+                settings |= MapSectorSettings.RotateCeiling;
+            }
+
+            if (sector.FloorHeiNum != 0f)
+            {
+                settings |= MapSectorSettings.SlopeFloor;
+            }
+
+            if (floorRenderingOptions.HasFlag(TextureRenderingOptions.AlignWithFirstWall))
+            {
+                settings |= MapSectorSettings.RotateFloor;
+            }
+
+            return new MapSector()
+            {
+                Id = index,
+                Settings = settings,
+                Ceiling = ceiling,
+                Floor = floor,
+                FloorTexture = new Models.TextureInfo
+                {
+                    Name = floorTexture,
+                    XOffset = fXoffset,
+                    YOffset = fYOffset,
+                    XScale = floorXScale,
+                    YScale = floorYScale,
+                    RenderingOptions = floorRenderingOptions,
+                    Alpha = 1f
+                },
+                CeilingTexture = new Models.TextureInfo
+                {
+                    Name = ceilingTexture,
+                    XOffset = cXoffset,
+                    YOffset = cYOffset,
+                    XScale = ceilXScale,
+                    YScale = ceilYScale,
+                    RenderingOptions = ceilingRenderingOptions,
+                    Alpha = 1f
+                },
+                FloorShade = sector.FloorShade,
+                CeilingShade = sector.CeilingShade,
+                CeilingSlope = sector.CeilingHeiNum == 0f ? null : (sector.CeilingHeiNum / 4096f),
+                FloorSlope = sector.FloorHeiNum == 0f ? null : (sector.FloorHeiNum / 4096f)
+            };
+
         }
 
         private static void PrecalculateWallSprites(scoped ReadOnlySpan<Sprite> sprites)
@@ -308,7 +325,7 @@ namespace RenderingEngine.DoomMapLoader
         }
 
 
-        private static Models.TextureInfo? GetTextureInfo(in WallType wall, in WallType textureWall, bool middleTexture)
+        internal static Models.TextureInfo? GetTextureInfo(in WallType wall, in WallType textureWall, bool middleTexture)
         {
             short picNum;
 
@@ -394,12 +411,12 @@ namespace RenderingEngine.DoomMapLoader
                 MapSector sector = sectors[s];
                 Line firstWall = sector.Walls[0];
 
-                if (sector.FloorTexture.RenderingOptions.IsAlignedWithWall)
+                if (sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) || sector.Settings.HasFlag(MapSectorSettings.RotateFloor))
                 {
                     sector.RotationFloor = CalculateAngle(firstWall);
                 }
 
-                if (sector.CeilingTexture.RenderingOptions.IsAlignedWithWall)
+                if (sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling) || sector.Settings.HasFlag(MapSectorSettings.RotateCeiling))
                 {
                     sector.RotationCeiling = CalculateAngle(firstWall);
                 }

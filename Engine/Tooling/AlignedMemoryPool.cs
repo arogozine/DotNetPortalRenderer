@@ -19,6 +19,8 @@ namespace RenderingEngine.Tooling
         BottomTextureYLocation,
         ClampedFrom,
         ClampedTo,
+        PortalFrom,
+        PortalTo,
         TextureXPos,
         Buffer
     }

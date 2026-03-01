@@ -150,22 +150,16 @@ namespace RenderingEngine.MapGen
             };
         }
 
-        static Sector ParseMapSector(MapSector x)
+        internal static Sector ParseMapSector(MapSector x)
         {
             RenderableWall[] vertex = new RenderableWall[x.Walls.Count];
 
             var sector = new Sector
             {
-                Id = x.Id,
-                FloorTexture = x.FloorTexture,
-                CeilTexture = x.CeilingTexture,
-                Ceil = x.Ceiling,
-                Floor = x.Floor,
+                MapSector = x,
                 FloorShade = (byte)(x.FloorShade == 256 ? byte.MaxValue : x.FloorShade),
                 CeilingShade = (byte)(x.CeilingShade == 256 ? byte.MaxValue : x.CeilingShade),
-                Walls = vertex,
-                RotationCeiling = x.RotationCeiling,
-                RotationFloor = x.RotationFloor
+                Walls = vertex
             };
 
             for (int i = 0; i < x.Walls.Count; i++)

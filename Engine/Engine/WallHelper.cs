@@ -118,14 +118,9 @@ namespace RenderingEngine.Engine
             float pCos = player.Cos;
             float px = player.X;
             float py = player.Y;
-            float yaw = player.Yaw;
-            float pz = player.Z;
-            float yCeil = sector.Ceil - pz;
-            float yFloor = sector.Floor - pz;
-
             Span<RenderableWall> rotatedWalls = RotateSectorWallsRelativeToPlayer(sector, pSin, pCos, px, py);
             rotatedWalls = FilterOutWallsBehindPlayer(rotatedWalls);
-            CalculateWallPlanes(rotatedWalls, yCeil, yFloor, yaw);
+            CalculateWallPlanes(rotatedWalls, player);
             rotatedWalls = FilterOutWallsOutsideView(rotatedWalls);
 
             var copy = new RenderableWall[rotatedWalls.Length];
@@ -321,13 +316,15 @@ namespace RenderingEngine.Engine
             return walls[..j];
         }
 
-        public void CalculateWallPlanes(scoped ReadOnlySpan<RenderableWall> walls, float yCeil, float yFloor, float yaw)
+        public void CalculateWallPlanes(scoped ReadOnlySpan<RenderableWall> walls, PortalPlayerSnapshot player)
         {
+            float pz = player.Z;
+            float yaw = player.Yaw;
+
             for (int i = 0; i < walls.Length; i++)
             {
                 RenderableWall wall = walls[i];
-
-                CalculateWallPlane(wall, yCeil, yFloor, yaw);
+                CalculateWallPlane(wall, pz, yaw);
             }
         }
 
@@ -396,7 +393,7 @@ namespace RenderingEngine.Engine
             return CullWallsBasedOnVisibility(walls);
         }
 
-        public void CalculateWallPlane(RenderableWall wall, float yCeil, float yFloor, float yaw)
+        public void CalculateWallPlane(RenderableWall wall, float pz, float yaw)
         {
             // calculate the x, y for the wall on the screen for both points
             float rx1 = wall.R1.X;
@@ -501,6 +498,9 @@ namespace RenderingEngine.Engine
 
                 (wall.R1, wall.R2) = (wall.R2, wall.R1);
 
+                //(yCeilA, yCeilB) = (yCeilB, yCeilA);
+                //(yFloorA, yFloorB) = (yFloorB, yFloorA);
+
                 //wall.Flipped = !wall.Flipped;
             }
 
@@ -508,13 +508,20 @@ namespace RenderingEngine.Engine
 
             if (wall.IntersectsView)
             {
-                yLeftCeil = halfHeight - (yCeil / ry1 - yaw) * height;
-                yLeftFloor = halfHeight - (yFloor / ry1 - yaw) * height;
-                yRightCeil = halfHeight - (yCeil / ry2 - yaw) * height;
-                yRightFloor = halfHeight - (yFloor / ry2 - yaw) * height;
-
                 wall.C1 = new(rx1, ry1);
                 wall.C2 = new(rx2, ry2);
+
+                (float yFloorA, float yCeilA, float yFloorB, float yCeilB) = MathFormulas.Test2(wall.Sector, wall, false);
+
+                yFloorA -= pz;
+                yCeilA -= pz;
+                yFloorB -= pz;
+                yCeilB -= pz;
+
+                yLeftCeil = halfHeight - (yCeilA / ry1 - yaw) * height;
+                yLeftFloor = halfHeight - (yFloorA / ry1 - yaw) * height;
+                yRightCeil = halfHeight - (yCeilB / ry2 - yaw) * height;
+                yRightFloor = halfHeight - (yFloorB / ry2 - yaw) * height;
 
                 wall.XLeft = float.ConvertToIntegerNative<int>(xLeft);
                 wall.XRight = float.ConvertToIntegerNative<int>(xRight);
