@@ -21,6 +21,7 @@ namespace RenderingEngine.Engine
 
         private readonly AlignedMemoryPool memoryPool;
 
+        // BGRA screen buffer
         private readonly void* buffer;
 
         public PortalRenderer(int width, int height)

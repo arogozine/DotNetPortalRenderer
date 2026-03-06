@@ -4,8 +4,11 @@ namespace RenderingEngine.Tooling
 {
     internal enum MemoryPoolBucket
     {
+        // Generated once per window size
         AngleCache,
+        // Generated once per window size
         CameraHeightToMapYPos,
+        // Generated once per window size
         XMapPosMultiplierCache,
         RenderColumnStatus,
         CeilingStart,
@@ -22,6 +25,7 @@ namespace RenderingEngine.Tooling
         PortalFrom,
         PortalTo,
         TextureXPos,
+        PortalClamped,
         Buffer
     }
 

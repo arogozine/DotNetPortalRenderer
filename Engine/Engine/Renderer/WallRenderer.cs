@@ -833,13 +833,10 @@ namespace RenderingEngine.Engine
                     Vector<int> ceilingStartYV = Vector.LoadUnsafe(ref ceilingStart[x]);
                     Vector<int> floorEndYV = Vector.LoadUnsafe(ref floorEnd[x]);
 
-                    Vector<int> clamptedFromYV = Vector.Clamp(wallStartV, ceilingStartYV, floorEndYV);
-                    Vector<int> clamptedToYV = Vector.Clamp(wallEndV, ceilingStartYV, floorEndYV);
+                    Vector<int> clamptedFromYV = Vector.ClampNative(wallStartV, ceilingStartYV, floorEndYV);
+                    Vector<int> clamptedToYV = Vector.ClampNative(wallEndV, ceilingStartYV, floorEndYV);
                     Vector<int> textureXPosV = textureStartV - topYLocationV * (wallStartV - clamptedFromYV);
                     textureXPosV = SharedHelpers.EnsureOffsetIsPositive(textureWidthV << 16, textureXPosV);
-
-                    // clamptedFromYV *= widthV;
-                    // clamptedToYV *= widthV;
 
                     Vector.StoreUnsafe(clamptedFromYV, ref clampedFrom[x]);
                     Vector.StoreUnsafe(clamptedToYV, ref clampedTo[x]);

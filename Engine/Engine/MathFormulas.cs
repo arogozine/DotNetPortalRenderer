@@ -6,6 +6,67 @@ namespace RenderingEngine.Engine
 {
     internal static class MathFormulas
     {
+        internal static Vector3 ToVector3(Point p, float z)
+        {
+            return new Vector3(p.X, p.Y, z);
+        }
+
+        internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalFloor(Sector sector)
+        {
+            Point p3 = sector.Walls[2].R1;
+            Point p2 = sector.Walls[0].R2;
+            Point p1 = sector.Walls[0].R1;
+
+            Debug.Assert(p1 != p2);
+            Debug.Assert(p1 != p3);
+            Debug.Assert(p2 != p3);
+
+            (float p3z, _) = CalculateZAtPoint(sector, p3);
+
+            Vector3 p3v = ToVector3(p3, p3z);
+            Vector3 p2v = ToVector3(p2, sector.Floor);
+            Vector3 p1v = ToVector3(p1, sector.Floor);
+
+
+            Vector3 vec1 = p2v - p1v;
+            Vector3 vec2 = p3v - p1v;
+
+
+            return (p1v, Vector3.Cross(vec1, vec2));
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="planePoint">A point on the plane</param>
+        /// <param name="planeNormal">The normal vector of the plane</param>
+        /// <param name="linePoint">A point on the line (ray origin)</param>
+        /// <param name="intersectionPoint">The resulting intersection point</param>
+        /// <returns></returns>
+        internal static bool FindIntersection(
+            Vector3 planePoint,
+            Vector3 planeNormal,
+            Vector3 linePoint,
+            Vector3 lineDirection,
+            out Vector3 intersectionPoint)
+        {
+            float denominator = Vector3.Dot(lineDirection, planeNormal);
+
+            if (MathF.Abs(denominator) < 0.00001f)
+            {
+                intersectionPoint = Vector3.Zero;
+                return false;
+            }
+
+            Vector3 pointToPlaneVector = planePoint - linePoint;
+
+            float t = Vector3.Dot(pointToPlaneVector, planeNormal) / denominator;
+
+            intersectionPoint = linePoint + lineDirection * t;
+
+            return true;
+        }
+
         /// <summary>
         /// Try get intersection when player is at (0, 0)
         /// </summary>
@@ -109,6 +170,21 @@ namespace RenderingEngine.Engine
             Vector<float> fromToXDist = fromToYDist * cameraRay;
 
             return (fromToXDist, fromToYDist);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static (Vector<float> X, Vector<float> Y, Vector<float> Z) NormalizeVector(Vector<float> x, Vector<float> y, Vector<float> z)
+        {
+            // compute length = sqrt(x*x + y*y + z*z)
+            Vector<float> sum = x * x + y * y + z * z;
+            Vector<float> length = Vector.SquareRoot(sum);
+
+            // Avoid division by zero: where length is very small, set inverse to zero
+            Vector<float> inv = Vector<float>.One / length;
+            Vector<int> smallLengthMask = Vector.LessThanOrEqual(length, new Vector<float>(float.Epsilon));
+            inv = Vector.ConditionalSelect(smallLengthMask, Vector<float>.Zero, inv);
+
+            return (x * inv, y * inv, z * inv);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -246,8 +322,8 @@ namespace RenderingEngine.Engine
                 // starting slope
                 {
 
-                    (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, wall.C1);
-                    (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, wall.C2);
+                    (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, wall.C2);
+                    (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, wall.C1);
 
                     (float p_floorZ_a, float p_ceilingZ_a) = CalculateZAtPoint(neighborSector!, wall.C1);
                     (float p_floorZ_b, float p_ceilingZ_b) = CalculateZAtPoint(neighborSector!, wall.C2);

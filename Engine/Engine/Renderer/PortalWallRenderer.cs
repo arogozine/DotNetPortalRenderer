@@ -201,11 +201,11 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
-            ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
-            ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
-            ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
+            ReadOnlySpan<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            ReadOnlySpan<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            ReadOnlySpan<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            ReadOnlySpan<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            ReadOnlySpan<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             ReadOnlySpan<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
 
             int wallFromX = renderableWall.XLeft;
@@ -265,12 +265,12 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> statusInt = memoryPool.GetBucket<int>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> topTextureYLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureYLocation);
-            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
-            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             Span<int> topTextureXLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation);
             Span<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
             Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
+            Span<int> portalFromClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalClamped);
+
 
             uint width = (uint)PixelWidth;
             int wallFromX = renderableWall.XLeft;
@@ -300,33 +300,32 @@ namespace RenderingEngine.Engine
                     Vector<int> statusV = Vector.LoadUnsafe(ref statusInt[x]);
                     //
                     Vector<int> wallStartYV = Vector.LoadUnsafe(ref wallStart[x]);
-                    Vector<int> floorEndYV = Vector.LoadUnsafe(ref floorEnd[x]);
-                    Vector<int> ceilingStartYV = Vector.LoadUnsafe(ref ceilingStart[x]);
+                    Vector<int> portalFromYClampedV = Vector.LoadUnsafe(ref portalFromClamped[x]);
                     //
+                    Vector<int> textureXPosV = Vector.LoadUnsafe(ref topTextureXLocation[x]);
                     Vector<int> fromYClampedV = Vector.LoadUnsafe(ref clampedFrom[x]);
-                    Vector<int> textureYPosV = Vector.LoadUnsafe(ref topTextureXLocation[x]);
-                    Vector<int> textureXIncrV = Vector.LoadUnsafe(ref topTextureYLocation[x]);
+                    Vector<int> textureYIncrV = Vector.LoadUnsafe(ref topTextureYLocation[x]);
                     //
-                    Vector<int> portalFromYV = Vector.LoadUnsafe(ref portalFrom[x]);
-                    Vector<int> portalFromYClampedV = Vector.ClampNative(portalFromYV, ceilingStartYV, floorEndYV);
-                    Vector<int> textureXPosV = upperTextureStartV - textureXIncrV * (wallStartYV - fromYClampedV);
+                    Vector<int> textureYPosV = upperTextureStartV - textureYIncrV * (wallStartYV - fromYClampedV);
 
-                    bool repeat = (statusV & wallRenderableV) == wallRenderableV && Vector.All(textureYPosV, textureYPosV[0]);
+                    bool repeat = (statusV & wallRenderableV) == wallRenderableV && Vector.All(textureXPosV, textureXPosV[0]);
 
                     if (repeat)
                     {
-                        textureXPosV = SharedHelpers.EnsureOffsetIsPositive(Vector.Create(textureWidth << 16), textureXPosV);
-                        int textureYPos = textureYPosV[0];
+                        textureYPosV = SharedHelpers.EnsureOffsetIsPositive(Vector.Create(textureWidth << 16), textureYPosV);
+                        int textureYPos = textureXPosV[0];
                         CalculateAndCacheWallColumn(upperBuffer, ref upperTexturePtr, textureYPos, upperFlipY);
 
                         RenderMultipleWallLinesT(
                             width,
                             (uint)x,
                             textureWidth,
+                            // Y
                             fromYClampedV.As<int, uint>(),
                             portalFromYClampedV.As<int, uint>(),
-                            textureXPosV.As<int, uint>(),
-                            textureXIncrV.As<int, uint>(),
+                            // Texture
+                            textureYPosV.As<int, uint>(),
+                            textureYIncrV.As<int, uint>(),
                             ref screenPtr,
                             ref upperBuffer.Pointer
                         );
@@ -345,11 +344,11 @@ namespace RenderingEngine.Engine
                             continue;
                         }
 
-                        int textureXPos = textureXPosV[i];
-                        int textureYPos = textureYPosV[i];
+                        int textureXPos = textureYPosV[i];
+                        int textureYPos = textureXPosV[i];
                         int fromYClamped = fromYClampedV[i];
                         int portalFromYClamped = portalFromYClampedV[i];
-                        int textureXIncr = textureXIncrV[i];
+                        int textureXIncr = textureYIncrV[i];
 
                         textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
@@ -383,15 +382,13 @@ namespace RenderingEngine.Engine
                 }
 
                 int wallStartY = wallStart[x];
-                int floorEndY = floorEnd[x];
-                int ceilingStartY = ceilingStart[x];
                 int fromYClamped = clampedFrom[x];
                 int textureYPos = topTextureXLocation[x];
                 int textureXIncr = topTextureYLocation[x];
 
                 // Portal Calculation
                 int portalFromY = portalFrom[x];
-                int portalFromYClamped = Math.Clamp(portalFromY, ceilingStartY, floorEndY);
+                int portalFromYClamped = portalFromClamped[x];
 
                 // Calculate Upper  Texture Position
                 int textureXPos = upperTextureStart - textureXIncr * (wallStartY - fromYClamped);
@@ -426,11 +423,11 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> statusInt = memoryPool.GetBucket<int>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> bottomTextureYLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureYLocation);
-            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             Span<int> bottomTextureXLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureXLocation);
             Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
             Span<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
+            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> portalToClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalClamped);
 
             int width = PixelWidth;
             int wallFromX = renderableWall.XLeft;
@@ -445,32 +442,35 @@ namespace RenderingEngine.Engine
             int lowerTextureStart = lowerTexture.YOffset << 16;
             int textureWidth = lowerTexture.Height;
 
+            lowerTextureStart = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 8, lowerTextureStart >> 1);
+
             int rem = (wallToX - wallFromX) % Vector<int>.Count;
             wallToX -= rem;
 
             Vector<int> lowerTextureStartV = Vector.Create(lowerTextureStart);
+
             Vector<int> wallRenderableV = Vector.Create((int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall));
 
             for (int x = wallFromX; x < wallToX;)
             {
                 Vector<int> statusV = Vector.LoadUnsafe(ref statusInt[x]);
-                Vector<int> floorEndYV = Vector.LoadUnsafe(ref floorEnd[x]);
-                Vector<int> ceilingStartYV = Vector.LoadUnsafe(ref ceilingStart[x]);
                 Vector<int> toYClampedV = Vector.LoadUnsafe(ref clampedTo[x]);
-                Vector<int> textureYPosV = Vector.LoadUnsafe(ref bottomTextureXLocation[x]);
+                Vector<int> textureXPosV = Vector.LoadUnsafe(ref bottomTextureXLocation[x]);
                 Vector<int> textureXIncrV = Vector.LoadUnsafe(ref bottomTextureYLocation[x]);
+
+                Vector<int> wallStartYV = Vector.LoadUnsafe(ref wallStart[x]);
 
                 // Portal Calculation
                 Vector<int> portalToYV = Vector.LoadUnsafe(ref portalTo[x]);
-                Vector<int> portalToYClampedV = Vector.ClampNative(portalToYV, ceilingStartYV, floorEndYV);
-                Vector<int> textureXPosV = textureXIncrV * (portalToYClampedV - portalToYV) + lowerTextureStartV;
+                Vector<int> portalToYClampedV = Vector.LoadUnsafe(ref portalToClamped[x]);
+                Vector<int> textureYPosV = textureXIncrV * (portalToYClampedV - wallStartYV) + lowerTextureStartV;
 
-                bool repeat = (statusV & wallRenderableV) == wallRenderableV && Vector.All(textureYPosV, textureYPosV[0]);
+                bool repeat = (statusV & wallRenderableV) == wallRenderableV && Vector.All(textureXPosV, textureXPosV[0]);
 
                 if (repeat)
                 {
-                    textureXPosV = SharedHelpers.EnsureOffsetIsPositive(Vector.Create(textureWidth << 16), textureXPosV);
-                    int textureYPos = textureYPosV[0];
+                    textureYPosV = SharedHelpers.EnsureOffsetIsPositive(Vector.Create(textureWidth << 16), textureYPosV);
+                    int textureYPos = textureXPosV[0];
                     CalculateAndCacheWallColumn(lowerBuffer, ref lowerTexturePtr, textureYPos, lowerFlipY);
 
                     RenderMultipleWallLinesT(
@@ -479,7 +479,7 @@ namespace RenderingEngine.Engine
                         textureWidth,
                         portalToYClampedV.As<int, uint>(),
                         toYClampedV.As<int, uint>(),
-                        textureXPosV.As<int, uint>(),
+                        textureYPosV.As<int, uint>(),
                         textureXIncrV.As<int, uint>(),
                         ref screenPtr,
                         ref lowerBuffer.Pointer
@@ -500,9 +500,9 @@ namespace RenderingEngine.Engine
 
                     int portalToYClamped = portalToYClampedV[i];
                     int toYClamped = toYClampedV[i];
-                    int textureXPos = textureXPosV[i];
+                    int textureXPos = textureYPosV[i];
                     int textureXIncr = textureXIncrV[i];
-                    int textureYPos = textureYPosV[i];
+                    int textureYPos = textureXPosV[i];
 
                     textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
@@ -535,15 +535,14 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int floorEndY = floorEnd[x];
-                int ceilingStartY = ceilingStart[x];
                 int toYClamped = clampedTo[x];
                 int portalToY = portalTo[x];
                 int textureYPos = bottomTextureXLocation[x];
                 int textureXIncr = bottomTextureYLocation[x];
+                int wallStartX = wallStart[x];
 
-                int portalToYClamped = Math.Clamp(portalToY, ceilingStartY, floorEndY);                
-                int textureXPos = textureXIncr * (portalToYClamped - portalToY) + lowerTextureStart;
+                int portalToYClamped = portalToClamped[x];
+                int textureXPos = textureXIncr * (portalToYClamped - wallStartX) + lowerTextureStart;
                 textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
                 CalculateAndCacheWallColumn(lowerBuffer, ref lowerTexturePtr, textureYPos, lowerFlipY);
@@ -568,7 +567,11 @@ namespace RenderingEngine.Engine
         {
             RenderableWall wall = renderableWall.Wall;
 
-            PrecalculateWallDistanceShared(renderableWall, sector, wall.UpperTexture!, memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation), memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureYLocation));
+            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation);
+            Span<int> yLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureYLocation);
+            Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
+
+            PrecalculateWallDistanceShared(renderableWall, sector, wall.UpperTexture!, xLocation, yLocation, portalFrom);
         }
 
         private void PrecalculateLowerWallDistance(
@@ -577,12 +580,17 @@ namespace RenderingEngine.Engine
         {
             RenderableWall wall = renderableWall.Wall;
 
-            PrecalculateWallDistanceShared(renderableWall, sector, wall.LowerTexture!, memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureXLocation), memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureYLocation));
+            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureXLocation);
+            Span<int> yLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureYLocation);
+            Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
+
+
+            PrecalculateWallDistanceShared(renderableWall, sector, wall.LowerTexture!, xLocation, yLocation, portalTo);
         }
 
         private void PrecalculateWallDistanceShared(
             RenderablePortalWall renderableWall, Sector sector, TextureInfo textureInfo,
-            scoped Span<int> xLocation, scoped Span<int> yLocation)
+            scoped Span<int> xLocation, scoped Span<int> yLocation, scoped Span<int> portal)
         {
             Span<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
             Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
@@ -592,6 +600,8 @@ namespace RenderingEngine.Engine
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             Span<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
             Span<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
+
+            Span<int> portalClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalClamped);
 
             RenderableWall wall = renderableWall.Wall;
             int wallFromX = renderableWall.XLeft;
@@ -677,12 +687,15 @@ namespace RenderingEngine.Engine
 
                     Vector<int> ceilingStartYV = Vector.LoadUnsafe(ref ceilingStart[x]);
                     Vector<int> floorEndYV = Vector.LoadUnsafe(ref floorEnd[x]);
+                    Vector<int> portalV = Vector.LoadUnsafe(ref portal[x]);
 
-                    Vector<int> clamptedFromYV = Vector.Clamp(wallStartV, ceilingStartYV, floorEndYV);
-                    Vector<int> clamptedToYV = Vector.Clamp(wallEndV, ceilingStartYV, floorEndYV);
+                    Vector<int> clampedFromYV = Vector.ClampNative(wallStartV, ceilingStartYV, floorEndYV);
+                    Vector<int> clampedToYV = Vector.ClampNative(wallEndV, ceilingStartYV, floorEndYV);
+                    Vector<int> clampedPortal = Vector.ClampNative(portalV, ceilingStartYV, floorEndYV);
 
-                    Vector.StoreUnsafe(clamptedFromYV, ref clampedFrom[x]);
-                    Vector.StoreUnsafe(clamptedToYV, ref clampedTo[x]);
+                    Vector.StoreUnsafe(clampedFromYV, ref clampedFrom[x]);
+                    Vector.StoreUnsafe(clampedToYV, ref clampedTo[x]);
+                    Vector.StoreUnsafe(clampedPortal, ref portalClamped[x]);
 
                     cameraRayV += cameraWidthIncrV;
                 }
@@ -717,12 +730,15 @@ namespace RenderingEngine.Engine
 
                 int ceilingStartY = ceilingStart[x];
                 int floorEndY = floorEnd[x];
+                int portalY = portal[x];
 
                 int clamptedFromY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
                 int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
+                int clamptedPortalY = Math.Clamp(portalY, ceilingStartY, floorEndY);
 
                 clampedFrom[x] = clamptedFromY;
                 clampedTo[x] = clamptedToY;
+                portalClamped[x] = clamptedPortalY;
             }
         }
 
