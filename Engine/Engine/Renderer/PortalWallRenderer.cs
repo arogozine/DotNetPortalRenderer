@@ -87,7 +87,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
+            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
@@ -137,11 +137,11 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            ReadOnlySpan<RenderColumnStatus> status = RenderWindowHelper.Status;
-            ReadOnlySpan<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            ReadOnlySpan<int> wallStart = RenderWindowHelper.WallStart;
-            ReadOnlySpan<int> wallEnd = RenderWindowHelper.WallEnd;
-            ReadOnlySpan<int> floorEnd = RenderWindowHelper.FloorEnd;
+            ReadOnlySpan<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            ReadOnlySpan<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            ReadOnlySpan<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            ReadOnlySpan<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            ReadOnlySpan<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             ReadOnlySpan<int> clampedFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedFrom);
 
             int wallFromX = renderableWall.XLeft;
@@ -424,7 +424,6 @@ namespace RenderingEngine.Engine
             Span<int> statusInt = memoryPool.GetBucket<int>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> bottomTextureYLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureYLocation);
             Span<int> bottomTextureXLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureXLocation);
-            Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
             Span<int> clampedTo = memoryPool.GetBucket<int>(MemoryPoolBucket.ClampedTo);
             Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
             Span<int> portalToClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalClamped);
@@ -461,7 +460,6 @@ namespace RenderingEngine.Engine
                 Vector<int> wallStartYV = Vector.LoadUnsafe(ref wallStart[x]);
 
                 // Portal Calculation
-                Vector<int> portalToYV = Vector.LoadUnsafe(ref portalTo[x]);
                 Vector<int> portalToYClampedV = Vector.LoadUnsafe(ref portalToClamped[x]);
                 Vector<int> textureYPosV = textureXIncrV * (portalToYClampedV - wallStartYV) + lowerTextureStartV;
 
@@ -536,12 +534,11 @@ namespace RenderingEngine.Engine
                 }
 
                 int toYClamped = clampedTo[x];
-                int portalToY = portalTo[x];
                 int textureYPos = bottomTextureXLocation[x];
                 int textureXIncr = bottomTextureYLocation[x];
                 int wallStartX = wallStart[x];
-
                 int portalToYClamped = portalToClamped[x];
+
                 int textureXPos = textureXIncr * (portalToYClamped - wallStartX) + lowerTextureStart;
                 textureXPos = SharedHelpers.EnsureOffsetIsPositive(textureWidth << 16, textureXPos);
 
@@ -691,7 +688,7 @@ namespace RenderingEngine.Engine
 
                     Vector<int> clampedFromYV = Vector.ClampNative(wallStartV, ceilingStartYV, floorEndYV);
                     Vector<int> clampedToYV = Vector.ClampNative(wallEndV, ceilingStartYV, floorEndYV);
-                    Vector<int> clampedPortal = Vector.ClampNative(portalV, ceilingStartYV, floorEndYV);
+                    Vector<int> clampedPortal = Vector.ClampNative(portalV, clampedFromYV, clampedToYV);
 
                     Vector.StoreUnsafe(clampedFromYV, ref clampedFrom[x]);
                     Vector.StoreUnsafe(clampedToYV, ref clampedTo[x]);
@@ -734,7 +731,7 @@ namespace RenderingEngine.Engine
 
                 int clamptedFromY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
                 int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
-                int clamptedPortalY = Math.Clamp(portalY, ceilingStartY, floorEndY);
+                int clamptedPortalY = Math.Clamp(portalY, clamptedFromY, clamptedToY);
 
                 clampedFrom[x] = clamptedFromY;
                 clampedTo[x] = clamptedToY;

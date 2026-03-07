@@ -561,7 +561,6 @@ namespace RenderingEngine.Engine
             }
 
             // prepare for the shared vertical window
-            //Vector<uint> textureXPos_uV = Vector.LoadUnsafe(ref textureXPos_u);
             ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, (int)(max_t * width + x));
             ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, (int)(min_b * width + x));
             Vector<uint> textureMaskV = Vector.Create((uint)(textureHeight - 1));
@@ -701,6 +700,7 @@ namespace RenderingEngine.Engine
             scoped ref uint textureBuffer
             )
         {
+            Debug.Assert(endY >= startY);
             ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, startY * width + x);
             ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, endY * width + x);
 

@@ -11,6 +11,120 @@ namespace RenderingEngine.Engine
             return new Vector3(p.X, p.Y, z);
         }
 
+        internal static void FindIntersectionVectorZero(
+            Vector<float> nX, // plane normal
+            Vector<float> nY,
+            Vector<float> nZ,
+            Vector<float> pX, // plane point
+            Vector<float> pY,
+            Vector<float> pZ,
+            Vector<float> linePointZ,
+            Vector<float> lineDirectionX,
+            Vector<float> lineDirectionY,
+            Vector<float> lineDirectionZ,
+            out Vector<float> intersectionX,
+            out Vector<float> intersectionY)
+        {
+            // denominator = dot(lineDirection, planeNormal)
+            Vector<float> denominator = lineDirectionX * nX + lineDirectionY * nY + lineDirectionZ * nZ;
+
+            // pointToPlane = planePoint - linePoint
+            Vector<float> ptpX = pX;
+            Vector<float> ptpY = pY;
+            Vector<float> ptpZ = pZ - linePointZ;
+
+            // numerator = dot(pointToPlane, planeNormal)
+            Vector<float> numerator = ptpX * nX + ptpY * nY + ptpZ * nZ;
+
+            // t = numerator / denominator -- handle small denominators to avoid NaNs/Infs
+            Vector<float> absDen = Vector.Abs(denominator);
+            Vector<float> zeroT = Vector<float>.Zero;
+            Vector<float> t = numerator / denominator;
+
+            // For lanes where denominator is nearly zero set t = 0
+            Vector<int> smallMask = Vector.LessThanOrEqual(absDen, new Vector<float>(1e-8f));
+            t = Vector.ConditionalSelect(smallMask, zeroT, t);
+
+            // intersection = linePoint + lineDirection * t
+            intersectionX = lineDirectionX * t;
+            intersectionY = lineDirectionY * t;
+        }
+
+
+        /// <summary>
+        /// Vectorized variant of <see cref="FindIntersection(Vector3,Vector3,Vector3,Vector3,out Vector3)"/>.
+        /// Computes intersections for a batch of rays described by their start points and directions.
+        /// </summary>
+        internal static void FindIntersectionVector(
+            Vector3 planePoint,
+            Vector3 planeNormal,
+            Vector<float> linePointX,
+            Vector<float> linePointY,
+            Vector<float> linePointZ,
+            Vector<float> lineDirectionX,
+            Vector<float> lineDirectionY,
+            Vector<float> lineDirectionZ,
+            out Vector<float> intersectionX,
+            out Vector<float> intersectionY,
+            out Vector<float> intersectionZ)
+        {
+            // Convert scalar plane data into vectors
+            Vector<float> nX = Vector.Create(planeNormal.X);
+            Vector<float> nY = Vector.Create(planeNormal.Y);
+            Vector<float> nZ = Vector.Create(planeNormal.Z);
+
+            Vector<float> pX = Vector.Create(planePoint.X);
+            Vector<float> pY = Vector.Create(planePoint.Y);
+            Vector<float> pZ = Vector.Create(planePoint.Z);
+
+            // denominator = dot(lineDirection, planeNormal)
+            Vector<float> denominator = lineDirectionX * nX + lineDirectionY * nY + lineDirectionZ * nZ;
+
+            // pointToPlane = planePoint - linePoint
+            Vector<float> ptpX = pX - linePointX;
+            Vector<float> ptpY = pY - linePointY;
+            Vector<float> ptpZ = pZ - linePointZ;
+
+            // numerator = dot(pointToPlane, planeNormal)
+            Vector<float> numerator = ptpX * nX + ptpY * nY + ptpZ * nZ;
+
+            // t = numerator / denominator -- handle small denominators to avoid NaNs/Infs
+            Vector<float> absDen = Vector.Abs(denominator);
+            Vector<float> zeroT = Vector<float>.Zero;
+            Vector<float> t = numerator / denominator;
+
+            // For lanes where denominator is nearly zero set t = 0
+            Vector<int> smallMask = Vector.LessThanOrEqual(absDen, new Vector<float>(1e-8f));
+            t = Vector.ConditionalSelect(smallMask, zeroT, t);
+
+            // intersection = linePoint + lineDirection * t
+            intersectionX = linePointX + lineDirectionX * t;
+            intersectionY = linePointY + lineDirectionY * t;
+            intersectionZ = linePointZ + lineDirectionZ * t;
+        }
+
+        internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalCeil(Sector sector)
+        {
+            Point p3 = sector.Walls[2].R1;
+            Point p2 = sector.Walls[0].R2;
+            Point p1 = sector.Walls[0].R1;
+
+            Debug.Assert(p1 != p2);
+            Debug.Assert(p1 != p3);
+            Debug.Assert(p2 != p3);
+
+            (_, float p3z) = CalculateZAtPoint(sector, p3);
+
+            Vector3 p3v = ToVector3(p3, p3z);
+            Vector3 p2v = ToVector3(p2, sector.Ceil);
+            Vector3 p1v = ToVector3(p1, sector.Ceil);
+
+            Vector3 vec1 = p2v - p1v;
+            Vector3 vec2 = p3v - p1v;
+
+            return (p1v, Vector3.Cross(vec1, vec2));
+        }
+
         internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalFloor(Sector sector)
         {
             Point p3 = sector.Walls[2].R1;
@@ -27,10 +141,8 @@ namespace RenderingEngine.Engine
             Vector3 p2v = ToVector3(p2, sector.Floor);
             Vector3 p1v = ToVector3(p1, sector.Floor);
 
-
             Vector3 vec1 = p2v - p1v;
             Vector3 vec2 = p3v - p1v;
-
 
             return (p1v, Vector3.Cross(vec1, vec2));
         }
@@ -54,7 +166,7 @@ namespace RenderingEngine.Engine
 
             if (MathF.Abs(denominator) < 0.00001f)
             {
-                intersectionPoint = Vector3.Zero;
+                Unsafe.SkipInit(out intersectionPoint);
                 return false;
             }
 

@@ -1,7 +1,6 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.Tooling;
 using System.Numerics;
-using static RenderingEngine.Engine.PortalRenderer;
 
 namespace RenderingEngine.Engine
 {
@@ -111,7 +110,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, ceilingStart, width,
                     x, yCeilV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, doubleSize, null);
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, doubleSize, sector, sector.CeilingSlope.HasValue ? false : null);
             }
         }
 
@@ -211,19 +210,13 @@ namespace RenderingEngine.Engine
                 alignWallYV = Vector.Create(y1);
             }
 
-            SlopeVectors? slopeVectors = null;
-
-            if (sector.Settings.HasFlag(MapSectorSettings.SlopeFloor))
-            {
-                slopeVectors = CalculateSlopeVectors(sector, true);
-            }
-
             Vector<int> xOffSetV = Vector.Create(xOffset);
             Vector<int> yOffSetV = Vector.Create(yOffset);
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
             int length = (sectorToX - sectorFromX);
+
             if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
             {
                 const int canRenderFloorMask = (int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderFloor);
@@ -268,7 +261,7 @@ namespace RenderingEngine.Engine
 
                         RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
                             x, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                            textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector);
+                            textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector, sector.FloorSlope.HasValue ? true : null);
                     }
                 }
 
@@ -296,7 +289,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
                     x, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector);
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector, sector.FloorSlope.HasValue ? true : null);
             }
         }
 
@@ -324,7 +317,8 @@ namespace RenderingEngine.Engine
             bool flipX,
             bool swapXy,
             bool doubleSize,
-            Sector? sector
+            Sector sector,
+            bool? slopeFloor
         )
         {
             int halfHeight = PixelHeight / 2;
@@ -340,46 +334,55 @@ namespace RenderingEngine.Engine
             ref uint screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
             ref readonly uint toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
 
+            Vector3 planePoint, planeNormal;
+            Vector<float> nX, nY, nZ, pX, pY, pZ;
+
+            if (slopeFloor is bool slopeV)
+            {
+                (planePoint, planeNormal) = slopeV ? MathFormulas.CalculatePlaneNormalFloor(sector)
+                    : MathFormulas.CalculatePlaneNormalCeil(sector);
+
+                // Convert scalar plane data into vectors
+                nX = Vector.Create(planeNormal.X);
+                nY = Vector.Create(planeNormal.Y);
+                nZ = Vector.Create(planeNormal.Z);
+                pX = Vector.Create(planePoint.X);
+                pY = Vector.Create(planePoint.Y);
+                pZ = Vector.Create(planePoint.Z);
+            }
+            else
+            {
+                Unsafe.SkipInit(out planePoint);
+                Unsafe.SkipInit(out planeNormal);
+                Unsafe.SkipInit(out nX);
+                Unsafe.SkipInit(out nY);
+                Unsafe.SkipInit(out nZ);
+                Unsafe.SkipInit(out pX);
+                Unsafe.SkipInit(out pY);
+                Unsafe.SkipInit(out pZ);
+            }
+
             while (!Unsafe.AreSame(in screenTex, in toScalePtr))
             {
                 Vector<float> yMapPosR = cameraPosition * incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
-                if (sector is not null && sector.FloorSlope.HasValue)
+                if (slopeFloor is not null)
                 {
                     // starting point (p)
-                    Vector<float> camera_position_x = Vector<float>.Zero;
-                    Vector<float> camera_position_y = Vector<float>.Zero;
                     Vector<float> camera_position_z = pzV;
 
                     // direction vector
-                    var dir_x = camera_position_x - xMapPosR;
-                    var dir_y = camera_position_y - yMapPosR;
-                    var dir_z = camera_position_z - Vector.Create<float>(sector.Floor);
+                    var dir_x = - xMapPosR;
+                    var dir_y = - yMapPosR;
+                    var dir_z = camera_position_z - Vector.Create<float>((bool)slopeFloor ? sector.Floor : sector.Ceil);
 
-                    (var v_x, var v_y, var v_z) = MathFormulas.NormalizeVector(dir_x, dir_y, dir_z);
+                    (dir_x, dir_y, dir_z) = MathFormulas.NormalizeVector(dir_x, dir_y, dir_z);
 
-                    (Vector3 planePoint, Vector3 planeNormal) = MathFormulas.CalculatePlaneNormalFloor(sector);
-
-                    float[] x_test = new float[Vector<float>.Count];
-                    float[] y_test = new float[Vector<float>.Count];
-                    float[] z_test = new float[Vector<float>.Count];
-
-
-                    for (int i = 0; i < Vector<float>.Count; i++)
-                    {
-                        Vector3 linePoint = Vector3.Create(camera_position_x[i], camera_position_y[i], camera_position_z[i]);
-
-                        Vector3 lineDirection = Vector3.Create(v_x[i], v_y[i], v_z[i]);
-                        bool test = MathFormulas.FindIntersection(planePoint, planeNormal, linePoint, lineDirection, out Vector3 intersectionPoint);
-
-                        x_test[i] = intersectionPoint.X;
-                        y_test[i] = intersectionPoint.Y;
-                        z_test[i] = intersectionPoint.Z;
-                    }
-
-                    xMapPosR = Vector.LoadUnsafe(ref x_test[0]);
-                    yMapPosR = Vector.LoadUnsafe(ref y_test[0]);
+                    // Vectorized intersection for the whole vector lane
+                    MathFormulas.FindIntersectionVectorZero(nX, nY, nZ, pX, pY, pZ, camera_position_z,
+                        dir_x, dir_y, dir_z,
+                        out xMapPosR, out yMapPosR);
                 }
 
                 (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
@@ -439,41 +442,22 @@ namespace RenderingEngine.Engine
                 Vector<float> yMapPosR = cameraPosition * incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
-                if (sector is not null && sector.FloorSlope.HasValue)
+                if (slopeFloor is not null)
                 {
-                    // starting point (p)
-                    // Vector<float> camera_position_x = Vector<float>.Zero;
-                    // Vector<float> camera_position_y = Vector<float>.Zero;
                     Vector<float> camera_position_z = pzV;
 
                     // direction vector
                     var dir_x = - xMapPosR;
                     var dir_y = - yMapPosR;
-                    var dir_z = camera_position_z - Vector.Create<float>(sector.Floor);
+                    var dir_z = camera_position_z - Vector.Create<float>((bool)slopeFloor ? sector.Floor : sector.Ceil);
 
-                    (var v_x, var v_y, var v_z) = MathFormulas.NormalizeVector(dir_x, dir_y, dir_z);
+                    (dir_x, dir_y, dir_z) = MathFormulas.NormalizeVector(dir_x, dir_y, dir_z);
 
-                    (Vector3 planePoint, Vector3 planeNormal) = MathFormulas.CalculatePlaneNormalFloor(sector);
-
-                    float[] x_test = new float[Vector<float>.Count];
-                    float[] y_test = new float[Vector<float>.Count];
-                    float[] z_test = new float[Vector<float>.Count];
-
-
-                    for (int i = 0; i < Vector<float>.Count; i++)
-                    {
-                        Vector3 linePoint = Vector3.Create(0f, 0f, camera_position_z[i]);
-
-                        Vector3 lineDirection = Vector3.Create(v_x[i], v_y[i], v_z[i]);
-                        bool test = MathFormulas.FindIntersection(planePoint, planeNormal, linePoint, lineDirection, out Vector3 intersectionPoint);
-
-                        x_test[i] = intersectionPoint.X;
-                        y_test[i] = intersectionPoint.Y;
-                        z_test[i] = intersectionPoint.Z;
-                    }
-
-                    xMapPosR = Vector.LoadUnsafe(ref x_test[0]);
-                    yMapPosR = Vector.LoadUnsafe(ref y_test[0]);
+                    // Vectorized intersection for the remainder lanes
+                    MathFormulas.FindIntersectionVectorZero(nX, nY, nZ, pX, pY, pZ,
+                        camera_position_z,
+                        dir_x, dir_y, dir_z,
+                        out xMapPosR, out yMapPosR);
                 }
 
                 (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
@@ -524,40 +508,6 @@ namespace RenderingEngine.Engine
                     screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
                 }
             }
-        }
-
-        internal sealed class SlopeVectors {
-            public required Vector<float> Dx { get; init; }
-            public required Vector<float> Dy { get; init; }
-            public required Vector<float> Distance { get; init; }
-            public required Vector<float> X { get; init; }
-            public required Vector<float> Y { get; init; }
-            public required Vector<float> Slope { get; init; }
-            public required Vector<float> SectorZ { get; init; }
-        };
-
-        internal static SlopeVectors CalculateSlopeVectors (Sector sector, bool floor)
-        {
-
-            Vector<float> x, y, dx, dy, distance, slope, sectorZ;
-
-            slope = Vector.Create(floor ? (sector.FloorSlope ?? 0f) : (sector.CeilingSlope ?? 0f));
-            sectorZ = Vector.Create(floor ? (float)sector.Floor : sector.Ceil);
-
-            // PointA and PointB of first line
-            RenderableWall firstWall = sector.Walls[0];
-            Point pointA = firstWall.R1;
-            Point pointB = firstWall.R2;
-
-            x = Vector.Create(pointA.X);
-            y = Vector.Create(pointA.Y);
-
-            dx = Vector.Create(pointB.X) - x;
-            dy = Vector.Create(pointB.Y) - y;
-
-            distance = Vector.SquareRoot(dx * dx + dy * dy);
-
-            return new SlopeVectors { Slope = slope, Distance = distance, Dx = dx, Dy = dy, X = x, Y = y, SectorZ = sectorZ };
         }
 
         internal static (float FloorZ, float CeilingZ) CalculateZAtPoint(Sector sector, Point point)
