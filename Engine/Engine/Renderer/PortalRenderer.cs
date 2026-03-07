@@ -437,8 +437,8 @@ namespace RenderingEngine.Engine
                         RenderableWall wall = renderableWall.Wall;
 
                         bool wallDrawn = wall.IsPortal ?
-                            DrawPortalWall(player, sector, sectors, renderableWall) :
-                            DrawBasicWall(player, sector, renderableWall);
+                            DrawPortalWall(player, sectors, renderableWall) :
+                            DrawBasicWall(player, renderableWall);
 
                         if (wallDrawn && wall.IsPortal)
                         {

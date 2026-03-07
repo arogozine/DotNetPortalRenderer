@@ -4,28 +4,89 @@ namespace RenderingEngine.Tooling
 {
     internal enum MemoryPoolBucket
     {
-        // Generated once per window size
+        /// <summary>
+        /// Generated once per window size
+        /// </summary>
         AngleCache,
-        // Generated once per window size
+        /// <summary>
+        /// Generated once per window size
+        /// </summary>
         CameraHeightToMapYPos,
-        // Generated once per window size
+        /// <summary>
+        /// Generated once per window size
+        /// </summary>
         XMapPosMultiplierCache,
+        /// <summary>
+        /// Rendering / rendered status of each column
+        /// </summary>
         RenderColumnStatus,
+        /// <summary>
+        /// Portal Start (Ceiling is rendered between CeilingStart - WallStart)
+        /// </summary>
         CeilingStart,
+        /// <summary>
+        /// Where to start rendering a wall
+        /// </summary>
         WallStart,
+        /// <summary>
+        /// Where to end rendering a wall
+        /// </summary>
         WallEnd,
+        /// <summary>
+        /// Portal End (Floor is rendered between WallEnd - FloorEnd)
+        /// </summary>
         FloorEnd,
+        /// <summary>
+        /// Z Distance for Sprite Rendering
+        /// </summary>
         Distance,
+        /// <summary>
+        /// Texture Column to Render. Top (or non-portal) wall.
+        /// </summary>
         TopTextureXLocation,
+        /// <summary>
+        /// Texture Column to Render. Bottom portal wall.
+        /// </summary>
         BottomTextureXLocation,
-        TopTextureYLocation,
-        BottomTextureYLocation,
-        ClampedFrom,
-        ClampedTo,
+        /// <summary>
+        /// Top (or non-portal) Wall Texture Y Increment
+        /// </summary>
+        TopTextureYIncrement,
+        /// <summary>
+        /// Bottom (portal wall) Wall Texture Y Increment
+        /// </summary>
+        BottomTextureYIncrement,
+        /// <summary>
+        /// WallStart clamped to [CeilingStart, FloorEnd]
+        /// </summary>
+        WallStartClamped,
+        /// <summary>
+        /// WallEnd clamped to [CeilingStart, FloorEnd]
+        /// </summary>
+        WallEndClamped,
+        /// <summary>
+        /// Portal Top Window. Between [WallStart, WallEnd]
+        /// </summary>
         PortalFrom,
+        /// <summary>
+        /// Portal Bottom Window. Between [WallStart, WallEnd]
+        /// </summary>
         PortalTo,
-        TextureXPos,
-        PortalClamped,
+        /// <summary>
+        /// Calculated Texture Horizontal Position
+        /// </summary>
+        StartingYTexturePosition,
+        /// <summary>
+        /// PortalFrom Clamped Between [WallStartClamped, WallEndClamped]
+        /// </summary>
+        PortalFromClamped,
+        /// <summary>
+        /// PortalTo Clamped Between [WallStartClamped, WallEndClamped]
+        /// </summary>
+        PortalToClamped,
+        /// <summary>
+        /// Screen Buffer
+        /// </summary>
         Buffer
     }
 
