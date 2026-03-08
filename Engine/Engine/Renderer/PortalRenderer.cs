@@ -469,6 +469,10 @@ namespace RenderingEngine.Engine
             Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
             Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
 
+            Span<RenderColumnStatus> renderStatus = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+
             (int offset, int wallFromX, int wallToX) = RenderWindowHelper.GetWallRenderWindowX();
 
             RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo2(sectors, wall, offset);
@@ -560,7 +564,7 @@ namespace RenderingEngine.Engine
                 wallStart[x] = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
                 wallEnd[x] = wallEndYInt;
 
-                status |= RenderWindowHelper.RecalculateRenderWindow(x, true);
+                status |= RenderWindowHelper.RecalculateRenderWindow(x, true, renderStatus, ceilingStart, floorEnd, wallStart, wallEnd);
 
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;

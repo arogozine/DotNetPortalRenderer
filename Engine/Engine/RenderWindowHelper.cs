@@ -38,20 +38,35 @@ namespace RenderingEngine.Engine
 
         public void NewRender()
         {
-            Status.Fill(RenderColumnStatus.NewRender);
-            CeilingStart.Clear();
-            FloorEnd.Fill(height - 1);
-            WallEnd.Fill(height - 1);
-            Distance.Fill(float.MaxValue);
+            Span<RenderColumnStatus> status = alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            Span<int> ceilingStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> floorEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            Span<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<int> wallStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<float> distance = alignedMemoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
+
+            status.Fill(RenderColumnStatus.NewRender);
+            ceilingStart.Clear();
+            wallStart.Clear();
+            floorEnd.Fill(height - 1);
+            wallEnd.Fill(height - 1);
+            distance.Fill(float.MaxValue);
         }
 
         public RenderColumnStatus NewDepth()
         {
+            Span<RenderColumnStatus> status = alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            Span<int> ceilingStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> wallStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<int> floorEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+
+
             RenderColumnStatus renderColumnStatus = default;
 
             for (int i = 0; i < this.width; i++)
             {
-                RenderColumnStatus columnStatus = Status[i];
+                RenderColumnStatus columnStatus = status[i];
 
                 if (columnStatus.IsFinished)
                 {
@@ -59,12 +74,12 @@ namespace RenderingEngine.Engine
                 }
                 else if (columnStatus.IsCalculated)
                 {
-                    columnStatus = RecalculateRenderWindow(i, false);
+                    columnStatus = RecalculateRenderWindow(i, false, status, ceilingStart, floorEnd, wallStart, wallEnd);
                 }
                 else
                 {
                     columnStatus = RenderColumnStatus.FinishedRendering;
-                    Status[i] = RenderColumnStatus.FinishedRendering;
+                    status[i] = RenderColumnStatus.FinishedRendering;
                 }
 
                 renderColumnStatus |= columnStatus;
@@ -88,13 +103,21 @@ namespace RenderingEngine.Engine
             return (portalFromYClamped, portalToYClamped);
         }
 
-        public RenderColumnStatus RecalculateRenderWindow(int x, bool calculated)
+        public static RenderColumnStatus RecalculateRenderWindow(
+            int x,
+            bool calculated,
+            Span<RenderColumnStatus> Status,
+            Span<int> CeilingStart,
+            Span<int> FloorEnd,
+            Span<int> WallStart,
+            Span<int> WallEnd
+            )
         {
             RenderColumnStatus status;
-            int ceilingStart = this.CeilingStart[x];
-            int floorEnd = this.FloorEnd[x];
-            int wallStart = this.WallStart[x];
-            int wallEnd = this.WallEnd[x];
+            int ceilingStart = CeilingStart[x];
+            int floorEnd = FloorEnd[x];
+            int wallStart = WallStart[x];
+            int wallEnd = WallEnd[x];
 
             bool windowExists = ceilingStart < floorEnd;
 
@@ -134,7 +157,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            this.Status[x] = status;
+            Status[x] = status;
             return status;
         }
 

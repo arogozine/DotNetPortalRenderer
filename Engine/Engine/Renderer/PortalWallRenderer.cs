@@ -12,10 +12,10 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            Span<int> ceilingStart = RenderWindowHelper.CeilingStart;
-            Span<int> floorEnd = RenderWindowHelper.FloorEnd;
-            Span<float> distance = RenderWindowHelper.Distance;
+            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            Span<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
 
