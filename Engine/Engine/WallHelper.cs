@@ -511,17 +511,16 @@ namespace RenderingEngine.Engine
                 wall.C1 = new(rx1, ry1);
                 wall.C2 = new(rx2, ry2);
 
-                (float yFloorA, float yCeilA, float yFloorB, float yCeilB) = MathFormulas.Test2(wall.Sector, wall, false);
+                float sectorCeil = wall.Sector.Ceil;
+                float sectorFloor = wall.Sector.Floor;
 
-                yFloorA -= pz;
-                yCeilA -= pz;
-                yFloorB -= pz;
-                yCeilB -= pz;
+                sectorFloor -= pz;
+                sectorCeil -= pz;
 
-                yLeftCeil = halfHeight - (yCeilA / ry1 - yaw) * height;
-                yLeftFloor = halfHeight - (yFloorA / ry1 - yaw) * height;
-                yRightCeil = halfHeight - (yCeilB / ry2 - yaw) * height;
-                yRightFloor = halfHeight - (yFloorB / ry2 - yaw) * height;
+                yLeftCeil = halfHeight - (sectorCeil / ry1 - yaw) * height;
+                yLeftFloor = halfHeight - (sectorFloor / ry1 - yaw) * height;
+                yRightCeil = halfHeight - (sectorCeil / ry2 - yaw) * height;
+                yRightFloor = halfHeight - (sectorFloor / ry2 - yaw) * height;
 
                 wall.XLeft = float.ConvertToIntegerNative<int>(xLeft);
                 wall.XRight = float.ConvertToIntegerNative<int>(xRight);
@@ -529,6 +528,35 @@ namespace RenderingEngine.Engine
                 wall.YLeftFloor = float.ConvertToIntegerNative<int>(yLeftFloor);
                 wall.YRightCeil = float.ConvertToIntegerNative<int>(yRightCeil);
                 wall.YRightFloor = float.ConvertToIntegerNative<int>(yRightFloor);
+
+                //if (wall.Sector.CeilingSlope is not null)
+                {
+                    (float yFloorA, float yCeilA, float yFloorB, float yCeilB) = MathFormulas.CalculateSlopedFloorCeiling(wall.Sector, wall, false);
+
+                    yFloorA -= pz;
+                    yCeilA -= pz;
+                    yFloorB -= pz;
+                    yCeilB -= pz;
+
+                    yLeftCeil = halfHeight - (yCeilA / ry1 - yaw) * height;
+                    yLeftFloor = halfHeight - (yFloorA / ry1 - yaw) * height;
+                    yRightCeil = halfHeight - (yCeilB / ry2 - yaw) * height;
+                    yRightFloor = halfHeight - (yFloorB / ry2 - yaw) * height;
+
+                    wall.YLeftCeilSloped = float.ConvertToIntegerNative<int>(yLeftCeil);
+                    wall.YLeftFloorSloped = float.ConvertToIntegerNative<int>(yLeftFloor);
+                    wall.YRightCeilSloped = float.ConvertToIntegerNative<int>(yRightCeil);
+                    wall.YRightFloorSloped = float.ConvertToIntegerNative<int>(yRightFloor);
+                }
+                /*
+                else
+                {
+                    wall.YLeftCeilSloped = wall.YLeftCeil;
+                    wall.YRightCeilSloped = wall.YRightCeil;
+                    wall.YLeftFloorSloped = wall.YLeftFloor;
+                    wall.YRightFloorSloped = wall.YRightFloor;
+                }
+                */
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

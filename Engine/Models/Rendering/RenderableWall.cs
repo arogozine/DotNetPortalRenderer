@@ -39,6 +39,10 @@ namespace RenderingEngine.Models
         public int YLeftFloor { get; set; }
         public int YRightCeil { get; set; }
         public int YRightFloor { get; set; }
+        public int YLeftCeilSloped { get; set; }
+        public int YLeftFloorSloped { get; set; }
+        public int YRightCeilSloped { get; set; }
+        public int YRightFloorSloped { get; set; }
         public float Length { get; set; }
         public int Bunch { get; set; } = EngineConstants.Unset;
 

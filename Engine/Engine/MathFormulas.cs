@@ -201,7 +201,7 @@ namespace RenderingEngine.Engine
             Unsafe.SkipInit(out distanceX);
             Unsafe.SkipInit(out distanceY);
 
-            float denominator = MathF.FusedMultiplyAdd(rayDirX, d2y, - d2x);
+            float denominator = MathF.FusedMultiplyAdd(rayDirX, d2y, -d2x);
 
             if (MathF.Abs(denominator) < float.Epsilon)
             {
@@ -215,7 +215,7 @@ namespace RenderingEngine.Engine
                 return false;
             }
 
-            float t = MathF.FusedMultiplyAdd(rx1, d2y, - ry1 * d2x) / denominator;
+            float t = MathF.FusedMultiplyAdd(rx1, d2y, -ry1 * d2x) / denominator;
 
             if (t < 0f)
             {
@@ -236,7 +236,7 @@ namespace RenderingEngine.Engine
             float ry1 = wall.R1.Y;
             float d2x = wall.R2.X - rx1;
             float d2y = wall.R2.Y - ry1;
-            float t1 = MathF.FusedMultiplyAdd(rx1, d2y, - ry1 * d2x);
+            float t1 = MathF.FusedMultiplyAdd(rx1, d2y, -ry1 * d2x);
             float cameraRay = -1f;
             cameraRay += cameraWidthIncr * wallFromX;
 
@@ -252,7 +252,7 @@ namespace RenderingEngine.Engine
         {
             bool flipped = flipX ? !sprite.Flipped : sprite.Flipped;
 
-            float denominator = MathF.FusedMultiplyAdd(cameraRay, d2y, - d2x);
+            float denominator = MathF.FusedMultiplyAdd(cameraRay, d2y, -d2x);
             float fromToYDist = t1 / denominator;
             float fromToXDist = fromToYDist * cameraRay;
 
@@ -267,7 +267,7 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (float X, float Y) CalculateRayIntersection(float cameraRay, float t1, float d2y, float d2x)
         {
-            float denominator = MathF.FusedMultiplyAdd(cameraRay, d2y, - d2x);
+            float denominator = MathF.FusedMultiplyAdd(cameraRay, d2y, -d2x);
             float fromToYDist = t1 / denominator;
             float fromToXDist = fromToYDist * cameraRay;
 
@@ -277,7 +277,7 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (Vector<float> X, Vector<float> Y) CalculateRayIntersection(Vector<float> cameraRay, Vector<float> t1, Vector<float> d2y, Vector<float> d2x)
         {
-            Vector<float> denominator = Vector.FusedMultiplyAdd(cameraRay, d2y, - d2x);
+            Vector<float> denominator = Vector.FusedMultiplyAdd(cameraRay, d2y, -d2x);
             Vector<float> fromToYDist = t1 / denominator;
             Vector<float> fromToXDist = fromToYDist * cameraRay;
 
@@ -360,7 +360,7 @@ namespace RenderingEngine.Engine
             public required float CeilZIncrament { get; init; }
         }
 
-        internal static (float floorZ_a, float ceilingZ_a, float floorZ_b, float ceilingZ_b) Test2(Sector sector, RenderableWall parentWall, bool flipped)
+        internal static (float floorZ_a, float ceilingZ_a, float floorZ_b, float ceilingZ_b) CalculateSlopedFloorCeiling(Sector sector, RenderableWall parentWall, bool flipped)
         {
 
             flipped = flipped ? !parentWall.Flipped : parentWall.Flipped;
@@ -371,7 +371,7 @@ namespace RenderingEngine.Engine
             return (floorZ_a, ceilingZ_a, floorZ_b, ceilingZ_b);
         }
 
-        internal static FloorCeilSlope Test(Sector sector, RenderableWall parentWall, int wallFromXOffset, bool flipped)
+        internal static FloorCeilSlope CalculateFloorCeilingSlope(Sector sector, RenderableWall parentWall, int wallFromXOffset, bool flipped)
         {
 
             flipped = flipped ? !parentWall.Flipped : parentWall.Flipped;
@@ -398,7 +398,8 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            return new FloorCeilSlope {
+            return new FloorCeilSlope
+            {
                 CeilZ = ceilingZ_a,
                 FloorZ = floorZ_a,
                 CeilZIncrament = ceilingSlopeIncr,
@@ -414,6 +415,13 @@ namespace RenderingEngine.Engine
 
             float wallEndY = wall.YLeftFloor;
             float floorDistIncr = (wall.YRightFloor - wallEndY) / wallLengthX;
+
+            float wallStartYSloped = wall.YLeftCeilSloped;
+            float ceilDistIncrSloped = (wall.YRightCeilSloped - wallStartYSloped) / wallLengthX;
+
+            float wallEndYSloped = wall.YLeftFloorSloped;
+            float floorDistIncrSloped = (wall.YRightFloorSloped - wallEndYSloped) / wallLengthX;
+
 
             float? portalFromStartY = null, portalToStartY = null;
             float? portalFromIncr = null, portalToIncr = null;
@@ -474,6 +482,12 @@ namespace RenderingEngine.Engine
 
             if (wallFromXOffset != 0)
             {
+                wallEndYSloped += wallFromXOffset * floorDistIncrSloped;
+                wallStartYSloped += wallFromXOffset * ceilDistIncrSloped;
+            }
+
+            if (wallFromXOffset != 0)
+            {
                 wallEndY += wallFromXOffset * floorDistIncr;
                 wallStartY += wallFromXOffset * ceilDistIncr;
             }
@@ -484,6 +498,13 @@ namespace RenderingEngine.Engine
                 WallEndY = wallEndY,
                 CeilDistIncr = ceilDistIncr,
                 FloorDistIncr = floorDistIncr,
+
+                WallStartYSloped = wallStartYSloped,
+                WallEndYSloped = wallEndYSloped,
+                CeilDistIncrSloped = ceilDistIncrSloped,
+                FloorDistIncrSloped = floorDistIncrSloped,
+
+
                 PortalStartY = portalFromStartY,
                 PortalEndY = portalToStartY,
                 PortalStartIncr = portalFromIncr,
@@ -511,8 +532,11 @@ namespace RenderingEngine.Engine
                 WallStartY = wallStartY,
                 WallEndY = wallEndY,
                 CeilDistIncr = ceilDistIncr,
-                FloorDistIncr = floorDistIncr
-
+                FloorDistIncr = floorDistIncr,
+                FloorDistIncrSloped = 0,
+                CeilDistIncrSloped = 0,
+                WallStartYSloped = 0,
+                WallEndYSloped = 0
             };
         }
 
@@ -536,7 +560,11 @@ namespace RenderingEngine.Engine
                 WallStartY = wallStartY,
                 WallEndY = wallEndY,
                 CeilDistIncr = ceilDistIncr,
-                FloorDistIncr = floorDistIncr
+                FloorDistIncr = floorDistIncr,
+                WallStartYSloped = 0,
+                WallEndYSloped = 0,
+                CeilDistIncrSloped = 0,
+                FloorDistIncrSloped = 0
             };
         }
 

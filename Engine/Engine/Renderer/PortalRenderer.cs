@@ -464,12 +464,15 @@ namespace RenderingEngine.Engine
                 return default;
             }
 
+            Span<RenderColumnStatus> renderStatus = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+
             Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
             Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
+            Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
             Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
             Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
 
-            Span<RenderColumnStatus> renderStatus = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
@@ -480,6 +483,10 @@ namespace RenderingEngine.Engine
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float wallEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
+            float wallStartYClamped = yPlaneInfo.WallStartYSloped;
+            float ceilDistIncrSloped = yPlaneInfo.CeilDistIncrSloped;
+            float wallEndYClamped = yPlaneInfo.WallEndYSloped;
+            float floorDistIncrSloped = yPlaneInfo.FloorDistIncrSloped;
             float? portalStartY = yPlaneInfo.PortalStartY;
             float? portalEndY = yPlaneInfo.PortalEndY;
             float? portalStartIncr = yPlaneInfo.PortalStartIncr;
@@ -504,7 +511,7 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
+                RenderColumnStatus columnStatus = renderStatus[x];
 
                 // we already have a different wall rendering in front of this one
                 if (columnStatus.IsCalculated || columnStatus.IsFinished)
@@ -526,6 +533,8 @@ namespace RenderingEngine.Engine
                     renderableFromX = x;
                     wallStartY += ceilDistIncr;
                     wallEndY += floorDistIncr;
+                    wallStartYClamped += ceilDistIncrSloped;
+                    wallEndYClamped += floorDistIncrSloped;
                     wallStatus |= status;
                     status = default;
 
@@ -560,14 +569,20 @@ namespace RenderingEngine.Engine
 
                 int wallStartYInt = float.ConvertToIntegerNative<int>(wallStartY);
                 int wallEndYInt = float.ConvertToIntegerNative<int>(wallEndY);
+                int wallStartYClampedInt = float.ConvertToIntegerNative<int>(wallStartYClamped);
+                int wallEndYClampedInt = float.ConvertToIntegerNative<int>(wallEndYClamped);
 
-                wallStart[x] = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
-                wallEnd[x] = wallEndYInt;
+                wallStartClamped[x] = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
+                wallEndClamped[x] = wallEndYInt;
+                wallStart[x] = upperWallIsSkybox ? wallEndYClampedInt : wallStartYClampedInt;
+                wallEnd[x] = wallEndYClampedInt;
 
                 status |= RenderWindowHelper.RecalculateRenderWindow(x, true, renderStatus, ceilingStart, floorEnd, wallStart, wallEnd);
 
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;
+                wallStartYClamped += ceilDistIncrSloped;
+                wallEndYClamped += floorDistIncrSloped;
 
                 if (sloped)
                 {

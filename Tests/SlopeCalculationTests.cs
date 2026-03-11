@@ -41,14 +41,14 @@ namespace Tests
                 Assert.Equal(upperFloorHeight, float.Ceiling(FloorZB));
 
 
-                MathFormulas.FloorCeilSlope test = MathFormulas.Test(slopedSector, touchingWall, 0, false);
+                MathFormulas.FloorCeilSlope test = MathFormulas.CalculateFloorCeilingSlope(slopedSector, touchingWall, 0, false);
                 Assert.Equal(0, test.CeilZIncrament);
                 Assert.Equal(0, test.FloorZIncrament);
                 Assert.Equal(upperFloorHeight, float.Ceiling(test.FloorZ));
                 Assert.Equal(lowerCeilHeight, float.Ceiling(test.CeilZ));
 
 
-                (float floorZ_a, float ceilingZ_a, float floorZ_b, float ceilingZ_b) = MathFormulas.Test2(slopedSector, touchingWall, true);
+                (float floorZ_a, float ceilingZ_a, float floorZ_b, float ceilingZ_b) = MathFormulas.CalculateSlopedFloorCeiling(slopedSector, touchingWall, true);
                 Assert.Equal(floorZ_a, floorZ_b);
                 Assert.Equal(ceilingZ_a, ceilingZ_b);
 
@@ -77,13 +77,13 @@ namespace Tests
                 Assert.Equal(float.Ceiling(FloorZA), float.Ceiling(FloorZB));
                 Assert.Equal(lowerFloorHeight, float.Ceiling(FloorZB));
 
-                MathFormulas.FloorCeilSlope test = MathFormulas.Test(slopedSector, touchingWall, 0, false);
+                MathFormulas.FloorCeilSlope test = MathFormulas.CalculateFloorCeilingSlope(slopedSector, touchingWall, 0, false);
                 Assert.Equal(0, test.CeilZIncrament);
                 Assert.Equal(0, test.FloorZIncrament);
                 Assert.Equal(lowerFloorHeight, float.Ceiling(test.FloorZ));
                 Assert.Equal(lowerCeilHeight, float.Ceiling(test.CeilZ));
 
-                (float floorZ_a, float ceilingZ_a, float floorZ_b, float ceilingZ_b) = MathFormulas.Test2(slopedSector, touchingWall, true);
+                (float floorZ_a, float ceilingZ_a, float floorZ_b, float ceilingZ_b) = MathFormulas.CalculateSlopedFloorCeiling(slopedSector, touchingWall, true);
                 Assert.Equal(lowerFloorHeight, float.Ceiling(floorZ_a));
                 Assert.Equal(lowerFloorHeight, float.Ceiling(floorZ_b));
                 Assert.Equal(lowerCeilHeight, float.Ceiling(ceilingZ_a));
@@ -110,7 +110,7 @@ namespace Tests
                 Assert.Equal(upperFloorHeight, float.Ceiling(FloorZB));
                 Assert.Equal(lowerFloorHeight, float.Ceiling(FloorZA));
 
-                var test = MathFormulas.Test(slopedSector, slopedWall, 0, false);
+                var test = MathFormulas.CalculateFloorCeilingSlope(slopedSector, slopedWall, 0, false);
                 Assert.Equal(0, test.CeilZIncrament);
                 Assert.NotEqual(0, test.FloorZIncrament);
                 Assert.Equal(lowerFloorHeight, float.Ceiling(test.FloorZ));
@@ -119,7 +119,7 @@ namespace Tests
                 float floorZUpper = test.FloorZ + test.FloorZIncrament * (slopedWall.XRight - slopedWall.XLeft);
                 Assert.Equal(upperFloorHeight, float.Ceiling(floorZUpper));
 
-                (float floorZ_a, float ceilingZ_a, float floorZ_b, float ceilingZ_b) = MathFormulas.Test2(slopedSector, slopedWall, true);
+                (float floorZ_a, float ceilingZ_a, float floorZ_b, float ceilingZ_b) = MathFormulas.CalculateSlopedFloorCeiling(slopedSector, slopedWall, true);
                 Assert.NotEqual(floorZ_a, floorZ_b);
                 Assert.Equal(lowerCeilHeight, float.Ceiling(ceilingZ_a));
                 Assert.Equal(lowerCeilHeight, float.Ceiling(ceilingZ_b));
@@ -308,7 +308,7 @@ namespace Tests
             slopedSector.Walls.Add(ParseWallType(54, 54, in wall54, in wall55, in wall55));
             slopedSector.Walls.Add(ParseWallType(55, 55, in wall55, in wall56, in wall56));
             slopedSector.Walls.Add(ParseWallType(56, 51, in wall56, in wall51, in wall51));
-        
+
             return (MapLoader.ParseMapSector(slopedSector), MapLoader.ParseMapSector(upperSector));
         }
 
