@@ -233,10 +233,10 @@ namespace RenderingEngine.Engine
 
         private void PopulateSpriteCacheForRenderDepth(RenderableAreaAndZBuffer spriteCache)
         {
-            RenderWindowHelper.WallStart.CopyTo(spriteCache.WallStart);
-            RenderWindowHelper.WallEnd.CopyTo(spriteCache.WallEnd);
-            RenderWindowHelper.Distance.CopyTo(spriteCache.Depth);
-            RenderWindowHelper.Status.CopyTo(spriteCache.ColumnStatus);
+            memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart).CopyTo(spriteCache.WallStart);
+            memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd).CopyTo(spriteCache.WallEnd);
+            memoryPool.GetBucket<float>(MemoryPoolBucket.Distance).CopyTo(spriteCache.Depth);
+            memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus).CopyTo(spriteCache.ColumnStatus);
 
             Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);

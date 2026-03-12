@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using RenderingEngine.Tooling;
 using System.Numerics;
 
 namespace RenderingEngine.Engine
@@ -9,6 +10,10 @@ namespace RenderingEngine.Engine
         {
             const float oneOverTwoPi = 1f / (2 * MathF.PI);
 
+            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+
             int width = PixelWidth;
             int height = PixelHeight;
             float viewAngle = player.Angle;
@@ -17,7 +22,7 @@ namespace RenderingEngine.Engine
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(false, sector.CeilingShade));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
-            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(Tooling.MemoryPoolBucket.AngleCache);
+            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
@@ -48,19 +53,19 @@ namespace RenderingEngine.Engine
 
                 int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
-                int wallStart = RenderWindowHelper.WallStart[x];
-                int ceilingStart = RenderWindowHelper.CeilingStart[x];
-                int floorEnd = RenderWindowHelper.FloorEnd[x];
-                int wallStartClamped = Math.Clamp(wallStart, ceilingStart, floorEnd);
+                int wallStartY = wallStart[x];
+                int ceilingStartY = ceilingStart[x];
+                int floorEndY = floorEnd[x];
+                int wallStartClampedY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
 
-                int rem = (wallStartClamped - ceilingStart) % Vector<int>.Count;
-                wallStartClamped -= rem;
+                int rem = (wallStartClampedY - ceilingStartY) % Vector<int>.Count;
+                wallStartClampedY -= rem;
 
-                ref BGRA screenColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * ceilingStart);
-                ref BGRA screenEndColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * wallStartClamped);
+                ref BGRA screenColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * ceilingStartY);
+                ref BGRA screenEndColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * wallStartClampedY);
                 ref BGRA textureColumnPtr = ref Unsafe.Add(ref ceilingTexturePtr, texX);
 
-                int vScreen = ceilingStart * yTextureIncr;
+                int vScreen = ceilingStartY * yTextureIncr;
                 Vector<int> vScreenV = Vector.Create(vScreen) + incramentVector;
 
                 for (; !Unsafe.AreSame(ref screenColumnPtr, ref screenEndColumnPtr); vScreenV += ivIncrF)
@@ -95,10 +100,10 @@ namespace RenderingEngine.Engine
         {
             const float oneOverTwoPi = 1f / (2 * MathF.PI);
 
-            ReadOnlySpan<RenderColumnStatus> statusSpan = RenderWindowHelper.Status;
-            ReadOnlySpan<int> wallStartSpan = RenderWindowHelper.WallStart;
-            ReadOnlySpan<int> ceilingStartSpan = RenderWindowHelper.CeilingStart;
-            ReadOnlySpan<int> floorEndSpan = RenderWindowHelper.FloorEnd;
+            ReadOnlySpan<RenderColumnStatus> statusSpan = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            ReadOnlySpan<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            ReadOnlySpan<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            ReadOnlySpan<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
             int width = PixelWidth;
             int height = PixelHeight;
@@ -108,7 +113,7 @@ namespace RenderingEngine.Engine
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
             ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(false, sector.FloorShade));
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
-            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(Tooling.MemoryPoolBucket.AngleCache);
+            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 

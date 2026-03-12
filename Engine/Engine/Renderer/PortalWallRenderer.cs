@@ -13,9 +13,12 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
 
             Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             Span<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
+            Span<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
 
@@ -28,9 +31,16 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                (int portalFromYClamped, int portalToYClamped) = RenderWindowHelper.GetClampedWallFromTo(x);
+                int ceilingStart = ceilingStartSpan[x];
+                int wallStartY = wallStartSpan[x];
+                int wallEndY = wallEndSpan[x];
+                int floorEndY = floorEndSpan[x];
+
+                int portalFromYClamped = Math.Clamp(wallStartY, ceilingStart, floorEndY);
+                int portalToYClamped = Math.Clamp(wallEndY, ceilingStart, floorEndY);
+
                 distance[x] = MathFormulas.CalculateDistance2(cameraRay, t1, d2y, d2x);
-                ceilingStart[x] = portalFromYClamped;
+                ceilingStartSpan[x] = portalFromYClamped;
                 floorEnd[x] = portalToYClamped;
                 status[x] ^= RenderColumnStatus.CanRenderWall;
             }
@@ -61,6 +71,11 @@ namespace RenderingEngine.Engine
             if (renderUpper)
             {
                 TextureInfo upperTexture = wall.UpperTexture!;
+
+
+                CalculateRenderWindow2(true, renderableWall, upperTexture);
+
+
                 PrecalculateUpperWallDistance(renderableWall);
 
                 if (upperTexture.RenderingOptions.IsSkybox)
@@ -76,6 +91,10 @@ namespace RenderingEngine.Engine
             if (renderLower)
             {
                 TextureInfo lowerTexture = wall.LowerTexture!;
+
+                CalculateRenderWindow2(false, renderableWall, lowerTexture);
+
+
                 PrecalculateLowerWallDistance(renderableWall);
 
                 if (lowerTexture.RenderingOptions.IsSkybox)

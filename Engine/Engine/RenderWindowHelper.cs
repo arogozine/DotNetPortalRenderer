@@ -9,10 +9,6 @@ namespace RenderingEngine.Engine
         private readonly int height;
 
         public Span<RenderColumnStatus> Status => alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-        public Span<int> CeilingStart => alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-        public Span<int> WallStart => alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
-        public Span<int> WallEnd => alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
-        public Span<int> FloorEnd => alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
         public Span<float> Distance => alignedMemoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
 
         private int sectorFromX;
@@ -56,10 +52,10 @@ namespace RenderingEngine.Engine
         public RenderColumnStatus NewDepth()
         {
             Span<RenderColumnStatus> status = alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            Span<int> ceilingStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> wallStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
-            Span<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
-            Span<int> floorEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            ReadOnlySpan<int> ceilingStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            ReadOnlySpan<int> wallStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            ReadOnlySpan<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            ReadOnlySpan<int> floorEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
 
             RenderColumnStatus renderColumnStatus = default;
@@ -89,28 +85,14 @@ namespace RenderingEngine.Engine
             return renderColumnStatus;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public (int ClampedWallStart, int ClampedWallEnd) GetClampedWallFromTo(int x)
-        {
-            int ceilingStart = this.CeilingStart[x];
-            int wallStart = this.WallStart[x];
-            int wallEnd = this.WallEnd[x];
-            int floorEnd = this.FloorEnd[x];
-
-            int portalFromYClamped = Math.Clamp(wallStart, ceilingStart, floorEnd);
-            int portalToYClamped = Math.Clamp(wallEnd, ceilingStart, floorEnd);
-
-            return (portalFromYClamped, portalToYClamped);
-        }
-
         public static RenderColumnStatus RecalculateRenderWindow(
             int x,
             bool calculated,
             Span<RenderColumnStatus> Status,
-            Span<int> CeilingStart,
-            Span<int> FloorEnd,
-            Span<int> WallStart,
-            Span<int> WallEnd
+            ReadOnlySpan<int> CeilingStart,
+            ReadOnlySpan<int> FloorEnd,
+            ReadOnlySpan<int> WallStart,
+            ReadOnlySpan<int> WallEnd
             )
         {
             RenderColumnStatus status;

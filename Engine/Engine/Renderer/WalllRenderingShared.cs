@@ -484,6 +484,108 @@ namespace RenderingEngine.Engine
             }
         }
 
+        private void CalculateRenderWindow2(bool fromTop, RenderablePortalWall portalWall, TextureInfo textureInfo)//, ReadOnlySpan<Sector> sectors)
+        {
+            RenderableWall wall = portalWall.Wall;
+
+            // Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            // Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            // Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
+            // Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
+            Span<int> textureYIncrement = memoryPool.GetBucket<int>(fromTop ? MemoryPoolBucket.TopTextureYIncrement : MemoryPoolBucket.BottomTextureYIncrement);
+
+            (int textureHeight, _, _, float scaledTextureWidth) = CalculateScale(wall.Sector, wall, textureInfo);
+
+            int offset = portalWall.Offset;
+            int wallFromX = portalWall.XLeft;
+            int wallToX = portalWall.XRight;
+
+            RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo(wall, offset);
+            float wallStartY = yPlaneInfo.WallStartY;
+            float ceilDistIncr = yPlaneInfo.CeilDistIncr;
+            float wallEndY = yPlaneInfo.WallEndY;
+            float floorDistIncr = yPlaneInfo.FloorDistIncr;
+            float? portalStartY = yPlaneInfo.PortalStartY;
+            float? portalEndY = yPlaneInfo.PortalEndY;
+            float? portalStartIncr = yPlaneInfo.PortalStartIncr;
+            float? portalEndIncr = yPlaneInfo.PortalEndIncr;
+
+            bool slopedTop = wall.IsPortal && portalStartY != null && portalStartIncr != null;
+            bool slopedBottom = wall.IsPortal && portalEndY != null && portalEndIncr != null;
+
+            for (int x = wallFromX; x <= wallToX; x++)
+            {
+                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
+
+                if (columnStatus.IsFinished || !columnStatus.WallRenderable)
+                {
+                    wallStartY += ceilDistIncr;
+                    wallEndY += floorDistIncr;
+
+                    if (slopedTop)
+                    {
+                        portalStartY += portalStartIncr;
+                    }
+
+                    if (slopedBottom)
+                    {
+                        portalEndY += portalEndIncr;
+                    }
+
+                    continue;
+                }
+
+                Debug.Assert(slopedTop == false);
+                Debug.Assert(slopedTop == slopedBottom);
+
+                int textureYIncr = float.ConvertToIntegerNative<int>(scaledTextureWidth / (wallEndY - wallStartY));
+                textureYIncrement[x] = textureYIncr;
+
+                if (slopedTop && slopedBottom)
+                {
+                    // portalFrom[x] = float.ConvertToIntegerNative<int>(portalStartY!.Value);
+                    // portalTo[x] = float.ConvertToIntegerNative<int>(portalEndY!.Value);
+                }
+                else if (wall.IsPortal)
+                {
+                    /*
+                    (float sectorHeight, float ceilOffset, float floorOffset) = CalculatePortalOffsets(sectors, wall);
+
+                    float pixelsPerHeight = (wallEndY - wallStartY) / sectorHeight;
+
+                    float ceilPixelOffset = pixelsPerHeight * ceilOffset;
+                    float floorPixelOffset = pixelsPerHeight * floorOffset;
+                    float portalToY = wallEndY - floorPixelOffset;
+                    float portalFromY = wallStartY - ceilPixelOffset;
+
+                    portalFrom[x] = float.ConvertToIntegerNative<int>(portalFromY);
+                    portalTo[x] = float.ConvertToIntegerNative<int>(portalToY);
+                    */
+                }
+                /*
+                int wallStartYInt = float.ConvertToIntegerNative<int>(wallStartY);
+                int wallEndYInt = float.ConvertToIntegerNative<int>(wallEndY);
+
+                wallStart[x] = wallStartYInt;
+                wallEnd[x] = wallEndYInt;
+                */
+                wallStartY += ceilDistIncr;
+                wallEndY += floorDistIncr;
+
+                if (slopedTop)
+                {
+                    portalStartY += portalStartIncr;
+                }
+
+                if (slopedBottom)
+                {
+                    portalEndY += portalEndIncr;
+                }
+
+            }
+        }
+
+
         private void CalculateTextureYStartAndIncrement(bool fromTop, RenderablePortalWall renderableWall, TextureInfo textureInfo)
         {
             Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
@@ -735,7 +837,6 @@ namespace RenderingEngine.Engine
                 portalToClamped[x] = clamptedToY;
             }
         }
-
         private void CalculateWallClamp(RenderablePortalWall renderableWall)
         {
             Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);

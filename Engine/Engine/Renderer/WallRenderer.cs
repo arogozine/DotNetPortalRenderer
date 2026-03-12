@@ -65,8 +65,12 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall)
         {
-            Span<RenderColumnStatus> status = RenderWindowHelper.Status;
-            Span<float> distance = RenderWindowHelper.Distance;
+            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            Span<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
+            Span<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
             int width = PixelWidth;
             RenderableWall wall = renderableWall.Wall;
@@ -92,7 +96,13 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                (int clamptedFromY, int clamptedToY) = RenderWindowHelper.GetClampedWallFromTo(x);
+                int ceilingStart = ceilingStartSpan[x];
+                int wallStartY = wallStartSpan[x];
+                int wallEndY = wallEndSpan[x];
+                int floorEndY = floorEndSpan[x];
+
+                int clamptedFromY = Math.Clamp(wallStartY, ceilingStart, floorEndY);
+                int clamptedToY = Math.Clamp(wallEndY, ceilingStart, floorEndY);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
                 ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
@@ -124,6 +134,10 @@ namespace RenderingEngine.Engine
             ref uint screenIndexPtr,
             ref readonly uint screenIndexPtrEnd)
         {
+            var wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            var ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            var floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+
             const float oneOverTwoPi = 1f / (2 * MathF.PI);
 
             int width = PixelWidth;
@@ -143,10 +157,10 @@ namespace RenderingEngine.Engine
 
             int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
-            int wallStart = RenderWindowHelper.WallStart[x];
-            int ceilingStart = RenderWindowHelper.CeilingStart[x];
-            int floorEnd = RenderWindowHelper.FloorEnd[x];
-            int fromYClamped = Math.Clamp(wallStart, ceilingStart, floorEnd);
+            int wallStartY = wallStart[x];
+            int ceilingStartY = ceilingStart[x];
+            int floorEndY = floorEnd[x];
+            int fromYClamped = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
             float vScreen = fromYClamped * yTextureIncr;
 
             ref uint textureColumnPtr = ref Unsafe.Add(ref upperTextureUintPtr, texX);
@@ -171,7 +185,7 @@ namespace RenderingEngine.Engine
 
             Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation);
 
-
+            CalculateRenderWindow2(true, renderableWall, renderableWall.Wall.MiddleTexture);
             CalculateWallClamp(renderableWall);
             CalculateTextureDistanceAndXPosition(xLocation, renderableWall, renderableWall.Wall.MiddleTexture!);
             CalculateTextureYStartAndIncrement(true, renderableWall, renderableWall.Wall.MiddleTexture!);
