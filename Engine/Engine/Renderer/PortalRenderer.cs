@@ -233,8 +233,8 @@ namespace RenderingEngine.Engine
 
         private void PopulateSpriteCacheForRenderDepth(RenderableAreaAndZBuffer spriteCache)
         {
-            memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart).CopyTo(spriteCache.WallStart);
-            memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd).CopyTo(spriteCache.WallEnd);
+            memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped).CopyTo(spriteCache.WallStart);
+            memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped).CopyTo(spriteCache.WallEnd);
             memoryPool.GetBucket<float>(MemoryPoolBucket.Distance).CopyTo(spriteCache.Depth);
             memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus).CopyTo(spriteCache.ColumnStatus);
 
@@ -466,10 +466,10 @@ namespace RenderingEngine.Engine
 
             Span<RenderColumnStatus> renderStatus = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
 
-            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
-            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
             Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
             Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
             Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
             Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
 
@@ -572,12 +572,12 @@ namespace RenderingEngine.Engine
                 int wallStartYClampedInt = float.ConvertToIntegerNative<int>(wallStartYClamped);
                 int wallEndYClampedInt = float.ConvertToIntegerNative<int>(wallEndYClamped);
 
-                wallStartClamped[x] = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
-                wallEndClamped[x] = wallEndYInt;
-                wallStart[x] = upperWallIsSkybox ? wallEndYClampedInt : wallStartYClampedInt;
-                wallEnd[x] = wallEndYClampedInt;
+                wallStart[x] = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
+                wallEnd[x] = wallEndYInt;
+                wallStartClamped[x] = upperWallIsSkybox ? wallEndYClampedInt : wallStartYClampedInt;
+                wallEndClamped[x] = wallEndYClampedInt;
 
-                status |= RenderWindowHelper.RecalculateRenderWindow(x, true, renderStatus, ceilingStart, floorEnd, wallStart, wallEnd);
+                status |= RenderWindowHelper.RecalculateRenderWindow(x, true, renderStatus, ceilingStart, floorEnd, wallStartClamped, wallEndClamped);
 
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;

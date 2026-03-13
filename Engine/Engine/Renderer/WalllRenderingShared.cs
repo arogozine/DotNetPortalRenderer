@@ -492,7 +492,7 @@ namespace RenderingEngine.Engine
             // Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
             // Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
             // Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
-            Span<int> textureYIncrement = memoryPool.GetBucket<int>(fromTop ? MemoryPoolBucket.TopTextureYIncrement : MemoryPoolBucket.BottomTextureYIncrement);
+            Span<int> textureYIncrement = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureYIncrement);
 
             (int textureHeight, _, _, float scaledTextureWidth) = CalculateScale(wall.Sector, wall, textureInfo);
 
@@ -588,13 +588,13 @@ namespace RenderingEngine.Engine
 
         private void CalculateTextureYStartAndIncrement(bool fromTop, RenderablePortalWall renderableWall, TextureInfo textureInfo)
         {
-            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
-            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
+            // Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
 
-            Span<int> textureYIncrement = memoryPool.GetBucket<int>(fromTop ? MemoryPoolBucket.TopTextureYIncrement : MemoryPoolBucket.BottomTextureYIncrement);
+            Span<int> textureYIncrement = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureYIncrement);
             Span<int> startingYTexturePosition = memoryPool.GetBucket<int>(MemoryPoolBucket.StartingYTexturePosition);
 
-            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
+            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
             Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
             Span<int> portalToClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalToClamped);
 
@@ -614,7 +614,7 @@ namespace RenderingEngine.Engine
                 int rem = length % Vector<float>.Count;
                 wallToX -= rem;
 
-                Vector<float> scaledTextureHeightV = Vector.Create(scaledTextureWidth);
+                //Vector<float> scaledTextureHeightV = Vector.Create(scaledTextureWidth);
                 Vector<int> textureStartV = Vector.Create(textureStart);
                 Vector<int> textureWidthV = Vector.Create(textureHeight << 16);
 
@@ -622,10 +622,10 @@ namespace RenderingEngine.Engine
                 for (int x = wallFromX; x < wallToX; x += Vector<float>.Count)
                 {
                     Vector<int> wallStartV = Vector.LoadUnsafe(ref wallStart[x]);
-                    Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
+                    //Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
                     Vector<int> wallStartClampedV = Vector.LoadUnsafe(ref wallStartClamped[x]);
 
-                    Vector<int> textureYIncr = Vector.ConvertToInt32Native(scaledTextureHeightV / Vector.ConvertToSingle(wallEndV - wallStartV));
+                    Vector<int> textureYIncr = Vector.LoadUnsafe(ref textureYIncrement[x]); // .ConvertToInt32Native(scaledTextureHeightV / Vector.ConvertToSingle(wallEndV - wallStartV));
 
                     Vector<int> textureYPosV;
                     if (fromTop)
@@ -642,7 +642,7 @@ namespace RenderingEngine.Engine
                     // TODO: WTH
                     textureYPosV = SharedHelpers.EnsureOffsetIsPositive(textureWidthV, textureYPosV);
 
-                    Vector.StoreUnsafe(textureYIncr, ref textureYIncrement[x]);
+                    // Vector.StoreUnsafe(textureYIncr, ref textureYIncrement[x]);
                     Vector.StoreUnsafe(textureYPosV, ref startingYTexturePosition[x]);
                 }
 
@@ -653,10 +653,10 @@ namespace RenderingEngine.Engine
             for (int x = wallFromX; x <= wallToX; x++)
             {
                 int wallStartY = wallStart[x];
-                int wallEndY = wallEnd[x];
+                //int wallEndY = wallEnd[x];
                 int clamptedFromY = wallStartClamped[x];
 
-                int textureYIncr = float.ConvertToIntegerNative<int>(scaledTextureWidth / (wallEndY - wallStartY));
+                int textureYIncr = textureYIncrement[x]; // float.ConvertToIntegerNative<int>(scaledTextureWidth / (wallEndY - wallStartY));
 
                 int textureYPosY;
 
@@ -676,7 +676,7 @@ namespace RenderingEngine.Engine
 
                 textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeight << 16, textureYPosY);
 
-                textureYIncrement[x] = textureYIncr;
+                //textureYIncrement[x] = textureYIncr;
                 startingYTexturePosition[x] = textureYPosY;
             }
         }
@@ -785,8 +785,8 @@ namespace RenderingEngine.Engine
 
         private void CalculatePortalClamp(RenderablePortalWall renderableWall)
         {
-            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
 
             Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
             Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
@@ -842,12 +842,12 @@ namespace RenderingEngine.Engine
             Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
 
             Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
-            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
+            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
-            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
 
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;

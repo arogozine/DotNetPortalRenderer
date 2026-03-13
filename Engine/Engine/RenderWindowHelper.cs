@@ -37,8 +37,8 @@ namespace RenderingEngine.Engine
             Span<RenderColumnStatus> status = alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> ceilingStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-            Span<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
-            Span<int> wallStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            Span<int> wallStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
             Span<float> distance = alignedMemoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
 
             status.Fill(RenderColumnStatus.NewRender);
@@ -53,8 +53,8 @@ namespace RenderingEngine.Engine
         {
             Span<RenderColumnStatus> status = alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             ReadOnlySpan<int> ceilingStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            ReadOnlySpan<int> wallStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
-            ReadOnlySpan<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            ReadOnlySpan<int> wallStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
+            ReadOnlySpan<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
             ReadOnlySpan<int> floorEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
 

@@ -25,13 +25,13 @@ namespace RenderingEngine.Tooling
         /// </summary>
         CeilingStart,
         /// <summary>
-        /// Where to start rendering a wall
+        /// WallStart clamped to [CeilingStart, FloorEnd]
         /// </summary>
-        WallStart,
+        WallStartClamped,
         /// <summary>
-        /// Where to end rendering a wall
+        /// WallEnd clamped to [CeilingStart, FloorEnd]
         /// </summary>
-        WallEnd,
+        WallEndClamped,
         /// <summary>
         /// Portal End (Floor is rendered between WallEnd - FloorEnd)
         /// </summary>
@@ -49,21 +49,17 @@ namespace RenderingEngine.Tooling
         /// </summary>
         BottomTextureXLocation,
         /// <summary>
-        /// Top (or non-portal) Wall Texture Y Increment
+        /// Wall Texture Y Increment
         /// </summary>
-        TopTextureYIncrement,
+        TextureYIncrement,
         /// <summary>
-        /// Bottom (portal wall) Wall Texture Y Increment
+        /// Where to start rendering a wall
         /// </summary>
-        BottomTextureYIncrement,
+        WallStart,
         /// <summary>
-        /// WallStart clamped to [CeilingStart, FloorEnd]
+        /// Where to end rendering a wall
         /// </summary>
-        WallStartClamped,
-        /// <summary>
-        /// WallEnd clamped to [CeilingStart, FloorEnd]
-        /// </summary>
-        WallEndClamped,
+        WallEnd,
         /// <summary>
         /// Portal Top Window. Between [WallStart, WallEnd]
         /// </summary>

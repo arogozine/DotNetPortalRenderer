@@ -53,8 +53,8 @@ namespace RenderingEngine.Engine
 
             Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TopTextureXLocation);
             Span<uint> topTextureYIncrement = memoryPool.GetBucket<uint>(MemoryPoolBucket.TopTextureYIncrement);
-            Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStartClamped);
-            Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEndClamped);
+            Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStart);
+            Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEnd);
 
             DrawWallShared(renderableWall, wall.MiddleTexture!, repeatedCount, textureXLocation, topTextureYIncrement, wallStartClamped, wallEndClamped);
 
@@ -68,8 +68,8 @@ namespace RenderingEngine.Engine
             Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             Span<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
             Span<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
-            Span<int> wallEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            Span<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
+            Span<int> wallEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
             Span<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
             int width = PixelWidth;
@@ -134,7 +134,7 @@ namespace RenderingEngine.Engine
             ref uint screenIndexPtr,
             ref readonly uint screenIndexPtrEnd)
         {
-            var wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            var wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
             var ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             var floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 

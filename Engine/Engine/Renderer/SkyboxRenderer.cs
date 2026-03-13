@@ -10,7 +10,7 @@ namespace RenderingEngine.Engine
         {
             const float oneOverTwoPi = 1f / (2 * MathF.PI);
 
-            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
             Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
@@ -101,7 +101,7 @@ namespace RenderingEngine.Engine
             const float oneOverTwoPi = 1f / (2 * MathF.PI);
 
             ReadOnlySpan<RenderColumnStatus> statusSpan = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            ReadOnlySpan<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            ReadOnlySpan<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
             ReadOnlySpan<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             ReadOnlySpan<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
