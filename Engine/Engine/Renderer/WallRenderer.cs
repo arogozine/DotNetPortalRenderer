@@ -52,7 +52,7 @@ namespace RenderingEngine.Engine
             }
 
             Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TopTextureXLocation);
-            Span<uint> topTextureYIncrement = memoryPool.GetBucket<uint>(MemoryPoolBucket.TopTextureYIncrement);
+            Span<uint> topTextureYIncrement = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureYIncrement);
             Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStart);
             Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEnd);
 
@@ -228,22 +228,71 @@ namespace RenderingEngine.Engine
 
         #region Calculation Helpers
 
-        private static (int SectorHeight, int CeilingOffset, int FloorOffset) CalculatePortalOffsets(ReadOnlySpan<Sector> sectors, RenderableWall wall)
+        private static (bool RenderLower, bool RenderUpper, bool IsBasicWall) CalculateCanRenderPortalWall(ReadOnlySpan<Sector> sectors, RenderableWall wall)
         {
             Sector sector = wall.Sector;
             Sector neighborSector = sectors[wall.Neighbor];
-            int sectorHeight = sector.Ceil - sector.Floor;
-            int floorOffset = neighborSector.Floor - sector.Floor;
-            int ceilOffset = neighborSector.Ceil - sector.Ceil;
+            bool wallSloped = sector.Settings.Sloped || neighborSector.Settings.Sloped;
 
-            if (floorOffset < 0)
+            bool renderLower, renderUpper, basicWall;
+            float sectorHeight, ceilOffset, floorOffset;
+
+            if (wallSloped)
             {
-                floorOffset = 0;
+                (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, wall.C2);
+                (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, wall.C1);
+
+                (float p_floorZ_a, float p_ceilingZ_a) = CalculateZAtPoint(neighborSector!, wall.C1);
+                (float p_floorZ_b, float p_ceilingZ_b) = CalculateZAtPoint(neighborSector!, wall.C2);
+
+                (sectorHeight, ceilOffset, floorOffset) = CalculatePortalOffsets(floorZ_a, ceilingZ_a, p_floorZ_a, p_ceilingZ_a);
+
+                renderLower = floorOffset != 0;
+                renderUpper = ceilOffset != 0;
+                basicWall = !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
+
+                (sectorHeight, ceilOffset, floorOffset) = CalculatePortalOffsets(floorZ_b, ceilingZ_b, p_floorZ_b, p_ceilingZ_b);
+
+                renderLower |= floorOffset != 0;
+                renderUpper |= ceilOffset != 0;
+                basicWall &= !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
+
+                return (renderLower, renderUpper, basicWall);
+            }
+            else
+            {
+                (sectorHeight, ceilOffset, floorOffset) = CalculatePortalOffsets(sectors, wall);
+
+                renderLower = floorOffset != 0;
+                renderUpper = ceilOffset != 0;
+                basicWall = !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
+
+                return (renderLower, renderUpper, basicWall);
+            }
+        }
+
+        private static (float SectorHeight, float CeilingOffset, float FloorOffset) CalculatePortalOffsets(ReadOnlySpan<Sector> sectors, RenderableWall wall)
+        {
+            Sector sector = wall.Sector;
+            Sector neighborSector = sectors[wall.Neighbor];
+
+            return CalculatePortalOffsets(sector.Floor, sector.Ceil, neighborSector.Floor, neighborSector.Ceil);
+        }
+
+        private static (float SectorHeight, float CeilingOffset, float FloorOffset) CalculatePortalOffsets(float floorA, float ceilA, float floorB, float ceilB)
+        {
+            float sectorHeight = ceilA - floorA;
+            float floorOffset = floorB - floorA;
+            float ceilOffset = ceilB - ceilA;
+
+            if (floorOffset < 0f)
+            {
+                floorOffset = 0f;
             }
 
-            if (ceilOffset > 0)
+            if (ceilOffset > 0f)
             {
-                ceilOffset = 0;
+                ceilOffset = 0f;
             }
 
             // don't draw beyond the bounds

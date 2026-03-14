@@ -110,7 +110,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, ceilingStart, width,
                     x, yCeilV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, doubleSize, sector, sector.CeilingSlope.HasValue ? false : null);
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling) ? false : null);
             }
         }
 
@@ -261,7 +261,7 @@ namespace RenderingEngine.Engine
 
                         RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
                             x, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                            textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector, sector.FloorSlope.HasValue ? true : null);
+                            textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);
                     }
                 }
 
@@ -289,7 +289,7 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
                     x, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector, sector.FloorSlope.HasValue ? true : null);
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);
             }
         }
 

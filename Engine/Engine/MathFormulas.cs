@@ -407,7 +407,8 @@ namespace RenderingEngine.Engine
             };
         }
 
-        internal static RenderablePlaneInfo CalculateLeftWallYPlaneInfo2(ReadOnlySpan<Sector> sectors, RenderableWall wall, int wallFromXOffset)
+        internal static RenderablePlaneInfo CalculateLeftWallYPlaneInfo2(
+            ReadOnlySpan<Sector> sectors, RenderableWall wall, int wallFromXOffset)
         {
             float wallLengthX = wall.XRight - wall.XLeft;
             float wallStartY = wall.YLeftCeil;
@@ -426,14 +427,13 @@ namespace RenderingEngine.Engine
             float? portalFromStartY = null, portalToStartY = null;
             float? portalFromIncr = null, portalToIncr = null;
 
+            Sector sector = wall.Sector;
             Sector? neighborSector = wall.IsPortal ? sectors[wall.Neighbor] : null;
 
-            bool wallSloped = wall.IsPortal && ((wall.Sector.FloorSlope != null || wall.Sector.CeilingSlope != null) ||
-                (neighborSector!.FloorSlope != null || neighborSector.CeilingSlope != null));
+            bool wallSloped = neighborSector is not null && (sector.Settings.Sloped || neighborSector.Settings.Sloped);
 
             if (wallSloped)
             {
-                Sector sector = wall.Sector;
                 float sectorHeight = sector.Ceil - sector.Floor;
 
                 float portalFromEndY;
@@ -441,7 +441,6 @@ namespace RenderingEngine.Engine
 
                 // starting slope
                 {
-
                     (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, wall.C2);
                     (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, wall.C1);
 

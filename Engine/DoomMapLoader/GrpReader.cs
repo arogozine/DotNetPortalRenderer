@@ -91,6 +91,11 @@ namespace RenderingEngine.DoomMapLoader
                 options |= TextureRenderingOptions.AlignWithFirstWall;
             }
 
+            if (stat.HasFlag(Stat.Sloped))
+            {
+                options |= TextureRenderingOptions.Sloped;
+            }
+
             return (options, xScale, yScale);
         }
 
@@ -218,7 +223,7 @@ namespace RenderingEngine.DoomMapLoader
 
             MapSectorSettings settings = default;
 
-            if (sector.CeilingHeiNum != 0f)
+            if (ceilingRenderingOptions.HasFlag(TextureRenderingOptions.Sloped) && sector.CeilingHeiNum != 0f)
             {
                 settings |= MapSectorSettings.SlopeCeiling;
             }
@@ -228,7 +233,7 @@ namespace RenderingEngine.DoomMapLoader
                 settings |= MapSectorSettings.RotateCeiling;
             }
 
-            if (sector.FloorHeiNum != 0f)
+            if (floorRenderingOptions.HasFlag(TextureRenderingOptions.Sloped) && sector.FloorHeiNum != 0f)
             {
                 settings |= MapSectorSettings.SlopeFloor;
             }

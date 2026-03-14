@@ -159,6 +159,14 @@ namespace RenderingEngine.Tooling
             return (void*)ptr;
         }
 
+        public void ClearBuckets(params ReadOnlySpan<MemoryPoolBucket> buckets)
+        {
+            for (int i = 0; i < buckets.Length; i++)
+            {
+                GetBucket<byte>(buckets[i]).Clear();
+            }
+        }
+
         internal static AlignedMemoryPool GeneratePool(int bucketSize, int numberOfBuckets)
         {
             return new AlignedMemoryPool(bucketSize, numberOfBuckets);

@@ -296,7 +296,7 @@ namespace RenderingEngine.Engine
             float wallEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
-            (int sectorHeight, int ceilOffset, int floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
+            (float sectorHeight, float ceilOffset, float floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
             Sector neighborSector = sectors[wall.Neighbor];
 
             float oneOverSectorHeight = 1f / sectorHeight;
@@ -436,7 +436,7 @@ namespace RenderingEngine.Engine
             float wallEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
-            (int sectorHeight, int ceilOffset, int floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
+            (float sectorHeight, float ceilOffset, float floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
             float oneOverSectorHeight = 1f / sectorHeight;
 
             float alpha = Math.Clamp(textureInfo.Alpha, 0f, 1f);

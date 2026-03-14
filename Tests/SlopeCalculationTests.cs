@@ -126,6 +126,154 @@ namespace Tests
             }
         }
 
+        [Fact]
+        public void SlopeGetsCalculatedProperly2()
+        {
+            Sector slopedSector = SetupSloped();
+
+            float ceilZ = slopedSector.Ceil;
+            float floorZ = slopedSector.Floor;
+
+            // 6208
+            Point pt1 = slopedSector.Walls[0].PointA;
+            Point pt2 = slopedSector.Walls[1].PointA;
+            // 5792
+            Point pt3 = slopedSector.Walls[2].PointA;
+            Point pt4 = slopedSector.Walls[3].PointA;
+
+            (float floorz1, float ceilingz1) = MathFormulas.CalculateZAtPoint(slopedSector, pt1);
+            (float floorz2, float ceilingz2) = MathFormulas.CalculateZAtPoint(slopedSector, pt2);
+
+            Assert.Equal(floorz1, floorz2);
+            Assert.Equal(ceilingz1, ceilingz2);
+            Assert.Equal(floorz1, ceilZ);
+            Assert.Equal(ceilingz1, floorZ);
+
+            (float floorz3, float ceilingz3) = MathFormulas.CalculateZAtPoint(slopedSector, pt3);
+            (float floorz4, float ceilingz4) = MathFormulas.CalculateZAtPoint(slopedSector, pt4);
+
+            Assert.Equal(floorz3, floorz4);
+            Assert.Equal(ceilingz3, ceilingz4);
+        }
+
+        internal static Sector SetupSloped()
+        {
+            SectorType sector308 = new SectorType(
+                ceilingHeiNum: 2560,
+                ceilingPal: 0,
+                ceilingPicNum: 815,
+                ceilingShade: 23,
+                ceilingStat: Stat.Sloped | Stat.DoubleSmooshiness | Stat.AlignTexture,
+                ceilingXPanning: 0,
+                ceilingYPanning: 0,
+                ceilingZ: -113664,
+                extra: -1,
+                filler: 0,
+                floorHeiNum: 2560,
+                floorPal: 0,
+                floorPicNum: 815,
+                floorShade: 23,
+                floorStat: Stat.Sloped | Stat.DoubleSmooshiness | Stat.AlignTexture,
+                floorXPanning: 0,
+                floorYPanning: 0,
+                floorZ: -113664,
+                hiTag: 0,
+                loTag: 0,
+                visibility: 0,
+                wallNum: 4,
+                wallPtr: 2025
+            );
+
+            WallType wall2025 = new WallType(
+                cStat: WallCStat.AlignPictureOnBottom | WallCStat.XFlipped,
+                extra: -1,
+                hiTag: 0,
+                loTag: 0,
+                nextSector: -1,
+                nextWall: -1,
+                overPicNum: 0,
+                pal: 0,
+                picNum: 750,
+                point2: 2026,
+                shade: 6,
+                x: 34304,
+                xPanning: 0,
+                xRepeat: 9,
+                y: -49664,
+                yPanning: 0,
+                yRepeat: 18
+            );
+
+            WallType wall2026 = new WallType(
+                cStat: WallCStat.AlignPictureOnBottom | WallCStat.XFlipped,
+                extra: -1,
+                hiTag: 0,
+                loTag: 0,
+                nextSector: -1,
+                nextWall: -1,
+                overPicNum: 0,
+                pal: 0,
+                picNum: 750,
+                point2: 2027,
+                shade: 6,
+                x: 34816,
+                xPanning: 0,
+                xRepeat: 58,
+                y: -49664,
+                yPanning: 0,
+                yRepeat: 18
+            );
+
+            WallType wall2027 = new WallType(
+                cStat: WallCStat.AlignPictureOnBottom | WallCStat.XFlipped,
+                extra: -1,
+                hiTag: 0,
+                loTag: 0,
+                nextSector: -1,
+                nextWall: -1,
+                overPicNum: 0,
+                pal: 0,
+                picNum: 750,
+                point2: 2028,
+                shade: 6,
+                x: 34816,
+                xPanning: 0,
+                xRepeat: 9,
+                y: -46336,
+                yPanning: 0,
+                yRepeat: 18
+            );
+
+            WallType wall2028 = new WallType(
+                cStat: default,
+                extra: -1,
+                hiTag: 0,
+                loTag: 0,
+                nextSector: 307,
+                nextWall: 2024,
+                overPicNum: 0,
+                pal: 0,
+                picNum: 3387,
+                point2: 2025,
+                shade: 20,
+                x: 34304,
+                xPanning: 0,
+                xRepeat: 26,
+                y: -46336,
+                yPanning: 246,
+                yRepeat: 8
+            );
+
+
+            MapSector slopedSector = GrpReader.ParseSectorType(10, in sector308);
+            slopedSector.Walls.Add(ParseWallType(2025, 2025, in wall2025, in wall2026, in wall2026));
+            slopedSector.Walls.Add(ParseWallType(2026, 2026, in wall2026, in wall2027, in wall2027));
+            slopedSector.Walls.Add(ParseWallType(2027, 2027, in wall2027, in wall2028, in wall2028));
+            slopedSector.Walls.Add(ParseWallType(2028, 2028, in wall2028, in wall2025, in wall2025));
+
+            return MapLoader.ParseMapSector(slopedSector);
+        }
+
         internal static (Sector slopedSector, Sector upperSector) Setup()
         {
             SectorType sector10 = new SectorType(

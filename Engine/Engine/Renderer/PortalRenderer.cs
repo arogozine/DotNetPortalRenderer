@@ -205,7 +205,7 @@ namespace RenderingEngine.Engine
                 Span<RenderableWall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player);
 
                 // 2. Determine where ceiling, floor, and walls start and end
-                RenderColumnStatus sectorStatus = CalculateRenderWindow(sectorInfo, sectors, sector, walls);
+                RenderColumnStatus sectorStatus = CalculateRenderWindow(player, sectorInfo, sectors, sector, walls);
 
                 // 3. Nothing to render, bail early
                 if (sectorStatus == default || renderableWalls.Count == 0)
@@ -368,6 +368,7 @@ namespace RenderingEngine.Engine
         }
 
         private RenderColumnStatus CalculateRenderWindow(
+            PortalPlayerSnapshot player,
             NeighborsToRender sectorInfo,
             ReadOnlySpan<Sector> sectors,
             Sector sector,
@@ -389,11 +390,25 @@ namespace RenderingEngine.Engine
             {
                 RenderableWall wall = walls[s];
 
+                CalculateNeightborSectorForSlope(sectors, wall);
+
                 RenderColumnStatus status = CalculateRenderWindow(wall, sector, sectors, renderableWalls);
                 sectorStatus |= status;
             }
 
             return sectorStatus & RenderColumnStatus.NewRender;
+
+            void CalculateNeightborSectorForSlope(ReadOnlySpan<Sector> sectors, RenderableWall wall)
+            {
+                Sector sector = wall.Sector;
+                Sector? neighborSector = wall.IsPortal ? sectors[wall.Neighbor] : null;
+                bool wallSloped = neighborSector is not null && (sector.Settings.Sloped || neighborSector.Settings.Sloped);
+                if (wallSloped)
+                {
+                    _ = WallHelper.CalculateRotatedWallsRelativeToPlayer(neighborSector!, player);
+                }
+
+            }
         }
 
         private List<RenderablePortalWall> RenderSector(

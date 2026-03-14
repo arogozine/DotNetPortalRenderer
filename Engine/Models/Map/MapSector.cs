@@ -9,6 +9,14 @@ internal enum MapSectorSettings
     SlopeFloor = 8
 }
 
+internal static class MapSectorSettingsExtensions
+{
+    extension (MapSectorSettings settings)
+    {
+        public bool Sloped => settings.HasFlag(MapSectorSettings.SlopeCeiling) || settings.HasFlag(MapSectorSettings.SlopeFloor);
+    }
+}
+
 internal sealed class MapSector
 {
     public required int Id { get; set; }

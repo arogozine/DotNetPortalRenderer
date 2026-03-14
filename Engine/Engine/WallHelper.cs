@@ -112,7 +112,7 @@ namespace RenderingEngine.Engine
             return orderedWalls[..j];
         }
 
-        private Span<RenderableWall> CalculateRotatedWallsRelativeToPlayer(Sector sector, PortalPlayerSnapshot player)
+        public Span<RenderableWall> CalculateRotatedWallsRelativeToPlayer(Sector sector, PortalPlayerSnapshot player)
         {
             float pSin = player.Sin;
             float pCos = player.Cos;

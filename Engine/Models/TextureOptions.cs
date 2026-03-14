@@ -46,7 +46,8 @@ namespace RenderingEngine.Models
         FlipX = 32,
         FlipY = 64,
         SwapXY = 128,
-        AlignWithFirstWall = 256
+        AlignWithFirstWall = 256,
+        Sloped = 512
     }
 
     internal static class TextureRenderingOptionsExtensions

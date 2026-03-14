@@ -51,9 +51,7 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors,
             RenderablePortalWall renderableWall)
         {
-            (int sectorHeight, int ceilOffset, int floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
-            bool renderLower = floorOffset != 0;
-            bool renderUpper = ceilOffset != 0;
+            (bool renderLower, bool renderUpper, bool basicWall) = CalculateCanRenderPortalWall(sectors, renderableWall.Wall);
 
             // ceiling and floor of the sector are the same
             // so no wall is drawn
@@ -142,7 +140,7 @@ namespace RenderingEngine.Engine
 
             // if sector height matches top or bottom offset only top or bottom texture was drawn
             // no middle texture is possible, thus we can treat this as basic wall
-            return !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
+            return basicWall;
         }
 
 
@@ -151,7 +149,7 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors,
             RenderablePortalWall renderableWall)
         {
-            (int sectorHeight, int ceilOffset, _) = CalculatePortalOffsets(sectors, renderableWall.Wall);
+            (float sectorHeight, float ceilOffset, _) = CalculatePortalOffsets(sectors, renderableWall.Wall);
 
             float oneOverSectorHeight = 1f / sectorHeight;
 
@@ -215,7 +213,7 @@ namespace RenderingEngine.Engine
                 ReadOnlySpan<Sector> sectors,
                 RenderablePortalWall renderableWall)
         {
-            (int sectorHeight, _, int floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
+            (float sectorHeight, _, float floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
 
             float oneOverSectorHeight = 1f / sectorHeight;
 

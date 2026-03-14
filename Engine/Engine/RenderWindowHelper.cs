@@ -35,18 +35,18 @@ namespace RenderingEngine.Engine
         public void NewRender()
         {
             Span<RenderColumnStatus> status = alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            Span<int> ceilingStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             Span<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
-            Span<int> wallStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
             Span<float> distance = alignedMemoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
 
             status.Fill(RenderColumnStatus.NewRender);
-            ceilingStart.Clear();
-            wallStart.Clear();
             floorEnd.Fill(height - 1);
             wallEnd.Fill(height - 1);
             distance.Fill(float.MaxValue);
+
+            alignedMemoryPool.ClearBuckets(
+                MemoryPoolBucket.CeilingStart, MemoryPoolBucket.WallStart,
+                MemoryPoolBucket.TextureYIncrement, MemoryPoolBucket.StartingYTexturePosition);
         }
 
         public RenderColumnStatus NewDepth()
