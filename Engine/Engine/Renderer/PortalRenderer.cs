@@ -407,7 +407,6 @@ namespace RenderingEngine.Engine
                 {
                     _ = WallHelper.CalculateRotatedWallsRelativeToPlayer(neighborSector!, player);
                 }
-
             }
         }
 
@@ -485,8 +484,12 @@ namespace RenderingEngine.Engine
             Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
             Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
             Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+
             Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
             Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
+            Span<int> portalFromClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFromClamped);
+            Span<int> portalToClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalToClamped);
+
 
             Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
@@ -562,12 +565,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                if (sloped)
-                {
-                    portalFrom[x] = float.ConvertToIntegerNative<int>(portalStartY!.Value);
-                    portalTo[x] = float.ConvertToIntegerNative<int>(portalEndY!.Value);
-                }
-                else if (wall.IsPortal)
+                if (sloped || wall.IsPortal)
                 {
                     (float sectorHeight, float ceilOffset, float floorOffset) = CalculatePortalOffsets(sectors, wall);
 
@@ -578,8 +576,16 @@ namespace RenderingEngine.Engine
                     float portalToY = wallEndY - floorPixelOffset;
                     float portalFromY = wallStartY - ceilPixelOffset;
 
-                    portalFrom[x] = float.ConvertToIntegerNative<int>(portalFromY);
-                    portalTo[x] = float.ConvertToIntegerNative<int>(portalToY);
+
+                    portalFrom[x] = portalFromClamped[x] = float.ConvertToIntegerNative<int>(portalFromY);
+                    portalTo[x] = portalFromClamped[x] = float.ConvertToIntegerNative<int>(portalToY);
+
+                    if (sloped)
+                    {
+                        portalFromClamped[x] = float.ConvertToIntegerNative<int>(portalStartY!.Value);
+                        portalToClamped[x] = float.ConvertToIntegerNative<int>(portalEndY!.Value);
+                    }
+
                 }
 
                 int wallStartYInt = float.ConvertToIntegerNative<int>(wallStartY);
