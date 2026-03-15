@@ -114,7 +114,7 @@ namespace RenderingEngine.Engine
             Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-            Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFromClamped); // Clamped
+            Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFromClamped);
             Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalToClamped);
 
             int wallFromX = renderableWall.XLeft;

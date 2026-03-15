@@ -405,6 +405,7 @@ namespace RenderingEngine.Engine
                 bool wallSloped = neighborSector is not null && (sector.Settings.Sloped || neighborSector.Settings.Sloped);
                 if (wallSloped)
                 {
+                    if (!neighborSector!.Walls[0].IntersectsView)
                     _ = WallHelper.CalculateRotatedWallsRelativeToPlayer(neighborSector!, player);
                 }
             }
@@ -510,7 +511,8 @@ namespace RenderingEngine.Engine
             float? portalStartIncr = yPlaneInfo.PortalStartIncr;
             float? portalEndIncr = yPlaneInfo.PortalEndIncr;
 
-            bool sloped = wall.IsPortal && portalStartY != null && portalEndY != null && portalStartIncr != null && portalEndIncr != null;
+            Sector? neighborSector = wall.IsPortal ? sectors[wall.Neighbor] : null;
+            bool sloped = neighborSector is not null && (sector.Settings.Sloped || neighborSector.Settings.Sloped);
 
             // minor performance hack
             bool upperWallIsSkybox = sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox) &&
@@ -578,7 +580,7 @@ namespace RenderingEngine.Engine
 
 
                     portalFrom[x] = portalFromClamped[x] = float.ConvertToIntegerNative<int>(portalFromY);
-                    portalTo[x] = portalFromClamped[x] = float.ConvertToIntegerNative<int>(portalToY);
+                    portalTo[x] = portalToClamped[x] = float.ConvertToIntegerNative<int>(portalToY);
 
                     if (sloped)
                     {
