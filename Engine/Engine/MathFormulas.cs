@@ -308,7 +308,7 @@ namespace RenderingEngine.Engine
             return fromToYDist;
         }
 
-        internal static (float FloorZ, float CeilingZ) CalculateZAtPoint(Sector sector, Point point)
+        internal static (float FloorZ, float CeilingZ) CalculateZAtPoint(Sector sector, Point point, bool useNonRotatedCoordinates = false)
         {
             float ceilZ = sector.Ceil;
             float floorZ = sector.Floor;
@@ -322,8 +322,8 @@ namespace RenderingEngine.Engine
 
             // PointA and PointB of first line
             RenderableWall firstWall = sector.Walls[0];
-            Point pointA = firstWall.R1;
-            Point pointB = firstWall.R2;
+            Point pointA = useNonRotatedCoordinates ? firstWall.PointA : firstWall.R1;
+            Point pointB = useNonRotatedCoordinates ? firstWall.PointB : firstWall.R2;
 
             float dx = pointB.X - pointA.X;
             float dy = pointB.Y - pointA.Y;

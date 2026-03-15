@@ -185,10 +185,9 @@ namespace RenderingEngine.Engine
 
             Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXLocation);
 
-            CalculateTextureYIncrement(renderableWall, renderableWall.Wall.MiddleTexture);
+            CalculateUpperTextureYIncrement(renderableWall, renderableWall.Wall.MiddleTexture);
             CalculateWallClamp(renderableWall);
             CalculateTextureDistanceAndXPosition(xLocation, renderableWall, renderableWall.Wall.MiddleTexture!);
-            CalculateTextureYStartAndIncrement(true, renderableWall, renderableWall.Wall.MiddleTexture!);
         }
 
         private static (int Height, int Width, float XScale, float ScaledTextureHeight) CalculateScale(

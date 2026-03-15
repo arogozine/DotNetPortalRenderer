@@ -26,8 +26,10 @@ namespace RenderingEngine.Engine
             {
                 player.Sector = sector.Value;
                 Sector newSector = sectors[sector.Value];
-                
-                z = newSector.Floor + EngineConstants.PlayerHeight;
+
+                (float sectorFloor, _) = MathFormulas.CalculateZAtPoint(newSector, new Point(x, y), true);
+
+                z = sectorFloor + EngineConstants.PlayerHeight;
 
                 player.Where = (x + dx, y + dy, z);
             }
@@ -37,9 +39,11 @@ namespace RenderingEngine.Engine
         {
             (float x, float y, float z) = player.Where;
 
-            if (z < sector.Floor)
+            (float sectorFloor, _) = MathFormulas.CalculateZAtPoint(sector, new Point(x, y), true);
+
+            if (z < sectorFloor || sector.Settings.Sloped)
             {
-                player.Where = (x, y, EngineConstants.PlayerHeight);
+                player.Where = (x, y, EngineConstants.PlayerHeight + sectorFloor);
             }
         }
 
