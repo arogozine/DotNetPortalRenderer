@@ -51,7 +51,7 @@ namespace RenderingEngine.Engine
                 columnStatus = RenderColumnStatus.FinishedRendering;
             }
 
-            Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TopTextureXLocation);
+            Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureXLocation);
             Span<uint> topTextureYIncrement = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureYIncrement);
             Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStart);
             Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEnd);
@@ -183,7 +183,7 @@ namespace RenderingEngine.Engine
         {
             Debug.Assert(renderableWall.Wall.MiddleTexture != null);
 
-            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation);
+            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXLocation);
 
             CalculateTextureYIncrement(renderableWall, renderableWall.Wall.MiddleTexture);
             CalculateWallClamp(renderableWall);

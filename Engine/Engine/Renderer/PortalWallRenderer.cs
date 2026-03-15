@@ -310,7 +310,7 @@ namespace RenderingEngine.Engine
 
             Debug.Assert(upperTexture != null);
 
-            Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TopTextureXLocation);
+            Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureXLocation);
             Span<uint> topTextureYIncrement = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureYIncrement);
             Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStart);
             Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.PortalFromClamped);
@@ -329,7 +329,7 @@ namespace RenderingEngine.Engine
 
             Debug.Assert(lowerTexture != null);
 
-            Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.BottomTextureXLocation);
+            Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureXLocation);
             Span<uint> topTextureYIncrement = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureYIncrement);
             Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.PortalToClamped);
             Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEnd);
@@ -343,7 +343,7 @@ namespace RenderingEngine.Engine
         {
             RenderableWall wall = renderableWall.Wall;
 
-            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TopTextureXLocation);
+            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXLocation);
 
             PrecalculateWallDistanceShared(true, wallSloped, renderableWall, wall.UpperTexture!, xLocation);
         }
@@ -352,7 +352,7 @@ namespace RenderingEngine.Engine
         {
             RenderableWall wall = renderableWall.Wall;
 
-            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.BottomTextureXLocation);
+            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXLocation);
 
             PrecalculateWallDistanceShared(false, wallSloped, renderableWall, wall.LowerTexture!, xLocation);
         }

@@ -41,13 +41,9 @@ namespace RenderingEngine.Tooling
         /// </summary>
         Distance,
         /// <summary>
-        /// Texture Column to Render. Top (or non-portal) wall.
+        /// Texture Column to Render
         /// </summary>
-        TopTextureXLocation,
-        /// <summary>
-        /// Texture Column to Render. Bottom portal wall.
-        /// </summary>
-        BottomTextureXLocation,
+        TextureXLocation,
         /// <summary>
         /// Wall Texture Y Increment
         /// </summary>
