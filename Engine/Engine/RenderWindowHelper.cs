@@ -88,11 +88,11 @@ namespace RenderingEngine.Engine
         public static RenderColumnStatus RecalculateRenderWindow(
             int x,
             bool calculated,
-            Span<RenderColumnStatus> Status,
-            ReadOnlySpan<int> CeilingStart,
-            ReadOnlySpan<int> FloorEnd,
-            ReadOnlySpan<int> WallStart,
-            ReadOnlySpan<int> WallEnd
+            scoped Span<RenderColumnStatus> Status,
+            scoped ReadOnlySpan<int> CeilingStart,
+            scoped ReadOnlySpan<int> FloorEnd,
+            scoped ReadOnlySpan<int> WallStart,
+            scoped ReadOnlySpan<int> WallEnd
             )
         {
             RenderColumnStatus status;

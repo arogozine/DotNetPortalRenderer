@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+using RenderingEngine.Tooling;
 
 namespace RenderingEngine.Engine
 {
@@ -404,7 +405,7 @@ namespace RenderingEngine.Engine
         {
             ReadOnlySpan<int> wallStart = renderableWall.WallStart;
             ReadOnlySpan<int> wallEnd = renderableWall.WallEnd;
-            ReadOnlySpan<float> distance = RenderWindowHelper.Distance; // renderableWall.Distance;
+            ReadOnlySpan<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
             ReadOnlySpan<RenderColumnStatus> columnStatus = renderableWall.ColumnStatus;
 
             int width = PixelWidth;

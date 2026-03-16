@@ -109,7 +109,7 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
+                RenderColumnStatus columnStatus = status[x];
 
                 if (!columnStatus.WallRenderable)
                 {

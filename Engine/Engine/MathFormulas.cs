@@ -441,8 +441,6 @@ namespace RenderingEngine.Engine
 
                 // starting slope
                 {
-                    (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, wall.C2);
-                    (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, wall.C1);
 
                     (float p_floorZ_a, float p_ceilingZ_a) = CalculateZAtPoint(neighborSector!, wall.C1);
                     (float p_floorZ_b, float p_ceilingZ_b) = CalculateZAtPoint(neighborSector!, wall.C2);
@@ -450,11 +448,11 @@ namespace RenderingEngine.Engine
                     float pixelsPerHeightStart = (wall.YLeftFloor - wall.YLeftCeil) / sectorHeight;
                     float pixelsPerHeightEnd = (wall.YRightFloor - wall.YRightCeil) / sectorHeight;
 
-                    float ceilOffsetStart = p_ceilingZ_a - ceilingZ_a;
-                    float floorOffsetStart = p_floorZ_a - floorZ_a;
+                    float ceilOffsetStart = p_ceilingZ_a - sector.Ceil;
+                    float floorOffsetStart = p_floorZ_a - sector.Floor;
 
-                    float ceilOffsetEnd = p_ceilingZ_b - ceilingZ_b;
-                    float floorOffsetEnd = p_floorZ_b - floorZ_b;
+                    float ceilOffsetEnd = p_ceilingZ_b - sector.Ceil;
+                    float floorOffsetEnd = p_floorZ_b - sector.Floor;
 
                     float ceilPixelOffsetStart = pixelsPerHeightStart * ceilOffsetStart;
                     float floorPixelOffsetStart = pixelsPerHeightStart * floorOffsetStart;
