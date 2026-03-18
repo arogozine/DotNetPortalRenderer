@@ -92,7 +92,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    CalculateLowertTextureYIncrement(renderableWall, lowerTexture);
+                    CalculateLowerTextureYIncrement(renderableWall, lowerTexture);
                     PrecalculateLowerWallDistance(renderableWall);
                     DrawLowerPortalWall(sectors, renderableWall);
                 }
@@ -297,14 +297,12 @@ namespace RenderingEngine.Engine
 
             Debug.Assert(upperTexture != null);
 
-            Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureXLocation);
-            Span<uint> topTextureYIncrement = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureYIncrement);
             Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStart);
             Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.PortalFromClamped);
 
             Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall);
 
-            DrawWallShared(renderableWall, upperTexture, repeatedCount, textureXLocation, topTextureYIncrement, wallStartClamped, wallEndClamped);
+            DrawWallShared(renderableWall, upperTexture, repeatedCount, wallStartClamped, wallEndClamped);
         }
 
         private void DrawLowerPortalWall(
@@ -316,34 +314,30 @@ namespace RenderingEngine.Engine
 
             Debug.Assert(lowerTexture != null);
 
-            Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureXLocation);
-            Span<uint> topTextureYIncrement = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureYIncrement);
             Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.PortalToClamped);
             Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEnd);
 
             Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall);
 
-            DrawWallShared(renderableWall, lowerTexture, repeatedCount, textureXLocation, topTextureYIncrement, wallStartClamped, wallEndClamped);
+            DrawWallShared(renderableWall, lowerTexture, repeatedCount, wallStartClamped, wallEndClamped);
         }
 
         private void PrecalculateUpperWallDistance(RenderablePortalWall renderableWall)
         {
             RenderableWall wall = renderableWall.Wall;
 
-            PrecalculateWallDistanceShared(true, renderableWall, wall.UpperTexture!);
+            PrecalculateWallDistanceShared(renderableWall, wall.UpperTexture!);
         }
 
         private void PrecalculateLowerWallDistance(RenderablePortalWall renderableWall)
         {
             RenderableWall wall = renderableWall.Wall;
-            PrecalculateWallDistanceShared(false, renderableWall, wall.LowerTexture!);
+            PrecalculateWallDistanceShared(renderableWall, wall.LowerTexture!);
         }
 
-        private void PrecalculateWallDistanceShared(bool upper, RenderablePortalWall renderableWall, TextureInfo textureInfo)
+        private void PrecalculateWallDistanceShared(RenderablePortalWall renderableWall, TextureInfo textureInfo)
         {
-            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXLocation);
-
-            CalculateTextureDistanceAndXPosition(xLocation, renderableWall, textureInfo);
+            CalculateTextureDistanceAndXPosition(renderableWall, textureInfo);
             CalculatePortalClamp(renderableWall);
         }
     }

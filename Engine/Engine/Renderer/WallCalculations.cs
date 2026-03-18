@@ -46,6 +46,10 @@ namespace RenderingEngine.Engine
                 {
                     topOffset -= max - ceilY;
                 }
+                else if (ceilY > max)
+                {
+                    topOffset += max - ceilY;
+                }
 
                 float textureYIncr = scaledTextureWidth / (wallEndY - wallStartY);
 
@@ -62,7 +66,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private void CalculateLowertTextureYIncrement(RenderablePortalWall portalWall, TextureInfo textureInfo)
+        private void CalculateLowerTextureYIncrement(RenderablePortalWall portalWall, TextureInfo textureInfo)
         {
             RenderableWall wall = portalWall.Wall;
 
@@ -71,6 +75,7 @@ namespace RenderingEngine.Engine
             Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
             Span<int> portalToClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalToClamped);
             Span<int> startingYTexturePosition = memoryPool.GetBucket<int>(MemoryPoolBucket.StartingYTexturePosition);
+            Span<int> ceil = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
 
             Span<int> textureYIncrement = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureYIncrement);
 
@@ -94,8 +99,17 @@ namespace RenderingEngine.Engine
 
                 int portalToY = portalTo[x];
                 int portalToSlopedY = portalToClamped[x];
+                int ceilY = ceil[x];
 
-                float topOffset = portalToSlopedY < 0 ? -portalToSlopedY * textureYIncr : 0f;
+
+                float topOffset = 0;
+
+                if (portalToSlopedY < ceilY)
+                {
+                    topOffset -= portalToSlopedY - ceilY;
+                }
+
+                topOffset *= textureYIncr;
 
                 int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + (portalToSlopedY - portalToY) * textureYIncr + topOffset);
 
@@ -109,8 +123,10 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private void CalculateTextureDistanceAndXPosition(Span<int> xLocation, RenderablePortalWall renderableWall, TextureInfo textureInfo)
+        private void CalculateTextureDistanceAndXPosition(RenderablePortalWall renderableWall, TextureInfo textureInfo)
         {
+            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXLocation);
+
             int width = PixelWidth;
 
             Span<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
@@ -214,6 +230,8 @@ namespace RenderingEngine.Engine
 
         private void CalculatePortalClamp(RenderablePortalWall renderableWall)
         {
+            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+
             Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
             Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
 
@@ -250,6 +268,11 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
+                if (status[x].IsFinished)
+                {
+                    continue;
+                }
+
                 int wallStartClampedY = wallStartClamped[x];
                 int wallEndClampedY = wallEndClamped[x];
 

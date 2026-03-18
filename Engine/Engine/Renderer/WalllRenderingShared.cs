@@ -1,6 +1,5 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.Tooling;
-using System.Numerics;
 using System.Runtime.Intrinsics;
 
 namespace RenderingEngine.Engine
@@ -11,11 +10,12 @@ namespace RenderingEngine.Engine
             RenderablePortalWall renderableWall,
             TextureInfo textureInfo,
             scoped Span<ushort> repeatedCount,
-            scoped Span<uint> textureXLocation,
-            scoped Span<uint> textureYIncrement,
             scoped Span<uint> fromYClamped,
             scoped Span<uint> toYClamped)
         {
+            Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureXLocation);
+            Span<uint> textureYIncrement = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureYIncrement);
+
             RenderableWall wall = renderableWall.Wall;
 
             bool flipY = textureInfo.RenderingOptions.IsFlippedY;

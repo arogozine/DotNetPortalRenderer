@@ -51,12 +51,10 @@ namespace RenderingEngine.Engine
                 columnStatus = RenderColumnStatus.FinishedRendering;
             }
 
-            Span<uint> textureXLocation = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureXLocation);
-            Span<uint> topTextureYIncrement = memoryPool.GetBucket<uint>(MemoryPoolBucket.TextureYIncrement);
             Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStart);
             Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEnd);
 
-            DrawWallShared(renderableWall, wall.MiddleTexture!, repeatedCount, textureXLocation, topTextureYIncrement, wallStartClamped, wallEndClamped);
+            DrawWallShared(renderableWall, wall.MiddleTexture!, repeatedCount, wallStartClamped, wallEndClamped);
 
             return true;
         }
@@ -183,11 +181,9 @@ namespace RenderingEngine.Engine
         {
             Debug.Assert(renderableWall.Wall.MiddleTexture != null);
 
-            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXLocation);
-
             CalculateUpperTextureYIncrement(renderableWall, renderableWall.Wall.MiddleTexture);
             CalculateWallClamp(renderableWall);
-            CalculateTextureDistanceAndXPosition(xLocation, renderableWall, renderableWall.Wall.MiddleTexture!);
+            CalculateTextureDistanceAndXPosition(renderableWall, renderableWall.Wall.MiddleTexture!);
         }
 
         private static (int Height, int Width, float XScale, float ScaledTextureHeight) CalculateScale(

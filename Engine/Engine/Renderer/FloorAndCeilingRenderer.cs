@@ -41,7 +41,6 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<RenderColumnStatus> statusSpan = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             ReadOnlySpan<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             ReadOnlySpan<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            ReadOnlySpan<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateCeiling);
 
@@ -101,14 +100,12 @@ namespace RenderingEngine.Engine
 
                 int ceilingStart = ceilingStartSpan[x];
                 int wallStart = wallStartSpan[x];
-                int floorEnd = floorEndSpan[x];
-                int floorToY = Math.Clamp(wallStart, ceilingStart, floorEnd);
 
                 int screenIndex = ceilingStart * width + x;
 
                 float xMapPosMultiplier = xMapPosMultiplierCache[x];
 
-                RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, floorToY, ceilingStart, width,
+                RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, wallStart, ceilingStart, width,
                     x, yCeilV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling) ? false : null);
             }
@@ -118,7 +115,6 @@ namespace RenderingEngine.Engine
         public void RenderFloorVector(PortalPlayerSnapshot player, Sector sector)
         {
             Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
             Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
@@ -215,60 +211,6 @@ namespace RenderingEngine.Engine
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            int length = (sectorToX - sectorFromX);
-
-            if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
-            {
-                const int canRenderFloorMask = (int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderFloor);
-
-                Span<int> statusInt = MemoryMarshal.Cast<RenderColumnStatus, int>(status);
-                Vector<int> widthV = Vector.Create(width);
-                Vector<int> canRenderFloorMaskV = Vector.Create(canRenderFloorMask);
-
-                Vector<int> sectorFromXV = Vector.CreateSequence(sectorFromX, 1);
-                Vector<int> incr = Vector.Create(Vector<int>.Count);
-
-                int rem = (sectorToX - sectorFromX) % Vector<float>.Count;
-                sectorToX -= rem;
-
-                for (int x = sectorFromX; x < sectorToX; sectorFromXV += incr)
-                {
-                    Vector<int> columnStatusV = Vector.LoadUnsafe(ref statusInt[x]) & canRenderFloorMaskV;
-
-                    if (columnStatusV == Vector<int>.Zero)
-                    {
-                        x += Vector<int>.Count;
-                        continue;
-                    }
-
-                    Vector<int> ceilingStartV = Vector.LoadUnsafe(ref ceilingStart[x]);
-                    Vector<int> floorEndV = Vector.LoadUnsafe(ref floorEnd[x]);
-                    Vector<int> wallEndV = Vector.LoadUnsafe(ref wallEnd[x]);
-                    Vector<int> floorFromV = Vector.ClampNative(wallEndV, ceilingStartV, floorEndV);
-                    Vector<int> screenIndexV = floorFromV * widthV + sectorFromXV;
-
-                    for (int i = 0; i < Vector<float>.Count; i++, x++)
-                    {
-                        if (columnStatusV[i] != canRenderFloorMask)
-                        {
-                            continue;
-                        }
-
-                        int floorFromY = floorFromV[i];
-                        int floorEndY = floorEndV[i];
-                        int screenIndex = screenIndexV[i];
-                        float xMapPosMultiplier = xMapPosMultiplierCache[x];
-
-                        RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
-                            x, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                            textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);
-                    }
-                }
-
-                sectorFromX = sectorToX;
-                sectorToX += rem;
-            }
-
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
                 RenderColumnStatus columnStatus = status[x];
@@ -278,16 +220,13 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int ceilingStartY = ceilingStart[x];
                 int floorEndY = floorEnd[x];
                 int wallEndY = wallEnd[x];
 
-                int floorFromY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
-
-                int screenIndex = floorFromY * width + x;
+                int screenIndex = wallEndY * width + x;
                 float xMapPosMultiplier = xMapPosMultiplierCache[x];
 
-                RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, floorFromY, width,
+                RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, wallEndY, width,
                     x, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);
             }
@@ -377,7 +316,7 @@ namespace RenderingEngine.Engine
                     var dir_y = - yMapPosR;
                     var dir_z = camera_position_z - Vector.Create<float>((bool)slopeFloor ? sector.Floor : sector.Ceil);
 
-                    (dir_x, dir_y, dir_z) = MathFormulas.NormalizeVector(dir_x, dir_y, dir_z);
+                    // (dir_x, dir_y, dir_z) = MathFormulas.NormalizeVector(dir_x, dir_y, dir_z);
 
                     // Vectorized intersection for the whole vector lane
                     MathFormulas.FindIntersectionVectorZero(nX, nY, nZ, pX, pY, pZ, camera_position_z,
