@@ -182,8 +182,8 @@ namespace RenderingEngine.Engine
             x -= px;
             y -= py;
 
-            float rx1 = MathF.FusedMultiplyAdd(x, sin, - y * cos);
-            float ry1 = MathF.FusedMultiplyAdd(x, cos,  y * sin);
+            float rx1 = MathF.FusedMultiplyAdd(x, sin, -y * cos);
+            float ry1 = MathF.FusedMultiplyAdd(x, cos, y * sin);
 
             return (rx1, ry1);
         }
@@ -219,6 +219,22 @@ namespace RenderingEngine.Engine
         internal static bool IsPowerOfTwo(int n)
         {
             return n > 0 && (n & (n - 1)) == 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static T Clamp<T>(T value, T min, T max)
+            where T : INumber<T>
+        {
+            if (value < min)
+            {
+                return min;
+            }
+            else if (value > max)
+            {
+                return max;
+            }
+
+            return value;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

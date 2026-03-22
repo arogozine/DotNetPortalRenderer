@@ -34,13 +34,13 @@ namespace RenderingEngine.Engine
             Vector<float> numerator = pX * nX + pY * nY + ptpZ * nZ;
 
             // t = numerator / denominator -- handle small denominators to avoid NaNs/Infs
-            Vector<float> absDen = Vector.Abs(denominator);
-            Vector<float> zeroT = Vector<float>.Zero;
+            // Vector<float> absDen = Vector.Abs(denominator);
+            // Vector<float> zeroT = Vector<float>.Zero;
             Vector<float> t = numerator / denominator;
 
             // For lanes where denominator is nearly zero set t = 0
-            Vector<int> smallMask = Vector.LessThanOrEqual(absDen, new Vector<float>(1e-8f));
-            t = Vector.ConditionalSelect(smallMask, zeroT, t);
+            // Vector<int> smallMask = Vector.LessThanOrEqual(absDen, new Vector<float>(1e-8f));
+            // t = Vector.ConditionalSelect(smallMask, zeroT, t);
 
             // intersection = linePoint + lineDirection * t
             intersectionX = lineDirectionX * t;

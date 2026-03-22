@@ -39,7 +39,7 @@ namespace RenderingEngine.Engine
             Sector sector)
         {
             ReadOnlySpan<RenderColumnStatus> statusSpan = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            ReadOnlySpan<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             ReadOnlySpan<int> wallStartSloped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
             ReadOnlySpan<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
@@ -84,44 +84,49 @@ namespace RenderingEngine.Engine
                 alignYV = Vector.Create(aY);
             }
 
-            Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
             ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(false, sector.CeilingShade);
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            (int sectroFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            for (int x = sectroFromX; x <= sectorToX; x++)
+            int length = sectorToX - sectorFromX + 1;
+            Span<int> wallStartClamped = TempBuffer<int>.GetBuffer(length);
+            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
+            Span<ushort> repeatedCountB = TempBuffer<ushort>.GetBuffer(length);
+            repeatedCount.Fill((ushort)length);
+
+            for (int x = sectorFromX; x <= sectorToX; x++)
             {
                 RenderColumnStatus columnStatus = statusSpan[x];
 
                 if (!columnStatus.CeilingRenderable)
                 {
+                    repeatedCount[x - sectorFromX] = 0;
                     continue;
                 }
 
-                int ceilingStartY = ceilingStart[x];
                 int floorEndY = floorEnd[x];
+                int ceilingStartY = ceilingStart[x];
 
-                int wallStartY = Math.Clamp(wallStartSloped[x], ceilingStartY, floorEndY);
-                int screenIndex = ceilingStartY * width + x;
-
-                float xMapPosMultiplier = xMapPosMultiplierCache[x];
-
-                RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, wallStartY, ceilingStartY, width,
-                    x, yCeilV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling) ? false : null);
+                wallStartClamped[x - sectorFromX] = SharedHelpers.Clamp(wallStartSloped[x], ceilingStartY, floorEndY);
             }
+
+            _ =
+                SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount) &&
+                SharedHelpers.PopulateRepeatedValues(repeatedCountB, wallStartClamped) &&
+                SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB);
+
+            RenderFloorOrCeilingColumn(repeatedCount, ref screenPtr, ref ceilingTexturePtr, sectorFromX, sectorToX, wallStartClamped, ceilingStart[sectorFromX..], width,
+                yCeilV, yOffSetV, xOffSetV, textureWidthV,
+                textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling) ? false : null);
         }
 
         [SkipLocalsInit]
         public void RenderFloorVector(PortalPlayerSnapshot player, Sector sector)
         {
             Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-
             Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
-            Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
-
-            ReadOnlySpan<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             ReadOnlySpan<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateFloor);
@@ -216,39 +221,47 @@ namespace RenderingEngine.Engine
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
+            int length = sectorToX - sectorFromX + 1;
+            Span<int> wallEndClamped = TempBuffer<int>.GetBuffer(length);
+            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
+            Span<ushort> repeatedCountB = TempBuffer<ushort>.GetBuffer(length);
+            repeatedCount.Fill((ushort)length);
+
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
                 RenderColumnStatus columnStatus = status[x];
 
                 if (!columnStatus.FloorRenderable)
                 {
+                    repeatedCount[x - sectorFromX] = 0;
                     continue;
                 }
 
                 int floorEndY = floorEnd[x];
                 int ceilingStartY = ceilingStart[x];
 
-                int wallEndY = Math.Clamp(wallEnd[x], ceilingStartY, floorEndY);
-
-                int screenIndex = wallEndY * width + x;
-                float xMapPosMultiplier = xMapPosMultiplierCache[x];
-
-                RenderFloorOrCeilingColumn(ref screenPtr, ref floorTexturePtr, screenIndex, floorEndY, wallEndY, width,
-                    x, yfloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);
+                wallEndClamped[x - sectorFromX] = SharedHelpers.Clamp(wallEnd[x], ceilingStartY, floorEndY);
             }
+
+            _ =
+                SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount) &&
+                SharedHelpers.PopulateRepeatedValues(repeatedCountB, wallEndClamped) &&
+                SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB);
+
+            RenderFloorOrCeilingColumn(repeatedCount, ref screenPtr, ref floorTexturePtr, sectorFromX, sectorToX, floorEnd[sectorFromX..], wallEndClamped, width,
+                yfloorV, yOffSetV, xOffSetV, textureWidthV,
+                textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);
         }
 
         private void RenderFloorOrCeilingColumn(
+            Span<ushort> repeatedCount,
             scoped ref uint screenPtr,
             scoped ref uint textureRef,
-            int screenIndex,
-            int floorToY,
-            int floorFromY,
+            int sectorFrom, int sectorTo,
+            Span<int> floorTo,
+            Span<int> floorFrom,
             int width,
-            int x,
             Vector<float> cameraPosition,
-            float xMapPosMultiplier,
             Vector<int> yOffSetV,
             Vector<int> xOffSetV,
             Vector<int> textureWidthV,
@@ -267,137 +280,210 @@ namespace RenderingEngine.Engine
             bool? slopeFloor
         )
         {
+            // Player Position
+            Vector<float> pSinV = this.pSinV;
+            Vector<float> pCosV = this.pCosV;
+            Vector<float> pxV = this.pxV;
+            Vector<float> pyV = this.pyV;
+            Vector<float> pzV = this.pzV;
+            // For slopes
+            Vector3 planePoint, planeNormal;
+            Vector<float> nX, nY, nZ, pX, pY, pZ, dir_z;
+
             int halfHeight = PixelHeight / 2;
 
+            ref float xMapPosMultiplierCacheRef = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.XMapPosMultiplierCache);
             ref float incrCacheRef = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.CameraHeightToMapYPos);
-            Vector<float> incramentVector = Vector.LoadUnsafe(ref Unsafe.Add(ref incrCacheRef, floorFromY));
 
-            int rem = (floorToY - floorFromY) % Vector<int>.Count;
-            floorToY -= rem;
+            CreateSlopeVectors();
 
-            Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
-
-            ref uint screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-            ref readonly uint toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
-
-            Vector3 planePoint, planeNormal;
-            Vector<float> nX, nY, nZ, pX, pY, pZ;
-
-            if (slopeFloor is bool slopeV)
+            for (int x = sectorFrom; x <= sectorTo;)
             {
-                (planePoint, planeNormal) = slopeV ? MathFormulas.CalculatePlaneNormalFloor(sector)
-                    : MathFormulas.CalculatePlaneNormalCeil(sector);
+                ushort count = repeatedCount[x - sectorFrom];
 
-                // Convert scalar plane data into vectors
-                nX = Vector.Create(planeNormal.X);
-                nY = Vector.Create(planeNormal.Y);
-                nZ = Vector.Create(planeNormal.Z);
-                pX = Vector.Create(planePoint.X);
-                pY = Vector.Create(planePoint.Y);
-                pZ = Vector.Create(planePoint.Z);
+                if (count == 0)
+                {
+                    x++;
+                    continue;
+                }
+
+                // Attempt horizontal rendering
+                while (count >= Vector<int>.Count)
+                {
+                    (int min_t, int max_t, int min_b, int max_b) = CalculateLaneTopBottoms(x - sectorFrom, floorFrom, floorTo);
+
+                    if (min_b > max_t + 64)
+                    {
+                        RenderLine(x, ref xMapPosMultiplierCacheRef, floorTo[(x - sectorFrom)..], floorFrom[(x - sectorFrom)..],
+                            ref incrCacheRef, ref screenPtr, ref textureRef, min_t, max_t, min_b, max_b);
+
+                        x += Vector<int>.Count;
+                        count -= (ushort)Vector<int>.Count;
+                        continue;
+                    }
+
+                    break;
+                }
+
+                while (count-- > 0)
+                {
+                    int floorFromY = floorFrom[x - sectorFrom];
+                    int floorToY = floorTo[x - sectorFrom];
+
+                    RenderColumn(ref incrCacheRef, ref screenPtr, ref textureRef, floorToY, floorFromY, x, Unsafe.Add(ref xMapPosMultiplierCacheRef, x));
+                    x++;
+                }
             }
-            else
+
+            return;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(
+                int x, ReadOnlySpan<int> from, ReadOnlySpan<int> to
+            )
             {
-                Unsafe.SkipInit(out planePoint);
-                Unsafe.SkipInit(out planeNormal);
-                Unsafe.SkipInit(out nX);
-                Unsafe.SkipInit(out nY);
-                Unsafe.SkipInit(out nZ);
-                Unsafe.SkipInit(out pX);
-                Unsafe.SkipInit(out pY);
-                Unsafe.SkipInit(out pZ);
+                from = from[x..];
+                to = to[x..];
+
+                int min_t = int.MaxValue, max_t = int.MinValue;
+                int min_b = int.MaxValue, max_b = int.MinValue;
+
+                // compute per-lane tops/bottoms
+                for (int i = 0; i < Vector<int>.Count; i++)
+                {
+                    int top = from[i];
+                    min_t = Math.Min(min_t, top);
+                    max_t = Math.Max(max_t, top);
+
+                    int bottom = to[i];
+                    min_b = Math.Min(min_b, bottom);
+                    max_b = Math.Max(max_b, bottom);
+                }
+
+                return (min_t, max_t, min_b, max_b);
             }
 
-            while (!Unsafe.AreSame(in screenTex, in toScalePtr))
+            void RenderLine(
+                int x,
+                ref float xMapPosMultiplierCacheRef,
+                ReadOnlySpan<int> to, ReadOnlySpan<int> from,
+                ref float incrCacheRef,
+                ref uint screenPtr,
+                ref uint textureRef,
+                int min_t, int max_t, int min_b, int max_b
+                )
+            {
+                Vector<float> xMapPosMultiplierCacheV = Vector.LoadUnsafe(ref Unsafe.Add(ref xMapPosMultiplierCacheRef, x));
+
+                // render tops where there is no shared window
+                if (min_t != max_t)
+                {
+                    for (int i = 0; i < Vector<int>.Count; i++)
+                    {
+                        int fromY = from[i];
+
+                        if (fromY >= max_t)
+                        {
+                            continue;
+                        }
+
+                        RenderColumn(ref incrCacheRef, ref screenPtr, ref textureRef, max_t, fromY, x, xMapPosMultiplierCacheV[i]);
+                    }
+
+                }
+
+                // render bottoms where there is no shared window
+                if (min_b != max_b)
+                {
+                    for (int i = 0; i < Vector<int>.Count; i++)
+                    {
+                        int toY = to[i];
+
+                        if (toY <= min_b)
+                        {
+                            continue;
+                        }
+
+                        RenderColumn(ref incrCacheRef, ref screenPtr, ref textureRef, toY, min_b, x, xMapPosMultiplierCacheV[i]);
+                    }
+                }
+
+                for (int y = max_t, screenIndex = y * width + x; y <= min_b; y++, screenIndex += width)
+                {
+                    Vector<float> incramentVector = Vector.Create(Unsafe.Add(ref incrCacheRef, y));
+
+                    ref uint screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
+
+                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierCacheV);
+
+                    for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, 1))
+                    {
+                        screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
+                    }
+
+                }
+            }
+
+            void RenderColumn(
+                ref float incrCacheRef,
+                ref uint screenPtr,
+                ref uint textureRef,
+                int floorToY, int floorFromY, int x, float xMapPosMultiplier)
+            {
+                int screenIndex = floorFromY * width + x;
+
+                Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
+
+                int rem = (floorToY - floorFromY) % Vector<int>.Count;
+                floorToY -= rem;
+
+                ref readonly uint toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
+                ref uint screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
+
+                Vector<float> incramentVector = Vector.LoadUnsafe(ref Unsafe.Add(ref incrCacheRef, floorFromY));
+
+                while (!Unsafe.AreSame(in screenTex, in toScalePtr))
+                {
+                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
+
+                    for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                    {
+                        screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
+                    }
+
+                    floorFromY += Vector<float>.Count;
+                    incramentVector = Vector.LoadUnsafe(ref Unsafe.Add(ref incrCacheRef, floorFromY));
+                }
+
+                if (rem > 0)
+                {
+                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
+
+                    for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                    {
+                        screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
+                    }
+                }
+
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            Vector<int> GetXyFromScreenSpace(
+                Vector<float> incramentVector,
+                Vector<float> xMapPosMultiplierV
+            )
             {
                 Vector<float> yMapPosR = cameraPosition * incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 if (slopeFloor is not null)
                 {
-                    // starting point (p)
-                    Vector<float> camera_position_z = pzV;
-
                     // direction vector
                     var dir_x = - xMapPosR;
                     var dir_y = - yMapPosR;
-                    var dir_z = camera_position_z - Vector.Create<float>((bool)slopeFloor ? sector.Floor : sector.Ceil);
 
                     // Vectorized intersection for the whole vector lane
-                    MathFormulas.FindIntersectionVectorZero(nX, nY, nZ, pX, pY, pZ, camera_position_z,
-                        dir_x, dir_y, dir_z,
-                        out xMapPosR, out yMapPosR);
-                }
-
-                (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
-
-                if (rotated)
-                {
-                    xMapPos -= alignXV;
-                    yMapPos -= alignXY;
-
-                    Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, -yMapPos * rSinV);
-                    Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
-
-                    xMapPos = xMapPosSR;
-                    yMapPos = yMapPosSR;
-                }
-
-                if (swapXy)
-                {
-                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
-                }
-
-                Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos);
-                Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos);
-
-                if (doubleSize)
-                {
-                    _y1 >>= 1;
-                    _x1 >>= 1;
-                }
-
-                _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
-                _x1 = (_x1 + xOffSetV) & textureWidthMaskV;         
-
-                if (flipY)
-                {
-                    _y1 = textureHeightMaskV - _y1;
-                }
-
-                if (flipX)
-                {
-                    _x1 = textureWidthMaskV - _x1;
-                }
-
-                Vector<int> textureIndex = _y1 * textureWidthV + _x1;
-
-                for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
-                {
-                    screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
-                }
-
-                floorFromY += Vector<float>.Count;
-                incramentVector = Vector.LoadUnsafe(ref Unsafe.Add(ref incrCacheRef, floorFromY));
-            }
-
-            if (rem > 0)
-            {
-                Vector<float> yMapPosR = cameraPosition * incramentVector;
-                Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
-
-                if (slopeFloor is not null)
-                {
-                    Vector<float> camera_position_z = pzV;
-
-                    // direction vector
-                    var dir_x = - xMapPosR;
-                    var dir_y = - yMapPosR;
-                    var dir_z = camera_position_z - Vector.Create<float>((bool)slopeFloor ? sector.Floor : sector.Ceil);
-
-                    // Vectorized intersection for the remainder lanes
-                    MathFormulas.FindIntersectionVectorZero(nX, nY, nZ, pX, pY, pZ,
-                        camera_position_z,
+                    MathFormulas.FindIntersectionVectorZero(nX, nY, nZ, pX, pY, pZ, pzV,
                         dir_x, dir_y, dir_z,
                         out xMapPosR, out yMapPosR);
                 }
@@ -443,11 +529,38 @@ namespace RenderingEngine.Engine
                     _x1 = textureWidthMaskV - _x1;
                 }
 
-                Vector<int> textureIndex = _y1 * textureWidthV + _x1;
+                return _y1 * textureWidthV + _x1;
+            }
 
-                for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            void CreateSlopeVectors()
+            {
+                if (slopeFloor is bool slopeV)
                 {
-                    screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
+                    (planePoint, planeNormal) = slopeV ? MathFormulas.CalculatePlaneNormalFloor(sector)
+                        : MathFormulas.CalculatePlaneNormalCeil(sector);
+
+                    // Convert scalar plane data into vectors
+                    nX = Vector.Create(planeNormal.X);
+                    nY = Vector.Create(planeNormal.Y);
+                    nZ = Vector.Create(planeNormal.Z);
+                    pX = Vector.Create(planePoint.X);
+                    pY = Vector.Create(planePoint.Y);
+                    pZ = Vector.Create(planePoint.Z);
+
+                    dir_z = pzV - Vector.Create<float>(slopeV ? sector.Floor : sector.Ceil);
+                }
+                else
+                {
+                    Unsafe.SkipInit(out planePoint);
+                    Unsafe.SkipInit(out planeNormal);
+                    Unsafe.SkipInit(out nX);
+                    Unsafe.SkipInit(out nY);
+                    Unsafe.SkipInit(out nZ);
+                    Unsafe.SkipInit(out pX);
+                    Unsafe.SkipInit(out pY);
+                    Unsafe.SkipInit(out pZ);
+                    Unsafe.SkipInit(out dir_z);
                 }
             }
         }
