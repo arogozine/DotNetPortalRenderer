@@ -1,9 +1,56 @@
-﻿using RenderingEngine.Models;
+﻿using RenderingEngine.Tooling;
 
 namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
+        [Conditional("DEBUG")]
+        private void ProperlyClamped(scoped ReadOnlySpan<int> span)
+        {
+            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+
+            for (int i = 0; i < span.Length; i++)
+            {
+                RenderColumnStatus statusY = status[i];
+
+                int val = span[i];
+                Debug.Assert(val >= 0);
+                Debug.Assert(val < PixelHeight);
+            }
+        }
+
+        [Conditional("DEBUG")]
+        private void ProperlyClamped()
+        {
+            ProperlyClamped(memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart));
+            ProperlyClamped(memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd));
+            ProperlyClamped(memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped));
+            ProperlyClamped(memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped));
+        }
+
+        [Conditional("DEBUG")]
+        private void ProperlyClamped(scoped ReadOnlySpan<int> span, int from, int to)
+        {
+            Debug.Assert(from <= to);
+
+
+            for (int i = from; i <= to; i++)
+            {
+                int val = span[i];
+                Debug.Assert(val >= 0);
+                Debug.Assert(val < PixelHeight);
+            }
+        }
+
+        private void ProperlyClamped(int from, int to)
+        {
+            ProperlyClamped(memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart), from, to);
+            ProperlyClamped(memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd), from, to);
+            ProperlyClamped(memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped), from, to);
+            ProperlyClamped(memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped), from, to);
+        }
+
+
         /*
         private void Meh(Span<BGRA> screen, RenderWindowSpriteSnapshot sectorSprites)
         {

@@ -129,6 +129,31 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
+        public static void CalculateConnectingSectorsForSlope(PortalPlayerSnapshot player, ReadOnlySpan<Sector> sectors, Sector sector)
+        {
+            float pSin = player.Sin;
+            float pCos = player.Cos;
+            float px = player.X;
+            float py = player.Y;
+
+            HashSet<Sector> connectingSectors = [];
+
+            for (int i = 0; i < sector.Walls.Length; i++)
+            {
+                RenderableWall wall = sector.Walls[i];
+
+                if (wall.IsPortal && wall.Neighbor != sector.Id)
+                {
+                    _= connectingSectors.Add(sectors[wall.Neighbor]);
+                }
+            }
+
+            foreach (Sector s in connectingSectors)
+            {
+                _ = RotateWall(s.Walls[0], pSin, pCos, px, py);
+            }
+        }
+
         public static void AssignBunches(scoped ReadOnlySpan<Sector> sectors)
         {
             Queue<RenderableWall> assignedWallsQueue = [];

@@ -36,112 +36,23 @@ namespace RenderingEngine.Engine
         {
             Span<RenderColumnStatus> status = alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> floorEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-            Span<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            Span<int> wallEndSloped = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            Span<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
             Span<float> distance = alignedMemoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
 
             status.Fill(RenderColumnStatus.NewRender);
             floorEnd.Fill(height - 1);
+            wallEndSloped.Fill(height - 1);
             wallEnd.Fill(height - 1);
             distance.Fill(float.MaxValue);
 
             alignedMemoryPool.ClearBuckets(
+                MemoryPoolBucket.PortalFrom, MemoryPoolBucket.PortalFromClamped,
+                MemoryPoolBucket.PortalTo, MemoryPoolBucket.PortalToClamped,
                 MemoryPoolBucket.CeilingStart, MemoryPoolBucket.WallStart,
                 MemoryPoolBucket.TextureYIncrement, MemoryPoolBucket.StartingYTexturePosition);
         }
 
-        public RenderColumnStatus NewDepth()
-        {
-            Span<RenderColumnStatus> status = alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            ReadOnlySpan<int> ceilingStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            ReadOnlySpan<int> wallStart = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            ReadOnlySpan<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
-            ReadOnlySpan<int> floorEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-
-
-            RenderColumnStatus renderColumnStatus = default;
-
-            for (int i = 0; i < this.width; i++)
-            {
-                RenderColumnStatus columnStatus = status[i];
-
-                if (columnStatus.IsFinished)
-                {
-                    continue;
-                }
-                else if (columnStatus.IsCalculated)
-                {
-                    columnStatus = RecalculateRenderWindow(i, false, status, ceilingStart, floorEnd, wallStart, wallEnd);
-                }
-                else
-                {
-                    columnStatus = RenderColumnStatus.FinishedRendering;
-                    status[i] = RenderColumnStatus.FinishedRendering;
-                }
-
-                renderColumnStatus |= columnStatus;
-            }
-
-            // this allows us to know what, if anything, we can still render
-            return renderColumnStatus;
-        }
-
-        public static RenderColumnStatus RecalculateRenderWindow(
-            int x,
-            bool calculated,
-            scoped Span<RenderColumnStatus> Status,
-            scoped ReadOnlySpan<int> CeilingStart,
-            scoped ReadOnlySpan<int> FloorEnd,
-            scoped ReadOnlySpan<int> WallStart,
-            scoped ReadOnlySpan<int> WallEnd
-            )
-        {
-            RenderColumnStatus status;
-            int ceilingStart = CeilingStart[x];
-            int floorEnd = FloorEnd[x];
-            int wallStart = WallStart[x];
-            int wallEnd = WallEnd[x];
-
-            bool windowExists = ceilingStart < floorEnd;
-
-            bool canRenderCeiling = windowExists && ceilingStart < wallStart && ceilingStart < floorEnd;
-            bool canRenderFloor = windowExists && wallEnd < floorEnd;
-            bool canRenderWall = windowExists && wallStart < wallEnd && ceilingStart < floorEnd;
-            bool canRenderPortal = windowExists && floorEnd < ceilingStart && wallStart < floorEnd;
-
-            RenderColumnStatus startingStatus = calculated ? RenderColumnStatus.Calculated : default;
-
-            if (!windowExists || !(canRenderCeiling || canRenderFloor || canRenderWall || canRenderPortal))
-            {
-                status = RenderColumnStatus.FinishedRendering;
-            }
-            else
-            {
-                status = startingStatus;
-
-                if (canRenderCeiling)
-                {
-                    status |= RenderColumnStatus.CanRenderCeiling;
-                }
-
-                if (canRenderFloor)
-                {
-                    status |= RenderColumnStatus.CanRenderFloor;
-                }
-
-                if (canRenderWall)
-                {
-                    status |= RenderColumnStatus.CanRenderWall;
-                }
-
-                if (canRenderPortal)
-                {
-                    status |= RenderColumnStatus.CanRenderPortal;
-                }
-            }
-
-            Status[x] = status;
-            return status;
-        }
 
         public void NewSector(NeighborsToRender sectorInfo)
         {

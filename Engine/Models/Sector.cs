@@ -18,4 +18,14 @@ internal class Sector
     public float? FloorSlope => MapSector.FloorSlope;
 
     public required RenderableWall[] Walls { get; init; }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is Sector otherSector && otherSector.Id == this.Id;
+    }
+
+    public override int GetHashCode()
+    {
+        return Id.GetHashCode();
+    }
 }

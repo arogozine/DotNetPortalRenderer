@@ -39,8 +39,9 @@ namespace RenderingEngine.Engine
             Sector sector)
         {
             ReadOnlySpan<RenderColumnStatus> statusSpan = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            ReadOnlySpan<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            ReadOnlySpan<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
+            ReadOnlySpan<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            ReadOnlySpan<int> wallStartSloped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
+            ReadOnlySpan<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateCeiling);
 
@@ -98,14 +99,15 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int ceilingStart = ceilingStartSpan[x];
-                int wallStart = wallStartSpan[x];
+                int ceilingStartY = ceilingStart[x];
+                int floorEndY = floorEnd[x];
 
-                int screenIndex = ceilingStart * width + x;
+                int wallStartY = Math.Clamp(wallStartSloped[x], ceilingStartY, floorEndY);
+                int screenIndex = ceilingStartY * width + x;
 
                 float xMapPosMultiplier = xMapPosMultiplierCache[x];
 
-                RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, wallStart, ceilingStart, width,
+                RenderFloorOrCeilingColumn(ref screenPtr, ref ceilingTexturePtr, screenIndex, wallStartY, ceilingStartY, width,
                     x, yCeilV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
                     textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling) ? false : null);
             }
@@ -115,9 +117,12 @@ namespace RenderingEngine.Engine
         public void RenderFloorVector(PortalPlayerSnapshot player, Sector sector)
         {
             Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+
             Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
             Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
+
+            ReadOnlySpan<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            ReadOnlySpan<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateFloor);
             TextureInfo floorTexture = sector.FloorTexture;
@@ -221,7 +226,9 @@ namespace RenderingEngine.Engine
                 }
 
                 int floorEndY = floorEnd[x];
-                int wallEndY = wallEnd[x];
+                int ceilingStartY = ceilingStart[x];
+
+                int wallEndY = Math.Clamp(wallEnd[x], ceilingStartY, floorEndY);
 
                 int screenIndex = wallEndY * width + x;
                 float xMapPosMultiplier = xMapPosMultiplierCache[x];
@@ -316,8 +323,6 @@ namespace RenderingEngine.Engine
                     var dir_y = - yMapPosR;
                     var dir_z = camera_position_z - Vector.Create<float>((bool)slopeFloor ? sector.Floor : sector.Ceil);
 
-                    // (dir_x, dir_y, dir_z) = MathFormulas.NormalizeVector(dir_x, dir_y, dir_z);
-
                     // Vectorized intersection for the whole vector lane
                     MathFormulas.FindIntersectionVectorZero(nX, nY, nZ, pX, pY, pZ, camera_position_z,
                         dir_x, dir_y, dir_z,
@@ -389,8 +394,6 @@ namespace RenderingEngine.Engine
                     var dir_x = - xMapPosR;
                     var dir_y = - yMapPosR;
                     var dir_z = camera_position_z - Vector.Create<float>((bool)slopeFloor ? sector.Floor : sector.Ceil);
-
-                    (dir_x, dir_y, dir_z) = MathFormulas.NormalizeVector(dir_x, dir_y, dir_z);
 
                     // Vectorized intersection for the remainder lanes
                     MathFormulas.FindIntersectionVectorZero(nX, nY, nZ, pX, pY, pZ,

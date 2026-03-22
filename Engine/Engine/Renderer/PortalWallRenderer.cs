@@ -5,46 +5,6 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        private void CalculateDistance(RenderablePortalWall renderableWall)
-        {
-            int width = PixelWidth;
-            var wall = renderableWall.Wall;
-            int wallFromX = renderableWall.XLeft;
-            int wallToX = renderableWall.XRight;
-
-            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            Span<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-            Span<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
-            Span<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            Span<int> wallEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
-
-            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
-
-            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
-            {
-                RenderColumnStatus columnStatus = status[x];
-
-                if (!columnStatus.WallRenderable)
-                {
-                    continue;
-                }
-
-                int ceilingStart = ceilingStartSpan[x];
-                int wallStartY = wallStartSpan[x];
-                int wallEndY = wallEndSpan[x];
-                int floorEndY = floorEnd[x];
-
-                int portalFromYClamped = Math.Clamp(wallStartY, ceilingStart, floorEndY);
-                int portalToYClamped = Math.Clamp(wallEndY, ceilingStart, floorEndY);
-
-                distance[x] = MathFormulas.CalculateDistance2(cameraRay, t1, d2y, d2x);
-                ceilingStartSpan[x] = portalFromYClamped;
-                floorEnd[x] = portalToYClamped;
-                status[x] ^= RenderColumnStatus.CanRenderWall;
-            }
-        }
-
         private bool DrawPortalWall(
             PortalPlayerSnapshot player,
             ReadOnlySpan<Sector> sectors,
@@ -57,12 +17,13 @@ namespace RenderingEngine.Engine
             if (!renderLower && !renderUpper)
             {
                 CalculateDistance(renderableWall);
+                CalculateWallClamp(renderableWall);
+                CalculatePortalClamp(renderableWall);
+
                 return true;
             }
 
             RenderableWall wall = renderableWall.Wall;
-
-            CalculateWallClamp(renderableWall);
 
             if (renderUpper)
             {
@@ -70,12 +31,15 @@ namespace RenderingEngine.Engine
 
                 if (upperTexture.RenderingOptions.IsSkybox)
                 {
+                    CalculateWallClamp(renderableWall);
                     CalculatePortalClamp(renderableWall);
                     DrawUpperSkyboxPortalWall(player, sectors, renderableWall);
                 }
                 else
                 {
                     CalculateUpperTextureYIncrement(renderableWall, upperTexture);
+                    CalculateWallClamp(renderableWall);
+
                     PrecalculateUpperWallDistance(renderableWall);
                     DrawUpperPortalWall(sectors, renderableWall);
                 }
@@ -87,48 +51,18 @@ namespace RenderingEngine.Engine
 
                 if (lowerTexture.RenderingOptions.IsSkybox)
                 {
+                    CalculateWallClamp(renderableWall);
                     CalculatePortalClamp(renderableWall);
                     DrawLowerSkyboxPortalWall(player, sectors, renderableWall);
                 }
                 else
                 {
                     CalculateLowerTextureYIncrement(renderableWall, lowerTexture);
+                    CalculateWallClamp(renderableWall);
+
                     PrecalculateLowerWallDistance(renderableWall);
                     DrawLowerPortalWall(sectors, renderableWall);
                 }
-            }
-
-            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-            Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFromClamped);
-            Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalToClamped);
-
-            int wallFromX = renderableWall.XLeft;
-            int wallToX = renderableWall.XRight;
-
-            for (int x = wallFromX; x <= wallToX; x++)
-            {
-                RenderColumnStatus columnStatus = status[x];
-
-                if (!columnStatus.WallRenderable)
-                {
-                    status[x] = RenderColumnStatus.FinishedRendering;
-                    continue;
-                }
-
-                int floorEndY = floorEnd[x];
-                int ceilingStartY = ceilingStart[x];
-
-
-                int portalFromY = portalFrom[x];
-                int portalToY = portalTo[x];
-                int portalFromYClamped = Math.Clamp(portalFromY, ceilingStartY, floorEndY);
-                int portalToYClamped = Math.Clamp(portalToY, ceilingStartY, floorEndY);
-
-                ceilingStart[x] = portalFromYClamped;
-                floorEnd[x] = portalToYClamped;
-                status[x] ^= RenderColumnStatus.CanRenderWall;
             }
 
             // if sector height matches top or bottom offset only top or bottom texture was drawn
@@ -150,10 +84,10 @@ namespace RenderingEngine.Engine
 
             ReadOnlySpan<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             ReadOnlySpan<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            ReadOnlySpan<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            ReadOnlySpan<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            ReadOnlySpan<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            ReadOnlySpan<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
             ReadOnlySpan<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-            ReadOnlySpan<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            ReadOnlySpan<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
 
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
@@ -214,10 +148,10 @@ namespace RenderingEngine.Engine
 
             ReadOnlySpan<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             ReadOnlySpan<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            ReadOnlySpan<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            ReadOnlySpan<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            ReadOnlySpan<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
+            ReadOnlySpan<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
             ReadOnlySpan<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-            ReadOnlySpan<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
+            ReadOnlySpan<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
 
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
@@ -297,7 +231,7 @@ namespace RenderingEngine.Engine
 
             Debug.Assert(upperTexture != null);
 
-            Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStart);
+            Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStartClamped);
             Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.PortalFromClamped);
 
             Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall);
@@ -315,7 +249,7 @@ namespace RenderingEngine.Engine
             Debug.Assert(lowerTexture != null);
 
             Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.PortalToClamped);
-            Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEnd);
+            Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEndClamped);
 
             Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall);
 

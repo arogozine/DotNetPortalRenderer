@@ -167,7 +167,7 @@ namespace RenderingEngine.Engine
                     sectorRenderQueue.Add(neighborToRender);
                 }
 
-                if (RenderWindowHelper.NewDepth() == RenderColumnStatus.FinishedRendering)
+                if (NewDepth() == RenderColumnStatus.FinishedRendering)
                 {
                     break;
                 }
@@ -203,6 +203,7 @@ namespace RenderingEngine.Engine
 
                 // 1. Filter out walls outside the player's view and sort them closest to furthest
                 Span<RenderableWall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player);
+                WallHelper.CalculateConnectingSectorsForSlope(player, sectors, sector);
 
                 // 2. Determine where ceiling, floor, and walls start and end
                 RenderColumnStatus sectorStatus = CalculateRenderWindow(player, sectorInfo, sectors, sector, walls);
@@ -390,25 +391,12 @@ namespace RenderingEngine.Engine
             {
                 RenderableWall wall = walls[s];
 
-                CalculateNeightborSectorForSlope(sectors, wall);
-
                 RenderColumnStatus status = CalculateRenderWindow(wall, sector, sectors, renderableWalls);
                 sectorStatus |= status;
             }
 
             return sectorStatus & RenderColumnStatus.NewRender;
 
-            void CalculateNeightborSectorForSlope(ReadOnlySpan<Sector> sectors, RenderableWall wall)
-            {
-                Sector sector = wall.Sector;
-                Sector? neighborSector = wall.IsPortal ? sectors[wall.Neighbor] : null;
-                bool wallSloped = neighborSector is not null && (sector.Settings.Sloped || neighborSector.Settings.Sloped);
-                if (wallSloped)
-                {
-                    if (!neighborSector!.Walls[0].IntersectsView)
-                    _ = WallHelper.CalculateRotatedWallsRelativeToPlayer(neighborSector!, player);
-                }
-            }
         }
 
         private List<RenderablePortalWall> RenderSector(
@@ -441,6 +429,8 @@ namespace RenderingEngine.Engine
                 }
             }
 
+            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
             if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderWall))
             {
                 for (int s = 0; s < renderableWalls.Count; s++)
@@ -462,6 +452,8 @@ namespace RenderingEngine.Engine
                     }
                 }
             }
+
+            CalculateNewFloorCeiling(sectorFromX, sectorToX);
 
             return neightbors;
         }
@@ -600,7 +592,7 @@ namespace RenderingEngine.Engine
                 wallStartClamped[x] = upperWallIsSkybox ? wallEndYClampedInt : wallStartYClampedInt;
                 wallEndClamped[x] = wallEndYClampedInt;
 
-                status |= RenderWindowHelper.RecalculateRenderWindow(x, true, renderStatus, ceilingStart, floorEnd, wallStartClamped, wallEndClamped);
+                status |= RecalculateRenderWindow(x, true, renderStatus, ceilingStart, floorEnd, wallStartClamped, wallEndClamped);
 
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;

@@ -28,13 +28,10 @@ namespace RenderingEngine.Engine
             // denominator = dot(lineDirection, planeNormal)
             Vector<float> denominator = lineDirectionX * nX + lineDirectionY * nY + lineDirectionZ * nZ;
 
-            // pointToPlane = planePoint - linePoint
-            Vector<float> ptpX = pX;
-            Vector<float> ptpY = pY;
             Vector<float> ptpZ = pZ - linePointZ;
 
             // numerator = dot(pointToPlane, planeNormal)
-            Vector<float> numerator = ptpX * nX + ptpY * nY + ptpZ * nZ;
+            Vector<float> numerator = pX * nX + pY * nY + ptpZ * nZ;
 
             // t = numerator / denominator -- handle small denominators to avoid NaNs/Infs
             Vector<float> absDen = Vector.Abs(denominator);
@@ -48,59 +45,6 @@ namespace RenderingEngine.Engine
             // intersection = linePoint + lineDirection * t
             intersectionX = lineDirectionX * t;
             intersectionY = lineDirectionY * t;
-        }
-
-
-        /// <summary>
-        /// Vectorized variant of <see cref="FindIntersection(Vector3,Vector3,Vector3,Vector3,out Vector3)"/>.
-        /// Computes intersections for a batch of rays described by their start points and directions.
-        /// </summary>
-        internal static void FindIntersectionVector(
-            Vector3 planePoint,
-            Vector3 planeNormal,
-            Vector<float> linePointX,
-            Vector<float> linePointY,
-            Vector<float> linePointZ,
-            Vector<float> lineDirectionX,
-            Vector<float> lineDirectionY,
-            Vector<float> lineDirectionZ,
-            out Vector<float> intersectionX,
-            out Vector<float> intersectionY,
-            out Vector<float> intersectionZ)
-        {
-            // Convert scalar plane data into vectors
-            Vector<float> nX = Vector.Create(planeNormal.X);
-            Vector<float> nY = Vector.Create(planeNormal.Y);
-            Vector<float> nZ = Vector.Create(planeNormal.Z);
-
-            Vector<float> pX = Vector.Create(planePoint.X);
-            Vector<float> pY = Vector.Create(planePoint.Y);
-            Vector<float> pZ = Vector.Create(planePoint.Z);
-
-            // denominator = dot(lineDirection, planeNormal)
-            Vector<float> denominator = lineDirectionX * nX + lineDirectionY * nY + lineDirectionZ * nZ;
-
-            // pointToPlane = planePoint - linePoint
-            Vector<float> ptpX = pX - linePointX;
-            Vector<float> ptpY = pY - linePointY;
-            Vector<float> ptpZ = pZ - linePointZ;
-
-            // numerator = dot(pointToPlane, planeNormal)
-            Vector<float> numerator = ptpX * nX + ptpY * nY + ptpZ * nZ;
-
-            // t = numerator / denominator -- handle small denominators to avoid NaNs/Infs
-            Vector<float> absDen = Vector.Abs(denominator);
-            Vector<float> zeroT = Vector<float>.Zero;
-            Vector<float> t = numerator / denominator;
-
-            // For lanes where denominator is nearly zero set t = 0
-            Vector<int> smallMask = Vector.LessThanOrEqual(absDen, new Vector<float>(1e-8f));
-            t = Vector.ConditionalSelect(smallMask, zeroT, t);
-
-            // intersection = linePoint + lineDirection * t
-            intersectionX = linePointX + lineDirectionX * t;
-            intersectionY = linePointY + lineDirectionY * t;
-            intersectionZ = linePointZ + lineDirectionZ * t;
         }
 
         internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalCeil(Sector sector)
@@ -302,7 +246,7 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static float CalculateDistance2(float cameraRay, float t1, float d2y, float d2x)
         {
-            float denominator = cameraRay * d2y - d2x;
+            float denominator = MathF.FusedMultiplyAdd(cameraRay, d2y, -d2x);
             float fromToYDist = t1 / denominator;
 
             return fromToYDist;

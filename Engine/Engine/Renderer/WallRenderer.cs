@@ -51,8 +51,8 @@ namespace RenderingEngine.Engine
                 columnStatus = RenderColumnStatus.FinishedRendering;
             }
 
-            Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStart);
-            Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEnd);
+            Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStartClamped);
+            Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEndClamped);
 
             DrawWallShared(renderableWall, wall.MiddleTexture!, repeatedCount, wallStartClamped, wallEndClamped);
 
