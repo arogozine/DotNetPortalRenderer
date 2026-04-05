@@ -51,10 +51,7 @@ namespace RenderingEngine.Engine
 
                 // slope hides part of the wall,
                 // increment texture start to accomodate
-                if (wallSlopedStartY > wallStartY)
-                {
                     topOffset += wallSlopedStartY - wallStartY;
-                }
 
                 int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + topOffset * textureYIncr);
                 textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeight << 16, textureYPosY);

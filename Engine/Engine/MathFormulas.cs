@@ -49,19 +49,21 @@ namespace RenderingEngine.Engine
 
         internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalCeil(Sector sector)
         {
-            Point p3 = sector.Walls[2].R1;
-            Point p2 = sector.Walls[0].R2;
             Point p1 = sector.Walls[0].R1;
+            Point p2 = sector.Walls[1].R1;
 
-            Debug.Assert(p1 != p2);
-            Debug.Assert(p1 != p3);
-            Debug.Assert(p2 != p3);
+            Unsafe.SkipInit(out Point p3);
+            float p3z = sector.Ceil;
 
-            (_, float p3z) = CalculateZAtPoint(sector, p3);
+            for (int i = 2; i < sector.Walls.Length && p3z == sector.Ceil; i++)
+            {
+                p3 = sector.Walls[i].R1;
+                (_, p3z) = CalculateZAtPoint(sector, p3);
+            }
 
-            Vector3 p3v = ToVector3(p3, p3z);
-            Vector3 p2v = ToVector3(p2, sector.Ceil);
             Vector3 p1v = ToVector3(p1, sector.Ceil);
+            Vector3 p2v = ToVector3(p2, sector.Ceil);
+            Vector3 p3v = ToVector3(p3, p3z);
 
             Vector3 vec1 = p2v - p1v;
             Vector3 vec2 = p3v - p1v;
@@ -71,19 +73,21 @@ namespace RenderingEngine.Engine
 
         internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalFloor(Sector sector)
         {
-            Point p3 = sector.Walls[2].R1;
-            Point p2 = sector.Walls[0].R2;
             Point p1 = sector.Walls[0].R1;
+            Point p2 = sector.Walls[1].R1;
 
-            Debug.Assert(p1 != p2);
-            Debug.Assert(p1 != p3);
-            Debug.Assert(p2 != p3);
+            Unsafe.SkipInit(out Point p3);
+            float p3z = sector.Floor;
 
-            (float p3z, _) = CalculateZAtPoint(sector, p3);
+            for (int i = 2; i < sector.Walls.Length && p3z == sector.Floor; i++)
+            {
+                p3 = sector.Walls[i].R1;
+                (p3z, _) = CalculateZAtPoint(sector, p3);
+            }
 
-            Vector3 p3v = ToVector3(p3, p3z);
-            Vector3 p2v = ToVector3(p2, sector.Floor);
             Vector3 p1v = ToVector3(p1, sector.Floor);
+            Vector3 p2v = ToVector3(p2, sector.Floor);
+            Vector3 p3v = ToVector3(p3, p3z);
 
             Vector3 vec1 = p2v - p1v;
             Vector3 vec2 = p3v - p1v;

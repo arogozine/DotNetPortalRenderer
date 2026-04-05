@@ -33,6 +33,80 @@ namespace RenderingEngine.Engine
 
         #endregion
 
+        [Flags]
+        private enum XyOpts : byte
+        {
+            None = 0,
+            FlipX = 1,
+            FlipY = 2,
+            SwapXY = 4,
+            DoubleSize = 8
+        }
+
+        private static (int xOffset, int yOffset, XyOpts Opts) DetermineOffsets(
+            TextureInfo textureInfo)
+        {
+            int textureWidth = textureInfo.Width;
+            int textureHeight = textureInfo.Height;
+
+            XyOpts xyOpts = XyOpts.None;
+            int xOffset = textureInfo.XOffset;
+            int yOffset = textureInfo.YOffset;
+
+            bool doubleSize = textureInfo.XScale == 2 && textureInfo.YScale == 2;
+
+            const TextureRenderingOptions mask = TextureRenderingOptions.FlipX | TextureRenderingOptions.FlipY | TextureRenderingOptions.SwapXY;
+
+            switch (textureInfo.RenderingOptions & mask)
+            {
+                case TextureRenderingOptions.FlipX:
+                    xOffset = textureWidth - xOffset;
+                    xyOpts = XyOpts.FlipX;
+                    break;
+                case TextureRenderingOptions.FlipX | TextureRenderingOptions.FlipY:
+                    yOffset = textureHeight - yOffset;
+                    break;
+                case TextureRenderingOptions.FlipX | TextureRenderingOptions.SwapXY:
+                    xyOpts = XyOpts.SwapXY | XyOpts.FlipY;
+                    break;
+                case TextureRenderingOptions.FlipY:
+                    xyOpts = XyOpts.FlipY;
+                    break;
+                case TextureRenderingOptions.FlipY | TextureRenderingOptions.SwapXY:
+                    xOffset = textureWidth - xOffset;
+                    xyOpts = XyOpts.SwapXY | XyOpts.FlipX;
+                    break;
+                case TextureRenderingOptions.SwapXY:
+                    yOffset = textureHeight - yOffset;
+                    xyOpts = XyOpts.SwapXY | XyOpts.FlipY;
+                    break;
+                case TextureRenderingOptions.FlipX | TextureRenderingOptions.FlipY | TextureRenderingOptions.SwapXY:
+                    xyOpts = XyOpts.SwapXY;
+                    break;
+                case TextureRenderingOptions.None:
+                    xOffset = textureWidth - xOffset;
+                    yOffset = textureHeight - yOffset;
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
+
+            if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Sloped))
+            {
+                xyOpts ^= XyOpts.FlipX;
+                xyOpts ^= XyOpts.FlipY;
+            }
+
+            if (doubleSize)
+            {
+                xOffset <<= 1;
+                yOffset <<= 1;
+                xyOpts |= XyOpts.DoubleSize;
+            }
+
+            return (xOffset, yOffset, xyOpts);
+        }
+
         [SkipLocalsInit]
         private void RenderCeilingVector(
             PortalPlayerSnapshot player,
@@ -50,22 +124,13 @@ namespace RenderingEngine.Engine
             float pz = player.Z;
             float yCeil = sector.Ceil - pz;
 
-            Vector<float> yCeilV = Vector.Create(yCeil);
-
             TextureInfo ceilingTexture = sector.CeilTexture;
-            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(ceilingTexture);
 
             int textureWidth = ceilingTexture.Width;
             int textureHeightMask = ceilingTexture.Height - 1;
             int textureWidthMask = ceilingTexture.Width - 1;
-            Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
-            Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
-            Vector<int> textureWidthV = Vector.Create(textureWidth);
 
-            int xOffset = ceilingTexture.XOffset;
-            int yOffset = ceilingTexture.YOffset;
-            Vector<int> xOffSetV = Vector.Create(xOffset);
-            Vector<int> yOffSetV = Vector.Create(yOffset);
+            (int xOffset, int yOffset, XyOpts xyOpts) = DetermineOffsets(ceilingTexture);
 
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
@@ -117,8 +182,8 @@ namespace RenderingEngine.Engine
                 SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB);
 
             RenderFloorOrCeilingColumn(repeatedCount, ref screenPtr, ref ceilingTexturePtr, sectorFromX, sectorToX, wallStartClamped, ceilingStart[sectorFromX..], width,
-                yCeilV, yOffSetV, xOffSetV, textureWidthV,
-                textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling) ? false : null);
+                yCeil, yOffset, xOffset, textureWidth,
+                textureHeightMask, textureWidthMask, rotated, rSinV, rCosV, alignXV, alignYV, xyOpts, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling) ? false : null);
         }
 
         [SkipLocalsInit]
@@ -134,60 +199,20 @@ namespace RenderingEngine.Engine
             int width = PixelWidth;
 
             float yfloor = sector.Floor - player.Z;
-            (bool swapXy, bool flipX, bool flipY, bool doubleSize) = GetFloorFlags(floorTexture);
 
             ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(false, sector.FloorShade);
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            Vector<float> yfloorV = Vector.Create(yfloor);
-
             int textureWidth = floorTexture.Width;
-            int textureHeight = floorTexture.Height;
 
             int textureHeightMask = floorTexture.Height - 1;
             int textureWidthMask = floorTexture.Width - 1;
-
-            Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
-            Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
-            Vector<int> textureWidthV = Vector.Create(textureWidth);
 
             var firstWall = sector.Walls[0];
             (float x1, float y1) = firstWall.PointA;
             (float x2, float y2) = firstWall.PointB;
 
-            int xOffset = floorTexture.XOffset;
-            int yOffset = floorTexture.YOffset;
-
-            if (doubleSize)
-            {
-                xOffset <<= 1;
-                yOffset <<= 1;
-            }
-
-            if (swapXy)
-            {
-                /*
-                if (flipY)
-                {
-                    yOffset = -yOffset;
-                }
-
-                if (flipX)
-                {
-                    xOffset = -xOffset;
-                }
-                */
-            }
-            else
-            {
-                if (flipY)
-                {
-                    yOffset = textureHeight - yOffset;
-                }
-
-                flipY = !flipY;
-                flipX = !flipX;
-            }
+            (int xOffset, int yOffset, XyOpts xyOpts) = DetermineOffsets(floorTexture);
 
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
@@ -215,9 +240,6 @@ namespace RenderingEngine.Engine
                 alignWallXV = Vector.Create(x1);
                 alignWallYV = Vector.Create(y1);
             }
-
-            Vector<int> xOffSetV = Vector.Create(xOffset);
-            Vector<int> yOffSetV = Vector.Create(yOffset);
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
@@ -249,8 +271,8 @@ namespace RenderingEngine.Engine
                 SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB);
 
             RenderFloorOrCeilingColumn(repeatedCount, ref screenPtr, ref floorTexturePtr, sectorFromX, sectorToX, floorEnd[sectorFromX..], wallEndClamped, width,
-                yfloorV, yOffSetV, xOffSetV, textureWidthV,
-                textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignWallXV, alignWallYV, flipY, flipX, swapXy, doubleSize, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);
+                yfloor, yOffset, xOffset, textureWidth,
+                textureHeightMask, textureWidthMask, rotated, rSinV, rCosV, alignWallXV, alignWallYV, xyOpts, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);
         }
 
         private void RenderFloorOrCeilingColumn(
@@ -261,25 +283,30 @@ namespace RenderingEngine.Engine
             Span<int> floorTo,
             Span<int> floorFrom,
             int width,
-            Vector<float> cameraPosition,
-            Vector<int> yOffSetV,
-            Vector<int> xOffSetV,
-            Vector<int> textureWidthV,
-            Vector<int> textureHeightMaskV,
-            Vector<int> textureWidthMaskV,
+            float cameraPosition,
+            int yOffset,
+            int xOffset,
+            int textureWidth,
+            int textureHeightMask,
+            int textureWidthMask,
             bool rotated,
             Vector<float> rSinV,
             Vector<float> rCosV,
             Vector<float> alignXV,
             Vector<float> alignXY,
-            bool flipY,
-            bool flipX,
-            bool swapXy,
-            bool doubleSize,
+            XyOpts xyOpts,
             Sector sector,
             bool? slopeFloor
         )
         {
+            // Texture
+            Vector<int> textureWidthV = Vector.Create(textureWidth);
+            Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
+            Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
+            Vector<int> xOffSetV = Vector.Create(xOffset);
+            Vector<int> yOffSetV = Vector.Create(yOffset);
+            // Player height compared to ceiling/floor
+            Vector<float> cameraPositionV = Vector.Create(cameraPosition);
             // Player Position
             Vector<float> pSinV = this.pSinV;
             Vector<float> pCosV = this.pCosV;
@@ -473,7 +500,7 @@ namespace RenderingEngine.Engine
                 Vector<float> xMapPosMultiplierV
             )
             {
-                Vector<float> yMapPosR = cameraPosition * incramentVector;
+                Vector<float> yMapPosR = cameraPositionV * incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 if (slopeFloor is not null)
@@ -502,7 +529,7 @@ namespace RenderingEngine.Engine
                     yMapPos = yMapPosSR;
                 }
 
-                if (swapXy)
+                if (xyOpts.HasFlag(XyOpts.SwapXY))
                 {
                     (xMapPos, yMapPos) = (yMapPos, xMapPos);
                 }
@@ -510,7 +537,7 @@ namespace RenderingEngine.Engine
                 Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos);
                 Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos);
 
-                if (doubleSize)
+                if (xyOpts.HasFlag(XyOpts.DoubleSize))
                 {
                     _y1 >>= 1;
                     _x1 >>= 1;
@@ -519,12 +546,12 @@ namespace RenderingEngine.Engine
                 _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
                 _x1 = (_x1 + xOffSetV) & textureWidthMaskV;
 
-                if (flipY)
+                if (xyOpts.HasFlag(XyOpts.FlipY))
                 {
                     _y1 = textureHeightMaskV - _y1;
                 }
 
-                if (flipX)
+                if (xyOpts.HasFlag(XyOpts.FlipX))
                 {
                     _x1 = textureWidthMaskV - _x1;
                 }
