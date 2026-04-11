@@ -28,6 +28,12 @@ namespace RenderingEngine.Engine
 
         private void DrawSprite(ReadOnlySpan<Sector> sectors, RenderableBasicSprite sprite, RenderWindowSpriteSnapshot renderableWall)
         {
+            int bufferOffset = PixelWidth * renderableWall.Depth;
+
+            Span<float> distance = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance)[bufferOffset..];
+            Span<int> wallStartSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
+            Span<int> wallEndSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];
+
             TextureInfo texture = sprite.Texture;
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
@@ -53,10 +59,6 @@ namespace RenderingEngine.Engine
 
             int spriteFromX = xLeft;
             int spriteToX = xRight;
-
-            Span<int> wallStartSpan = renderableWall.WallStart;
-            Span<int> wallEndSpan = renderableWall.WallEnd;
-            Span<float> distance = renderableWall.Depth;
 
             float fromToYDist = sprite.DistanceMin;
 
@@ -177,6 +179,12 @@ namespace RenderingEngine.Engine
 
         private void DrawWallSprite(ReadOnlySpan<Sector> sectors, RenderableWallSprite sprite, RenderWindowSpriteSnapshot renderableWall)
         {
+            int bufferOffset = PixelWidth * renderableWall.Depth;
+
+            Span<float> distance = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance)[bufferOffset..];
+            Span<int> wallStart = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
+            Span<int> wallEnd = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];
+
             TextureInfo texture = sprite.Texture;
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
@@ -208,10 +216,6 @@ namespace RenderingEngine.Engine
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
             int xOffset = 0;
-
-            ReadOnlySpan<int> wallStart = renderableWall.WallStart;
-            ReadOnlySpan<int> wallEnd = renderableWall.WallEnd;
-            ReadOnlySpan<float> distance = renderableWall.Depth;
 
             using TempBuffer<uint> tempBuffer = TempBuffer<uint>.GetBuffer(textureWidth);
 
@@ -278,6 +282,19 @@ namespace RenderingEngine.Engine
                 return;
             }
 
+            int bufferOffset = PixelWidth * renderableWall.Depth;
+
+            Span<float> distanceSpan = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance)[bufferOffset..];
+            Span<RenderColumnStatus> columnStatusSpan = spriteCacheMemoryPool.GetBucket<RenderColumnStatus>(SpriteCachePoolBucket.RenderStatus)[bufferOffset..];
+
+            if (renderableWall.Depth > 1)
+            {
+                bufferOffset = PixelWidth * (renderableWall.Depth - 1);
+            }
+
+            Span<int> wallStart = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
+            Span<int> wallEnd = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];
+
             Sector sector = wall.Sector;
             int width = PixelWidth;
             int wallFromXOffset = renderableWall.Offset;
@@ -314,16 +331,16 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
             {
-                RenderColumnStatus columnStatus = renderableWall.ColumnStatus[x];
+                RenderColumnStatus columnStatus = columnStatusSpan[x];
 
                 if (columnStatus.PortalRenderable)
                 {
                     continue;
                 }
 
-                float buffer = RenderWindowHelper.Distance[x];
-                int floorEnd = renderableWall.WallEnd[x];
-                int ceilingStart = renderableWall.WallStart[x];
+                float buffer = distanceSpan[x];
+                int floorEnd = wallEnd[x];
+                int ceilingStart = wallStart[x];
 
                 (float distance, float fromToYdist) = MathFormulas.CalculateDistance(wall, cameraRay, t1, d2y, d2x, false);
 
@@ -403,10 +420,19 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors,
             RenderWindowWallSnapshot renderableWall)
         {
-            ReadOnlySpan<int> wallStart = renderableWall.WallStart;
-            ReadOnlySpan<int> wallEnd = renderableWall.WallEnd;
-            ReadOnlySpan<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
-            ReadOnlySpan<RenderColumnStatus> columnStatus = renderableWall.ColumnStatus;
+            int offset = PixelWidth * renderableWall.Depth;
+
+            Span<float> distance = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance)[offset..];
+            Span<RenderColumnStatus> columnStatus = spriteCacheMemoryPool.GetBucket<RenderColumnStatus>(SpriteCachePoolBucket.RenderStatus)[offset..];
+
+            if (renderableWall.Depth > 1)
+            {
+                offset = PixelWidth * (renderableWall.Depth - 1);
+            }
+
+            Span<int> wallStart = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[offset..];
+            Span<int> wallEnd = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[offset..];
+
 
             int width = PixelWidth;
             RenderableWall wall = renderableWall.Wall;

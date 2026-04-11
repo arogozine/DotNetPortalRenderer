@@ -1,180 +1,119 @@
 ﻿using System.Numerics;
 
-namespace RenderingEngine.Tooling
+namespace RenderingEngine.Tooling;
+
+internal unsafe class AlignedMemoryPool
 {
-    internal enum MemoryPoolBucket
+    public int BucketSize => _bucketSize;
+    internal int _bucketSize;
+    internal IntPtr _ptr;
+    internal int _byteCount;
+    internal int _rem;
+
+    internal (int StartByte, int EndByte)[] Buckets;
+
+    internal Span<byte> Span => new((void*)_ptr, _byteCount);
+
+    private AlignedMemoryPool(int bucketSize, int numberOfBuckets)
     {
-        /// <summary>
-        /// Generated once per window size
-        /// </summary>
-        AngleCache,
-        /// <summary>
-        /// Generated once per window size
-        /// </summary>
-        CameraHeightToMapYPos,
-        /// <summary>
-        /// Generated once per window size
-        /// </summary>
-        XMapPosMultiplierCache,
-        /// <summary>
-        /// Rendering / rendered status of each column
-        /// </summary>
-        RenderColumnStatus,
-        /// <summary>
-        /// Portal Start (Ceiling is rendered between CeilingStart - WallStart)
-        /// </summary>
-        CeilingStart,
-        /// <summary>
-        /// WallStart clamped to [CeilingStart, FloorEnd]
-        /// </summary>
-        WallStartClamped,
-        /// <summary>
-        /// WallEnd clamped to [CeilingStart, FloorEnd]
-        /// </summary>
-        WallEndClamped,
-        /// <summary>
-        /// Portal End (Floor is rendered between WallEnd - FloorEnd)
-        /// </summary>
-        FloorEnd,
-        /// <summary>
-        /// Z Distance for Sprite Rendering
-        /// </summary>
-        Distance,
-        /// <summary>
-        /// Texture Column to Render
-        /// </summary>
-        TextureXLocation,
-        /// <summary>
-        /// Wall Texture Y Increment
-        /// </summary>
-        TextureYIncrement,
-        /// <summary>
-        /// Where to start rendering a wall
-        /// </summary>
-        WallStart,
-        /// <summary>
-        /// Where to end rendering a wall
-        /// </summary>
-        WallEnd,
-        /// <summary>
-        /// Portal Top Window. Between [WallStart, WallEnd]
-        /// </summary>
-        PortalFrom,
-        /// <summary>
-        /// Portal Bottom Window. Between [WallStart, WallEnd]
-        /// </summary>
-        PortalTo,
-        /// <summary>
-        /// Calculated Texture Horizontal Position
-        /// </summary>
-        StartingYTexturePosition,
-        /// <summary>
-        /// PortalFrom Clamped Between [WallStartClamped, WallEndClamped]
-        /// </summary>
-        PortalFromClamped,
-        /// <summary>
-        /// PortalTo Clamped Between [WallStartClamped, WallEndClamped]
-        /// </summary>
-        PortalToClamped,
-        /// <summary>
-        /// Screen Buffer
-        /// </summary>
-        Buffer
+        // We use Vector<byte> which is the alignment check in Vector.Alignment (see source code)
+        // We then ensure that bucketSize lands on an aligned boundary
+        // so that all buckets are aligned at start
+
+        this._bucketSize = bucketSize;
+
+        bucketSize *= sizeof(int);
+        int alignment = Vector<byte>.Count;
+
+        _rem = (alignment - 1) & bucketSize;
+        _rem = (alignment - 1) & (alignment - _rem);
+
+        bucketSize += _rem;
+
+        _byteCount = bucketSize * numberOfBuckets;
+        _ptr = (IntPtr)NativeMemory.AlignedAlloc((nuint)_byteCount, (nuint)alignment);
+
+        Buckets = new (int, int)[numberOfBuckets];
+        for (int i = 0; i < Buckets.Length; i++)
+        {
+            int start = i * bucketSize;
+            Buckets[i] = (start, start + bucketSize);
+        }
     }
 
-    internal unsafe class AlignedMemoryPool
+    public void ReAlloc(int bucketSize, int numberOfBuckets)
     {
-        internal readonly IntPtr _ptr;
-        internal readonly int _byteCount;
-        internal readonly int _rem;
+        // We use Vector<byte> which is the alignment check in Vector.Alignment (see source code)
+        // We then ensure that bucketSize lands on an aligned boundary
+        // so that all buckets are aligned at start
 
-        internal readonly (int StartByte, int EndByte)[] Buckets;
+        this._bucketSize = bucketSize;
 
-        internal Span<byte> Span => new((void*)_ptr, _byteCount);
+        bucketSize *= sizeof(int);
+        int alignment = Vector<byte>.Count;
 
-        private AlignedMemoryPool(int bucketSize, int numberOfBuckets)
+        _rem = (alignment - 1) & bucketSize;
+        _rem = (alignment - 1) & (alignment - _rem);
+
+        bucketSize += _rem;
+
+        _byteCount = bucketSize * numberOfBuckets;
+        _ptr = (IntPtr)NativeMemory.AlignedRealloc((void*)_ptr, (nuint)_byteCount, (nuint)alignment);
+
+        Buckets = new (int, int)[numberOfBuckets];
+        for (int i = 0; i < Buckets.Length; i++)
         {
-            // We use Vector<byte> which is the alignment check in Vector.Alignment (see source code)
-            // We then ensure that bucketSize lands on an aligned boundary
-            // so that all buckets are aligned at start
-
-            bucketSize *= sizeof(int);
-            int alignment = Vector<byte>.Count;
-
-            _rem = (alignment - 1) & bucketSize;
-            _rem = (alignment - 1) & (alignment - _rem);
-
-            bucketSize += _rem;
-
-            _byteCount = bucketSize * numberOfBuckets;
-            _ptr = (IntPtr)NativeMemory.AlignedAlloc((nuint)_byteCount, (nuint)alignment);
-
-            Buckets = new (int, int)[numberOfBuckets];
-            for (int i = 0; i < Buckets.Length; i++)
-            {
-                int start = i * bucketSize;
-                Buckets[i] = (start, start + bucketSize);
-            }
+            int start = i * bucketSize;
+            Buckets[i] = (start, start + bucketSize);
         }
+    }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<T> GetBucket<T>(MemoryPoolBucket bucket)
-            where T : unmanaged
+    public Span<T> GetBucket<T>(int bucket)
+        where T : unmanaged
+    {
+        (int byteStart, int byteEnd) = Buckets[bucket];
+        return MemoryMarshal.Cast<byte, T>(Span[byteStart..(byteEnd - _rem)]);
+    }
+
+    public ref T GetBucketRef<T>(int bucket)
+        where T : unmanaged
+    {
+        (int byteStart, _) = Buckets[bucket];
+
+        byte* ptr = (byte*)_ptr.ToPointer();
+        ptr += byteStart;
+
+        return ref Unsafe.AsRef<T>((T*)ptr);
+    }
+
+    public void* GetBucketPtr(int bucket)
+    {
+        (int byteStart, _) = Buckets[bucket];
+
+        byte* ptr = (byte*)_ptr.ToPointer();
+        ptr += byteStart;
+        return ptr;
+    }
+
+    public void ClearBuckets(params ReadOnlySpan<int> buckets)
+    {
+        for (int i = 0; i < buckets.Length; i++)
         {
-            (int byteStart, int byteEnd) = Buckets[(int)bucket];
-            return MemoryMarshal.Cast<byte, T>(Span[byteStart..(byteEnd - _rem)]);
+            GetBucket<byte>(buckets[i]).Clear();
         }
+    }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<T> GetBucket<T>(int bucket)
-            where T : unmanaged
+    internal static AlignedMemoryPool GeneratePool(int bucketSize, int numberOfBuckets)
+    {
+        return new AlignedMemoryPool(bucketSize, numberOfBuckets);
+    }
+
+    ~AlignedMemoryPool()
+    {
+        // need to explicitly free aligned memory
+        if (_ptr != IntPtr.Zero)
         {
-            (int byteStart, int byteEnd) = Buckets[bucket];
-            return MemoryMarshal.Cast<byte, T>(Span[byteStart..(byteEnd - _rem)]);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T GetBucketRef<T>(MemoryPoolBucket bucket)
-            where T : unmanaged
-        {
-            (int byteStart, _) = Buckets[(int)bucket];
-
-            byte* ptr = (byte*)_ptr.ToPointer();
-            ptr += byteStart;
-
-            return ref Unsafe.AsRef<T>((T*)ptr);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void* GetBucketPtr(MemoryPoolBucket bucket)
-        {
-            (int byteStart, _) = Buckets[(int)bucket];
-
-            byte* ptr = (byte*)_ptr.ToPointer();
-            ptr += byteStart;
-            return (void*)ptr;
-        }
-
-        public void ClearBuckets(params ReadOnlySpan<MemoryPoolBucket> buckets)
-        {
-            for (int i = 0; i < buckets.Length; i++)
-            {
-                GetBucket<byte>(buckets[i]).Clear();
-            }
-        }
-
-        internal static AlignedMemoryPool GeneratePool(int bucketSize, int numberOfBuckets)
-        {
-            return new AlignedMemoryPool(bucketSize, numberOfBuckets);
-        }
-
-        ~AlignedMemoryPool()
-        {
-            // need to explicitly free aligned memory
-            if (_ptr != IntPtr.Zero)
-            {
-                NativeMemory.AlignedFree((void*)_ptr);
-            }
+            NativeMemory.AlignedFree((void*)_ptr);
         }
     }
 }

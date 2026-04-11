@@ -16,9 +16,11 @@ namespace RenderingEngine.Engine
 
             int width = PixelWidth;
 
-            ReadOnlySpan<int> wallStartSpan = renderableWall.WallStart;
-            ReadOnlySpan<int> wallEndSpan = renderableWall.WallEnd;
-            ReadOnlySpan<float> distance = renderableWall.Depth;
+            int bufferOffset = PixelWidth * renderableWall.Depth;
+
+            Span<float> distance = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance)[bufferOffset..];
+            Span<int> wallStartSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
+            Span<int> wallEndSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];
 
             Sector sector = sectors[sprite.SectorId];
 

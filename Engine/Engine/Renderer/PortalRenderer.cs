@@ -31,9 +31,11 @@ namespace RenderingEngine.Engine
             SpriteHelper = new SpriteHelper(width, height);
             WallHelper = new WallHelper(width, height);
 
-            memoryPool = AlignedMemoryPool.GeneratePool(width, (int)MemoryPoolBucket.Buffer + height);
+            memoryPool = AlignedMemoryPool.GeneratePool(width, (int)MemoryPoolBucket.Buffer + height + 1);
             RenderWindowHelper = new RenderWindowHelper(width, height, memoryPool);
             buffer = memoryPool.GetBucketPtr(MemoryPoolBucket.Buffer);
+
+            spriteCacheMemoryPool = AlignedMemoryPool.GeneratePool(width, (int)SpriteCachePoolBucket.RenderStatus + 1);
 
             GenerateAngleCache();
             GenerateCache();
@@ -86,8 +88,6 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private readonly RenderableAreaAndZBuffer[] spriteRenderableAreaCache = new RenderableAreaAndZBuffer[EngineConstants.MaxRenderDepth];
-
         // avoid re-allocating lists to reduce memory pressure
 
         private readonly List<RenderableSpriteSnapshot> transparentWalls = [];
@@ -95,9 +95,12 @@ namespace RenderingEngine.Engine
         private readonly List<RenderablePortalWall> neightbors = [];
         private readonly List<RenderablePortalWall> renderableWalls = [];
         private readonly HashSet<int> renderedSectors = [];
+        private int renderDepth = 0;
 
         public void DrawScreen(PortalPlayerSnapshot player)
         {
+            FillDepthZero();
+
             InitializeSharedVectors(player);
             this.WallHelper.SetSnapShot(player);
 
@@ -110,28 +113,21 @@ namespace RenderingEngine.Engine
 
             _ = renderedSectors.Add(player.Sector);
 
-            int renderDepth = 0;
+            renderDepth = 0;
 
             do
             {
-                // 0. Cache current renderable area for sprite rendering
-                RenderableAreaAndZBuffer spriteCache = spriteRenderableAreaCache[renderDepth];
-                if (spriteCache is null)
-                {
-                    spriteCache = new RenderableAreaAndZBuffer(PixelWidth);
-                    spriteRenderableAreaCache[renderDepth] = spriteCache;
-                }
-
                 // 1. Render all sectors at current depth and calculate new z buffer and render window
                 List<RenderablePortalWall> neighborsForDepth = DrawScreenStep(player);
 
                 // 2. Cache Distance and Window for Sprite Rendering
-                PopulateSpriteCacheForRenderDepth(spriteCache);
+                CacheDepthAndStartEndBoundsForSpriteRendering(renderDepth);
 
                 // 3. We render sprites after all the walls were rendered
                 var renderedSectorsCopy = new HashSet<int>(this.renderedSectors);
-                transparentWalls.Add(new RenderWindowSpriteSnapshot(spriteCache)
+                transparentWalls.Add(new RenderWindowSpriteSnapshot
                 {
+                    Depth = renderDepth,
                     XLeft = 0,
                     XRight = PixelWidth,
                     RenderDepth = renderDepth,
@@ -144,8 +140,9 @@ namespace RenderingEngine.Engine
                     _ = renderedSectors.Add(renderableWall.Wall.Neighbor);
                     if (renderableWall.IsPortalWithMiddleTexture)
                     {
-                        transparentWalls.Add(new RenderWindowWallSnapshot(spriteCache)
+                        transparentWalls.Add(new RenderWindowWallSnapshot
                         {
+                            Depth = renderDepth,
                             Offset = renderableWall.Offset,
                             XLeft = renderableWall.XLeft,
                             XRight = renderableWall.XRight,
@@ -232,60 +229,13 @@ namespace RenderingEngine.Engine
             return neighborsForDepth;
         }
 
-        private void PopulateSpriteCacheForRenderDepth(RenderableAreaAndZBuffer spriteCache)
-        {
-            memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped).CopyTo(spriteCache.WallStart);
-            memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped).CopyTo(spriteCache.WallEnd);
-            memoryPool.GetBucket<float>(MemoryPoolBucket.Distance).CopyTo(spriteCache.Depth);
-            memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus).CopyTo(spriteCache.ColumnStatus);
-
-            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-            Span<int> wallStart = spriteCache.WallStart;
-            Span<int> wallEnd = spriteCache.WallEnd;
-
-            int start = 0;
-            int length = wallStart.Length;
-
-            if (Vector.IsHardwareAccelerated && length > 128)
-            {
-                int rem = length % Vector<int>.Count;
-                length -= rem;
-
-                Vector<int> ceilingStartV, floorEndV;
-                Vector<int> wallStartV, wallEndV;
-
-                for (int i = 0; i < length; i += Vector<int>.Count)
-                {
-                    ceilingStartV = Vector.LoadUnsafe(ref ceilingStart[i]);
-                    floorEndV = Vector.LoadUnsafe(ref floorEnd[i]);
-
-                    wallStartV = Vector.LoadUnsafe(ref wallStart[i]);
-                    wallStartV = Vector.ClampNative(wallStartV, ceilingStartV, floorEndV);
-                    Vector.StoreUnsafe(wallStartV, ref wallStart[i]);
-
-                    wallEndV = Vector.LoadUnsafe(ref wallEnd[i]);
-                    wallEndV = Vector.ClampNative(wallEndV, ceilingStartV, floorEndV);
-                    Vector.StoreUnsafe(wallEndV, ref wallEnd[i]);
-                }
-
-                start = length;
-                length += rem;
-            }
-
-            for (int i = start; i < length; i++)
-            {
-                wallStart[i] = Math.Clamp(wallStart[i], ceilingStart[i], floorEnd[i]);
-                wallEnd[i] = Math.Clamp(wallEnd[i], ceilingStart[i], floorEnd[i]);
-            }
-        }
-
         public void RenderSpritesAndTransparentWalls(PortalPlayerSnapshot player)
         {
             HashSet<int> sectorsInt = new HashSet<int>(this.renderedSectors);
 
             ReadOnlySpan<Sector> sectors = Sectors;
 
+            Span<float> depthBuffer = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance);
             Span<RenderableSprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites, sectors);
 
             // render transparent walls and sprites
@@ -300,69 +250,16 @@ namespace RenderingEngine.Engine
                 }
                 else if (renderableWall is RenderWindowSpriteSnapshot sectorSprites)
                 {
-                    var currentBuffer = spriteRenderableAreaCache[sectorSprites.RenderDepth];
-                    var nextBuffer = sectorSprites.RenderDepth >= 1 ? spriteRenderableAreaCache[sectorSprites.RenderDepth - 1] : null;
+                    int renderDepth = sectorSprites.RenderDepth;
+                    Span<float> currentDistance = depthBuffer[(PixelWidth * renderDepth)..];
+                    Span<float> nextDistance = (--renderDepth) >= 0 ? depthBuffer[(PixelWidth * renderDepth)..] : default;
 
-                    float[] currentDistance = currentBuffer.Depth;
-                    float[]? nextDistance = nextBuffer?.Depth;
+                    List <RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
+                        sectorsInt, currentDistance, nextDistance);
 
-                    // first depth, there is no window
-                    if (nextDistance is null)
+                    foreach (RenderableSprite s in sprites)
                     {
-                        using var wallStartBuffer = TempBuffer<int>.GetBuffer(currentDistance.Length);
-                        wallStartBuffer.Span.Clear();
-
-                        using var wallEndBuffer = TempBuffer<int>.GetBuffer(currentDistance.Length);
-                        wallEndBuffer.Span.Fill(PixelHeight - 1);
-
-                        var renderableArea = new RenderableAreaAndZBuffer() {
-                            ColumnStatus = currentBuffer.ColumnStatus,
-                            Depth = currentBuffer.Depth,
-                            WallStart = wallStartBuffer,
-                            WallEnd = wallEndBuffer,
-                        };
-
-                        sectorSprites = new RenderWindowSpriteSnapshot(renderableArea)
-                        {
-                            RenderDepth = sectorSprites.RenderDepth,
-                            XLeft = sectorSprites.XLeft,
-                            XRight = sectorSprites.XRight,
-                            RenderedSectors = sectorSprites.RenderedSectors
-                        };
-
-                        List<RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
-                            sectorsInt, currentDistance, nextDistance);
-
-                        foreach (RenderableSprite s in sprites)
-                        {
-                            DrawSprite(player, sectors, s, sectorSprites);
-                        }
-                    }
-                    else
-                    {
-                        var renderableArea = new RenderableAreaAndZBuffer()
-                        {
-                            ColumnStatus = currentBuffer.ColumnStatus,
-                            Depth = currentBuffer.Depth,
-                            WallStart = nextBuffer!.WallStart,
-                            WallEnd = nextBuffer.WallEnd,
-                        };
-
-                        sectorSprites = new RenderWindowSpriteSnapshot(renderableArea)
-                        {
-                            RenderDepth = sectorSprites.RenderDepth,
-                            XLeft = sectorSprites.XLeft,
-                            XRight = sectorSprites.XRight,
-                            RenderedSectors = sectorSprites.RenderedSectors
-                        };
-
-                        List<RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
-                            sectorsInt, currentDistance, nextDistance);
-
-                        foreach (RenderableSprite s in sprites)
-                        {
-                            DrawSprite(player, sectors, s, sectorSprites);
-                        }
+                        DrawSprite(player, sectors, s, sectorSprites);
                     }
                 }
             }

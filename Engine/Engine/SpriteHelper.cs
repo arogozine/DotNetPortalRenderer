@@ -101,7 +101,7 @@ namespace RenderingEngine.Engine
         public static List<RenderableSprite> FilterOutSpritesOutsideDepth(
             scoped Span<RenderableSprite> rotatedSprites,
             HashSet<int> sectors,
-            float[] depth, float[]? parentDepth)
+            Span<float> depth, Span<float> parentDepth)
         {
             List<RenderableSprite> sprites = [];
 
@@ -109,7 +109,7 @@ namespace RenderingEngine.Engine
             {
                 RenderableSprite sprite = rotatedSprites[i];
                 
-                if (WithinDepth(sprite))
+                if (WithinDepth(sprite, depth, parentDepth))
                 {
                     sprites.Add(sprite);
                 }
@@ -118,12 +118,12 @@ namespace RenderingEngine.Engine
             return sprites;
 
 
-            bool WithinDepth(RenderableSprite sprite)
+            bool WithinDepth(RenderableSprite sprite, Span<float> depth, Span<float> parentDepth)
             {
                 float distanceMin = sprite.DistanceMin;
                 float distanceMax = sprite.DistanceMax;
 
-                if (parentDepth != null)
+                if (!parentDepth.IsEmpty)
                 {
                     for (int x = sprite.XLeft; x <= sprite.XRight; x++)
                     {
