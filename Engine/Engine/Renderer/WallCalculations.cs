@@ -51,10 +51,12 @@ namespace RenderingEngine.Engine
 
                 // slope hides part of the wall,
                 // increment texture start to accomodate
-                    topOffset += wallSlopedStartY - wallStartY;
+                topOffset += wallSlopedStartY - wallStartY;
 
                 int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + topOffset * textureYIncr);
                 textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeight << 16, textureYPosY);
+
+                Debug.Assert(textureYPosY <= textureHeight << 16);
 
                 startingYTexturePosition[x] = textureYPosY;
                 textureYIncrement[x] = float.ConvertToIntegerNative<int>(textureYIncr);
@@ -99,7 +101,6 @@ namespace RenderingEngine.Engine
                 int portalToSlopedY = portalToClamped[x];
                 int ceilY = ceil[x];
 
-
                 float topOffset = 0;
 
                 if (portalToSlopedY < ceilY)
@@ -107,11 +108,14 @@ namespace RenderingEngine.Engine
                     topOffset -= portalToSlopedY - ceilY;
                 }
 
+                topOffset += portalToSlopedY - portalToY;
                 topOffset *= textureYIncr;
 
-                int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + (portalToSlopedY - portalToY) * textureYIncr + topOffset);
+                int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + topOffset);
 
                 textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeight << 16, textureYPosY);
+
+                Debug.Assert(textureYPosY <= textureHeight << 16);
 
                 startingYTexturePosition[x] = textureYPosY;
                 textureYIncrement[x] = float.ConvertToIntegerNative<int>(textureYIncr);

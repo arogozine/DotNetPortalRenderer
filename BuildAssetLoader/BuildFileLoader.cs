@@ -62,7 +62,7 @@ namespace BuildAssetLoader
             return new GrpFile(files);
         }
 
-        public static unsafe PaletteFile LoadPalFile(string filePath)
+        public static PaletteFile LoadPalFile(string filePath)
         {
             if (!File.Exists(filePath))
             {

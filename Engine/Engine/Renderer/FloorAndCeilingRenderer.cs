@@ -157,7 +157,6 @@ namespace RenderingEngine.Engine
             int length = sectorToX - sectorFromX + 1;
             Span<int> wallStartClamped = TempBuffer<int>.GetBuffer(length);
             Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
-            Span<ushort> repeatedCountB = TempBuffer<ushort>.GetBuffer(length);
             repeatedCount.Fill((ushort)length);
 
             for (int x = sectorFromX; x <= sectorToX; x++)
@@ -176,10 +175,7 @@ namespace RenderingEngine.Engine
                 wallStartClamped[x - sectorFromX] = SharedHelpers.Clamp(wallStartSloped[x], ceilingStartY, floorEndY);
             }
 
-            _ =
-                SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount) &&
-                SharedHelpers.PopulateRepeatedValues(repeatedCountB, wallStartClamped) &&
-                SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB);
+            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
 
             RenderFloorOrCeilingColumn(repeatedCount, ref screenPtr, ref ceilingTexturePtr, sectorFromX, sectorToX, wallStartClamped, ceilingStart[sectorFromX..], width,
                 yCeil, yOffset, xOffset, textureWidth,
@@ -246,7 +242,6 @@ namespace RenderingEngine.Engine
             int length = sectorToX - sectorFromX + 1;
             Span<int> wallEndClamped = TempBuffer<int>.GetBuffer(length);
             Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
-            Span<ushort> repeatedCountB = TempBuffer<ushort>.GetBuffer(length);
             repeatedCount.Fill((ushort)length);
 
             for (int x = sectorFromX; x <= sectorToX; x++)
@@ -265,10 +260,7 @@ namespace RenderingEngine.Engine
                 wallEndClamped[x - sectorFromX] = SharedHelpers.Clamp(wallEnd[x], ceilingStartY, floorEndY);
             }
 
-            _ =
-                SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount) &&
-                SharedHelpers.PopulateRepeatedValues(repeatedCountB, wallEndClamped) &&
-                SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB);
+            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
 
             RenderFloorOrCeilingColumn(repeatedCount, ref screenPtr, ref floorTexturePtr, sectorFromX, sectorToX, floorEnd[sectorFromX..], wallEndClamped, width,
                 yfloor, yOffset, xOffset, textureWidth,
@@ -335,7 +327,7 @@ namespace RenderingEngine.Engine
                 }
 
                 // Attempt horizontal rendering
-                while (count >= Vector<int>.Count)
+                if (count >= Vector<int>.Count)
                 {
                     (int min_t, int max_t, int min_b, int max_b) = CalculateLaneTopBottoms(x - sectorFrom, floorFrom, floorTo);
 
@@ -348,8 +340,6 @@ namespace RenderingEngine.Engine
                         count -= (ushort)Vector<int>.Count;
                         continue;
                     }
-
-                    break;
                 }
 
                 while (count-- > 0)
@@ -414,7 +404,7 @@ namespace RenderingEngine.Engine
                             continue;
                         }
 
-                        RenderColumn(ref incrCacheRef, ref screenPtr, ref textureRef, max_t, fromY, x, xMapPosMultiplierCacheV[i]);
+                        RenderColumn(ref incrCacheRef, ref screenPtr, ref textureRef, max_t, fromY, x + i, xMapPosMultiplierCacheV[i]);
                     }
 
                 }
@@ -431,7 +421,7 @@ namespace RenderingEngine.Engine
                             continue;
                         }
 
-                        RenderColumn(ref incrCacheRef, ref screenPtr, ref textureRef, toY, min_b, x, xMapPosMultiplierCacheV[i]);
+                        RenderColumn(ref incrCacheRef, ref screenPtr, ref textureRef, toY, min_b, x + i, xMapPosMultiplierCacheV[i]);
                     }
                 }
 
@@ -562,9 +552,9 @@ namespace RenderingEngine.Engine
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void CreateSlopeVectors()
             {
-                if (slopeFloor is bool slopeV)
+                if (slopeFloor is bool slopeFloorBoolean)
                 {
-                    (planePoint, planeNormal) = slopeV ? MathFormulas.CalculatePlaneNormalFloor(sector)
+                    (planePoint, planeNormal) = slopeFloorBoolean ? MathFormulas.CalculatePlaneNormalFloor(sector)
                         : MathFormulas.CalculatePlaneNormalCeil(sector);
 
                     // Convert scalar plane data into vectors
@@ -575,7 +565,7 @@ namespace RenderingEngine.Engine
                     pY = Vector.Create(planePoint.Y);
                     pZ = Vector.Create(planePoint.Z);
 
-                    dir_z = pzV - Vector.Create<float>(slopeV ? sector.Floor : sector.Ceil);
+                    dir_z = pzV - Vector.Create<float>(slopeFloorBoolean ? sector.Floor : sector.Ceil);
                 }
                 else
                 {
