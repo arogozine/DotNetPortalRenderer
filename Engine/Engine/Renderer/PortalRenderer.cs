@@ -35,7 +35,7 @@ namespace RenderingEngine.Engine
             RenderWindowHelper = new RenderWindowHelper(width, height, memoryPool);
             buffer = memoryPool.GetBucketPtr(MemoryPoolBucket.Buffer);
 
-            spriteCacheMemoryPool = AlignedMemoryPool.GeneratePool(width, (int)SpriteCachePoolBucket.RenderStatus + 1);
+            spriteCacheMemoryPool = DynamicAlignedMemoryPool.GeneratePool(width, (int)SpriteCachePoolBucket.RenderStatus + 1);
 
             GenerateAngleCache();
             GenerateCache();
@@ -231,8 +231,6 @@ namespace RenderingEngine.Engine
 
         public void RenderSpritesAndTransparentWalls(PortalPlayerSnapshot player)
         {
-            HashSet<int> sectorsInt = new HashSet<int>(this.renderedSectors);
-
             ReadOnlySpan<Sector> sectors = Sectors;
 
             Span<float> depthBuffer = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance);
@@ -255,7 +253,7 @@ namespace RenderingEngine.Engine
                     Span<float> nextDistance = (--renderDepth) >= 0 ? depthBuffer[(PixelWidth * renderDepth)..] : default;
 
                     List <RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
-                        sectorsInt, currentDistance, nextDistance);
+                        renderedSectors, currentDistance, nextDistance);
 
                     foreach (RenderableSprite s in sprites)
                     {

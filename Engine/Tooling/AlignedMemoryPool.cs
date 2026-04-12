@@ -5,6 +5,8 @@ namespace RenderingEngine.Tooling;
 internal unsafe class AlignedMemoryPool
 {
     public int BucketSize => _bucketSize;
+    public int NumberOfBuckets => Buckets.Length;
+
     internal int _bucketSize;
     internal IntPtr _ptr;
     internal int _byteCount;
@@ -32,33 +34,6 @@ internal unsafe class AlignedMemoryPool
 
         _byteCount = bucketSize * numberOfBuckets;
         _ptr = (IntPtr)NativeMemory.AlignedAlloc((nuint)_byteCount, (nuint)alignment);
-
-        Buckets = new (int, int)[numberOfBuckets];
-        for (int i = 0; i < Buckets.Length; i++)
-        {
-            int start = i * bucketSize;
-            Buckets[i] = (start, start + bucketSize);
-        }
-    }
-
-    public void ReAlloc(int bucketSize, int numberOfBuckets)
-    {
-        // We use Vector<byte> which is the alignment check in Vector.Alignment (see source code)
-        // We then ensure that bucketSize lands on an aligned boundary
-        // so that all buckets are aligned at start
-
-        this._bucketSize = bucketSize;
-
-        bucketSize *= sizeof(int);
-        int alignment = Vector<byte>.Count;
-
-        _rem = (alignment - 1) & bucketSize;
-        _rem = (alignment - 1) & (alignment - _rem);
-
-        bucketSize += _rem;
-
-        _byteCount = bucketSize * numberOfBuckets;
-        _ptr = (IntPtr)NativeMemory.AlignedRealloc((void*)_ptr, (nuint)_byteCount, (nuint)alignment);
 
         Buckets = new (int, int)[numberOfBuckets];
         for (int i = 0; i < Buckets.Length; i++)

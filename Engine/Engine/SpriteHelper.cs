@@ -100,7 +100,7 @@ namespace RenderingEngine.Engine
 
         public static List<RenderableSprite> FilterOutSpritesOutsideDepth(
             scoped Span<RenderableSprite> rotatedSprites,
-            HashSet<int> sectors,
+            IReadOnlySet<int> sectors,
             Span<float> depth, Span<float> parentDepth)
         {
             List<RenderableSprite> sprites = [];

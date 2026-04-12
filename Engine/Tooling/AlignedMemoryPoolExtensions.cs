@@ -2,17 +2,20 @@
 
 internal static unsafe class AlignedMemoryPoolExtensions
 {
-    extension (AlignedMemoryPool pool)
+    extension (DynamicAlignedMemoryPool pool)
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<T> GetBucket<T>(MemoryPoolBucket bucket)
+        public Span<T> GetBucket<T>(SpriteCachePoolBucket bucket)
             where T : unmanaged
         {
             return pool.GetBucket<T>((int)bucket);
         }
+    }
 
+    extension (AlignedMemoryPool pool)
+    {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Span<T> GetBucket<T>(SpriteCachePoolBucket bucket)
+        public Span<T> GetBucket<T>(MemoryPoolBucket bucket)
             where T : unmanaged
         {
             return pool.GetBucket<T>((int)bucket);

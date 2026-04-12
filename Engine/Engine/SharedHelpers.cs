@@ -12,39 +12,6 @@ namespace RenderingEngine.Engine
         {
             bool repeated = false;
 
-            /*
-            int from = 0;
-            int len = repeatedValues.Length;
-
-            if (Vector<T>.IsSupported && repeatedValues.Length > Vector<T>.Count << 2)
-            {
-                Vector<T> zero = Vector<T>.Zero;
-                Vector<T> ones = Vector<T>.One;
-
-                int rem = len % Vector<T>.Count;
-                len -= rem;
-
-                for (int i = 0; i < len; i += Vector<T>.Count)
-                {
-                    ref T repeat_a_Ref = ref repeatedValues[i];
-
-                    Vector<T> repeat_a = Vector.LoadUnsafe(ref repeat_a_Ref);
-                    Vector<T> repeat_b = Vector.LoadUnsafe(ref repeatedValues2[i]);
-                    Vector<T> repeat_min = Vector.Min(repeat_a, repeat_b);
-
-                    Vector.StoreUnsafe(repeat_min, ref repeat_a_Ref);
-
-                    Vector<T> mask = Vector.GreaterThan(repeat_min, ones);
-                    repeated = repeated || !mask.Equals(zero);
-                }
-
-                from = len;
-                len += rem;
-
-            }
-
-            for (int i = from; i < len; i++)
-            */
             for (int i = 0; i < repeatedValues.Length; i++)
             {
                 T repeat_a = repeatedValues[i];
@@ -94,26 +61,6 @@ namespace RenderingEngine.Engine
             return repeated;
         }
 
-
-        /// <summary>
-        /// Populates <paramref name="repeatedCount"/> with the lengths of consecutive runs of identical values found in <paramref name="values"/>.
-        /// For each index <c>i</c>, <c>repeatedCount[i]</c> is set to the number of equal elements remaining in the run that starts at or contains index <c>i</c>.
-        /// Example: for values [A,A,A,B,B] the produced repeatedCount will be [3,2,1,2,1].
-        /// </summary>
-        /// <typeparam name="T">Element type. Must be unmanaged and support equality via <see cref="IEqualityOperators{T,T,bool}"/>.</typeparam>
-        /// <param name="repeatedCount">
-        /// Destination span that receives per-index run-length counts. Must have a length greater than or equal to <paramref name="values"/>.Length.
-        /// </param>
-        /// <param name="values">Source span to scan for consecutive identical values.</param>
-        /// <returns>
-        /// <c>true</c> if <paramref name="values"/> contains at least one element (and the method wrote to <paramref name="repeatedCount"/>);
-        /// otherwise <c>false</c> (no writes are performed when <paramref name="values"/> is empty).
-        /// </returns>
-        /// <remarks>
-        /// - Time complexity: O(n), where n is <paramref name="values"/>.Length.
-        /// - No allocations are performed; the method operates on spans and is intended for performance-sensitive scenarios.
-        /// - The caller is responsible for ensuring <paramref name="repeatedCount"/> has sufficient length to avoid out-of-range writes.
-        /// </remarks>
         internal static bool PopulateRepeatedValues<T>(
             scoped Span<ushort> repeatedCount,
             scoped ReadOnlySpan<T> values)

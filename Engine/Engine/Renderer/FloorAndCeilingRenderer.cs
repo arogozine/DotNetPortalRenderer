@@ -565,7 +565,15 @@ namespace RenderingEngine.Engine
                     pY = Vector.Create(planePoint.Y);
                     pZ = Vector.Create(planePoint.Z);
 
-                    dir_z = pzV - Vector.Create<float>(slopeFloorBoolean ? sector.Floor : sector.Ceil);
+                    if (cameraPosition == 0)
+                    {
+                        dir_z = pzV;
+                        cameraPositionV = -pzV;
+                    }
+                    else
+                    {
+                        dir_z = pzV - Vector.Create<float>(slopeFloorBoolean ? sector.Floor : sector.Ceil);
+                    }
                 }
                 else
                 {

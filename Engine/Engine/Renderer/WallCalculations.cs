@@ -17,7 +17,7 @@ namespace RenderingEngine.Engine
             Span<int> wallStartSloped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
 
 
-            (_, _, _, float scaledTextureWidth) = CalculateScale(wall.Sector, wall, textureInfo);
+            (_, _, _, float scaledTextureHeight) = CalculateScale(wall.Sector, wall, textureInfo);
 
             int offset = portalWall.Offset;
             int wallFromX = portalWall.XLeft;
@@ -33,7 +33,7 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                float textureYIncr = scaledTextureWidth / (wallEndY - wallStartY);
+                float textureYIncr = scaledTextureHeight / (wallEndY - wallStartY);
 
                 int ceilingY = ceil[x];
                 int wallSlopedStartY = wallStartSloped[x];
@@ -79,7 +79,7 @@ namespace RenderingEngine.Engine
 
             Span<int> textureYIncrement = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureYIncrement);
 
-            (_, _, _, float scaledTextureWidth) = CalculateScale(wall.Sector, wall, textureInfo);
+            (_, _, _, float scaledTextureHeight) = CalculateScale(wall.Sector, wall, textureInfo);
 
             int offset = portalWall.Offset;
             int wallFromX = portalWall.XLeft;
@@ -95,7 +95,7 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                float textureYIncr = scaledTextureWidth / (wallEndY - wallStartY);
+                float textureYIncr = scaledTextureHeight / (wallEndY - wallStartY);
 
                 int portalToY = portalTo[x];
                 int portalToSlopedY = portalToClamped[x];

@@ -5,7 +5,7 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        private readonly AlignedMemoryPool spriteCacheMemoryPool;
+        private readonly DynamicAlignedMemoryPool spriteCacheMemoryPool;
 
         private void FillDepthZero()
         {
@@ -44,9 +44,9 @@ namespace RenderingEngine.Engine
 
             void ResizeCacheIfNeeded()
             {
-                if (spriteCacheMemoryPool.BucketSize <= (offset + PixelWidth))
+                if (spriteCacheMemoryPool.GetBucketSize<float>() <= (offset + PixelWidth))
                 {
-                    spriteCacheMemoryPool.ReAlloc(offset + PixelWidth << 1, (int)SpriteCachePoolBucket.RenderStatus + 1);
+                    spriteCacheMemoryPool.ReAlloc(offset + PixelWidth << 1);
                 }
             }
 

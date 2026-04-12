@@ -48,6 +48,43 @@ namespace RenderingEngine.Engine
                 && SharedHelpers.PopulateRepeatedValues(repeatedCountB, textureXLocation[wallFromX..wallToX])
                 && SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB);
 
+            bool isPowerOfTwo = SharedHelpers.IsPowerOfTwo(textureInfo.Height);
+
+            if (!repeat)
+            {
+                for (int x = wallFromX; x <= wallToX; x++)
+                {
+                    ushort count = repeatedCount[x - wallFromX];
+
+                    if (count == 0)
+                    {
+                        continue;
+                    }
+
+                    ref uint clamptedFromY = ref Unsafe.Add(ref wallStartClampedRef, x);
+                    ref uint clamptedToY = ref Unsafe.Add(ref wallEndClampedRef, x);
+                    ref uint textureYIncr = ref Unsafe.Add(ref textureYIncrementRef, x);
+                    ref uint textureYPos = ref Unsafe.Add(ref textureYPosRefRef, x);
+                    ref uint textureXPos = ref Unsafe.Add(ref textureXLocationRef, x);
+
+                    CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, (int)textureXPos, flipY);
+
+                    RenderWallLine2(
+                        isPowerOfTwo,
+                        (uint)width,
+                        (uint)x,
+                        textureWidth,
+                        clamptedFromY,
+                        clamptedToY,
+                        textureYPos,
+                        textureYIncr,
+                        ref screenPtr,
+                        ref buffer.Pointer);
+                }
+
+                return;
+            }
+
             for (int x = wallFromX; x <= wallToX; x++)
             {
                 ushort count = repeatedCount[x - wallFromX];
@@ -66,12 +103,13 @@ namespace RenderingEngine.Engine
 
                 // count is the number of horizontal columns that stretch a single
                 // texture columns
-                if (repeat && count > 1)
+                if (count > 1)
                 {
                     // Render 8 columns at once
                     while (Vector256.IsHardwareAccelerated && count > Vector256<uint>.Count)
                     {
                         RenderMultipleWallLinesV256(
+                            isPowerOfTwo,
                             (uint)width,
                             (uint)x,
                             textureWidth,
@@ -91,6 +129,7 @@ namespace RenderingEngine.Engine
                     while (Vector128.IsHardwareAccelerated && count > Vector128<uint>.Count)
                     {
                         RenderMultipleWallLinesV128(
+                            isPowerOfTwo,
                             (uint)width,
                             (uint)x,
                             textureWidth,
@@ -110,6 +149,7 @@ namespace RenderingEngine.Engine
                     if (count > 0)
                     {
                         RenderMultipleWallLines(
+                            isPowerOfTwo,
                             count,
                             (uint)width,
                             (uint)x,
@@ -130,6 +170,7 @@ namespace RenderingEngine.Engine
                 }
 
                 RenderWallLine2(
+                    isPowerOfTwo,
                     (uint)width,
                     (uint)x,
                     textureWidth,
@@ -143,6 +184,7 @@ namespace RenderingEngine.Engine
         }
 
         private static void RenderMultipleWallLinesV256(
+            bool isPowerOfTwo,
             uint width,
             uint x,
             int textureHeight,
@@ -188,7 +230,7 @@ namespace RenderingEngine.Engine
                         uint xi = x + (uint)i;
 
                         uint topTexturePosition = textureXPos + incr * (max_t - top);
-                        RenderWallLine2(width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
                         textureXPos = topTexturePosition;
                     }
                 }
@@ -208,7 +250,7 @@ namespace RenderingEngine.Engine
                         uint bottomTexturePosition = textureXPos + (incr * min_b);
                         uint xi = x + (uint)i;
 
-                        RenderWallLine2(width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
                     }
                 }
             }
@@ -223,32 +265,59 @@ namespace RenderingEngine.Engine
             Vector256<uint> textureXPos_uV = Vector256.LoadUnsafe(ref textureXPos_u);
             ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, (int)(max_t * width + x));
             ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, (int)(min_b * width + x));
-            Vector256<uint> textureMaskV = Vector256.Create((uint)(textureHeight - 1));
 
             // cache base ref for texture buffer and precompute step
             ref uint textureBufferRef = ref textureBuffer;
             uint widthMinusLanes = width - (uint)Vector256<uint>.Count;
 
-            // go down the column set
-            while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
+            if (isPowerOfTwo)
             {
-                Vector256<uint> texelIndexV = (textureXPos_uV >> 16) & textureMaskV;
+                Vector256<uint> textureMaskV = Vector256.Create((uint)(textureHeight - 1));
 
-                // horizontally draw the texture (keeps per-lane behavior but with cached refs)
-                for (int i = 0; i < Vector256<uint>.Count; i++)
+                // go down the column set
+                while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
                 {
-                    uint shaded = Unsafe.Add(ref textureBufferRef, texelIndexV[i]);
+                    Vector256<uint> texelIndexV = (textureXPos_uV >> 16) & textureMaskV;
 
-                    screenIndexPtr = shaded;
-                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                    // horizontally draw the texture (keeps per-lane behavior but with cached refs)
+                    for (int i = 0; i < Vector256<uint>.Count; i++)
+                    {
+                        uint shaded = Unsafe.Add(ref textureBufferRef, texelIndexV[i]);
+
+                        screenIndexPtr = shaded;
+                        screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                    }
+
+                    textureXPos_uV += textureXIncr_uV;
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, widthMinusLanes);
                 }
+            }
+            else
+            {
+                uint textureHeightMask = (uint)(textureHeight - 1);
 
-                textureXPos_uV += textureXIncr_uV;
-                screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, widthMinusLanes);
+                // go down the column set
+                while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
+                {
+                    Vector256<uint> texelIndexV = textureXPos_uV >> 16;
+
+                    // horizontally draw the texture (keeps per-lane behavior but with cached refs)
+                    for (int i = 0; i < Vector256<uint>.Count; i++)
+                    {
+                        uint shaded = Unsafe.Add(ref textureBufferRef, texelIndexV[i] % textureHeightMask);
+
+                        screenIndexPtr = shaded;
+                        screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                    }
+
+                    textureXPos_uV += textureXIncr_uV;
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, widthMinusLanes);
+                }
             }
         }
 
         private static void RenderMultipleWallLinesV128(
+            bool isPowerOfTwo,
             uint width,
             uint x,
             int textureHeight,
@@ -294,7 +363,7 @@ namespace RenderingEngine.Engine
                         uint xi = x + (uint)i;
 
                         uint topTexturePosition = textureXPos + incr * (max_t - top);
-                        RenderWallLine2(width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
                         textureXPos = topTexturePosition;
                     }
                 }
@@ -314,7 +383,7 @@ namespace RenderingEngine.Engine
                         uint bottomTexturePosition = textureXPos + (incr * min_b);
                         uint xi = x + (uint)i;
 
-                        RenderWallLine2(width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
                     }
                 }
             }
@@ -329,33 +398,60 @@ namespace RenderingEngine.Engine
             Vector128<uint> textureXPos_uV = Vector128.LoadUnsafe(ref textureXPos_u);
             ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, (int)(max_t * width + x));
             ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, (int)(min_b * width + x));
-            Vector128<uint> textureMaskV = Vector128.Create((uint)(textureHeight - 1));
 
             // cache base ref for texture buffer and precompute step
             ref uint textureBufferRef = ref textureBuffer;
             uint widthMinusLanes = width - (uint)Vector128<uint>.Count;
 
-            // go down the column set
-            while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
+            if (isPowerOfTwo)
             {
-                Vector128<uint> texelIndexV = (textureXPos_uV >> 16) & textureMaskV;
+                Vector128<uint> textureMaskV = Vector128.Create((uint)(textureHeight - 1));
 
-                // horizontally draw the texture (keeps per-lane behavior but with cached refs)
-                for (int i = 0; i < Vector128<uint>.Count; i++)
+                // go down the column set
+                while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
                 {
-                    uint shaded = Unsafe.Add(ref textureBufferRef, texelIndexV[i]);
+                    Vector128<uint> texelIndexV = (textureXPos_uV >> 16) & textureMaskV;
 
-                    screenIndexPtr = shaded;
-                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                    // horizontally draw the texture (keeps per-lane behavior but with cached refs)
+                    for (int i = 0; i < Vector128<uint>.Count; i++)
+                    {
+                        uint shaded = Unsafe.Add(ref textureBufferRef, texelIndexV[i]);
+
+                        screenIndexPtr = shaded;
+                        screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                    }
+
+                    textureXPos_uV += textureXIncr_uV;
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, widthMinusLanes);
                 }
+            }
+            else
+            {
+                uint textureMask = (uint)(textureHeight - 1);
 
-                textureXPos_uV += textureXIncr_uV;
-                screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, widthMinusLanes);
+                // go down the column set
+                while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
+                {
+                    Vector128<uint> texelIndexV = textureXPos_uV >> 16;
+
+                    // horizontally draw the texture (keeps per-lane behavior but with cached refs)
+                    for (int i = 0; i < Vector128<uint>.Count; i++)
+                    {
+                        uint shaded = Unsafe.Add(ref textureBufferRef, texelIndexV[i] % textureMask);
+
+                        screenIndexPtr = shaded;
+                        screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                    }
+
+                    textureXPos_uV += textureXIncr_uV;
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, widthMinusLanes);
+                }
             }
         }
 
 
         private static void RenderMultipleWallLines(
+            bool isPowerOfTwo,
             uint count,
             uint width,
             uint x,
@@ -399,7 +495,7 @@ namespace RenderingEngine.Engine
                         uint xi = x + (uint)i;
 
                         uint topTexturePosition = textureXPos + incr * (max_t - top);
-                        RenderWallLine2(width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
                         textureXPos = topTexturePosition;
                     }
                 }
@@ -419,7 +515,7 @@ namespace RenderingEngine.Engine
                         uint bottomTexturePosition = textureXPos + (incr * min_b);
                         uint xi = x + (uint)i;
 
-                        RenderWallLine2(width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
                     }
                 }
             }
@@ -433,29 +529,55 @@ namespace RenderingEngine.Engine
             ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, max_t * width + x);
             ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, min_b * width + x);
 
-            uint textureMask = (uint)(textureHeight - 1);
-
-            // go down the column set
-            while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
+            if (isPowerOfTwo)
             {
-                // horizontally draw the texture
-                for (int i = 0; i < count; i++)
+                uint textureMask = (uint)(textureHeight - 1);
+
+                // go down the column set
+                while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
                 {
-                    ref uint textureXPos = ref Unsafe.Add(ref textureXPos_u, i);
-                    uint texelIndex = (textureXPos >> 16) & textureMask;
-                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                    // horizontally draw the texture
+                    for (int i = 0; i < count; i++)
+                    {
+                        ref uint textureXPos = ref Unsafe.Add(ref textureXPos_u, i);
+                        uint texelIndex = (textureXPos >> 16) & textureMask;
+                        uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
 
-                    screenIndexPtr = shaded;
-                    textureXPos += Unsafe.Add(ref textureXIncr_u, i);
-                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                        screenIndexPtr = shaded;
+                        textureXPos += Unsafe.Add(ref textureXIncr_u, i);
+                        screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                    }
+
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width - count);
                 }
+            }
+            else
+            {
+                uint textureMask = (uint)(textureHeight);
 
-                screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width - count);
+                // go down the column set
+                while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
+                {
+                    // horizontally draw the texture
+                    for (int i = 0; i < count; i++)
+                    {
+                        ref uint textureXPos = ref Unsafe.Add(ref textureXPos_u, i);
+                        uint texelIndex = (textureXPos >> 16) % textureMask;
+                        uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+
+                        screenIndexPtr = shaded;
+                        textureXPos += Unsafe.Add(ref textureXIncr_u, i);
+                        screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                    }
+
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width - count);
+                }
             }
         }
 
 
         private static void RenderWallLine2(
+            bool isPowerOfTwo,
             uint width,
             uint x,
             int textureHeight,
@@ -471,16 +593,33 @@ namespace RenderingEngine.Engine
             ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, startY * width + x);
             ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, endY * width + x);
 
-            uint textureMask = (uint)(textureHeight - 1);
-
-            while (!Unsafe.AreSame(in screenIndexPtr, in screenIndexPtrEnd))
+            if (isPowerOfTwo)
             {
-                uint texelIndex = (textureXPos_u >> 16) & textureMask;
-                uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                uint textureHeightMask = (uint)(textureHeight - 1);
 
-                screenIndexPtr = shaded;
-                screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
-                textureXPos_u += textureXIncr_u;
+                while (!Unsafe.AreSame(in screenIndexPtr, in screenIndexPtrEnd))
+                {
+                    uint texelIndex = (textureXPos_u >> 16) & textureHeightMask;
+                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+
+                    screenIndexPtr = shaded;
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                    textureXPos_u += textureXIncr_u;
+                }
+            }
+            else
+            {
+                uint textureHeightMask = (uint)textureHeight;
+
+                while (!Unsafe.AreSame(in screenIndexPtr, in screenIndexPtrEnd))
+                {
+                    uint texelIndex = (textureXPos_u >> 16) % textureHeightMask;
+                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+
+                    screenIndexPtr = shaded;
+                    screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
+                    textureXPos_u += textureXIncr_u;
+                }
             }
         }
     }

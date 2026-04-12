@@ -39,16 +39,17 @@ namespace RenderingEngine.Engine
 
             // Set the X position as "FinishedRendering" for this wall
             // and determines where there repeat count is 0 (nothing to draw)
+            statusRef = ref Unsafe.Add(ref statusRef, wallFromX);
+
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                ref RenderColumnStatus columnStatus = ref Unsafe.Add(ref statusRef, x);
-
-                if (!columnStatus.WallRenderable)
+                if (!statusRef.WallRenderable)
                 {
                     repeatedCount[x - wallFromX] = 0;
                 }
 
-                columnStatus = RenderColumnStatus.FinishedRendering;
+                statusRef = RenderColumnStatus.FinishedRendering;
+                statusRef = ref Unsafe.Add(ref statusRef, 1);
             }
 
             Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStartClamped);
@@ -209,7 +210,7 @@ namespace RenderingEngine.Engine
             if (wallTexture.YScale is float yScale)
             {
                 yScale = (sector.Ceil - sector.Floor) * yScale;
-                scaledTextureHeight = ((textureHeight << 16) * yScale);
+                scaledTextureHeight = (textureHeight << 16) * yScale;
             }
             else
             {

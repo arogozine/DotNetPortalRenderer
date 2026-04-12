@@ -209,14 +209,16 @@ namespace RenderingEngine.Engine
 
             // set repeat count to 0 where there is nothing to draw
             ref RenderColumnStatus statusRef = ref memoryPool.GetBucketRef<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            statusRef = ref Unsafe.Add(ref statusRef, wallFromX);
+
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                ref RenderColumnStatus columnStatus = ref Unsafe.Add(ref statusRef, x);
-
-                if (!columnStatus.WallRenderable)
+                if (!statusRef.WallRenderable)
                 {
                     repeatedCount[x - wallFromX] = 0;
                 }
+
+                statusRef = ref Unsafe.Add(ref statusRef, 1);
             }
 
             return repeatedCount;
