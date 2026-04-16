@@ -151,6 +151,18 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static (float rx1, float ry1) RotateVertexBack(
+            float x, float y,
+            float sin, float cos,
+            float px, float py)
+        {
+            float rx1 = px + MathF.FusedMultiplyAdd(y, cos, x * sin);
+            float ry1 = py + MathF.FusedMultiplyAdd(y, sin, x * (-cos));
+
+            return (rx1, ry1);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static (Vector<float> rx1, Vector<float> ry1) RotateVertexBack(
             Vector<float> x, Vector<float> y,
             Vector<float> psin, Vector<float> pcos,

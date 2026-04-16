@@ -6,6 +6,13 @@ namespace RenderingEngine.Engine
 {
     internal static class MathFormulas
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int Max(int a, int b) => a > b ? a : b;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int Min(int a, int b) => a < b ? a : b;
+
+
         internal static Vector3 ToVector3(Point p, float z)
         {
             return new Vector3(p.X, p.Y, z);
@@ -102,8 +109,7 @@ namespace RenderingEngine.Engine
         /// <param name="planeNormal">The normal vector of the plane</param>
         /// <param name="linePoint">A point on the line (ray origin)</param>
         /// <param name="intersectionPoint">The resulting intersection point</param>
-        /// <returns></returns>
-        internal static bool FindIntersection(
+        internal static void FindIntersection(
             Vector3 planePoint,
             Vector3 planeNormal,
             Vector3 linePoint,
@@ -112,19 +118,11 @@ namespace RenderingEngine.Engine
         {
             float denominator = Vector3.Dot(lineDirection, planeNormal);
 
-            if (MathF.Abs(denominator) < 0.00001f)
-            {
-                Unsafe.SkipInit(out intersectionPoint);
-                return false;
-            }
-
             Vector3 pointToPlaneVector = planePoint - linePoint;
 
             float t = Vector3.Dot(pointToPlaneVector, planeNormal) / denominator;
 
             intersectionPoint = linePoint + lineDirection * t;
-
-            return true;
         }
 
         /// <summary>

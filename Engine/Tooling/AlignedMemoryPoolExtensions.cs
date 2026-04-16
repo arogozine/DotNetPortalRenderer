@@ -40,5 +40,12 @@ internal static unsafe class AlignedMemoryPoolExtensions
         {
             return pool.GetBucketPtr((int)bucket);
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T* GetBucketPtr<T>(MemoryPoolBucket bucket)
+            where T : unmanaged
+        {
+            return (T*)pool.GetBucketPtr((int)bucket);
+        }
     }
 }

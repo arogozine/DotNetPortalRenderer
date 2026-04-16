@@ -50,26 +50,31 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            void Clamp(Span<int> wallStart, Span<int> wallEnd)
+            unsafe void Clamp(Span<int> wallStart, Span<int> wallEnd)
             {
-                Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-                Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+                int* ceilingStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
+                int* floorEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
 
                 int start = 0;
-                int length = ceilingStart.Length;
+                int length = PixelWidth;
 
                 if (Vector.IsHardwareAccelerated && length > 128)
                 {
                     int rem = length % Vector<int>.Count;
                     length -= rem;
 
+                    Vector<int> zero = Vector<int>.Zero;
+                    Vector<int> max = Vector.Create(PixelHeight - 1);
                     Vector<int> ceilingStartV, floorEndV;
                     Vector<int> wallStartV, wallEndV;
 
                     for (int i = 0; i < length; i += Vector<int>.Count)
                     {
-                        ceilingStartV = Vector.LoadUnsafe(ref ceilingStart[i]);
-                        floorEndV = Vector.LoadUnsafe(ref floorEnd[i]);
+                        ceilingStartV = Vector.LoadAligned(&ceilingStartPtr[i]);
+                        floorEndV = Vector.LoadAligned(&floorEndPtr[i]);
+
+                        ceilingStartV = Vector.ClampNative(ceilingStartV, zero, max);
+                        floorEndV = Vector.ClampNative(floorEndV, zero, max);
 
                         wallStartV = Vector.LoadUnsafe(ref wallStart[i]);
                         wallStartV = Vector.ClampNative(wallStartV, ceilingStartV, floorEndV);
@@ -86,8 +91,14 @@ namespace RenderingEngine.Engine
 
                 for (int i = start; i < length; i++)
                 {
-                    wallStart[i] = Math.Clamp(wallStart[i], ceilingStart[i], floorEnd[i]);
-                    wallEnd[i] = Math.Clamp(wallEnd[i], ceilingStart[i], floorEnd[i]);
+                    int ceilingStart = ceilingStartPtr[i];
+                    int floorEnd = floorEndPtr[i];
+
+                    ceilingStart = Math.Clamp(ceilingStart, 0, PixelHeight - 1);
+                    floorEnd = Math.Clamp(floorEnd, 0, PixelHeight - 1);
+
+                    wallStart[i] = Math.Clamp(wallStart[i], ceilingStart, floorEnd);
+                    wallEnd[i] = Math.Clamp(wallEnd[i], ceilingStart, floorEnd);
                 }
             }
         }

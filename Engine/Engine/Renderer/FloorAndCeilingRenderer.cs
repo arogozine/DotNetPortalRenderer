@@ -1,6 +1,7 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.Tooling;
 using System.Numerics;
+using System.Runtime.Intrinsics;
 
 namespace RenderingEngine.Engine
 {
@@ -93,8 +94,8 @@ namespace RenderingEngine.Engine
 
             if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Sloped))
             {
-                xyOpts ^= XyOpts.FlipX;
-                xyOpts ^= XyOpts.FlipY;
+                // xyOpts ^= XyOpts.FlipX;
+                // xyOpts ^= XyOpts.FlipY;
             }
 
             if (doubleSize)
@@ -285,7 +286,7 @@ namespace RenderingEngine.Engine
             Vector<float> rSinV,
             Vector<float> rCosV,
             Vector<float> alignXV,
-            Vector<float> alignXY,
+            Vector<float> alignYV,
             XyOpts xyOpts,
             Sector sector,
             bool? slopeFloor
@@ -308,6 +309,17 @@ namespace RenderingEngine.Engine
             // For slopes
             Vector3 planePoint, planeNormal;
             Vector<float> nX, nY, nZ, pX, pY, pZ, dir_z;
+            // Scalar
+            float dir_z_scalar;
+            float alignX = alignXV[0];
+            float alignY = alignYV[0];
+            float rSin = rSinV[0];
+            float rCos = rCosV[0];
+            float pSin = pSinV[0];
+            float pCos = pCosV[0];
+            float px = pxV[0];
+            float py = pyV[0];
+            Vector3 linePoint = new(0f, 0f, pzV[0]);
 
             int halfHeight = PixelHeight / 2;
 
@@ -331,7 +343,7 @@ namespace RenderingEngine.Engine
                 {
                     (int min_t, int max_t, int min_b, int max_b) = CalculateLaneTopBottoms(x - sectorFrom, floorFrom, floorTo);
 
-                    if (min_b > max_t + 64)
+                    if (min_b > max_t + 16)
                     {
                         RenderLine(x, ref xMapPosMultiplierCacheRef, floorTo[(x - sectorFrom)..], floorFrom[(x - sectorFrom)..],
                             ref incrCacheRef, ref screenPtr, ref textureRef, min_t, max_t, min_b, max_b);
@@ -356,28 +368,52 @@ namespace RenderingEngine.Engine
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(
-                int x, ReadOnlySpan<int> from, ReadOnlySpan<int> to
+                int x, Span<int> from, Span<int> to
             )
             {
-                from = from[x..];
-                to = to[x..];
-
-                int min_t = int.MaxValue, max_t = int.MinValue;
-                int min_b = int.MaxValue, max_b = int.MinValue;
-
-                // compute per-lane tops/bottoms
-                for (int i = 0; i < Vector<int>.Count; i++)
+                if (Vector<int>.Count == 8)
                 {
-                    int top = from[i];
-                    min_t = Math.Min(min_t, top);
-                    max_t = Math.Max(max_t, top);
+                    Vector256<int> fromV = Vector256.LoadUnsafe(ref from[x]);
+                    Vector256<int> toV = Vector256.LoadUnsafe(ref to[x]);
 
-                    int bottom = to[i];
-                    min_b = Math.Min(min_b, bottom);
-                    max_b = Math.Max(max_b, bottom);
+                    (int min_t, int max_t) = GetMinMaxValue(fromV);
+                    (int min_b, int max_b) = GetMinMaxValue(toV);
+
+                    return (min_t, max_t, min_b, max_b);
                 }
+                else if (Vector<int>.Count == 4)
+                {
+                    Vector128<int> fromV = Vector128.LoadUnsafe(ref from[x]);
+                    Vector128<int> toV = Vector128.LoadUnsafe(ref to[x]);
 
-                return (min_t, max_t, min_b, max_b);
+                    (int min_t, int max_t) = GetMinMaxValue(fromV);
+                    (int min_b, int max_b) = GetMinMaxValue(toV);
+
+                    return (min_t, max_t, min_b, max_b);
+                }
+                else
+                {
+
+                    from = from[x..];
+                    to = to[x..];
+
+                    int min_t = int.MaxValue, max_t = int.MinValue;
+                    int min_b = int.MaxValue, max_b = int.MinValue;
+
+                    // compute per-lane tops/bottoms
+                    for (int i = 0; i < Vector<int>.Count; i++)
+                    {
+                        int top = from[i];
+                        min_t = Math.Min(min_t, top);
+                        max_t = Math.Max(max_t, top);
+
+                        int bottom = to[i];
+                        min_b = Math.Min(min_b, bottom);
+                        max_b = Math.Max(max_b, bottom);
+                    }
+
+                    return (min_t, max_t, min_b, max_b);
+                }
             }
 
             void RenderLine(
@@ -395,34 +431,13 @@ namespace RenderingEngine.Engine
                 // render tops where there is no shared window
                 if (min_t != max_t)
                 {
-                    for (int i = 0; i < Vector<int>.Count; i++)
-                    {
-                        int fromY = from[i];
-
-                        if (fromY >= max_t)
-                        {
-                            continue;
-                        }
-
-                        RenderColumn(ref incrCacheRef, ref screenPtr, ref textureRef, max_t, fromY, x + i, xMapPosMultiplierCacheV[i]);
-                    }
-
+                    RenderColumnAngleTop(ref incrCacheRef, ref screenPtr, ref textureRef, min_t, max_t, from, x, ref xMapPosMultiplierCacheRef);
                 }
 
                 // render bottoms where there is no shared window
                 if (min_b != max_b)
                 {
-                    for (int i = 0; i < Vector<int>.Count; i++)
-                    {
-                        int toY = to[i];
-
-                        if (toY <= min_b)
-                        {
-                            continue;
-                        }
-
-                        RenderColumn(ref incrCacheRef, ref screenPtr, ref textureRef, toY, min_b, x + i, xMapPosMultiplierCacheV[i]);
-                    }
+                    RenderColumnAngleBottom(ref incrCacheRef, ref screenPtr, ref textureRef, min_b, max_b, to, x, ref xMapPosMultiplierCacheRef);
                 }
 
                 for (int y = max_t, screenIndex = y * width + x; y <= min_b; y++, screenIndex += width)
@@ -441,6 +456,74 @@ namespace RenderingEngine.Engine
                 }
             }
 
+            void RenderColumnAngleBottom(
+                ref float incrCacheRef,
+                ref uint screenPtr,
+                ref uint textureRef,
+                int floorFromY,
+                int floorToY,
+                ReadOnlySpan<int> to,
+                int xStart,
+                ref float xMapPosMultiplierCacheRef)
+            {
+                ref uint screenTex = ref Unsafe.Add(ref screenPtr, floorFromY * width + xStart);
+                ref float xMapPosMult = ref Unsafe.Add(ref xMapPosMultiplierCacheRef, xStart);
+
+                ref float incr = ref Unsafe.Add(ref incrCacheRef, floorFromY);
+
+                for (int y = floorFromY; y < floorToY; y++)
+                {
+                    for (int x = 0; x < Vector<uint>.Count; x++)
+                    {
+                        if (to[x] > y)
+                        {
+                            ref float xMult = ref Unsafe.Add(ref xMapPosMult, x);
+                            int textureIndex = GetXyFromScreenSpaceScalar(incr, xMult);
+                            Unsafe.Add(ref screenTex, x) = Unsafe.Add(ref textureRef, textureIndex);
+                        }
+                    }
+
+                    screenTex = ref Unsafe.Add(ref screenTex, width);
+                    incr = ref Unsafe.Add(ref incr, 1);
+                }
+            }
+
+            void RenderColumnAngleTop(
+                ref float incrCacheRef,
+                ref uint screenPtr,
+                ref uint textureRef,
+                int floorFromY,
+                int max_t,
+                ReadOnlySpan<int> from,
+                int xStart,
+                ref float xMapPosMultiplierCacheRef)
+            {
+                ref uint screenTex = ref Unsafe.Add(ref screenPtr, floorFromY * width + xStart);
+                ref float xMapPosMult = ref Unsafe.Add(ref xMapPosMultiplierCacheRef, xStart);
+
+                ref float incr = ref Unsafe.Add(ref incrCacheRef, floorFromY);
+
+                for (int y = floorFromY; y < max_t; y++)
+                {
+                    for (int x = 0; x < Vector<uint>.Count; x++)
+                    {
+                        int fromY = from[x];
+
+                        if (fromY >= max_t)
+                        {
+                            continue;
+                        }
+
+                        ref float xMult = ref Unsafe.Add(ref xMapPosMult, x);
+                        int textureIndex = GetXyFromScreenSpaceScalar(incr, xMult);
+                        Unsafe.Add(ref screenTex, x) = Unsafe.Add(ref textureRef, textureIndex);
+                    }
+
+                    screenTex = ref Unsafe.Add(ref screenTex, width);
+                    incr = ref Unsafe.Add(ref incr, 1);
+                }
+            }
+
             void RenderColumn(
                 ref float incrCacheRef,
                 ref uint screenPtr,
@@ -451,37 +534,38 @@ namespace RenderingEngine.Engine
 
                 Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
 
-                int rem = (floorToY - floorFromY) % Vector<int>.Count;
-                floorToY -= rem;
+                int columnHeight = floorToY - floorFromY;
+                int rem = columnHeight & (Vector<int>.Count - 1);
 
-                ref readonly uint toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
                 ref uint screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-
                 Vector<float> incramentVector = Vector.LoadUnsafe(ref Unsafe.Add(ref incrCacheRef, floorFromY));
 
-                while (!Unsafe.AreSame(in screenTex, in toScalePtr))
+                if (columnHeight != rem)
                 {
-                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
+                    floorToY -= rem;
 
-                    for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                    ref readonly uint toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
+
+                    while (!Unsafe.AreSame(in screenTex, in toScalePtr))
                     {
-                        screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
-                    }
+                        Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
 
-                    floorFromY += Vector<float>.Count;
-                    incramentVector = Vector.LoadUnsafe(ref Unsafe.Add(ref incrCacheRef, floorFromY));
-                }
+                        for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                        {
+                            screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
+                        }
 
-                if (rem > 0)
-                {
-                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
-
-                    for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
-                    {
-                        screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
+                        floorFromY += Vector<float>.Count;
+                        incramentVector = Vector.LoadUnsafe(ref Unsafe.Add(ref incrCacheRef, floorFromY));
                     }
                 }
 
+                for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                {
+                    int textureIndex = GetXyFromScreenSpaceScalar(incramentVector[i], xMapPosMultiplier);
+
+                    screenTex = Unsafe.Add(ref textureRef, textureIndex);
+                }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -510,7 +594,7 @@ namespace RenderingEngine.Engine
                 if (rotated)
                 {
                     xMapPos -= alignXV;
-                    yMapPos -= alignXY;
+                    yMapPos -= alignYV;
 
                     Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, -yMapPos * rSinV);
                     Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
@@ -550,6 +634,65 @@ namespace RenderingEngine.Engine
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            int GetXyFromScreenSpaceScalar(float incrament, float xMapPosMultiplier)
+            {
+                float yMapPosR = cameraPosition * incrament;
+                float xMapPosR = yMapPosR * xMapPosMultiplier;
+
+                if (slopeFloor is not null)
+                {
+                    Vector3 lineDir = new(-xMapPosR, -yMapPosR, dir_z_scalar);
+
+                    MathFormulas.FindIntersection(planePoint, planeNormal, linePoint, lineDir, out Vector3 intersection);
+                    xMapPosR = intersection.X;
+                    yMapPosR = intersection.Y;
+                }
+
+                (float xMapPos, float yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
+
+                if (rotated)
+                {
+                    xMapPos -= alignX;
+                    yMapPos -= alignY;
+
+                    float xMapPosSR = MathF.FusedMultiplyAdd(xMapPos, rCos, -yMapPos * rSin);
+                    float yMapPosSR = MathF.FusedMultiplyAdd(xMapPos, rSin, yMapPos * rCos);
+
+                    xMapPos = xMapPosSR;
+                    yMapPos = yMapPosSR;
+                }
+
+                if (xyOpts.HasFlag(XyOpts.SwapXY))
+                {
+                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
+                }
+
+                int _y1 = float.ConvertToIntegerNative<int>(yMapPos);
+                int _x1 = float.ConvertToIntegerNative<int>(xMapPos);
+
+                if (xyOpts.HasFlag(XyOpts.DoubleSize))
+                {
+                    _y1 >>= 1;
+                    _x1 >>= 1;
+                }
+
+                _y1 = (_y1 + yOffset) & textureHeightMask;
+                _x1 = (_x1 + xOffset) & textureWidthMask;
+
+                if (xyOpts.HasFlag(XyOpts.FlipY))
+                {
+                    _y1 = textureHeightMask - _y1;
+                }
+
+                if (xyOpts.HasFlag(XyOpts.FlipX))
+                {
+                    _x1 = textureWidthMask - _x1;
+                }
+
+                return _y1 * textureWidth + _x1;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void CreateSlopeVectors()
             {
                 if (slopeFloor is bool slopeFloorBoolean)
@@ -574,6 +717,8 @@ namespace RenderingEngine.Engine
                     {
                         dir_z = pzV - Vector.Create<float>(slopeFloorBoolean ? sector.Floor : sector.Ceil);
                     }
+
+                    dir_z_scalar = dir_z[0];
                 }
                 else
                 {
@@ -586,6 +731,7 @@ namespace RenderingEngine.Engine
                     Unsafe.SkipInit(out pY);
                     Unsafe.SkipInit(out pZ);
                     Unsafe.SkipInit(out dir_z);
+                    Unsafe.SkipInit(out dir_z_scalar);
                 }
             }
         }

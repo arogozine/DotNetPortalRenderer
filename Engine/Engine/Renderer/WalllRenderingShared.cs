@@ -69,7 +69,7 @@ namespace RenderingEngine.Engine
 
                     CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, (int)textureXPos, flipY);
 
-                    RenderWallLine2(
+                    RenderWallLine(
                         isPowerOfTwo,
                         (uint)width,
                         (uint)x,
@@ -85,12 +85,13 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            for (int x = wallFromX; x <= wallToX; x++)
+            for (int x = wallFromX; x <= wallToX;)
             {
                 ushort count = repeatedCount[x - wallFromX];
 
                 if (count == 0)
                 {
+                    x++;
                     continue;
                 }
 
@@ -106,7 +107,7 @@ namespace RenderingEngine.Engine
                 if (count > 1)
                 {
                     // Render 8 columns at once
-                    while (Vector256.IsHardwareAccelerated && count > Vector256<uint>.Count)
+                    while (Vector256.IsHardwareAccelerated && count >= Vector256<uint>.Count)
                     {
                         RenderMultipleWallLinesV256(
                             isPowerOfTwo,
@@ -123,10 +124,16 @@ namespace RenderingEngine.Engine
 
                         count -= (ushort)Vector256<uint>.Count;
                         x += Vector256<uint>.Count;
+
+                        clamptedFromY = ref Unsafe.Add(ref wallStartClampedRef, x);
+                        clamptedToY = ref Unsafe.Add(ref wallEndClampedRef, x);
+                        textureYIncr = ref Unsafe.Add(ref textureYIncrementRef, x);
+                        textureYPos = ref Unsafe.Add(ref textureYPosRefRef, x);
+                        textureXPos = ref Unsafe.Add(ref textureXLocationRef, x);
                     }
 
                     // Render 4 columns at once
-                    while (Vector128.IsHardwareAccelerated && count > Vector128<uint>.Count)
+                    while (Vector128.IsHardwareAccelerated && count >= Vector128<uint>.Count)
                     {
                         RenderMultipleWallLinesV128(
                             isPowerOfTwo,
@@ -143,6 +150,12 @@ namespace RenderingEngine.Engine
 
                         count -= (ushort)Vector128<uint>.Count;
                         x += Vector128<uint>.Count;
+
+                        clamptedFromY = ref Unsafe.Add(ref wallStartClampedRef, x);
+                        clamptedToY = ref Unsafe.Add(ref wallEndClampedRef, x);
+                        textureYIncr = ref Unsafe.Add(ref textureYIncrementRef, x);
+                        textureYPos = ref Unsafe.Add(ref textureYPosRefRef, x);
+                        textureXPos = ref Unsafe.Add(ref textureXLocationRef, x);
                     }
 
                     // Render the rest. Also fallback if CPU is potato.
@@ -165,11 +178,10 @@ namespace RenderingEngine.Engine
                         x += count;
                     }
 
-                    x--;
                     continue;
                 }
 
-                RenderWallLine2(
+                RenderWallLine(
                     isPowerOfTwo,
                     (uint)width,
                     (uint)x,
@@ -180,7 +192,75 @@ namespace RenderingEngine.Engine
                     textureYIncr,
                     ref screenPtr,
                     ref buffer.Pointer);
+
+                x++;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static (uint min, uint max) GetMinMaxValue(Vector128<uint> value)
+        {
+            var valueShuffled = Vector128.ShuffleNative(value, Vector128.Create(2U, 3U, 0U, 1U));
+            var valueMax = Vector128.MaxNative(value, valueShuffled);
+            var valueMin = Vector128.MinNative(value, valueShuffled);
+
+            uint min = Math.Min(valueMin[0], valueMin[1]);
+            uint max = Math.Max(valueMax[0], valueMax[1]);
+
+            return (min, max);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static (int min, int max) GetMinMaxValue(Vector128<int> value)
+        {
+            var valueShuffled = Vector128.ShuffleNative(value, Vector128.Create(2, 3, 0, 1));
+            var valueMax = Vector128.MaxNative(value, valueShuffled);
+            var valueMin = Vector128.MinNative(value, valueShuffled);
+
+            int min = MathFormulas.Min(valueMin[0], valueMin[1]);
+            int max = MathFormulas.Max(valueMax[0], valueMax[1]);
+
+            return (min, max);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static (int min, int max) GetMinMaxValue(Vector256<int> value)
+        {
+            var valueLower = value.GetLower();
+            var valueUpper = value.GetUpper();
+
+            var value128min = Vector128.MinNative(valueLower, valueUpper);
+            var value128Shuffledmin = Vector128.ShuffleNative(value128min, Vector128.Create(2, 3, 0, 1));
+            value128min = Vector128.MinNative(value128min, value128Shuffledmin);
+
+            var value128max = Vector128.MaxNative(valueLower, valueUpper);
+            var value128Shuffledmax = Vector128.ShuffleNative(value128max, Vector128.Create(2, 3, 0, 1));
+            value128max = Vector128.MaxNative(value128max, value128Shuffledmax);
+
+            int min = MathFormulas.Min(value128min[0], value128min[1]);
+            int max = MathFormulas.Max(value128max[0], value128max[1]);
+
+            return (min, max);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static (uint min, uint max) GetMinMaxValue(Vector256<uint> value)
+        {
+            var valueLower = value.GetLower();
+            var valueUpper = value.GetUpper();
+
+            var value128min = Vector128.MinNative(valueLower, valueUpper);
+            var value128Shuffledmin = Vector128.ShuffleNative(value128min, Vector128.Create(2U, 3U, 0U, 1U));
+            value128min = Vector128.MinNative(value128min, value128Shuffledmin);
+
+            var value128max = Vector128.MaxNative(valueLower, valueUpper);
+            var value128Shuffledmax = Vector128.ShuffleNative(value128max, Vector128.Create(2U, 3U, 0U, 1U));
+            value128max = Vector128.MaxNative(value128max, value128Shuffledmax);
+
+            uint min = Math.Min(value128min[0], value128min[1]);
+            uint max = Math.Max(value128max[0], value128max[1]);
+
+            return (min, max);
         }
 
         private static void RenderMultipleWallLinesV256(
@@ -198,23 +278,11 @@ namespace RenderingEngine.Engine
         {
             var startYV = Vector256.LoadUnsafe(ref startY);
             var endYV = Vector256.LoadUnsafe(ref endY);
+
+            (uint min_t, uint max_t) = GetMinMaxValue(startYV);
+            (uint min_b, uint max_b) = GetMinMaxValue(endYV);
+
             var textureXIncr_uV = Vector256.LoadUnsafe(ref textureXIncr_u);
-
-            // cache lane count
-            uint min_t = uint.MaxValue, max_t = 0;
-            uint min_b = uint.MaxValue, max_b = 0;
-
-            // compute per-lane tops/bottoms
-            for (int i = 0; i < Vector256<uint>.Count; i++)
-            {
-                uint top = startYV[i];
-                min_t = Math.Min(min_t, top);
-                max_t = Math.Max(max_t, top);
-
-                uint bottom = endYV[i];
-                min_b = Math.Min(min_b, bottom);
-                max_b = Math.Max(max_b, bottom);
-            }
 
             // render tops where there is no shared window
             if (min_t != max_t)
@@ -230,7 +298,7 @@ namespace RenderingEngine.Engine
                         uint xi = x + (uint)i;
 
                         uint topTexturePosition = textureXPos + incr * (max_t - top);
-                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine(isPowerOfTwo, width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
                         textureXPos = topTexturePosition;
                     }
                 }
@@ -250,7 +318,7 @@ namespace RenderingEngine.Engine
                         uint bottomTexturePosition = textureXPos + (incr * min_b);
                         uint xi = x + (uint)i;
 
-                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine(isPowerOfTwo, width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
                     }
                 }
             }
@@ -267,7 +335,6 @@ namespace RenderingEngine.Engine
             ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, (int)(min_b * width + x));
 
             // cache base ref for texture buffer and precompute step
-            ref uint textureBufferRef = ref textureBuffer;
             uint widthMinusLanes = width - (uint)Vector256<uint>.Count;
 
             if (isPowerOfTwo)
@@ -279,10 +346,10 @@ namespace RenderingEngine.Engine
                 {
                     Vector256<uint> texelIndexV = (textureXPos_uV >> 16) & textureMaskV;
 
-                    // horizontally draw the texture (keeps per-lane behavior but with cached refs)
+                    // horizontally draw the texture
                     for (int i = 0; i < Vector256<uint>.Count; i++)
                     {
-                        uint shaded = Unsafe.Add(ref textureBufferRef, texelIndexV[i]);
+                        uint shaded = Unsafe.Add(ref textureBuffer, texelIndexV[i]);
 
                         screenIndexPtr = shaded;
                         screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
@@ -294,17 +361,17 @@ namespace RenderingEngine.Engine
             }
             else
             {
-                uint textureHeightMask = (uint)(textureHeight - 1);
+                uint textureHeightMask = (uint)textureHeight;
 
                 // go down the column set
                 while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
                 {
                     Vector256<uint> texelIndexV = textureXPos_uV >> 16;
 
-                    // horizontally draw the texture (keeps per-lane behavior but with cached refs)
+                    // horizontally draw the texture (keeps per-lane behavior)
                     for (int i = 0; i < Vector256<uint>.Count; i++)
                     {
-                        uint shaded = Unsafe.Add(ref textureBufferRef, texelIndexV[i] % textureHeightMask);
+                        uint shaded = Unsafe.Add(ref textureBuffer, texelIndexV[i] % textureHeightMask);
 
                         screenIndexPtr = shaded;
                         screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
@@ -333,21 +400,8 @@ namespace RenderingEngine.Engine
             var endYV = Vector128.LoadUnsafe(ref endY);
             var textureXIncr_uV = Vector128.LoadUnsafe(ref textureXIncr_u);
 
-            // cache lane count
-            uint min_t = uint.MaxValue, max_t = 0;
-            uint min_b = uint.MaxValue, max_b = 0;
-
-            // compute per-lane tops/bottoms
-            for (int i = 0; i < Vector128<uint>.Count; i++)
-            {
-                uint top = startYV[i];
-                min_t = Math.Min(min_t, top);
-                max_t = Math.Max(max_t, top);
-
-                uint bottom = endYV[i];
-                min_b = Math.Min(min_b, bottom);
-                max_b = Math.Max(max_b, bottom);
-            }
+            (uint min_t, uint max_t) = GetMinMaxValue(startYV);
+            (uint min_b, uint max_b) = GetMinMaxValue(endYV);
 
             // render tops where there is no shared window
             if (min_t != max_t)
@@ -363,7 +417,7 @@ namespace RenderingEngine.Engine
                         uint xi = x + (uint)i;
 
                         uint topTexturePosition = textureXPos + incr * (max_t - top);
-                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine(isPowerOfTwo, width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
                         textureXPos = topTexturePosition;
                     }
                 }
@@ -383,7 +437,7 @@ namespace RenderingEngine.Engine
                         uint bottomTexturePosition = textureXPos + (incr * min_b);
                         uint xi = x + (uint)i;
 
-                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine(isPowerOfTwo, width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
                     }
                 }
             }
@@ -427,7 +481,7 @@ namespace RenderingEngine.Engine
             }
             else
             {
-                uint textureMask = (uint)(textureHeight - 1);
+                uint textureMask = (uint)textureHeight;
 
                 // go down the column set
                 while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
@@ -495,7 +549,7 @@ namespace RenderingEngine.Engine
                         uint xi = x + (uint)i;
 
                         uint topTexturePosition = textureXPos + incr * (max_t - top);
-                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine(isPowerOfTwo, width, xi, textureHeight, top, max_t, topTexturePosition, incr, ref screenPtr, ref textureBuffer);
                         textureXPos = topTexturePosition;
                     }
                 }
@@ -515,7 +569,7 @@ namespace RenderingEngine.Engine
                         uint bottomTexturePosition = textureXPos + (incr * min_b);
                         uint xi = x + (uint)i;
 
-                        RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
+                        RenderWallLine(isPowerOfTwo, width, xi, textureHeight, min_b, bottom, bottomTexturePosition, incr, ref screenPtr, ref textureBuffer);
                     }
                 }
             }
@@ -576,7 +630,7 @@ namespace RenderingEngine.Engine
         }
 
 
-        private static void RenderWallLine2(
+        private static void RenderWallLine(
             bool isPowerOfTwo,
             uint width,
             uint x,
