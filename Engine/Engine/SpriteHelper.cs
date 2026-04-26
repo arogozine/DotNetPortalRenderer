@@ -127,12 +127,12 @@ namespace RenderingEngine.Engine
                 {
                     for (int x = sprite.XLeft; x <= sprite.XRight; x++)
                     {
-                        if (SharedHelpers.Within(distanceMin, parentDepth[x], depth[x]))
+                        if (SharedHelpers.WithinInclusive(distanceMin, parentDepth[x], depth[x]))
                         {
                             return sectors.Contains(sprite.SectorId);
                         }
 
-                        if (SharedHelpers.Within(distanceMax, parentDepth[x], depth[x]))
+                        if (SharedHelpers.WithinInclusive(distanceMax, parentDepth[x], depth[x]))
                         {
                             return sectors.Contains(sprite.SectorId);
                         }

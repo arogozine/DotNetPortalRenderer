@@ -150,7 +150,7 @@ namespace RenderingEngine.Engine
                 alignYV = Vector.Create(aY);
             }
 
-            ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(false, sector.CeilingShade);
+            ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(sector.CeilingShade, TextureTransform.Normal);
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
@@ -197,7 +197,7 @@ namespace RenderingEngine.Engine
 
             float yfloor = sector.Floor - player.Z;
 
-            ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(false, sector.FloorShade);
+            ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(sector.CeilingShade, TextureTransform.Normal);
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             int textureWidth = floorTexture.Width;

@@ -1,5 +1,6 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.Tooling;
+using System.Numerics;
 
 namespace RenderingEngine.Engine
 {
@@ -42,11 +43,15 @@ namespace RenderingEngine.Engine
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
 
+            bool flipY = sprite.Texture.RenderingOptions.IsFlippedY;
+            bool flipX = sprite.Texture.RenderingOptions.IsFlippedX;
+
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
 
             Sector sector = sectors[sprite.SectorId];
 
-            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, sprite.Shade ?? sector.FloorShade);
+            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(sprite.Shade ?? sector.FloorShade,
+                flipY ? TextureTransform.RotatedFlipped : TextureTransform.Rotated);
 
             float rx1 = sprite.R1.X;
             float rx2 = sprite.R2.X;
@@ -67,7 +72,6 @@ namespace RenderingEngine.Engine
 
             int length = spriteToX - spriteFromX;
 
-            using TempBuffer<uint> tempBuffer = TempBuffer<uint>.GetBuffer(textureWidth);
             Span<int> textureYPosArray = TempBuffer<int>.GetBuffer(length);
             Span<int> textureXPosArray = TempBuffer<int>.GetBuffer(length);
             Span<int> clampedFromYArray = TempBuffer<int>.GetBuffer(length);
@@ -76,9 +80,6 @@ namespace RenderingEngine.Engine
             Span<ushort> repeatedCountB = TempBuffer<ushort>.GetBuffer(length);
 
             int textureXIncr = (textureWidth << 16) / (spriteEndY - spriteStartY);
-
-            bool flipY = sprite.Texture.RenderingOptions.IsFlippedY;
-            bool flipX = sprite.Texture.RenderingOptions.IsFlippedX;
 
             float textureLen = texture.Width / sprite.Length;
             repeatedCount.Fill((ushort)length);
@@ -150,18 +151,16 @@ namespace RenderingEngine.Engine
                 int textureYPos = textureYPosArray[x];
                 int textureXPos = textureXPosArray[x];
 
-                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, flipY);
-
                 if (repeat && count > 1)
                 {
                     DrawSpriteLine(count, width, x + spriteFromX, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
-                        ref screenPtr, ref tempBuffer.Pointer);
+                        ref screenPtr, ref Unsafe.Add(ref texturePtr, textureYPos));
                     x += count - 1;
                     continue;
                 }
 
                 DrawSpriteLine(width, x + spriteFromX, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
-                    ref screenPtr, ref tempBuffer.Pointer);
+                    ref screenPtr, ref Unsafe.Add(ref texturePtr, textureYPos));
             }
 
             return;
@@ -201,7 +200,11 @@ namespace RenderingEngine.Engine
 
             Sector sector = sectors[sprite.SectorId];
 
-            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(true, sprite.Shade ?? sector.FloorShade);
+            bool flipY = sprite.Texture.RenderingOptions.IsFlippedY;
+            bool flipX = sprite.Texture.RenderingOptions.IsFlippedX;
+
+            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(sprite.Shade ?? sector.FloorShade,
+                flipY ? TextureTransform.RotatedFlipped : TextureTransform.Rotated);
 
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;
@@ -216,11 +219,6 @@ namespace RenderingEngine.Engine
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
             int xOffset = 0;
-
-            using TempBuffer<uint> tempBuffer = TempBuffer<uint>.GetBuffer(textureWidth);
-
-            bool flipY = sprite.Texture.RenderingOptions.IsFlippedY;
-            bool flipX = sprite.Texture.RenderingOptions.IsFlippedX;
 
             float xScale = texture.Width / sprite.Length;
 
@@ -262,10 +260,8 @@ namespace RenderingEngine.Engine
 
                 int textureXPos = (clamptedFromY - spriteStartY_Int) * textureXIncr;
 
-                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, flipY);
-
                 DrawSpriteLine(width, x, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
-                    ref screenPtr, ref tempBuffer.Pointer);
+                    ref screenPtr, ref Unsafe.Add(ref texturePtr, textureYPos));
             }
         }
 
@@ -302,7 +298,7 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
 
             Texture texture = TextureCache.GetTexture(textureInfo);
-            ref uint texturePtr = ref texture.GetBinaryRef<uint>(true, sector.FloorShade);
+            ref uint texturePtr = ref texture.GetBinaryRef<uint>(sector.FloorShade, TextureTransform.Rotated);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
 
@@ -445,7 +441,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = wall.MiddleTexture!;
             Texture texture = TextureCache.GetTexture(textureInfo);
-            ref uint texturePtr = ref texture.GetBinaryRef<uint>(true, sector.FloorShade);
+            ref uint texturePtr = ref texture.GetBinaryRef<uint>(sector.FloorShade, TextureTransform.Rotated);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
             // optimize to avoid "%" when possible

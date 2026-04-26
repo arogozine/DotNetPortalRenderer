@@ -79,7 +79,7 @@ namespace RenderingEngine.Engine
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             TextureInfo wallTexture = wall.MiddleTexture!;
-            ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(false, 0);
+            ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(0, TextureTransform.Normal);
             ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
@@ -303,41 +303,6 @@ namespace RenderingEngine.Engine
             }
 
             return (sectorHeight, ceilOffset, floorOffset);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CalculateAndCacheWallColumn(
-            TempBuffer<uint> tempBuffer,
-            scoped ref uint wallTexturePtr,
-            int textureYPos, bool flipY)
-        {
-            // reuse the cached column
-            if (tempBuffer.Index == textureYPos)
-            {
-                return;
-            }
-
-            tempBuffer.Index = textureYPos;
-
-            Span<uint> buffer = tempBuffer.Span;
-            ref uint columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
-
-            if (flipY)
-            {
-                for (int i = buffer.Length - 1; i >= 0; i--)
-                {
-                    buffer[i] = columnPtr;
-                    columnPtr = ref Unsafe.Add(ref columnPtr, 1);
-                }
-            }
-            else
-            {
-                for (int i = 0; i < buffer.Length; i++)
-                {
-                    buffer[i] = columnPtr;
-                    columnPtr = ref Unsafe.Add(ref columnPtr, 1);
-                }
-            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

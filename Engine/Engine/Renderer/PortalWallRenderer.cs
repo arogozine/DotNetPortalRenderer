@@ -95,7 +95,7 @@ namespace RenderingEngine.Engine
 
             RenderableWall wall = renderableWall.Wall;
             TextureInfo upperTexture = wall.UpperTexture!;
-            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(false, wall.Shade));
+            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(wall.Shade, TextureTransform.Normal));
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
             ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
@@ -159,7 +159,7 @@ namespace RenderingEngine.Engine
 
             RenderableWall wall = renderableWall.Wall;
             TextureInfo upperTexture = wall.UpperTexture!;
-            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(false, wall.Shade));
+            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(wall.Shade, TextureTransform.Normal));
             ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
             ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 

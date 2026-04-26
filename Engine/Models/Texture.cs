@@ -2,6 +2,13 @@
 
 namespace RenderingEngine.Models;
 
+internal enum TextureTransform : byte
+{
+    Normal,
+    Rotated,
+    RotatedFlipped
+}
+
 internal abstract class Texture
 {
     public int Width { get; }
@@ -9,6 +16,7 @@ internal abstract class Texture
 
     protected readonly Dictionary<int, BGRA[]> PalletteToImage = [];
     protected readonly Dictionary<int, BGRA[]> PalletteToImageRotated = [];
+    protected readonly Dictionary<int, BGRA[]> PalletteToImageRotatedFlipped = [];
 
     public Texture(int width, int height)
     {
@@ -16,37 +24,68 @@ internal abstract class Texture
         Height = height;
     }
 
-    public ref T GetBinaryRef<T>(bool rotated, int shade)
+    public ref T GetBinaryRef<T>(int shade, TextureTransform transform)
         where T : unmanaged
     {
-        Span<T> span = MemoryMarshal.Cast<BGRA, T>(GetBinary(rotated, shade));
+        Span<T> span = MemoryMarshal.Cast<BGRA, T>(GetBinary(shade, transform));
         return ref MemoryMarshal.GetReference(span);
     }
 
-    public Span<BGRA> GetBinary(bool rotated, int shade)
+    private BGRA[] GetOrAddNormal(int shade)
     {
-        if (rotated)
+        if (PalletteToImage.TryGetValue(shade, out BGRA[]? value))
         {
-            if (PalletteToImageRotated.TryGetValue(shade, out BGRA[]? value))
-            {
-                return value;
-            }
-
-            value = CalculateRotatedTexture(shade);
-            PalletteToImageRotated[shade] = value;
             return value;
         }
-        else
-        {
-            if (PalletteToImage.TryGetValue(shade, out BGRA[]? value))
-            {
-                return value;
-            }
 
-            value = CalculateTexture(shade);
-            PalletteToImage[shade] = value;
+        value = CalculateTexture(shade);
+        PalletteToImage[shade] = value;
+
+        return value;
+    }
+
+    private BGRA[] GetOrAddRotated(int shade)
+    {
+        if (PalletteToImageRotated.TryGetValue(shade, out BGRA[]? value))
+        {
             return value;
         }
+
+        value = CalculateRotatedTexture(shade);
+        PalletteToImageRotated[shade] = value;
+
+        return value;
+    }
+
+    private BGRA[] GetOrAddRotatedFlipped(int shade)
+    {
+        if (PalletteToImageRotatedFlipped.TryGetValue(shade, out BGRA[]? value))
+        {
+            return value;
+        }
+
+        value = CalculateRotatedFlippedTexture(shade);
+        PalletteToImageRotatedFlipped[shade] = value;
+
+        return value;
+    }
+
+    public Span<BGRA> GetBinary(int shade, TextureTransform transform)
+    {
+        return transform switch
+        {
+            TextureTransform.Normal => (Span<BGRA>)GetOrAddNormal(shade),
+            TextureTransform.Rotated => (Span<BGRA>)GetOrAddRotated(shade),
+            TextureTransform.RotatedFlipped => (Span<BGRA>)GetOrAddRotatedFlipped(shade),
+            _ => throw new NotImplementedException(),
+        };
+    }
+
+    public virtual BGRA[] CalculateRotatedFlippedTexture(int palletteId)
+    {
+        Span<BGRA> img = GetOrAddRotated(palletteId);
+
+        return TextureTransformHelper.FlipTextureY(this.Height, this.Width, img);
     }
 
     protected abstract BGRA[] CalculateTexture(int palletteId);
@@ -76,9 +115,9 @@ internal class DoomTexture : Texture
 
     protected override BGRA[] CalculateRotatedTexture(int brightness)
     {
-        BGRA[] texture = TextureCache.RotateTexture(Height, Width, _texture);
+        BGRA[] texture = TextureTransformHelper.RotateTexture(Height, Width, _texture);
 
-        Shade(texture, brightness);
+        TextureTransformHelper.ShadeInPlace(texture, brightness);
 
         return texture;
     }
@@ -88,31 +127,9 @@ internal class DoomTexture : Texture
         BGRA[] texture = new BGRA[_texture.Length];
         _texture.AsSpan().CopyTo(texture);
 
-        Shade(texture, brightness);
+        TextureTransformHelper.ShadeInPlace(texture, brightness);
 
         return texture;
-    }
-
-    private static void Shade(Span<BGRA> texture, int brightness)
-    {
-        const uint Alpha = (uint)byte.MaxValue << 24;
-
-        uint scale = (uint)brightness;
-
-        for (int i = 0; i < texture.Length; i++)
-        {
-            BGRA value = texture[i];
-
-            if (value.Value == 0L)
-            {
-                continue;
-            }
-
-            uint b = value.B * scale >> 8;
-            uint g = value.G * scale >> 8 << 8;
-            uint r = value.R * scale >> 8 << 16;
-            texture[i] = new BGRA(b | g | r | Alpha);
-        }
     }
 }
 
@@ -125,7 +142,7 @@ internal class BuildTexture : PalletteTexture
     protected override BGRA[] CalculateRotatedTexture(int palletteId)
     {
         BGRA[] texture = TextureCache.GetTexture(_lookup, palletteId);
-        return TextureCache.RotateTexture(Height, Width, texture);
+        return TextureTransformHelper.RotateTexture(Height, Width, texture);
     }
 
     protected override BGRA[] CalculateTexture(int palletteId)

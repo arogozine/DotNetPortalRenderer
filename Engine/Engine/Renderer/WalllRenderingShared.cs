@@ -26,7 +26,8 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            ref uint wallTexturePtr = ref textureInfo.Texture.GetBinaryRef<uint>(true, wall.Shade);
+            ref uint wallTexturePtr = ref textureInfo.Texture.GetBinaryRef<uint>(wall.Shade, !flipY
+                ? TextureTransform.Rotated : TextureTransform.RotatedFlipped);
             int textureWidth = textureInfo.Height;
 
             ref RenderColumnStatus statusRef = ref memoryPool.GetBucketRef<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
@@ -67,8 +68,6 @@ namespace RenderingEngine.Engine
                     ref uint textureYPos = ref Unsafe.Add(ref textureYPosRefRef, x);
                     ref uint textureXPos = ref Unsafe.Add(ref textureXLocationRef, x);
 
-                    CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, (int)textureXPos, flipY);
-
                     RenderWallLine(
                         isPowerOfTwo,
                         (uint)width,
@@ -79,7 +78,7 @@ namespace RenderingEngine.Engine
                         textureYPos,
                         textureYIncr,
                         ref screenPtr,
-                        ref buffer.Pointer);
+                        ref Unsafe.Add(ref wallTexturePtr, textureXPos));
                 }
 
                 return;
@@ -100,7 +99,6 @@ namespace RenderingEngine.Engine
                 ref uint textureYIncr = ref Unsafe.Add(ref textureYIncrementRef, x);
                 ref uint textureYPos = ref Unsafe.Add(ref textureYPosRefRef, x);
                 ref uint textureXPos = ref Unsafe.Add(ref textureXLocationRef, x);
-                CalculateAndCacheWallColumn(buffer, ref wallTexturePtr, (int)textureXPos, flipY);
 
                 // count is the number of horizontal columns that stretch a single
                 // texture columns
@@ -119,7 +117,7 @@ namespace RenderingEngine.Engine
                             ref textureYPos,
                             ref textureYIncr,
                             ref screenPtr,
-                            ref buffer.Pointer
+                            ref Unsafe.Add(ref wallTexturePtr, textureXPos)
                         );
 
                         count -= (ushort)Vector256<uint>.Count;
@@ -129,7 +127,7 @@ namespace RenderingEngine.Engine
                         clamptedToY = ref Unsafe.Add(ref wallEndClampedRef, x);
                         textureYIncr = ref Unsafe.Add(ref textureYIncrementRef, x);
                         textureYPos = ref Unsafe.Add(ref textureYPosRefRef, x);
-                        textureXPos = ref Unsafe.Add(ref textureXLocationRef, x);
+                        //textureXPos = ref Unsafe.Add(ref textureXLocationRef, x);
                     }
 
                     // Render 4 columns at once
@@ -145,7 +143,7 @@ namespace RenderingEngine.Engine
                             ref textureYPos,
                             ref textureYIncr,
                             ref screenPtr,
-                            ref buffer.Pointer
+                            ref Unsafe.Add(ref wallTexturePtr, textureXPos)
                         );
 
                         count -= (ushort)Vector128<uint>.Count;
@@ -155,7 +153,7 @@ namespace RenderingEngine.Engine
                         clamptedToY = ref Unsafe.Add(ref wallEndClampedRef, x);
                         textureYIncr = ref Unsafe.Add(ref textureYIncrementRef, x);
                         textureYPos = ref Unsafe.Add(ref textureYPosRefRef, x);
-                        textureXPos = ref Unsafe.Add(ref textureXLocationRef, x);
+                        //textureXPos = ref Unsafe.Add(ref textureXLocationRef, x);
                     }
 
                     // Render the rest. Also fallback if CPU is potato.
@@ -172,7 +170,7 @@ namespace RenderingEngine.Engine
                             ref textureYPos,
                             ref textureYIncr,
                             ref screenPtr,
-                            ref buffer.Pointer
+                            ref Unsafe.Add(ref wallTexturePtr, textureXPos)
                         );
 
                         x += count;
@@ -191,7 +189,7 @@ namespace RenderingEngine.Engine
                     textureYPos,
                     textureYIncr,
                     ref screenPtr,
-                    ref buffer.Pointer);
+                    ref Unsafe.Add(ref wallTexturePtr, textureXPos));
 
                 x++;
             }
@@ -230,12 +228,12 @@ namespace RenderingEngine.Engine
             var valueUpper = value.GetUpper();
 
             var value128min = Vector128.MinNative(valueLower, valueUpper);
-            var value128Shuffledmin = Vector128.ShuffleNative(value128min, Vector128.Create(2, 3, 0, 1));
-            value128min = Vector128.MinNative(value128min, value128Shuffledmin);
+            var shuffle = Vector128.ShuffleNative(value128min, Vector128.Create(2, 3, 0, 1));
+            value128min = Vector128.MinNative(value128min, shuffle);
 
             var value128max = Vector128.MaxNative(valueLower, valueUpper);
-            var value128Shuffledmax = Vector128.ShuffleNative(value128max, Vector128.Create(2, 3, 0, 1));
-            value128max = Vector128.MaxNative(value128max, value128Shuffledmax);
+            shuffle = Vector128.ShuffleNative(value128max, Vector128.Create(2, 3, 0, 1));
+            value128max = Vector128.MaxNative(value128max, shuffle);
 
             int min = MathFormulas.Min(value128min[0], value128min[1]);
             int max = MathFormulas.Max(value128max[0], value128max[1]);
@@ -250,12 +248,12 @@ namespace RenderingEngine.Engine
             var valueUpper = value.GetUpper();
 
             var value128min = Vector128.MinNative(valueLower, valueUpper);
-            var value128Shuffledmin = Vector128.ShuffleNative(value128min, Vector128.Create(2U, 3U, 0U, 1U));
-            value128min = Vector128.MinNative(value128min, value128Shuffledmin);
+            var shuffle = Vector128.ShuffleNative(value128min, Vector128.Create(2U, 3U, 0U, 1U));
+            value128min = Vector128.MinNative(value128min, shuffle);
 
             var value128max = Vector128.MaxNative(valueLower, valueUpper);
-            var value128Shuffledmax = Vector128.ShuffleNative(value128max, Vector128.Create(2U, 3U, 0U, 1U));
-            value128max = Vector128.MaxNative(value128max, value128Shuffledmax);
+            shuffle = Vector128.ShuffleNative(value128max, Vector128.Create(2U, 3U, 0U, 1U));
+            value128max = Vector128.MaxNative(value128max, shuffle);
 
             uint min = Math.Min(value128min[0], value128min[1]);
             uint max = Math.Max(value128max[0], value128max[1]);

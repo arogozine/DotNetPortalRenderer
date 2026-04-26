@@ -1,6 +1,5 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.Tooling;
-using System.Numerics;
 
 namespace RenderingEngine.Engine
 {
@@ -95,7 +94,6 @@ namespace RenderingEngine.Engine
         private readonly List<RenderablePortalWall> neightbors = [];
         private readonly List<RenderablePortalWall> renderableWalls = [];
         private readonly HashSet<int> renderedSectors = [];
-        private int renderDepth = 0;
 
         public void DrawScreen(PortalPlayerSnapshot player)
         {
@@ -113,7 +111,7 @@ namespace RenderingEngine.Engine
 
             _ = renderedSectors.Add(player.Sector);
 
-            renderDepth = 0;
+            int renderDepth = 0;
 
             do
             {
