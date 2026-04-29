@@ -89,28 +89,25 @@ namespace RenderingEngine.Engine
             wallEndSpan = wallEndSpan[spriteFromX..];
             distance = distance[spriteFromX..];
 
-            for (int x = 0; x < length; x++, cameraRay += cameraWidthIncr)
+            ushort maxCount = (ushort)length;
             {
                 int wallStart = wallStartSpan[x];
                 int wallEnd = wallEndSpan[x];
 
                 if (wallEnd <= wallStart || distance[x] < fromToYDist)
                 {
-                    clampedFromYArray[x] = 0;
-                    clampedToYArray[x] = 0;
                     repeatedCount[x] = 0;
-
+                    maxCount = (ushort)x;
                     continue;
                 }
 
                 int clamptedFromY = Math.Clamp(spriteStartY, wallStart, wallEnd);
                 int clamptedToY = Math.Clamp(spriteEndY, wallStart, wallEnd);
-                clampedFromYArray[x] = clamptedFromY;
-                clampedToYArray[x] = clamptedToY;
 
                 if (clamptedFromY >= clamptedToY)
                 {
                     repeatedCount[x] = 0;
+                    maxCount = (ushort)x;
                     continue;
                 }
 
@@ -118,8 +115,12 @@ namespace RenderingEngine.Engine
                 if (textureXLocation >= textureHeight) {
                     textureXLocation = 0;
                 }
+
                 textureYPosArray[x] = textureXLocation * textureWidth;
                 textureXPosArray[x] = (clamptedFromY - spriteStartY) * textureXIncr;
+                clampedFromYArray[x] = clamptedFromY;
+                clampedToYArray[x] = clamptedToY;
+                repeatedCount[x] = maxCount;
             }
 
             // basic sprites are always facing the player

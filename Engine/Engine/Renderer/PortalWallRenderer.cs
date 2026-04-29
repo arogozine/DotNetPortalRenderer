@@ -211,11 +211,17 @@ namespace RenderingEngine.Engine
             ref RenderColumnStatus statusRef = ref memoryPool.GetBucketRef<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             statusRef = ref Unsafe.Add(ref statusRef, wallFromX);
 
-            for (int x = wallFromX; x <= wallToX; x++)
+            ushort count = 1;
+            for (int x = wallFromX; x <= wallToX; x++, count++)
             {
                 if (!statusRef.WallRenderable)
                 {
                     repeatedCount[x - wallFromX] = 0;
+                    count = 1;
+                }
+                else
+                {
+                    repeatedCount[x - wallFromX] = count;
                 }
 
                 statusRef = ref Unsafe.Add(ref statusRef, 1);
