@@ -220,6 +220,8 @@ namespace RenderingEngine.Engine
             float spriteEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
+            Debug.Assert(renderableWall.XLeft <= spriteFromX);
+
             int xOffset = 0;
 
             float xScale = texture.Width / sprite.Length;
@@ -304,8 +306,6 @@ namespace RenderingEngine.Engine
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
 
-            using TempBuffer<uint> tempBuffer = TempBuffer<uint>.GetBuffer(textureWidth);
-
             RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
             float wallStartY = yPlaneInfo.WallStartY;
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
@@ -313,7 +313,6 @@ namespace RenderingEngine.Engine
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
             (float sectorHeight, float ceilOffset, float floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
-            Sector neighborSector = sectors[wall.Neighbor];
 
             float oneOverSectorHeight = 1f / sectorHeight;
 
@@ -389,10 +388,7 @@ namespace RenderingEngine.Engine
                 // Calculate Middle Texture Position
                 float textureXIncr = (float)(sectorHeight / (wallEndY - wallStartY));
                 int textureYPos = ((float.ConvertToIntegerNative<int>(distance) + xOffset) % textureHeight) * textureWidth;
-
                 float textureXPos = MathF.FusedMultiplyAdd(textureXIncr, offset, textureWidth);
-
-                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, false);
 
                 if (alpha == 1f)
                 {
@@ -400,7 +396,7 @@ namespace RenderingEngine.Engine
                         textureStartYClamped, textureEndYClamped,
                         textureWidth,
                         textureXPos, textureXIncr,
-                        ref screenPtr, ref tempBuffer.Pointer);
+                        ref screenPtr, ref Unsafe.Add(ref texturePtr, textureYPos));
                 }
                 else
                 {
@@ -408,7 +404,7 @@ namespace RenderingEngine.Engine
                         textureStartYClamped, textureEndYClamped,
                         textureWidth,
                         textureXPos, textureXIncr,
-                        ref screenPtr, ref tempBuffer.Pointer,
+                        ref screenPtr, ref Unsafe.Add(ref texturePtr, textureYPos),
                         alpha);
                 }
             }
@@ -442,8 +438,11 @@ namespace RenderingEngine.Engine
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             TextureInfo textureInfo = wall.MiddleTexture!;
+            (_, bool flipX, bool flipY) = GetFlags(textureInfo);
+
             Texture texture = TextureCache.GetTexture(textureInfo);
-            ref uint texturePtr = ref texture.GetBinaryRef<uint>(sector.FloorShade, TextureTransform.Rotated);
+            ref uint texturePtr = ref texture.GetBinaryRef<uint>(sector.FloorShade,
+                flipY ? TextureTransform.RotatedFlipped : TextureTransform.Rotated);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
             // optimize to avoid "%" when possible
@@ -452,8 +451,6 @@ namespace RenderingEngine.Engine
             {
                 textureHeight--;
             }
-
-            using TempBuffer<uint> tempBuffer = TempBuffer<uint>.GetBuffer(textureWidth);
 
             RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
             float wallStartY = yPlaneInfo.WallStartY;
@@ -469,7 +466,6 @@ namespace RenderingEngine.Engine
             int xOffset = textureInfo.XOffset;
             int yOffset = textureInfo.YOffset;
 
-            (_, bool flipX, bool flipY) = GetFlags(textureInfo);
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
 
@@ -525,15 +521,13 @@ namespace RenderingEngine.Engine
                 float textureXIncr = (textureWidth * yScale) / (wallEndY - wallStartY);
                 float textureXPos = yOffset - textureXIncr * (wallStartY - clampedFromY);
 
-                CalculateSprite(tempBuffer, ref texturePtr, textureYPos, flipY);
-
                 if (alpha == 1f)
                 {
                     DrawTransparentWallLine(width, x,
                         clampedFromY, clampedToY,
                         textureWidth,
                         textureXPos, textureXIncr,
-                        ref screenPtr, ref tempBuffer.Pointer);
+                        ref screenPtr, ref Unsafe.Add(ref texturePtr, textureYPos));
                 }
                 else
                 {
@@ -541,7 +535,7 @@ namespace RenderingEngine.Engine
                         clampedFromY, clampedToY,
                         textureWidth,
                         textureXPos, textureXIncr,
-                        ref screenPtr, ref tempBuffer.Pointer,
+                        ref screenPtr, ref Unsafe.Add(ref texturePtr, textureYPos),
                         alpha);
                 }
             }
@@ -697,42 +691,6 @@ namespace RenderingEngine.Engine
             uint rOut = (rSrc * a + rDst * aInv) >> 8;
 
             return (Alpha | (rOut << 16) | (gOut << 8) | bOut);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CalculateSprite(
-            TempBuffer<uint> buffer,
-            ref uint wallTexturePtr,
-            int textureYPos,
-            bool flipY)
-        {
-            // reuse the cached column
-            if (buffer.Index == textureYPos)
-            {
-                return;
-            }
-
-            buffer.Index = textureYPos;
-
-            Span<uint> spriteTexturePtr = buffer.Span;
-            ref uint columnPtr = ref Unsafe.Add(ref wallTexturePtr, textureYPos);
-
-            if (flipY)
-            {
-                for (int i = spriteTexturePtr.Length - 1; i >= 0; i--)
-                {
-                    spriteTexturePtr[i] = columnPtr;
-                    columnPtr = ref Unsafe.Add(ref columnPtr, 1);
-                }
-            }
-            else
-            {
-                for (int i = 0; i < spriteTexturePtr.Length; i++)
-                {
-                    spriteTexturePtr[i] = columnPtr;
-                    columnPtr = ref Unsafe.Add(ref columnPtr, 1);
-                }
-            }
         }
     }
 }

@@ -101,7 +101,7 @@ namespace RenderingEngine.Engine
         public static List<RenderableSprite> FilterOutSpritesOutsideDepth(
             scoped Span<RenderableSprite> rotatedSprites,
             IReadOnlySet<int> sectors,
-            Span<float> depth, Span<float> parentDepth)
+            Span<float> maxDepth, Span<float> minDepth)
         {
             List<RenderableSprite> sprites = [];
 
@@ -109,7 +109,7 @@ namespace RenderingEngine.Engine
             {
                 RenderableSprite sprite = rotatedSprites[i];
                 
-                if (WithinDepth(sprite, depth, parentDepth))
+                if (WithinDepth(sprite, maxDepth, minDepth))
                 {
                     sprites.Add(sprite);
                 }
@@ -118,21 +118,27 @@ namespace RenderingEngine.Engine
             return sprites;
 
 
-            bool WithinDepth(RenderableSprite sprite, Span<float> depth, Span<float> parentDepth)
+            bool WithinDepth(RenderableSprite sprite, Span<float> maxDepth, Span<float> minDepth)
             {
                 float distanceMin = sprite.DistanceMin;
                 float distanceMax = sprite.DistanceMax;
 
-                if (!parentDepth.IsEmpty)
+                if (!minDepth.IsEmpty)
                 {
                     for (int x = sprite.XLeft; x <= sprite.XRight; x++)
                     {
-                        if (SharedHelpers.WithinInclusive(distanceMin, parentDepth[x], depth[x]))
+                        float minDepthX = minDepth[x];
+                        float maxDepthX = maxDepth[x];
+
+                        if (minDepthX >= maxDepthX)
+                            continue;
+
+                        if (SharedHelpers.WithinInclusive(distanceMin, minDepthX, maxDepthX))
                         {
                             return sectors.Contains(sprite.SectorId);
                         }
 
-                        if (SharedHelpers.WithinInclusive(distanceMax, parentDepth[x], depth[x]))
+                        if (SharedHelpers.WithinInclusive(distanceMax, minDepthX, maxDepthX))
                         {
                             return sectors.Contains(sprite.SectorId);
                         }
@@ -143,7 +149,7 @@ namespace RenderingEngine.Engine
 
                 for (int x = sprite.XLeft; x <= sprite.XRight; x++)
                 {
-                    if (depth[x] >= distanceMin || depth[x] >= distanceMax)
+                    if (maxDepth[x] >= distanceMin || maxDepth[x] >= distanceMax)
                     {
                         return sectors.Contains(sprite.SectorId);
                     }

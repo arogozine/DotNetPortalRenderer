@@ -16,8 +16,7 @@ namespace RenderingEngine.Engine
             Span<int> ceil = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> wallStartSloped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
 
-
-            (_, _, _, float scaledTextureHeight) = CalculateScale(wall.Sector, wall, textureInfo);
+            (int textureHeight, _, _, float scaledTextureHeight) = CalculateScale(wall.Sector, wall, textureInfo);
 
             int offset = portalWall.Offset;
             int wallFromX = portalWall.XLeft;
@@ -28,8 +27,6 @@ namespace RenderingEngine.Engine
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float wallEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
-
-            (int textureHeight, _, _, _) = CalculateScale(portalWall.Wall.Sector, wall, textureInfo);
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
@@ -79,7 +76,7 @@ namespace RenderingEngine.Engine
 
             Span<int> textureYIncrement = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureYIncrement);
 
-            (_, _, _, float scaledTextureHeight) = CalculateScale(wall.Sector, wall, textureInfo);
+            (int textureHeight, _, _, float scaledTextureHeight) = CalculateScale(wall.Sector, wall, textureInfo);
 
             int offset = portalWall.Offset;
             int wallFromX = portalWall.XLeft;
@@ -90,8 +87,6 @@ namespace RenderingEngine.Engine
             float ceilDistIncr = yPlaneInfo.CeilDistIncr;
             float wallEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
-
-            (int textureHeight, _, _, _) = CalculateScale(portalWall.Wall.Sector, wall, textureInfo);
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
