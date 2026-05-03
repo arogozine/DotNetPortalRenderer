@@ -24,6 +24,7 @@ namespace RenderingEngine.Engine
 
             if (textureInfo.RenderingOptions.IsSkybox)
             {
+                CalculateDistance(renderableWall);
                 return DrawBasicSkyboxWall(player, renderableWall);
             }
 

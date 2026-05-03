@@ -1,4 +1,5 @@
-﻿using RenderingEngine.Tooling;
+﻿using RenderingEngine.Models;
+using RenderingEngine.Tooling;
 
 namespace RenderingEngine.Engine
 {
@@ -42,6 +43,7 @@ namespace RenderingEngine.Engine
             }
         }
 
+        [Conditional("DEBUG")]
         private void ProperlyClamped(int from, int to)
         {
             ProperlyClamped(memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart), from, to);
@@ -50,6 +52,47 @@ namespace RenderingEngine.Engine
             ProperlyClamped(memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped), from, to);
         }
 
+        [Conditional("DEBUG")]
+        private void RenderOutline(Span<int> from, Span<int> to, BGRA topColor, BGRA bottomColor, int fromX = 0, int toX = int.MaxValue)
+        {
+            ref BGRA screen = ref this.GetScreenPtr<BGRA>();
+            int length = PixelHeight * PixelWidth;
+
+            fromX = int.Max(0, fromX);
+            toX = int.Min(PixelWidth, toX);
+
+            for (int x = fromX; x < toX; x++)
+            {
+                int ceiling = from[x];
+                int floor = to[x];
+
+                Render(ref screen, ceiling, x, topColor);
+                Render(ref screen, floor, x, bottomColor);
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            void Render(ref BGRA screen, int y, int x, BGRA color)
+            {
+                int index = (y - 1) * PixelWidth + x;
+
+                if (index > 0 && index < length)
+                {
+                    Unsafe.Add(ref screen, index) = color;
+                }
+
+                index += PixelWidth;
+                if (index > 0 && index < length)
+                {
+                    Unsafe.Add(ref screen, index) = color;
+                }
+
+                index += PixelWidth;
+                if (index > 0 && index < length)
+                {
+                    Unsafe.Add(ref screen, index) = color;
+                }
+            }
+        }
 
         /*
         private void Meh(Span<BGRA> screen, RenderWindowSpriteSnapshot sectorSprites)

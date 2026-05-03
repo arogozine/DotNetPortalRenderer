@@ -31,6 +31,7 @@ namespace RenderingEngine.Engine
 
                 if (upperTexture.RenderingOptions.IsSkybox)
                 {
+                    CalculateDistance(renderableWall);
                     CalculateWallClamp(renderableWall);
                     CalculatePortalClamp(renderableWall);
                     DrawUpperSkyboxPortalWall(player, sectors, renderableWall);
@@ -51,6 +52,7 @@ namespace RenderingEngine.Engine
 
                 if (lowerTexture.RenderingOptions.IsSkybox)
                 {
+                    CalculateDistance(renderableWall);
                     CalculateWallClamp(renderableWall);
                     CalculatePortalClamp(renderableWall);
                     DrawLowerSkyboxPortalWall(player, sectors, renderableWall);

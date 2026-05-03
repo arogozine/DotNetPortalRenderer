@@ -250,7 +250,7 @@ namespace RenderingEngine.Engine
                     Span<float> currentDistance = depthBuffer[(PixelWidth * renderDepth)..];
                     Span<float> nextDistance = (--renderDepth) >= 0 ? depthBuffer[(PixelWidth * renderDepth)..] : default;
 
-                    List <RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
+                    List<RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
                         renderedSectors, currentDistance, nextDistance);
 
                     foreach (RenderableSprite s in sprites)
