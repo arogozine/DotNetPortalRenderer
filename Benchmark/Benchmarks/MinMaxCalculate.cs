@@ -145,6 +145,45 @@ public class MinMaxCalculate
         return (min_t, min_b, max_t, max_b);
     }
 
+    [Benchmark]
+    public (uint min_t, uint min_b, uint max_t, uint max_b) Vector3()
+    {
+        var startYV = Vector256.LoadUnsafe(ref _data[0]);
+        var endYV = Vector256.LoadUnsafe(ref _data[Vector256<int>.Count]);
+
+        (uint min_t, uint max_t) = GetMinMaxValue3(startYV);
+        (uint min_b, uint max_b) = GetMinMaxValue3(endYV);
+
+
+        return (min_t, min_b, max_t, max_b);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static (uint min, uint max) GetMinMaxValue3(Vector256<uint> value)
+    {
+        // Split 8 uint into upper 4 and lower 4
+        var valueLower = value.GetLower();
+        var valueUpper = value.GetUpper();
+
+        // min 4 and 4
+        var value128min = Vector128.MinNative(valueLower, valueUpper);
+        // mine 2 and 2
+        var value128Shuffledmin = Vector128.ShuffleNative(value128min, Vector128.Create(2U, 3U, 0U, 1U));
+        value128min = Vector128.MinNative(value128min, value128Shuffledmin);
+        // min 1 and 1
+        value128Shuffledmin = Vector128.ShuffleNative(value128min, Vector128.Create(2U, 1U, 3U, 4U));
+        value128min = Vector128.MinNative(value128min, value128Shuffledmin);
+
+        var value128max = Vector128.MaxNative(valueLower, valueUpper);
+        var value128Shuffledmax = Vector128.ShuffleNative(value128max, Vector128.Create(2U, 3U, 0U, 1U));
+        value128max = Vector128.MaxNative(value128max, value128Shuffledmax);
+
+        value128Shuffledmax = Vector128.ShuffleNative(value128max, Vector128.Create(2U, 1U, 3U, 4U));
+        value128max = Vector128.MaxNative(value128max, value128Shuffledmax);
+
+        return (value128min[0], value128max[0]);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static (uint min, uint max) GetMinMaxValue2(Vector256<uint> value)
     {

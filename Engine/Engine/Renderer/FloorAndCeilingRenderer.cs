@@ -404,12 +404,12 @@ namespace RenderingEngine.Engine
                     for (int i = 0; i < Vector<int>.Count; i++)
                     {
                         int top = from[i];
-                        min_t = Math.Min(min_t, top);
-                        max_t = Math.Max(max_t, top);
+                        min_t = MathFormulas.Min(min_t, top);
+                        max_t = MathFormulas.Max(max_t, top);
 
                         int bottom = to[i];
-                        min_b = Math.Min(min_b, bottom);
-                        max_b = Math.Max(max_b, bottom);
+                        min_b = MathFormulas.Min(min_b, bottom);
+                        max_b = MathFormulas.Max(max_b, bottom);
                     }
 
                     return (min_t, max_t, min_b, max_b);

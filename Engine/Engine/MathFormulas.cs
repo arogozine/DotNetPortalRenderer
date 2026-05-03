@@ -231,21 +231,6 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static (Vector<float> X, Vector<float> Y, Vector<float> Z) NormalizeVector(Vector<float> x, Vector<float> y, Vector<float> z)
-        {
-            // compute length = sqrt(x*x + y*y + z*z)
-            Vector<float> sum = x * x + y * y + z * z;
-            Vector<float> length = Vector.SquareRoot(sum);
-
-            // Avoid division by zero: where length is very small, set inverse to zero
-            Vector<float> inv = Vector<float>.One / length;
-            Vector<int> smallLengthMask = Vector.LessThanOrEqual(length, new Vector<float>(float.Epsilon));
-            inv = Vector.ConditionalSelect(smallLengthMask, Vector<float>.Zero, inv);
-
-            return (x * inv, y * inv, z * inv);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static float CalculateDistance2(float cameraRay, float t1, float d2y, float d2x)
         {
             float denominator = MathF.FusedMultiplyAdd(cameraRay, d2y, -d2x);

@@ -226,7 +226,7 @@ namespace RenderingEngine.Engine
             {
                 RenderableWall wall = rotatedWalls[i];
 
-                if (SameLine(wall, parentSectorWall))
+                if (wall.Id == parentSectorWall.Id)
                 {
                     for (int j = i + 1; j < rotatedWalls.Length; j++, i++)
                     {
@@ -239,13 +239,6 @@ namespace RenderingEngine.Engine
             }
 
             return rotatedWalls;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool SameLine(RenderableWall a, RenderableWall b)
-        {
-            return (a.R1 == b.R1 && a.R2 == b.R2) ||
-                (a.R2 == b.R1 && a.R1 == b.R2);
         }
 
         public static RenderableWall[] RotateSectorWallsRelativeToPlayer(Sector sector, float pSin, float pCos, float px, float py)

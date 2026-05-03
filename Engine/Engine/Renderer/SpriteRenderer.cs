@@ -90,6 +90,7 @@ namespace RenderingEngine.Engine
             distance = distance[spriteFromX..];
 
             ushort maxCount = (ushort)length;
+            for (int x = 0; x < length; x++, maxCount--, cameraRay += cameraWidthIncr)
             {
                 int wallStart = wallStartSpan[x];
                 int wallEnd = wallEndSpan[x];
