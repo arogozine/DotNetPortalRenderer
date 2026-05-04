@@ -44,9 +44,11 @@ namespace RenderingEngine.Engine
 
             void ResizeCacheIfNeeded()
             {
-                if (spriteCacheMemoryPool.GetBucketSize<float>() <= (offset + PixelWidth))
+                int minSize = offset + PixelWidth << 1;
+
+                if (spriteCacheMemoryPool.GetBucketSize<float>() <= minSize)
                 {
-                    spriteCacheMemoryPool.ReAlloc(offset + PixelWidth << 1);
+                    spriteCacheMemoryPool.ReAlloc(minSize);
                 }
             }
 

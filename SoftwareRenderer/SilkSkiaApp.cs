@@ -156,8 +156,13 @@ namespace SoftwareRenderer
         {
             Engine.StopTheGameLoop();
 
-            renderTarget?.Dispose();
+            canvas?.Dispose();
             surface?.Dispose();
+            renderTarget?.Dispose();
+
+            canvas = null;
+            surface = null;
+            renderTarget = null;
         }
 
         private void StartTheGameLoop()
