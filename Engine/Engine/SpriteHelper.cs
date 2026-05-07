@@ -187,7 +187,7 @@ namespace RenderingEngine.Engine
                         continue;
                     }
 
-                    if ((x1 < -y1 && x2 < -y2 && x3 < -y3 && x4 < -y4) || (x1 > y1 && x2 > y2 && x3 > y3 && y4 > x4))
+                    if ((x1 < -y1 && x2 < -y2 && x3 < -y3 && x4 < -y4) || (x1 > y1 && x2 > y2 && x3 > y3 && x4 > y4))
                     {
                         continue;
                     }
@@ -392,13 +392,39 @@ namespace RenderingEngine.Engine
 
             (float DistanceMin, float DistanceMax) CalculateDistanceForFloorSprite(RenderableFloorSprite sprite)
             {
-                float a = sprite.Wall1!.IntersectsView ? CalculateDistance2(sprite.R1, sprite.R2, sprite.Wall1!.XLeft) : 0f;
-                float b = sprite.Wall2!.IntersectsView ? CalculateDistance2(sprite.R2, sprite.R3, sprite.Wall2!.XLeft) : 0f;
-                float c = sprite.Wall3!.IntersectsView ? CalculateDistance2(sprite.R3, sprite.R4, sprite.Wall3!.XLeft) : 0f;
-                float d = sprite.Wall4!.IntersectsView ? CalculateDistance2(sprite.R4, sprite.R1, sprite.Wall4!.XLeft) : 0f;
+                int len = 0;
+                Span<float> dist = stackalloc float[4];
 
-                float distanceMin = MathF.Min(a, MathF.Min(b, MathF.Min(c, d)));
-                float distanceMax = MathF.Max(a, MathF.Max(b, MathF.Max(c, d)));
+                if (sprite.Wall1!.IntersectsView)
+                {
+                    dist[len++] = CalculateDistance2(sprite.R1, sprite.R2, sprite.Wall1!.XLeft);
+                }
+
+                if (sprite.Wall2!.IntersectsView)
+                {
+                    dist[len++] = CalculateDistance2(sprite.R2, sprite.R3, sprite.Wall2!.XLeft);
+                }
+
+                if (sprite.Wall3!.IntersectsView)
+                {
+                    dist[len++] = CalculateDistance2(sprite.R3, sprite.R4, sprite.Wall3!.XLeft);
+
+                }
+
+                if (sprite.Wall4!.IntersectsView)
+                {
+                    dist[len++] = CalculateDistance2(sprite.R4, sprite.R1, sprite.Wall4!.XLeft);
+                }
+
+                float distanceMin = float.MaxValue;
+                float distanceMax = float.MinValue;
+
+                for (int i = 0; i < len; i++)
+                {
+                    distanceMin = MathF.Min(distanceMin, dist[i]);
+                    distanceMax = MathF.Max(distanceMin, dist[i]);
+                }
+
 
                 return (distanceMin, distanceMax);
             }

@@ -36,13 +36,23 @@ namespace SoftwareRenderer
         [MemberNotNull(nameof(grgInterface), nameof(grContext))]
         private void Window_Load()
         {
-            grgInterface = GRGlInterface.Create();
+            grgInterface = GRGlInterface.Create(GetProcAddress);
             grContext = GRContext.CreateGl(grgInterface);
             
             SetupRenderAndCanvas();
             SetupKeyEvents();
 
             Engine.StartTheGameLoop(window.Size.X, window.Size.Y);
+
+            nint GetProcAddress(string name)
+            {
+                if (window.GLContext!.TryGetProcAddress(name, out nint addr))
+                {
+                    return addr;
+                }
+
+                return IntPtr.Zero;
+        }
         }
 
         private unsafe void Window_Render(double delta)
@@ -119,6 +129,10 @@ namespace SoftwareRenderer
             windowOptions.Size = new Vector2D<int>(800, 450);
             windowOptions.FramesPerSecond = 60.0;
             windowOptions.UpdatesPerSecond = 60.0;
+            windowOptions.PreferredStencilBufferBits = 8;
+            windowOptions.PreferredBitDepth = new Vector4D<int>(8, 8, 8, 8);
+
+            GlfwWindowing.Use(); // ???
 
             window = Window.Create(windowOptions);
 
