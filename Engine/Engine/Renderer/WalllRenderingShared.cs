@@ -19,6 +19,7 @@ namespace RenderingEngine.Engine
             RenderableWall wall = renderableWall.Wall;
 
             bool flipY = textureInfo.RenderingOptions.IsFlippedY;
+            bool flipX = textureInfo.RenderingOptions.IsFlippedX;
 
             int width = PixelWidth;
             int wallFromX = renderableWall.XLeft;
@@ -26,8 +27,19 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            ref uint wallTexturePtr = ref textureInfo.Texture.GetBinaryRef<uint>(wall.Shade, !flipY
-                ? TextureTransform.Rotated : TextureTransform.RotatedFlipped);
+            var transform = TextureTransform.Rotated;
+
+            if (flipY)
+            {
+                transform |= TextureTransform.FlippedY;
+            }
+
+            if (flipX)
+            {
+                transform |= TextureTransform.FlippedX;
+            }
+
+            ref uint wallTexturePtr = ref textureInfo.Texture.GetBinaryRef<uint>(wall.Shade, transform);
             int textureWidth = textureInfo.Height;
 
             ref RenderColumnStatus statusRef = ref memoryPool.GetBucketRef<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);

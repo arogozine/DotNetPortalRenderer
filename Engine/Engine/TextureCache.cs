@@ -55,16 +55,33 @@ internal static class TextureTransformHelper
     {
         BGRA[] flippedImage = new BGRA[img.Length];
 
-        for (int x = 0, xh = 0; x < width; x++)
+        for (int y = 0; y < height; y++)
         {
-            for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
             {
-                int i = xh + y;
-                int j = xh + (height - y - 1);
+                int i = x + y * width;
+                int j = x + (height - y - 1) * width;
                 flippedImage[i] = img[j];
             }
+        }
 
-            xh += height;
+        return flippedImage;
+    }
+
+    internal static BGRA[] FlipTextureX(int height, int width, scoped Span<BGRA> img)
+    {
+        BGRA[] flippedImage = new BGRA[img.Length];
+
+        for (int y = 0, i = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                int index = i + x;
+                int j = i + (width - x - 1);
+                flippedImage[index] = img[j];
+            }
+
+            i += width;
         }
 
         return flippedImage;

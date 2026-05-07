@@ -50,8 +50,20 @@ namespace RenderingEngine.Engine
 
             Sector sector = sectors[sprite.SectorId];
 
+            var transform = TextureTransform.Rotated;
+
+            if (flipY)
+            {
+                transform |= TextureTransform.FlippedY;
+            }
+
+            if (flipX)
+            {
+                transform |= TextureTransform.FlippedX;
+            }
+
             ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(sprite.Shade ?? sector.FloorShade,
-                flipY ? TextureTransform.RotatedFlipped : TextureTransform.Rotated);
+                transform);
 
             float rx1 = sprite.R1.X;
             float rx2 = sprite.R2.X;
@@ -170,8 +182,7 @@ namespace RenderingEngine.Engine
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             int CalculateTextureXPosition(float cameraRay)
             {
-                float distX =
-                    flipX ? MathF.FusedMultiplyAdd(-fromToYDist, cameraRay, rx2): MathF.FusedMultiplyAdd(fromToYDist, cameraRay, - rx1);
+                float distX = MathF.FusedMultiplyAdd(fromToYDist, cameraRay, - rx1);
 
                 return float.ConvertToIntegerNative<int>(MathF.Abs(distX) * textureLen);
             }
@@ -205,8 +216,19 @@ namespace RenderingEngine.Engine
             bool flipY = sprite.Texture.RenderingOptions.IsFlippedY;
             bool flipX = sprite.Texture.RenderingOptions.IsFlippedX;
 
-            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(sprite.Shade ?? sector.FloorShade,
-                flipY ? TextureTransform.RotatedFlipped : TextureTransform.Rotated);
+            var transform = TextureTransform.Rotated;
+
+            if (flipY)
+            {
+                transform |= TextureTransform.FlippedY;
+            }
+
+            if (flipX)
+            {
+                transform |= TextureTransform.FlippedX;
+            }
+
+            ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(sprite.Shade ?? sector.FloorShade, transform);
 
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;
@@ -248,7 +270,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                (float textureXLocation, float fromToYdist) = MathFormulas.CalculateDistance(sprite, cameraRay, t1, d2y, d2x, flipX);
+                (float textureXLocation, float fromToYdist) = MathFormulas.CalculateDistance(sprite, cameraRay, t1, d2y, d2x);
 
                 if ((int)distance[x] < (int)fromToYdist)
                 {
@@ -289,7 +311,7 @@ namespace RenderingEngine.Engine
 
             if (renderableWall.Depth > 1)
             {
-                bufferOffset = PixelWidth * (renderableWall.Depth - 1);
+                bufferOffset = PixelWidth * (renderableWall.Depth + 1);
             }
 
             Span<int> wallStart = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
@@ -339,7 +361,7 @@ namespace RenderingEngine.Engine
                 int floorEnd = wallEnd[x];
                 int ceilingStart = wallStart[x];
 
-                (float distance, float fromToYdist) = MathFormulas.CalculateDistance(wall, cameraRay, t1, d2y, d2x, false);
+                (float distance, float fromToYdist) = MathFormulas.CalculateDistance(wall, cameraRay, t1, d2y, d2x);
 
                 if (fromToYdist > buffer)
                 {
@@ -440,9 +462,20 @@ namespace RenderingEngine.Engine
             TextureInfo textureInfo = wall.MiddleTexture!;
             (_, bool flipX, bool flipY) = GetFlags(textureInfo);
 
+            var transform = TextureTransform.Rotated;
+
+            if (flipY)
+            {
+                transform |= TextureTransform.FlippedY;
+            }
+
+            if (flipX)
+            {
+                transform |= TextureTransform.FlippedX;
+            }
+
             Texture texture = TextureCache.GetTexture(textureInfo);
-            ref uint texturePtr = ref texture.GetBinaryRef<uint>(sector.FloorShade,
-                flipY ? TextureTransform.RotatedFlipped : TextureTransform.Rotated);
+            ref uint texturePtr = ref texture.GetBinaryRef<uint>(sector.FloorShade, transform);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
             // optimize to avoid "%" when possible
@@ -486,7 +519,7 @@ namespace RenderingEngine.Engine
                 int floorEndY = wallEnd[x];
                 int ceilingStartY = wallStart[x];
 
-                (float distanceY, float fromToYdist) = MathFormulas.CalculateDistance(wall, cameraRay, t1, d2y, d2x, flipX);
+                (float distanceY, float fromToYdist) = MathFormulas.CalculateDistance(wall, cameraRay, t1, d2y, d2x);
 
                 if (fromToYdist > buffer)
                 {

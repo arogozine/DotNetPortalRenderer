@@ -125,7 +125,7 @@ namespace RenderingEngine.Engine
                 int portalFromYClamped = Math.Clamp(portalFromY, ceilingStartY, floorEndY);
 
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, fromYClamped * width + x);
-                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, portalFromYClamped * width + x);
+                ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, portalFromYClamped * width + x);
 
                 RenderSkyboxLine(player,
                     x,
@@ -133,7 +133,7 @@ namespace RenderingEngine.Engine
                     ref upperTextureUintPtr,
                     ref angleCachePtr,
                     ref screenIndexPtr,
-                    ref screenIndexPtrEnd);
+                    in screenIndexPtrEnd);
             }
         }
 

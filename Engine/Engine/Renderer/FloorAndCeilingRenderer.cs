@@ -92,12 +92,6 @@ namespace RenderingEngine.Engine
                     throw new NotImplementedException();
             }
 
-            if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.Sloped))
-            {
-                // xyOpts ^= XyOpts.FlipX;
-                // xyOpts ^= XyOpts.FlipY;
-            }
-
             if (doubleSize)
             {
                 xOffset <<= 1;
@@ -150,7 +144,30 @@ namespace RenderingEngine.Engine
                 alignYV = Vector.Create(aY);
             }
 
-            ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(sector.CeilingShade, TextureTransform.Normal);
+            var transform = TextureTransform.Normal;
+
+            if (xyOpts.HasFlag(XyOpts.FlipX))
+            {
+                transform |= TextureTransform.FlippedX;
+                xyOpts ^= XyOpts.FlipX;
+            }
+
+            if (xyOpts.HasFlag(XyOpts.FlipY))
+            {
+                transform |= TextureTransform.FlippedY;
+                xyOpts ^= XyOpts.FlipY;
+            }
+
+            if (xyOpts.HasFlag(XyOpts.SwapXY))
+            {
+                transform |= TextureTransform.Rotated;
+                xyOpts ^= XyOpts.SwapXY;
+                (xOffset, yOffset) = (yOffset, xOffset);
+                textureWidth = ceilingTexture.Height;
+                (textureHeightMask, textureWidthMask) = (textureWidthMask, textureHeightMask);
+            }
+
+            ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(sector.CeilingShade, transform);
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
@@ -197,9 +214,6 @@ namespace RenderingEngine.Engine
 
             float yfloor = sector.Floor - player.Z;
 
-            ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(sector.CeilingShade, TextureTransform.Normal);
-            ref uint screenPtr = ref GetScreenPtr<uint>();
-
             int textureWidth = floorTexture.Width;
 
             int textureHeightMask = floorTexture.Height - 1;
@@ -210,6 +224,32 @@ namespace RenderingEngine.Engine
             (float x2, float y2) = firstWall.PointB;
 
             (int xOffset, int yOffset, XyOpts xyOpts) = DetermineOffsets(floorTexture);
+
+            var transform = TextureTransform.Normal;
+
+            if (xyOpts.HasFlag(XyOpts.FlipX))
+            {
+                transform |= TextureTransform.FlippedX;
+                xyOpts ^= XyOpts.FlipX;
+            }
+
+            if (xyOpts.HasFlag(XyOpts.FlipY))
+            {
+                transform |= TextureTransform.FlippedY;
+                xyOpts ^= XyOpts.FlipY;
+            }
+
+            if (xyOpts.HasFlag(XyOpts.SwapXY))
+            {
+                transform |= TextureTransform.Rotated;
+                xyOpts ^= XyOpts.SwapXY;
+                (xOffset, yOffset) = (yOffset, xOffset);
+                textureWidth = floorTexture.Height;
+                (textureHeightMask, textureWidthMask) = (textureWidthMask, textureHeightMask);
+            }
+
+            ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(sector.CeilingShade, transform);
+            ref uint screenPtr = ref GetScreenPtr<uint>();
 
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);
@@ -603,11 +643,6 @@ namespace RenderingEngine.Engine
                     yMapPos = yMapPosSR;
                 }
 
-                if (xyOpts.HasFlag(XyOpts.SwapXY))
-                {
-                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
-                }
-
                 Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos);
                 Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos);
 
@@ -619,16 +654,6 @@ namespace RenderingEngine.Engine
 
                 _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
                 _x1 = (_x1 + xOffSetV) & textureWidthMaskV;
-
-                if (xyOpts.HasFlag(XyOpts.FlipY))
-                {
-                    _y1 = textureHeightMaskV - _y1;
-                }
-
-                if (xyOpts.HasFlag(XyOpts.FlipX))
-                {
-                    _x1 = textureWidthMaskV - _x1;
-                }
 
                 return _y1 * textureWidthV + _x1;
             }
@@ -662,11 +687,6 @@ namespace RenderingEngine.Engine
                     yMapPos = yMapPosSR;
                 }
 
-                if (xyOpts.HasFlag(XyOpts.SwapXY))
-                {
-                    (xMapPos, yMapPos) = (yMapPos, xMapPos);
-                }
-
                 int _y1 = float.ConvertToIntegerNative<int>(yMapPos);
                 int _x1 = float.ConvertToIntegerNative<int>(xMapPos);
 
@@ -678,16 +698,6 @@ namespace RenderingEngine.Engine
 
                 _y1 = (_y1 + yOffset) & textureHeightMask;
                 _x1 = (_x1 + xOffset) & textureWidthMask;
-
-                if (xyOpts.HasFlag(XyOpts.FlipY))
-                {
-                    _y1 = textureHeightMask - _y1;
-                }
-
-                if (xyOpts.HasFlag(XyOpts.FlipX))
-                {
-                    _x1 = textureWidthMask - _x1;
-                }
 
                 return _y1 * textureWidth + _x1;
             }
