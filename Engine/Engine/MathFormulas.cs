@@ -13,6 +13,13 @@ namespace RenderingEngine.Engine
         internal static int Min(int a, int b) => a < b ? a : b;
 
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static uint Max(uint a, uint b) => a > b ? a : b;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static uint Min(uint a, uint b) => a < b ? a : b;
+
+
         internal static Vector3 ToVector3(Point p, float z)
         {
             return new Vector3(p.X, p.Y, z);
@@ -56,44 +63,55 @@ namespace RenderingEngine.Engine
 
         internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalCeil(Sector sector)
         {
-            Point p1 = sector.Walls[0].R1;
-            Point p2 = sector.Walls[1].R1;
-
-            Unsafe.SkipInit(out Point p3);
-            float p3z = sector.Ceil;
-
-            for (int i = 2; i < sector.Walls.Length && p3z == sector.Ceil; i++)
-            {
-                p3 = sector.Walls[i].R1;
-                (_, p3z) = CalculateZAtPoint(sector, p3);
-            }
-
-            Vector3 p1v = ToVector3(p1, sector.Ceil);
-            Vector3 p2v = ToVector3(p2, sector.Ceil);
-            Vector3 p3v = ToVector3(p3, p3z);
-
-            Vector3 vec1 = p2v - p1v;
-            Vector3 vec2 = p3v - p1v;
-
-            return (p1v, Vector3.Cross(vec1, vec2));
+            return CalculatePlaneNormal(sector, true);
         }
 
         internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalFloor(Sector sector)
         {
-            Point p1 = sector.Walls[0].R1;
-            Point p2 = sector.Walls[1].R1;
+            return CalculatePlaneNormal(sector, false);
+        }
 
+        internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormal(Sector sector, bool calcCeil)
+        {
+            // We need 3 points, with at least two distinct values for Z
+            // We take point 1 and point 2 from the first wall (wall that is the "hinge"/start for the slope)
+            // Then we search for a 3rd point that has a unique Z
+
+            RenderableWall wall0 = sector.Walls[0];
+            RenderableWall wall1 = sector.Walls[1];
+
+            Point p1 = wall0.R1;
+            Point p2 = wall1.R1;
             Unsafe.SkipInit(out Point p3);
-            float p3z = sector.Floor;
 
-            for (int i = 2; i < sector.Walls.Length && p3z == sector.Floor; i++)
+            bool sameX = wall0.PointA.X == wall1.PointA.X;
+            bool sameY = wall0.PointA.Y == wall1.PointA.Y;
+
+            float height = calcCeil ? sector.Ceil : sector.Floor;
+            float p3z = height;
+
+            for (int i = 2; i < sector.Walls.Length && p3z == height; i++)
             {
-                p3 = sector.Walls[i].R1;
-                (p3z, _) = CalculateZAtPoint(sector, p3);
+                RenderableWall wallI = sector.Walls[i];
+
+                if (sameX && wallI.PointA.X == wall0.PointA.X)
+                {
+                    continue;
+                }
+
+                if (sameY && wallI.PointA.Y == wall0.PointA.Y)
+                {
+                    continue;
+                }
+
+                p3 = wallI.R1;
+                (float floorZ, float ceilZ) = CalculateZAtPoint(sector, p3);
+
+                p3z = calcCeil ? ceilZ : floorZ;
             }
 
-            Vector3 p1v = ToVector3(p1, sector.Floor);
-            Vector3 p2v = ToVector3(p2, sector.Floor);
+            Vector3 p1v = ToVector3(p1, height);
+            Vector3 p2v = ToVector3(p2, height);
             Vector3 p3v = ToVector3(p3, p3z);
 
             Vector3 vec1 = p2v - p1v;
@@ -193,10 +211,9 @@ namespace RenderingEngine.Engine
         internal static (float TextureLocation, float FromToYDist) CalculateDistance(
             IWallLike sprite,
             float cameraRay,
-            float t1, float d2y, float d2x,
-            bool flipX)
+            float t1, float d2y, float d2x)
         {
-            bool flipped = flipX ? !sprite.Flipped : sprite.Flipped;
+            bool flipped = sprite.Flipped;
 
             float denominator = MathF.FusedMultiplyAdd(cameraRay, d2y, -d2x);
             float fromToYDist = t1 / denominator;
