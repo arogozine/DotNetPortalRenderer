@@ -493,7 +493,7 @@ namespace RenderingEngine.Engine
                 if (min_b != max_b)
                 {
                     RenderColumnAngleBottom(ref incrCacheRef, ref screenPtr, ref textureRef, min_b, max_b, to, x, ref xMapPosMultiplierCacheRef);
-            }
+                }
             }
 
             void RenderColumnAngleBottom(
@@ -532,24 +532,22 @@ namespace RenderingEngine.Engine
                 ref float incrCacheRef,
                 ref uint screenPtr,
                 ref uint textureRef,
-                int floorFromY,
+                int min_t,
                 int max_t,
                 ReadOnlySpan<int> from,
                 int xStart,
                 ref float xMapPosMultiplierCacheRef)
             {
-                ref uint screenTex = ref Unsafe.Add(ref screenPtr, floorFromY * width + xStart);
+                ref uint screenTex = ref Unsafe.Add(ref screenPtr, min_t * width + xStart);
                 ref float xMapPosMult = ref Unsafe.Add(ref xMapPosMultiplierCacheRef, xStart);
 
-                ref float incr = ref Unsafe.Add(ref incrCacheRef, floorFromY);
+                ref float incr = ref Unsafe.Add(ref incrCacheRef, min_t);
 
-                for (int y = floorFromY; y < max_t; y++)
+                for (int y = min_t; y < max_t; y++)
                 {
                     for (int x = 0; x < Vector<uint>.Count; x++)
                     {
-                        int fromY = from[x];
-
-                        if (fromY >= max_t)
+                        if (from[x] >= y)
                         {
                             continue;
                         }
