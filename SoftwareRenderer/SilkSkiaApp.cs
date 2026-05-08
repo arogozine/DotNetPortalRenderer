@@ -59,6 +59,7 @@ namespace SoftwareRenderer
         {
             ThrowIfNull(canvas);
 
+            grContext.ResetContext(GRBackendState.All);
             void* bgraPtr = Engine.RenderNextFrame();
 
             if (bgraPtr == null)

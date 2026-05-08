@@ -210,11 +210,28 @@ namespace RenderingEngine.Engine
         {
             var startYV = Vector256.LoadUnsafe(ref startY);
             var endYV = Vector256.LoadUnsafe(ref endY);
+            var textureXIncr_uV = Vector256.LoadUnsafe(ref textureYIncr_u);
 
             (uint min_t, uint max_t) = GetMinMaxValue(startYV);
             (uint min_b, uint max_b) = GetMinMaxValue(endYV);
 
-            var textureXIncr_uV = Vector256.LoadUnsafe(ref textureYIncr_u);
+            if (min_b <= max_t)
+            {
+                for (int i = 0; i < Vector256<uint>.Count; i++)
+                {
+                    ref uint textureYPos = ref Unsafe.Add(ref textureYPos_u, i);
+                    uint incr = textureXIncr_uV[i];
+                    uint xi = x + (uint)i;
+
+                    uint top = startYV[i];
+                    uint bottom = endYV[i];
+
+                    RenderWallLine(isPowerOfTwo, width, xi, textureHeight, top, bottom, textureYPos, incr, ref screenPtr,
+                        ref Unsafe.Add(ref textureBuffer, Unsafe.Add(ref texturePos, i)));
+                }
+
+                return;
+            }
 
             // render tops where there is no shared window
             if (min_t != max_t)
@@ -278,12 +295,11 @@ namespace RenderingEngine.Engine
                     while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
                     {
                         Vector256<uint> texelIndexV = textureYPos_uV >> 16;
-                        texelIndexV += textureXPosV;
 
                         // horizontally draw the texture (keeps per-lane behavior)
                         for (int i = 0; i < Vector256<uint>.Count; i++)
                         {
-                            uint shaded = Unsafe.Add(ref textureBuffer, texelIndexV[i] % textureHeightMask);
+                            uint shaded = Unsafe.Add(ref textureBuffer, textureXPosV[i] + (texelIndexV[i] % textureHeightMask));
 
                             screenIndexPtr = shaded;
                             screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
@@ -338,6 +354,24 @@ namespace RenderingEngine.Engine
             (uint min_t, uint max_t) = GetMinMaxValue(startYV);
             (uint min_b, uint max_b) = GetMinMaxValue(endYV);
 
+            if (min_b <= max_t)
+            {
+                for (int i = 0; i < Vector128<uint>.Count; i++)
+                {
+                    ref uint textureYPos = ref Unsafe.Add(ref textureYPos_u, i);
+                    uint incr = textureXIncr_uV[i];
+                    uint xi = x + (uint)i;
+
+                    uint top = startYV[i];
+                    uint bottom = endYV[i];
+
+                    RenderWallLine(isPowerOfTwo, width, xi, textureHeight, top, bottom, textureYPos, incr, ref screenPtr,
+                        ref Unsafe.Add(ref textureBuffer, Unsafe.Add(ref texturePos, i)));
+                }
+
+                return;
+            }
+
             // render tops where there is no shared window
             if (min_t != max_t)
             {
@@ -347,11 +381,11 @@ namespace RenderingEngine.Engine
 
                     if (top < max_t)
                     {
-                        ref uint textureXPos = ref Unsafe.Add(ref textureYPos_u, i);
+                        ref uint textureYPos = ref Unsafe.Add(ref textureYPos_u, i);
                         uint incr = textureXIncr_uV[i];
                         uint xi = x + (uint)i;
 
-                        textureXPos = RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, top, max_t, textureXPos, incr, ref screenPtr,
+                        textureYPos = RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, top, max_t, textureYPos, incr, ref screenPtr,
                             ref Unsafe.Add(ref textureBuffer, Unsafe.Add(ref texturePos, i)));
                     }
                 }
@@ -359,7 +393,7 @@ namespace RenderingEngine.Engine
 
             Vector128<uint> textureYPos_uV = Vector128.LoadUnsafe(ref textureYPos_u);
 
-            // no shared window
+            // shared window
             if (min_b > max_t)
             {
                 // prepare for the shared vertical window
@@ -402,12 +436,11 @@ namespace RenderingEngine.Engine
                     while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
                     {
                         Vector128<uint> texelIndexV = textureYPos_uV >> 16;
-                        texelIndexV += textureXPosV;
 
                         // horizontally draw the texture (keeps per-lane behavior but with cached refs)
                         for (int i = 0; i < Vector128<uint>.Count; i++)
                         {
-                            uint shaded = Unsafe.Add(ref textureBufferRef, texelIndexV[i] % textureMask);
+                            uint shaded = Unsafe.Add(ref textureBufferRef, textureXPosV[i] + (texelIndexV[i] % textureMask));
 
                             screenIndexPtr = shaded;
                             screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
@@ -471,8 +504,27 @@ namespace RenderingEngine.Engine
                 max_b = Math.Max(max_b, bottom);
             }
 
+            if (min_b <= max_t)
+            {
+                for (uint i = 0; i < count; i++)
+                {
+                    ref uint textureYPos = ref Unsafe.Add(ref textureYPos_u, i);
+                    uint incr = Unsafe.Add(ref textureYIncr_u, i);
+                    uint xi = x + i;
+
+                    ref uint top = ref Unsafe.Add(ref startY, i);
+                    ref uint bottom = ref Unsafe.Add(ref endY, i);
+
+
+                    RenderWallLine(isPowerOfTwo, width, xi, textureHeight, top, bottom, textureYPos, incr, ref screenPtr,
+                        ref Unsafe.Add(ref textureBuffer, Unsafe.Add(ref texturePos, i)));
+                }
+
+                return;
+            }
+
             // render tops of each line where there is no shared window
-            if (min_t != max_t)
+            if (min_t < max_t)
             {
                 for (uint i = 0; i < count; i++)
                 {
@@ -480,18 +532,18 @@ namespace RenderingEngine.Engine
 
                     if (top < max_t)
                     {
-                        ref uint textureXPos = ref Unsafe.Add(ref textureYPos_u, i);
+                        ref uint textureYPos = ref Unsafe.Add(ref textureYPos_u, i);
                         uint incr = Unsafe.Add(ref textureYIncr_u, i);
 
                         uint xi = x + i;
 
-                        textureXPos = RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, top, max_t, textureXPos, incr, ref screenPtr,
+                        textureYPos = RenderWallLine2(isPowerOfTwo, width, xi, textureHeight, top, max_t, textureYPos, incr, ref screenPtr,
                             ref Unsafe.Add(ref textureBuffer, Unsafe.Add(ref texturePos, i)));
                     }
                 }
             }
 
-            // no shared window
+            // shared window
             if (min_b > max_t)
             {
                 ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, max_t * width + x);
@@ -511,9 +563,9 @@ namespace RenderingEngine.Engine
                             uint texelIndex = (textureXPos >> 16) & textureMask;
                             texelIndex += Unsafe.Add(ref texturePos, i);
 
-                            uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                            uint pixel = Unsafe.Add(ref textureBuffer, texelIndex);
 
-                            screenIndexPtr = shaded;
+                            screenIndexPtr = pixel;
                             textureXPos += Unsafe.Add(ref textureYIncr_u, i);
                             screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
                         }
@@ -523,7 +575,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    uint textureMask = (uint)(textureHeight);
+                    uint textureMask = (uint)textureHeight;
 
                     // go down the column set
                     while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
@@ -535,9 +587,9 @@ namespace RenderingEngine.Engine
                             uint texelIndex = (textureXPos >> 16) % textureMask;
                             texelIndex += Unsafe.Add(ref texturePos, i);
 
-                            uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                            uint pixel = Unsafe.Add(ref textureBuffer, texelIndex);
 
-                            screenIndexPtr = shaded;
+                            screenIndexPtr = pixel;
                             textureXPos += Unsafe.Add(ref textureYIncr_u, i);
                             screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
                         }
@@ -548,7 +600,7 @@ namespace RenderingEngine.Engine
             }
 
             // render bottoms of each line where there is no shared window
-            if (min_b != max_b)
+            if (min_b < max_b)
             {
                 for (uint i = 0; i < count; i++)
                 {
@@ -574,8 +626,8 @@ namespace RenderingEngine.Engine
             int textureHeight,
             uint startY,
             uint endY,
-            uint textureXPos_u,
-            uint textureXIncr_u,
+            uint textureYPos_u,
+            uint textureYIncr_u,
             scoped ref uint screenPtr,
             scoped ref uint textureBuffer
             )
@@ -590,12 +642,12 @@ namespace RenderingEngine.Engine
 
                 while (!Unsafe.AreSame(in screenIndexPtr, in screenIndexPtrEnd))
                 {
-                    uint texelIndex = (textureXPos_u >> 16) & textureHeightMask;
-                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                    uint texelIndex = (textureYPos_u >> 16) & textureHeightMask;
+                    uint pixel = Unsafe.Add(ref textureBuffer, texelIndex);
 
-                    screenIndexPtr = shaded;
+                    screenIndexPtr = pixel;
                     screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
-                    textureXPos_u += textureXIncr_u;
+                    textureYPos_u += textureYIncr_u;
                 }
             }
             else
@@ -604,17 +656,17 @@ namespace RenderingEngine.Engine
 
                 while (!Unsafe.AreSame(in screenIndexPtr, in screenIndexPtrEnd))
                 {
-                    uint texelIndex = (textureXPos_u >> 16) % textureHeightMask;
+                    uint texelIndex = (textureYPos_u >> 16) % textureHeightMask;
 
-                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                    uint pixel = Unsafe.Add(ref textureBuffer, texelIndex);
 
-                    screenIndexPtr = shaded;
+                    screenIndexPtr = pixel;
                     screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
-                    textureXPos_u += textureXIncr_u;
+                    textureYPos_u += textureYIncr_u;
                 }
             }
 
-            return textureXPos_u;
+            return textureYPos_u;
         }
 
         private static void RenderWallLine(
@@ -641,9 +693,9 @@ namespace RenderingEngine.Engine
                 while (!Unsafe.AreSame(in screenIndexPtr, in screenIndexPtrEnd))
                 {
                     uint texelIndex = (textureXPos_u >> 16) & textureHeightMask;
-                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                    uint pixel = Unsafe.Add(ref textureBuffer, texelIndex);
 
-                    screenIndexPtr = shaded;
+                    screenIndexPtr = pixel;
                     screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
                     textureXPos_u += textureXIncr_u;
                 }
@@ -655,9 +707,9 @@ namespace RenderingEngine.Engine
                 while (!Unsafe.AreSame(in screenIndexPtr, in screenIndexPtrEnd))
                 {
                     uint texelIndex = (textureXPos_u >> 16) % textureHeightMask;
-                    uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                    uint pixel = Unsafe.Add(ref textureBuffer, texelIndex);
 
-                    screenIndexPtr = shaded;
+                    screenIndexPtr = pixel;
                     screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
                     textureXPos_u += textureXIncr_u;
                 }

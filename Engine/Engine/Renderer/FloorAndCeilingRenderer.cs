@@ -474,12 +474,6 @@ namespace RenderingEngine.Engine
                     RenderColumnAngleTop(ref incrCacheRef, ref screenPtr, ref textureRef, min_t, max_t, from, x, ref xMapPosMultiplierCacheRef);
                 }
 
-                // render bottoms where there is no shared window
-                if (min_b != max_b)
-                {
-                    RenderColumnAngleBottom(ref incrCacheRef, ref screenPtr, ref textureRef, min_b, max_b, to, x, ref xMapPosMultiplierCacheRef);
-                }
-
                 for (int y = max_t, screenIndex = y * width + x; y <= min_b; y++, screenIndex += width)
                 {
                     Vector<float> incramentVector = Vector.Create(Unsafe.Add(ref incrCacheRef, y));
@@ -494,6 +488,12 @@ namespace RenderingEngine.Engine
                     }
 
                 }
+                
+                // render bottoms where there is no shared window
+                if (min_b != max_b)
+                {
+                    RenderColumnAngleBottom(ref incrCacheRef, ref screenPtr, ref textureRef, min_b, max_b, to, x, ref xMapPosMultiplierCacheRef);
+            }
             }
 
             void RenderColumnAngleBottom(
@@ -790,17 +790,5 @@ namespace RenderingEngine.Engine
             return (floorZ, ceilZ);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static (bool SwapXY, bool FlipX, bool FlipY, bool DoubleSize) GetFloorFlags(TextureInfo textureInfo)
-        {
-            TextureRenderingOptions options = textureInfo.RenderingOptions;
-
-            bool swapXy = options.HasFlag(TextureRenderingOptions.SwapXY);
-            bool flipX = options.HasFlag(TextureRenderingOptions.FlipX);
-            bool flipY = options.HasFlag(TextureRenderingOptions.FlipY);
-            bool doubleSize = textureInfo.XScale == 2 && textureInfo.YScale == 2;
-
-            return (swapXy, flipX, flipY, doubleSize);
-        }
     }
 }
