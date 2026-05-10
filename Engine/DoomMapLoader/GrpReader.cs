@@ -804,6 +804,11 @@ namespace RenderingEngine.DoomMapLoader
                     options |= TextureRenderingOptions.FlipY;
                 }
 
+                if (stat.HasFlag(SpriteCStat.Translucent))
+                {
+                    options |= TextureRenderingOptions.Translucent;
+                }
+
                 return options;
             }
         }

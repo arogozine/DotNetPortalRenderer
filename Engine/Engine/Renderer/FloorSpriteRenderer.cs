@@ -40,7 +40,7 @@ namespace RenderingEngine.Engine
             int textureWidth = texture.Width;
 
             ref BGRA floorTexturePtr = ref texture.Texture.GetBinaryRef<BGRA>(sprite.Shade ?? sector.FloorShade,
-                TextureTransform.Normal);
+                TextureTransform.Normal | TextureTransform.FlippedX);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
 
             Vector<float> yFloorV = Vector.Create(yFloor);

@@ -110,6 +110,7 @@ namespace RenderingEngine.Engine
                 float fromToYdist = MathFormulas.CalculateDistance2(cameraRay, t1, d2y, d2x);
 
                 RenderSkyboxLine(player,
+                    wallStartSpan,
                     x,
                     wallTexture,
                     ref wallTextureUintPtr,
@@ -127,6 +128,7 @@ namespace RenderingEngine.Engine
         #region Render Line
 
         private void RenderSkyboxLine(PortalPlayerSnapshot player,
+            Span<int> wallStart,
             int x,
             TextureInfo upperTexture,
             ref uint upperTextureUintPtr,
@@ -134,7 +136,6 @@ namespace RenderingEngine.Engine
             ref uint screenIndexPtr,
             ref readonly uint screenIndexPtrEnd)
         {
-            var wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
             var ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             var floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 

@@ -65,7 +65,6 @@ namespace RenderingEngine.Engine
                 transform);
 
             float rx1 = sprite.R1.X;
-            float rx2 = sprite.R2.X;
 
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;
@@ -172,7 +171,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                DrawSpriteLine(width, x + spriteFromX, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
+                DrawSpriteColumn(width, x + spriteFromX, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
                     ref screenPtr, ref Unsafe.Add(ref texturePtr, textureYPos));
             }
 
@@ -285,7 +284,7 @@ namespace RenderingEngine.Engine
 
                 int textureXPos = (clamptedFromY - spriteStartY_Int) * textureXIncr;
 
-                DrawSpriteLine(width, x, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
+                DrawSpriteColumn(width, x, clamptedFromY, clamptedToY, textureXPos, textureXIncr,
                     ref screenPtr, ref Unsafe.Add(ref texturePtr, textureYPos));
             }
         }
@@ -593,10 +592,10 @@ namespace RenderingEngine.Engine
             while (Unsafe.IsAddressLessThan(ref screenIndexPtr, ref screenIndexPtrEnd))
             {
                 uint texelIndex = (textureXPos_u >> 16) % textureHeight_u;
-                uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                uint pixel = Unsafe.Add(ref textureBuffer, texelIndex);
 
-                if (shaded != 0U)
-                    screenIndexPtr = shaded;
+                if (pixel != 0U)
+                    screenIndexPtr = pixel;
 
                 screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
                 textureXPos_u += textureXIncr_u;
@@ -677,7 +676,7 @@ namespace RenderingEngine.Engine
         }
 
 
-        private static void DrawSpriteLine(
+        private static void DrawSpriteColumn(
                 int width,
                 int x,
                 int textureStartYClamped, int textureEndYClamped,

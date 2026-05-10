@@ -12,39 +12,18 @@ namespace RenderingEngine.Engine
         {
             (bool renderLower, bool renderUpper, bool basicWall) = CalculateCanRenderPortalWall(sectors, renderableWall.Wall);
 
+            CalculateWallClamp(renderableWall);
+            CalculatePortalClamp(renderableWall);
+
             // ceiling and floor of the sector are the same
             // so no wall is drawn
             if (!renderLower && !renderUpper)
             {
                 CalculateDistance(renderableWall);
-                CalculateWallClamp(renderableWall);
-                CalculatePortalClamp(renderableWall);
-
                 return true;
             }
 
             RenderableWall wall = renderableWall.Wall;
-
-            if (renderUpper)
-            {
-                TextureInfo upperTexture = wall.UpperTexture!;
-
-                if (upperTexture.RenderingOptions.IsSkybox)
-                {
-                    CalculateDistance(renderableWall);
-                    CalculateWallClamp(renderableWall);
-                    CalculatePortalClamp(renderableWall);
-                    DrawUpperSkyboxPortalWall(player, sectors, renderableWall);
-                }
-                else
-                {
-                    CalculateUpperTextureYIncrement(renderableWall, upperTexture);
-                    CalculateWallClamp(renderableWall);
-
-                    PrecalculateUpperWallDistance(renderableWall);
-                    DrawUpperPortalWall(sectors, renderableWall);
-                }
-            }
 
             if (renderLower)
             {
@@ -53,52 +32,56 @@ namespace RenderingEngine.Engine
                 if (lowerTexture.RenderingOptions.IsSkybox)
                 {
                     CalculateDistance(renderableWall);
-                    CalculateWallClamp(renderableWall);
-                    CalculatePortalClamp(renderableWall);
                     DrawLowerSkyboxPortalWall(player, sectors, renderableWall);
                 }
                 else
                 {
                     CalculateLowerTextureYIncrement(renderableWall, lowerTexture);
-                    CalculateWallClamp(renderableWall);
-
-                    PrecalculateLowerWallDistance(renderableWall);
+                    CalculateTextureDistanceAndXPosition(renderableWall, lowerTexture);
                     DrawLowerPortalWall(renderableWall);
                 }
             }
+
+            if (renderUpper)
+            {
+                TextureInfo upperTexture = wall.UpperTexture!;
+
+                if (upperTexture.RenderingOptions.IsSkybox)
+                {
+                    CalculateDistance(renderableWall);
+                    DrawUpperSkyboxPortalWall(player, sectors, renderableWall);
+                }
+                else
+                {
+                    CalculateUpperTextureYIncrement(renderableWall, upperTexture);
+                    CalculateTextureDistanceAndXPosition(renderableWall, upperTexture);
+                    DrawUpperPortalWall(sectors, renderableWall);
+                }
+            }
+
 
             // if sector height matches top or bottom offset only top or bottom texture was drawn
             // no middle texture is possible, thus we can treat this as basic wall
             return basicWall;
         }
 
-
-        private void DrawUpperSkyboxPortalWall(
+        private void DrawBasicSkyboxWall(
             PortalPlayerSnapshot player,
-            ReadOnlySpan<Sector> sectors,
-            RenderablePortalWall renderableWall)
+            RenderablePortalWall renderableWall,
+            Span<int> wallStartSpan, Span<int> wallEndSpan,
+            TextureInfo wallTexture)
         {
-            (float sectorHeight, float ceilOffset, _) = CalculatePortalOffsets(sectors, renderableWall.Wall);
+            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            Span<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            Span<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
 
-            float oneOverSectorHeight = 1f / sectorHeight;
+            int width = PixelWidth;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            ReadOnlySpan<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            ReadOnlySpan<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            ReadOnlySpan<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
-            ReadOnlySpan<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
-            ReadOnlySpan<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-            ReadOnlySpan<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-
-            int wallFromX = renderableWall.XLeft;
-            int wallToX = renderableWall.XRight;
-            int width = PixelWidth;
-
-            RenderableWall wall = renderableWall.Wall;
-            TextureInfo upperTexture = wall.UpperTexture!;
-            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(wall.Shade, TextureTransform.Normal));
-            ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
+            ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(0, TextureTransform.Normal);
             ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
             for (int x = wallFromX; x <= wallToX; x++)
@@ -110,31 +93,41 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int wallStartY = wallStart[x];
-                int wallEndY = wallEnd[x];
-                int floorEndY = floorEnd[x];
-                int ceilingStartY = ceilingStart[x];
-                int fromYClamped = wallStartClamped[x];
+                int ceilingStart = ceilingStartSpan[x];
+                int wallStartY = wallStartSpan[x];
+                int wallEndY = wallEndSpan[x];
+                int floorEndY = floorEndSpan[x];
 
-                float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
+                int clamptedFromY = Math.Clamp(wallStartY, ceilingStart, floorEndY);
+                int clamptedToY = Math.Clamp(wallEndY, ceilingStart, floorEndY);
 
-
-                // Portal Calculation
-                int ceilPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * ceilOffset);
-                int portalFromY = wallStartY - ceilPixelOffset;
-                int portalFromYClamped = Math.Clamp(portalFromY, ceilingStartY, floorEndY);
-
-                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, fromYClamped * width + x);
-                ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, portalFromYClamped * width + x);
+                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
+                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
 
                 RenderSkyboxLine(player,
+                    wallStartSpan,
                     x,
-                    upperTexture,
-                    ref upperTextureUintPtr,
+                    wallTexture,
+                    ref wallTextureUintPtr,
                     ref angleCachePtr,
                     ref screenIndexPtr,
-                    in screenIndexPtrEnd);
+                    ref screenIndexPtrEnd);
             }
+        }
+
+        private void DrawUpperSkyboxPortalWall(
+            PortalPlayerSnapshot player,
+            ReadOnlySpan<Sector> sectors,
+            RenderablePortalWall renderableWall)
+        {
+            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
+            Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFromClamped);
+
+
+            RenderableWall wall = renderableWall.Wall;
+
+            Debug.Assert(wall.UpperTexture is not null);
+            DrawBasicSkyboxWall(player, renderableWall, wallStartClamped, wallEndClamped, wall.UpperTexture);
         }
 
         private void DrawLowerSkyboxPortalWall(
@@ -142,62 +135,12 @@ namespace RenderingEngine.Engine
                 ReadOnlySpan<Sector> sectors,
                 RenderablePortalWall renderableWall)
         {
-            (float sectorHeight, _, float floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
-
-            float oneOverSectorHeight = 1f / sectorHeight;
-
-            ref uint screenPtr = ref GetScreenPtr<uint>();
-
-            ReadOnlySpan<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            ReadOnlySpan<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            ReadOnlySpan<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
-            ReadOnlySpan<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
-            ReadOnlySpan<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-            ReadOnlySpan<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
-
-            int wallFromX = renderableWall.XLeft;
-            int wallToX = renderableWall.XRight;
-            int width = PixelWidth;
-
+            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalToClamped);
+            Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
             RenderableWall wall = renderableWall.Wall;
-            TextureInfo upperTexture = wall.UpperTexture!;
-            ref BGRA upperTexturePtr = ref MemoryMarshal.GetReference(upperTexture.Texture.GetBinary(wall.Shade, TextureTransform.Normal));
-            ref uint upperTextureUintPtr = ref Unsafe.As<BGRA, uint>(ref upperTexturePtr);
-            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
-            for (int x = wallFromX; x <= wallToX; x++)
-            {
-                RenderColumnStatus columnStatus = status[x];
-
-                if (!columnStatus.WallRenderable)
-                {
-                    continue;
-                }
-
-                int wallStartY = wallStart[x];
-                int wallEndY = wallEnd[x];
-                int floorEndY = floorEnd[x];
-                int ceilingStartY = ceilingStart[x];
-                int toYClamped = wallEndClamped[x];
-
-                float pixelsPerHeight = (wallEndY - wallStartY) * oneOverSectorHeight;
-
-                // Portal Calculation
-                int floorPixelOffset = float.ConvertToIntegerNative<int>(pixelsPerHeight * floorOffset);
-                int portalToY = wallEndY - floorPixelOffset;
-                int portalToYClamped = Math.Clamp(portalToY, ceilingStartY, floorEndY);
-
-                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, portalToYClamped * width + x);
-                ref readonly uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, toYClamped * width + x);
-
-                RenderSkyboxLine(player,
-                    x,
-                    upperTexture,
-                    ref upperTextureUintPtr,
-                    ref angleCachePtr,
-                    ref screenIndexPtr,
-                    in screenIndexPtrEnd);
-            }
+            Debug.Assert(wall.LowerTexture is not null);
+            DrawBasicSkyboxWall(player, renderableWall, wallStartClamped, wallEndClamped, wall.LowerTexture);
         }
 
         private Span<ushort> DetermineMaxHorizontalRenderingDistance(RenderablePortalWall renderableWall)
@@ -257,25 +200,6 @@ namespace RenderingEngine.Engine
             Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall);
 
             DrawWallShared(renderableWall, lowerTexture, repeatedCount, wallStartClamped, wallEndClamped);
-        }
-
-        private void PrecalculateUpperWallDistance(RenderablePortalWall renderableWall)
-        {
-            RenderableWall wall = renderableWall.Wall;
-
-            PrecalculateWallDistanceShared(renderableWall, wall.UpperTexture!);
-        }
-
-        private void PrecalculateLowerWallDistance(RenderablePortalWall renderableWall)
-        {
-            RenderableWall wall = renderableWall.Wall;
-            PrecalculateWallDistanceShared(renderableWall, wall.LowerTexture!);
-        }
-
-        private void PrecalculateWallDistanceShared(RenderablePortalWall renderableWall, TextureInfo textureInfo)
-        {
-            CalculateTextureDistanceAndXPosition(renderableWall, textureInfo);
-            CalculatePortalClamp(renderableWall);
         }
     }
 }
