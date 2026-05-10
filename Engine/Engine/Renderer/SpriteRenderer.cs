@@ -140,8 +140,7 @@ namespace RenderingEngine.Engine
             // here we determine how many columns can be rendered
             // horizontally with the same texture pixel
             bool repeat =
-                SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount)
-                && SharedHelpers.PopulateRepeatedValues(repeatedCountB, textureYPosArray)
+                SharedHelpers.PopulateRepeatedValues(repeatedCountB, textureYPosArray)
                 && SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB)
                 && SharedHelpers.PopulateRepeatedValues(repeatedCountB, textureXPosArray)
                 && SharedHelpers.RefineRepeatedValues(repeatedCount, repeatedCountB)
@@ -644,7 +643,8 @@ namespace RenderingEngine.Engine
             int count,
             int width,
             int x,
-            int textureStartYClamped, int textureEndYClamped,
+            int textureStartYClamped,
+            int textureEndYClamped,
             int textureXPos,
             int textureXIncr,
             scoped ref uint screenPtr,
@@ -659,14 +659,14 @@ namespace RenderingEngine.Engine
             while (Unsafe.IsAddressLessThan(in screenIndexPtr, in screenIndexPtrEnd))
             {
                 uint texelIndex = textureXPos_u >> 16;
-                uint shaded = Unsafe.Add(ref textureBuffer, texelIndex);
+                uint pixel = Unsafe.Add(ref textureBuffer, texelIndex);
 
                 // skip rendering the whole row is transparent
-                if (shaded != 0U)
+                if (pixel != 0U)
                 {
                     for (int i = 0; i < count; i++)
                     {
-                        Unsafe.Add(ref screenIndexPtr, i) = shaded;
+                        Unsafe.Add(ref screenIndexPtr, i) = pixel;
                     }
                 }
 

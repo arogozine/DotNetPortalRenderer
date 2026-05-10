@@ -2,6 +2,7 @@
 using RenderingEngine.Tooling;
 using System.Numerics;
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
 {
@@ -406,57 +407,7 @@ namespace RenderingEngine.Engine
 
             return;
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(
-                int x, Span<int> from, Span<int> to
-            )
-            {
-                if (Vector<int>.Count == 8)
-                {
-                    Vector256<int> fromV = Vector256.LoadUnsafe(ref from[x]);
-                    Vector256<int> toV = Vector256.LoadUnsafe(ref to[x]);
-
-                    (int min_t, int max_t) = GetMinMaxValue(fromV);
-                    (int min_b, int max_b) = GetMinMaxValue(toV);
-
-                    return (min_t, max_t, min_b, max_b);
-                }
-                else if (Vector<int>.Count == 4)
-                {
-                    Vector128<int> fromV = Vector128.LoadUnsafe(ref from[x]);
-                    Vector128<int> toV = Vector128.LoadUnsafe(ref to[x]);
-
-                    (int min_t, int max_t) = GetMinMaxValue(fromV);
-                    (int min_b, int max_b) = GetMinMaxValue(toV);
-
-                    return (min_t, max_t, min_b, max_b);
-                }
-                else
-                {
-
-                    from = from[x..];
-                    to = to[x..];
-
-                    int min_t = int.MaxValue, max_t = int.MinValue;
-                    int min_b = int.MaxValue, max_b = int.MinValue;
-
-                    // compute per-lane tops/bottoms
-                    for (int i = 0; i < Vector<int>.Count; i++)
-                    {
-                        int top = from[i];
-                        min_t = MathFormulas.Min(min_t, top);
-                        max_t = MathFormulas.Max(max_t, top);
-
-                        int bottom = to[i];
-                        min_b = MathFormulas.Min(min_b, bottom);
-                        max_b = MathFormulas.Max(max_b, bottom);
-                    }
-
-                    return (min_t, max_t, min_b, max_b);
-                }
-            }
-
-            void RenderLine(
+            unsafe void RenderLine(
                 int x,
                 ref float xMapPosMultiplierCacheRef,
                 ReadOnlySpan<int> to, ReadOnlySpan<int> from,
@@ -482,11 +433,23 @@ namespace RenderingEngine.Engine
 
                     Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierCacheV);
 
-                    for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, 1))
+                    if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                     {
-                        screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
-                    }
+                        Vector256<uint> gathered = Avx2.GatherVector256(
+                            (uint*)Unsafe.AsPointer(ref textureRef),
+                            textureIndex.AsVector256(),
+                            scale: sizeof(int)
+                        );
 
+                        Avx.Store((uint*)Unsafe.AsPointer(ref screenTex), gathered);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, 1))
+                        {
+                            screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
+                        }
+                    }
                 }
                 
                 // render bottoms where there is no shared window
@@ -562,7 +525,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            void RenderColumn(
+            unsafe void RenderColumn(
                 ref float incrCacheRef,
                 ref uint screenPtr,
                 ref uint textureRef,
@@ -588,9 +551,25 @@ namespace RenderingEngine.Engine
                     {
                         Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
 
-                        for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                        if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                         {
-                            screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
+                            Vector256<uint> gathered = Avx2.GatherVector256(
+                                (uint*)Unsafe.AsPointer(ref textureRef),
+                                textureIndex.AsVector256(),
+                                scale: sizeof(uint)
+                            );
+
+                            for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                            {
+                                screenTex = gathered[i];
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                            {
+                                screenTex = Unsafe.Add(ref textureRef, textureIndex[i]);
+                            }
                         }
 
                         floorFromY += Vector<float>.Count;
@@ -741,6 +720,54 @@ namespace RenderingEngine.Engine
                     Unsafe.SkipInit(out dir_z);
                     Unsafe.SkipInit(out dir_z_scalar);
                 }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(int x, Span<int> from, Span<int> to)
+        {
+            if (Vector<int>.Count == 8)
+            {
+                Vector256<int> fromV = Vector256.LoadUnsafe(ref from[x]);
+                Vector256<int> toV = Vector256.LoadUnsafe(ref to[x]);
+
+                (int min_t, int max_t) = GetMinMaxValue(fromV);
+                (int min_b, int max_b) = GetMinMaxValue(toV);
+
+                return (min_t, max_t, min_b, max_b);
+            }
+            else if (Vector<int>.Count == 4)
+            {
+                Vector128<int> fromV = Vector128.LoadUnsafe(ref from[x]);
+                Vector128<int> toV = Vector128.LoadUnsafe(ref to[x]);
+
+                (int min_t, int max_t) = GetMinMaxValue(fromV);
+                (int min_b, int max_b) = GetMinMaxValue(toV);
+
+                return (min_t, max_t, min_b, max_b);
+            }
+            else
+            {
+
+                from = from[x..];
+                to = to[x..];
+
+                int min_t = int.MaxValue, max_t = int.MinValue;
+                int min_b = int.MaxValue, max_b = int.MinValue;
+
+                // compute per-lane tops/bottoms
+                for (int i = 0; i < Vector<int>.Count; i++)
+                {
+                    int top = from[i];
+                    min_t = MathFormulas.Min(min_t, top);
+                    max_t = MathFormulas.Max(max_t, top);
+
+                    int bottom = to[i];
+                    min_b = MathFormulas.Min(min_b, bottom);
+                    max_b = MathFormulas.Max(max_b, bottom);
+                }
+
+                return (min_t, max_t, min_b, max_b);
             }
         }
 

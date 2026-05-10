@@ -1,6 +1,7 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.Tooling;
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
 {
@@ -194,7 +195,7 @@ namespace RenderingEngine.Engine
             return (min, max);
         }
 
-        private static void RenderMultipleWallLinesV256(
+        private unsafe static void RenderMultipleWallLinesV256(
             bool isPowerOfTwo,
             uint width,
             uint x,
@@ -274,13 +275,28 @@ namespace RenderingEngine.Engine
                         Vector256<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
                         texelIndexV += textureXPosV;
 
-                        // horizontally draw the texture
-                        for (int i = 0; i < Vector256<uint>.Count; i++)
+                        if (Avx2.IsSupported)
                         {
-                            uint shaded = Unsafe.Add(ref textureBuffer, texelIndexV[i]);
+                            Vector256<uint> gathered = Avx2.GatherVector256(
+                                (uint*)Unsafe.AsPointer(ref textureBuffer),
+                                texelIndexV.AsInt32(),
+                                scale: sizeof(uint)
+                            );
 
-                            screenIndexPtr = shaded;
-                            screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                            gathered.StoreUnsafe(ref screenIndexPtr);
+
+                            screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, Vector256<uint>.Count);
+                        }
+                        else
+                        {
+                            // horizontally draw the texture
+                            for (int i = 0; i < Vector256<uint>.Count; i++)
+                            {
+                                uint shaded = Unsafe.Add(ref textureBuffer, texelIndexV[i]);
+
+                                screenIndexPtr = shaded;
+                                screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                            }
                         }
 
                         textureYPos_uV += textureXIncr_uV;
@@ -333,7 +349,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private static void RenderMultipleWallLinesV128(
+        private static unsafe void RenderMultipleWallLinesV128(
             bool isPowerOfTwo,
             uint width,
             uint x,
@@ -415,13 +431,29 @@ namespace RenderingEngine.Engine
                         Vector128<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
                         texelIndexV += textureXPosV;
 
-                        // horizontally draw the texture (keeps per-lane behavior but with cached refs)
-                        for (int i = 0; i < Vector128<uint>.Count; i++)
+                        if (Avx2.IsSupported)
                         {
-                            uint shaded = Unsafe.Add(ref textureBufferRef, texelIndexV[i]);
+                            Vector128<uint> gathered = Avx2.GatherVector128(
+                                (uint*)Unsafe.AsPointer(ref textureBuffer),
+                                texelIndexV.AsInt32(),
+                                scale: sizeof(uint)
+                            );
 
-                            screenIndexPtr = shaded;
-                            screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                            gathered.StoreUnsafe(ref screenIndexPtr);
+
+                            screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, Vector128<uint>.Count);
+                        }
+                        else
+                        {
+                            // horizontally draw the texture (keeps per-lane behavior but with cached refs)
+                            for (int i = 0; i < Vector128<uint>.Count; i++)
+                            {
+                                uint shaded = Unsafe.Add(ref textureBufferRef, texelIndexV[i]);
+
+                                screenIndexPtr = shaded;
+                                screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, 1);
+                            }
+
                         }
 
                         textureYPos_uV += textureXIncr_uV;

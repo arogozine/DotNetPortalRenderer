@@ -1,6 +1,8 @@
 ﻿using RenderingEngine.Models;
 using RenderingEngine.Tooling;
 using System.Numerics;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
 {
@@ -39,9 +41,9 @@ namespace RenderingEngine.Engine
 
             int textureWidth = texture.Width;
 
-            ref BGRA floorTexturePtr = ref texture.Texture.GetBinaryRef<BGRA>(sprite.Shade ?? sector.FloorShade,
+            ref uint floorTexturePtr = ref texture.Texture.GetBinaryRef<uint>(sprite.Shade ?? sector.FloorShade,
                 TextureTransform.Normal | TextureTransform.FlippedX);
-            ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
+            ref uint screenPtr = ref GetScreenPtr<uint>();
 
             Vector<float> yFloorV = Vector.Create(yFloor);
             Vector<int> textureHeightMaskV = Vector.Create(texture.Height - 1);
@@ -68,7 +70,6 @@ namespace RenderingEngine.Engine
                 alignXV = Vector.Create(aX);
                 alignYV = Vector.Create(aY);
                 rotated = true;
-
             }
 
             PopulateFloorTextureBounds(spriteWindowTop, spriteWindowBottom, sprite);
@@ -76,10 +77,6 @@ namespace RenderingEngine.Engine
 
             Vector<int> xOffSetV = Vector.Create(xOffset);
             Vector<int> yOffSetV = Vector.Create(yOffset);
-
-            bool flipY = false;
-            bool flipX = false;
-            bool swapXy = false;
 
             Vector<float> xScaleV = Vector.Create(1f / xScale);
             Vector<float> yScaleV = Vector.Create(1f / yScale);
@@ -111,19 +108,19 @@ namespace RenderingEngine.Engine
 
                 RenderFloorOrCeilingSpriteColumn(ref screenPtr, ref floorTexturePtr, screenIndex, clamptedToY, clamptedFromY, width,
                     x, yFloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, flipY, flipX, swapXy, xScaleV, yScaleV);
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, xScaleV, yScaleV);
             }
         }
 
-        private void RenderFloorOrCeilingSpriteColumn(
-            scoped ref BGRA screenPtr,
-            scoped ref BGRA texturePtr,
+        private unsafe void RenderFloorOrCeilingSpriteColumn(
+            scoped ref uint screenPtr,
+            scoped ref uint texturePtr,
             int screenIndex,
             int floorToY,
             int floorFromY,
             int width,
             int x,
-            Vector<float> yCeilV,
+            Vector<float> cameraPositionV,
             float xMapPosMultiplier,
             Vector<int> yOffSetV,
             Vector<int> xOffSetV,
@@ -134,10 +131,7 @@ namespace RenderingEngine.Engine
             Vector<float> rSinV,
             Vector<float> rCosV,
             Vector<float> alignXV,
-            Vector<float> alignXY,
-            bool flipY,
-            bool flipX,
-            bool swapXy,
+            Vector<float> alignYV,
             Vector<float> xScaleV,
             Vector<float> yScaleV
         )
@@ -150,60 +144,43 @@ namespace RenderingEngine.Engine
 
             Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
 
-            ref BGRA screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-            ref readonly BGRA toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
+            ref uint screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
+            ref readonly uint toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
 
             while (!Unsafe.AreSame(in screenTex, in toScalePtr))
             {
-                Vector<float> yMapPosR = yCeilV * incramentVector;
-                Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
+                Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
 
-                (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
-
-                if (rotated)
+                if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                 {
-                    xMapPos -= alignXV;
-                    yMapPos -= alignXY;
+                    Vector256<uint> gathered = Avx2.GatherVector256(
+                        (uint*)Unsafe.AsPointer(ref texturePtr),
+                        textureIndex.AsVector256(),
+                        scale: sizeof(uint)
+                    );
 
-                    Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, -yMapPos * rSinV);
-                    Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
-
-                    xMapPos = xMapPosSR;
-                    yMapPos = yMapPosSR;
-                }
-
-                Vector<int> _y1 = Vector.ConvertToInt32Native(yMapPos * yScaleV);
-                Vector<int> _x1 = Vector.ConvertToInt32Native(xMapPos * xScaleV);
-
-                _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
-                _x1 = (_x1 + xOffSetV) & textureWidthMaskV;
-
-                if (flipY)
-                {
-                    _y1 = textureHeightMaskV - _y1;
-                }
-
-                if (flipX)
-                {
-                    _x1 = textureWidthMaskV - _x1;
-                }
-
-                if (swapXy)
-                {
-                    (_y1, _x1) = (_x1, _y1);
-                }
-
-                Vector<int> textureIndex = _y1 * textureWidthV + _x1;
-
-                ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
-
-                for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
-                {
-                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
-
-                    if (tex.Value != 0U)
+                    for (int i = 0; i < Vector256<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
                     {
-                        screenTex = tex;
+                        uint tex = gathered[i];
+
+                        if (tex != 0U)
+                        {
+                            screenTex = gathered[i];
+                        }
+                    }
+                }
+                else
+                {
+                    ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
+
+                    for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                    {
+                        ref uint tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
+
+                        if (tex != 0U)
+                        {
+                            screenTex = tex;
+                        }
                     }
                 }
 
@@ -213,7 +190,30 @@ namespace RenderingEngine.Engine
 
             if (rem > 0)
             {
-                Vector<float> yMapPosR = yCeilV * incramentVector;
+                Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
+
+                ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
+
+                for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                {
+                    ref uint tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
+
+                    if (tex != 0U)
+                    {
+                        screenTex = tex;
+                    }
+                }
+            }
+
+            return;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            Vector<int> GetXyFromScreenSpace(
+                    Vector<float> incramentVector,
+                    Vector<float> xMapPosMultiplierV
+                )
+            {
+                Vector<float> yMapPosR = cameraPositionV * incramentVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
@@ -221,7 +221,7 @@ namespace RenderingEngine.Engine
                 if (rotated)
                 {
                     xMapPos -= alignXV;
-                    yMapPos -= alignXY;
+                    yMapPos -= alignYV;
 
                     Vector<float> xMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rCosV, -yMapPos * rSinV);
                     Vector<float> yMapPosSR = Vector.FusedMultiplyAdd(xMapPos, rSinV, yMapPos * rCosV);
@@ -236,34 +236,7 @@ namespace RenderingEngine.Engine
                 _y1 = (_y1 + yOffSetV) & textureHeightMaskV;
                 _x1 = (_x1 + xOffSetV) & textureWidthMaskV;
 
-                if (flipY)
-                {
-                    _y1 = textureHeightMaskV - _y1;
-                }
-
-                if (flipX)
-                {
-                    _x1 = textureWidthMaskV - _x1;
-                }
-
-                if (swapXy)
-                {
-                    (_y1, _x1) = (_x1, _y1);
-                }
-
-                Vector<int> textureIndex = _y1 * textureWidthV + _x1;
-
-                ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
-
-                for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
-                {
-                    ref BGRA tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
-
-                    if (tex.Value != 0U)
-                    {
-                        screenTex = tex;
-                    }
-                }
+                return _y1 * textureWidthV + _x1;
             }
         }
 
