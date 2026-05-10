@@ -441,7 +441,7 @@ namespace RenderingEngine.Engine
                             scale: sizeof(int)
                         );
 
-                        Avx.Store((uint*)Unsafe.AsPointer(ref screenTex), gathered);
+                        gathered.StoreUnsafe(ref screenTex);
                     }
                     else
                     {

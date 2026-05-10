@@ -32,7 +32,7 @@ namespace RenderingEngine.Engine
                 if (lowerTexture.RenderingOptions.IsSkybox)
                 {
                     CalculateDistance(renderableWall);
-                    DrawLowerSkyboxPortalWall(player, sectors, renderableWall);
+                    DrawLowerSkyboxPortalWall(player, renderableWall);
                 }
                 else
                 {
@@ -49,13 +49,13 @@ namespace RenderingEngine.Engine
                 if (upperTexture.RenderingOptions.IsSkybox)
                 {
                     CalculateDistance(renderableWall);
-                    DrawUpperSkyboxPortalWall(player, sectors, renderableWall);
+                    DrawUpperSkyboxPortalWall(player, renderableWall);
                 }
                 else
                 {
                     CalculateUpperTextureYIncrement(renderableWall, upperTexture);
                     CalculateTextureDistanceAndXPosition(renderableWall, upperTexture);
-                    DrawUpperPortalWall(sectors, renderableWall);
+                    DrawUpperPortalWall(renderableWall);
                 }
             }
 
@@ -65,59 +65,9 @@ namespace RenderingEngine.Engine
             return basicWall;
         }
 
-        private void DrawBasicSkyboxWall(
-            PortalPlayerSnapshot player,
-            RenderablePortalWall renderableWall,
-            Span<int> wallStartSpan, Span<int> wallEndSpan,
-            TextureInfo wallTexture)
-        {
-            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            Span<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-
-            int width = PixelWidth;
-            int wallFromX = renderableWall.XLeft;
-            int wallToX = renderableWall.XRight;
-
-            ref uint screenPtr = ref GetScreenPtr<uint>();
-
-            ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(0, TextureTransform.Normal);
-            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
-
-            for (int x = wallFromX; x <= wallToX; x++)
-            {
-                RenderColumnStatus columnStatus = status[x];
-
-                if (!columnStatus.WallRenderable)
-                {
-                    continue;
-                }
-
-                int ceilingStart = ceilingStartSpan[x];
-                int wallStartY = wallStartSpan[x];
-                int wallEndY = wallEndSpan[x];
-                int floorEndY = floorEndSpan[x];
-
-                int clamptedFromY = Math.Clamp(wallStartY, ceilingStart, floorEndY);
-                int clamptedToY = Math.Clamp(wallEndY, ceilingStart, floorEndY);
-
-                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
-                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
-
-                RenderSkyboxLine(player,
-                    wallStartSpan,
-                    x,
-                    wallTexture,
-                    ref wallTextureUintPtr,
-                    ref angleCachePtr,
-                    ref screenIndexPtr,
-                    ref screenIndexPtrEnd);
-            }
-        }
 
         private void DrawUpperSkyboxPortalWall(
             PortalPlayerSnapshot player,
-            ReadOnlySpan<Sector> sectors,
             RenderablePortalWall renderableWall)
         {
             Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
@@ -132,7 +82,6 @@ namespace RenderingEngine.Engine
 
         private void DrawLowerSkyboxPortalWall(
                 PortalPlayerSnapshot player,
-                ReadOnlySpan<Sector> sectors,
                 RenderablePortalWall renderableWall)
         {
             Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalToClamped);
@@ -170,7 +119,6 @@ namespace RenderingEngine.Engine
         }
 
         private void DrawUpperPortalWall(
-            ReadOnlySpan<Sector> sectors,
             RenderablePortalWall renderableWall)
         {
             RenderableWall wall = renderableWall.Wall;
