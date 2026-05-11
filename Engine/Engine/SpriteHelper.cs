@@ -422,7 +422,7 @@ namespace RenderingEngine.Engine
                 for (int i = 0; i < len; i++)
                 {
                     distanceMin = MathF.Min(distanceMin, dist[i]);
-                    distanceMax = MathF.Max(distanceMin, dist[i]);
+                    distanceMax = MathF.Max(distanceMax, dist[i]);
                 }
 
 

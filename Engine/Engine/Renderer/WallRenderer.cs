@@ -123,8 +123,8 @@ namespace RenderingEngine.Engine
                 (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, wall.C2);
                 (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, wall.C1);
 
-                (float p_floorZ_a, float p_ceilingZ_a) = CalculateZAtPoint(neighborSector!, wall.C1);
-                (float p_floorZ_b, float p_ceilingZ_b) = CalculateZAtPoint(neighborSector!, wall.C2);
+                (float p_floorZ_a, float p_ceilingZ_a) = CalculateZAtPoint(neighborSector, wall.C1);
+                (float p_floorZ_b, float p_ceilingZ_b) = CalculateZAtPoint(neighborSector, wall.C2);
 
                 (sectorHeight, ceilOffset, floorOffset) = CalculatePortalOffsets(floorZ_a, ceilingZ_a, p_floorZ_a, p_ceilingZ_a);
 
@@ -188,23 +188,6 @@ namespace RenderingEngine.Engine
             }
 
             return (sectorHeight, ceilOffset, floorOffset);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static (bool IsSkybox, bool FlipX, bool FlipY) GetFlags(TextureInfo textureInfo)
-        {
-            if (textureInfo is null)
-            {
-                return (false, false, false);
-            }
-
-            TextureRenderingOptions options = textureInfo.RenderingOptions;
-
-            bool skyBox = options.HasFlag(TextureRenderingOptions.Skybox);
-            bool flipX = options.HasFlag(TextureRenderingOptions.FlipX);
-            bool flipY = options.HasFlag(TextureRenderingOptions.FlipY);
-
-            return (skyBox, flipX, flipY);
         }
 
         #endregion

@@ -304,10 +304,15 @@ namespace RenderingEngine.Engine
 
             int maxHeight = PixelHeight - 1;
 
-            foreach (FloorSpriteWallInfo spriteBound in allWalls)
+            bool hasNonIntersecting = false;
+            
+            for (int w = 0; w < allWalls.Length; w++)
             {
+                FloorSpriteWallInfo spriteBound = allWalls[w];
+
                 if (!spriteBound.IntersectsView)
                 {
+                    hasNonIntersecting = true;
                     continue;
                 }
 
@@ -322,6 +327,33 @@ namespace RenderingEngine.Engine
 
                     spriteWindowBottom[i] = Math.Min(maxHeight, Math.Max(yBottom, loc));
                     spriteWindowTop[i] = Math.Max(0, Math.Min(yTop, loc));
+                }
+            }
+
+            if (!hasNonIntersecting)
+            {
+                return;
+            }
+
+            bool lower = sprite.R1.Y < 0f || sprite.R2.Y < 0f || sprite.R3.Y < 0f || sprite.R4.Y < 0f;
+
+            for (int i = 0; i < spriteWindowBottom.Length; i++)
+            {
+                int yBottom = spriteWindowBottom[i];
+                int yTop = spriteWindowTop[i];
+
+                if (yTop != yBottom)
+                {
+                    continue;
+                }
+
+                if (lower)
+                {
+                    spriteWindowBottom[i] = maxHeight;
+                }
+                else
+                {
+                    spriteWindowTop[i] = 0;
                 }
             }
         }

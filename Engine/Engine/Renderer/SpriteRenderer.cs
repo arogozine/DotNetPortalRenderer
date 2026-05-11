@@ -274,8 +274,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                textureXLocation += xOffset;
-                textureXLocation *= xScale;
+                textureXLocation = MathF.FusedMultiplyAdd(textureXLocation, xScale, xOffset);
                 int textureXIncr = (textureWidth << 16) / (spriteEndY_Int - spriteStartY_Int);
                 int textureYPos = float.ConvertToIntegerNative<int>(textureXLocation);
                 textureYPos = texHeightDivisible2 ? (textureYPos & textureHeight) : (textureYPos % textureHeight);
@@ -446,7 +445,6 @@ namespace RenderingEngine.Engine
             Span<int> wallStart = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[offset..];
             Span<int> wallEnd = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[offset..];
 
-
             int width = PixelWidth;
             RenderableWall wall = renderableWall.Wall;
             int wallFromXOffset = renderableWall.Offset;
@@ -456,8 +454,11 @@ namespace RenderingEngine.Engine
 
             ref uint screenPtr = ref GetScreenPtr<uint>();
 
-            TextureInfo textureInfo = wall.MiddleTexture!;
-            (_, bool flipX, bool flipY) = GetFlags(textureInfo);
+            TextureInfo? textureInfo = wall.MiddleTexture;
+            Debug.Assert(textureInfo != null);
+
+            bool flipX = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipX);
+            bool flipY = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FlipY);
 
             var transform = TextureTransform.Rotated;
 
