@@ -142,6 +142,16 @@ namespace RenderingEngine.Engine
                         {
                             return sectors.Contains(sprite.SectorId);
                         }
+
+                        if (SharedHelpers.WithinInclusive(minDepthX, distanceMin, distanceMax))
+                        {
+                            return sectors.Contains(sprite.SectorId);
+                        }
+
+                        if (SharedHelpers.WithinInclusive(maxDepthX, distanceMin, distanceMax))
+                        {
+                            return sectors.Contains(sprite.SectorId);
+                        }
                     }
 
                     return false;
@@ -424,7 +434,6 @@ namespace RenderingEngine.Engine
                     distanceMin = MathF.Min(distanceMin, dist[i]);
                     distanceMax = MathF.Max(distanceMax, dist[i]);
                 }
-
 
                 return (distanceMin, distanceMax);
             }
