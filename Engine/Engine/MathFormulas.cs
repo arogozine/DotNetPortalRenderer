@@ -82,7 +82,7 @@ namespace RenderingEngine.Engine
 
             Point p1 = wall0.R1;
             Point p2 = wall1.R1;
-            Unsafe.SkipInit(out Point p3);
+            Point p3 = p2;
 
             bool sameX = wall0.PointA.X == wall1.PointA.X;
             bool sameY = wall0.PointA.Y == wall1.PointA.Y;

@@ -54,7 +54,7 @@ internal abstract class Texture
         return value;
     }
 
-    public Span<BGRA> GetBinary(int shade, TextureTransform transform)
+    private Span<BGRA> GetBinary(int shade, TextureTransform transform)
     {
         Dictionary<int, BGRA[]> pallette = TransformToPallette[(int)transform];
 

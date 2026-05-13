@@ -410,7 +410,7 @@ namespace RenderingEngine.Engine
 
                 if (alpha == 1f)
                 {
-                    DrawTransparentWallLine(width, x,
+                    DrawTransparentWallColumn(width, x,
                         textureStartYClamped, textureEndYClamped,
                         textureWidth,
                         textureXPos, textureXIncr,
@@ -554,7 +554,7 @@ namespace RenderingEngine.Engine
 
                 if (alpha == 1f)
                 {
-                    DrawTransparentWallLine(width, x,
+                    DrawTransparentWallColumn(width, x,
                         clampedFromY, clampedToY,
                         textureWidth,
                         textureXPos, textureXIncr,
@@ -572,7 +572,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private static void DrawTransparentWallLine(
+        private static void DrawTransparentWallColumn(
             int width,
             int x,
             int textureStartYClamped, int textureEndYClamped,
@@ -632,7 +632,7 @@ namespace RenderingEngine.Engine
 
                 if (shaded != 0U)
                 {
-                    screenIndexPtr = BlendBGRA(ref screenIndexPtr, ref shaded, a, aInv);
+                    screenIndexPtr = BlendBGRA(screenIndexPtr, shaded, a, aInv);
                 }
 
                 screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width);
@@ -706,7 +706,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static uint BlendBGRA(ref readonly BGRA bgraDst, ref readonly BGRA bgraSrc, uint a, uint aInv)
+        public static uint BlendBGRA(BGRA bgraDst, BGRA bgraSrc, uint a, uint aInv)
         {
             const uint Alpha = (uint)byte.MaxValue << 24;
 

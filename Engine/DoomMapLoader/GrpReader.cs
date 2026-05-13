@@ -898,7 +898,7 @@ namespace RenderingEngine.DoomMapLoader
             {
                 // Calling "new BGRA" is extremely slow
                 const uint Alpha = (uint)byte.MaxValue << 24;
-                uint b = color.B;
+                uint b = color.B;   
                 uint g = (uint)color.G << 8;
                 uint r = (uint)color.R << 16;
 

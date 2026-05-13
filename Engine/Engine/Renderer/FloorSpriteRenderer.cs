@@ -8,12 +8,24 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        private void DrawFloorSprite(
+        private unsafe void DrawFloorSprite(
             PortalPlayerSnapshot player,
             ReadOnlySpan<Sector> sectors,
             RenderableFloorSprite sprite,
             RenderWindowSpriteSnapshot renderableWall)
         {
+            Sector sector = sectors[sprite.SectorId];
+
+            (float xScale, float yScale) = sprite.Texture.GetScale();
+            (int from, int to) = (sprite.XLeft, sprite.XRight);
+
+            float yFloor = sector.Floor - player.Z + sprite.Height;
+
+            if (yFloor == 0f)
+            {
+                return;
+            }
+
             Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
 
             int width = PixelWidth;
@@ -24,13 +36,6 @@ namespace RenderingEngine.Engine
             Span<int> wallStartSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
             Span<int> wallEndSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];
 
-            Sector sector = sectors[sprite.SectorId];
-
-            (float xScale, float yScale) = sprite.Texture.GetScale();
-            (int from, int to) = (sprite.XLeft, sprite.XRight);
-
-            float yFloor = sector.Floor - player.Z + sprite.Height;
-
             Span<int> spriteWindowTop = TempBuffer<int>.GetBuffer(width);
             Span<int> spriteWindowBottom = TempBuffer<int>.GetBuffer(width);
 
@@ -38,12 +43,13 @@ namespace RenderingEngine.Engine
             spriteWindowBottom[from..to].Fill(int.MinValue);
 
             TextureInfo texture = sprite.Texture;
+            bool translucent = texture.RenderingOptions.HasFlag(TextureRenderingOptions.Translucent);
 
             int textureWidth = texture.Width;
 
             ref uint floorTexturePtr = ref texture.Texture.GetBinaryRef<uint>(sprite.Shade ?? sector.FloorShade,
                 TextureTransform.Normal | TextureTransform.FlippedX);
-            ref uint screenPtr = ref GetScreenPtr<uint>();
+            uint* screenPtr = (uint*)buffer;
 
             Vector<float> yFloorV = Vector.Create(yFloor);
             Vector<int> textureHeightMaskV = Vector.Create(texture.Height - 1);
@@ -106,14 +112,14 @@ namespace RenderingEngine.Engine
 
                 float xMapPosMultiplier = xMapPosMultiplierCache[x];
 
-                RenderFloorOrCeilingSpriteColumn(ref screenPtr, ref floorTexturePtr, screenIndex, clamptedToY, clamptedFromY, width,
+                RenderFloorOrCeilingSpriteColumn(screenPtr, ref floorTexturePtr, screenIndex, clamptedToY, clamptedFromY, width,
                     x, yFloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, xScaleV, yScaleV);
+                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, xScaleV, yScaleV, translucent);
             }
         }
 
         private unsafe void RenderFloorOrCeilingSpriteColumn(
-            scoped ref uint screenPtr,
+            uint* screenPtr,
             scoped ref uint texturePtr,
             int screenIndex,
             int floorToY,
@@ -133,7 +139,8 @@ namespace RenderingEngine.Engine
             Vector<float> alignXV,
             Vector<float> alignYV,
             Vector<float> xScaleV,
-            Vector<float> yScaleV
+            Vector<float> yScaleV,
+            bool translucent
         )
         {
             Span<float> incrVectorCache = memoryPool.GetBucket<float>(MemoryPoolBucket.CameraHeightToMapYPos);
@@ -144,10 +151,10 @@ namespace RenderingEngine.Engine
 
             Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
 
-            ref uint screenTex = ref Unsafe.Add(ref screenPtr, screenIndex);
-            ref readonly uint toScalePtr = ref Unsafe.Add(ref screenPtr, floorToY * width + x);
+            uint* screenTex = screenPtr + screenIndex;
+            uint* toScalePtr = screenPtr + floorToY * width + x;
 
-            while (!Unsafe.AreSame(in screenTex, in toScalePtr))
+            while (screenTex != toScalePtr)
             {
                 Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
 
@@ -159,27 +166,55 @@ namespace RenderingEngine.Engine
                         scale: sizeof(uint)
                     );
 
-                    for (int i = 0; i < Vector256<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                    if (translucent)
                     {
-                        uint tex = gathered[i];
-
-                        if (tex != 0U)
+                        for (int i = 0; i < Vector256<int>.Count; i++, screenTex += width)
                         {
-                            screenTex = gathered[i];
+                            uint tex = gathered[i];
+
+                            if (tex != 0U)
+                            {
+                                *screenTex = BlendBGRA(tex, *screenTex);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < Vector256<int>.Count; i++, screenTex += width)
+                        {
+                            uint tex = gathered[i];
+
+                            if (tex != 0U)
+                            {
+                                *screenTex = gathered[i];
+                            }
                         }
                     }
                 }
                 else
                 {
-                    ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
-
-                    for (int i = 0; i < Vector<int>.Count; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                    if (translucent)
                     {
-                        ref uint tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
-
-                        if (tex != 0U)
+                        for (int i = 0; i < Vector<int>.Count; i++, screenTex += width)
                         {
-                            screenTex = tex;
+                            uint tex = Unsafe.Add(ref texturePtr, textureIndex[i]);
+
+                            if (tex != 0U)
+                            {
+                                *screenTex = BlendBGRA(tex, *screenTex);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < Vector<int>.Count; i++, screenTex += width)
+                        {
+                            uint tex = Unsafe.Add(ref texturePtr, textureIndex[i]);
+
+                            if (tex != 0U)
+                            {
+                                *screenTex = tex;
+                            }
                         }
                     }
                 }
@@ -192,20 +227,58 @@ namespace RenderingEngine.Engine
             {
                 Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
 
-                ref int textureIndexPtr = ref Unsafe.As<Vector<int>, int>(ref textureIndex);
-
-                for (int i = 0; i < rem; i++, screenTex = ref Unsafe.Add(ref screenTex, width))
+                if (translucent)
                 {
-                    ref uint tex = ref Unsafe.Add(ref texturePtr, Unsafe.Add(ref textureIndexPtr, i));
-
-                    if (tex != 0U)
+                    for (int i = 0; i < rem; i++, screenTex += width)
                     {
-                        screenTex = tex;
+                        uint tex = Unsafe.Add(ref texturePtr, textureIndex[i]);
+
+                        if (tex != 0U)
+                        {
+                            *screenTex = BlendBGRA(tex, *screenTex);
+                        }
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < rem; i++, screenTex += width)
+                    {
+                        uint tex = Unsafe.Add(ref texturePtr, textureIndex[i]);
+                        uint screen = *screenTex;
+
+                        if (tex != 0U)
+                        {
+                            *screenTex = tex;
+                        }
                     }
                 }
             }
 
             return;
+
+            static uint BlendBGRA(uint bgraDstU, uint bgraSrcU)
+            {
+                BGRA bgraDst = Unsafe.As<uint, BGRA>(ref bgraDstU);
+                BGRA bgraSrc = Unsafe.As<uint, BGRA>(ref bgraSrcU);
+
+                const uint a = 127;
+                const uint aInv = 128;
+                const uint Alpha = (uint)byte.MaxValue << 24;
+
+                uint bDst = bgraDst.B;
+                uint gDst = bgraDst.G;
+                uint rDst = bgraDst.R;
+
+                uint bSrc = bgraSrc.B;
+                uint gSrc = bgraSrc.G;
+                uint rSrc = bgraSrc.R;
+
+                uint bOut = (bSrc * a + bDst * aInv) >> 8;
+                uint gOut = (gSrc * a + gDst * aInv) >> 8;
+                uint rOut = (rSrc * a + rDst * aInv) >> 8;
+
+                return (Alpha | (rOut << 16) | (gOut << 8) | bOut);
+            }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             Vector<int> GetXyFromScreenSpace(
@@ -335,24 +408,19 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            bool lower = sprite.R1.Y < 0f || sprite.R2.Y < 0f || sprite.R3.Y < 0f || sprite.R4.Y < 0f;
 
-            for (int i = 0; i < spriteWindowBottom.Length; i++)
+            if (sprite.R1.Y < 0f || sprite.R2.Y < 0f || sprite.R3.Y < 0f || sprite.R4.Y < 0f)
             {
-                int yBottom = spriteWindowBottom[i];
-                int yTop = spriteWindowTop[i];
+                for (int i = 0; i < spriteWindowBottom.Length; i++)
+                {
+                    int yBottom = spriteWindowBottom[i];
+                    int yTop = spriteWindowTop[i];
 
-                if (yTop != yBottom)
-                {
-                    continue;
-                }
+                    if (yTop != yBottom)
+                    {
+                        continue;
+                    }
 
-                if (lower)
-                {
-                    spriteWindowBottom[i] = maxHeight;
-                }
-                else
-                {
                     spriteWindowTop[i] = 0;
                 }
             }

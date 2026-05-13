@@ -130,7 +130,7 @@ namespace RenderingEngine.Engine
 
             TextureInfo textureInfo = sector.FloorTexture;
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
-            ref BGRA ceilingTexturePtr = ref MemoryMarshal.GetReference(texture.GetBinary(sector.FloorShade, TextureTransform.Normal));
+            ref BGRA ceilingTexturePtr = ref texture.GetBinaryRef<BGRA>(sector.FloorShade, TextureTransform.Normal);
             ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
             ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
