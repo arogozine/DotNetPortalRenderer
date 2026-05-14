@@ -213,14 +213,12 @@ namespace RenderingEngine.Engine
             float cameraRay,
             float t1, float d2y, float d2x)
         {
-            bool flipped = sprite.Flipped;
-
             float denominator = MathF.FusedMultiplyAdd(cameraRay, d2y, -d2x);
             float fromToYDist = t1 / denominator;
             float fromToXDist = fromToYDist * cameraRay;
 
-            float distX = flipped ? (sprite.R2.X - fromToXDist) : (fromToXDist - sprite.R1.X);
-            float distY = flipped ? (sprite.R2.Y - fromToYDist) : (fromToYDist - sprite.R1.Y);
+            float distX = fromToXDist - sprite.R1.X;
+            float distY = fromToYDist - sprite.R1.Y;
 
             float textureXLocation = MathF.Sqrt(distX * distX + distY * distY);
 

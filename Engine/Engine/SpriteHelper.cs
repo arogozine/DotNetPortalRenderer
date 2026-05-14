@@ -418,7 +418,6 @@ namespace RenderingEngine.Engine
                 if (sprite.Wall3!.IntersectsView)
                 {
                     dist[len++] = CalculateDistance2(sprite.R3, sprite.R4, sprite.Wall3!.XLeft);
-
                 }
 
                 if (sprite.Wall4!.IntersectsView)
@@ -702,7 +701,7 @@ namespace RenderingEngine.Engine
 
                 (sprite.R1, sprite.R2) = (sprite.R2, sprite.R1);
 
-                // sprite.Flipped = true;
+                sprite.Flipped = true;
             }
 
             // part of the wall is in the back
@@ -768,6 +767,11 @@ namespace RenderingEngine.Engine
             }
 
             Clamp(ref xLeft, ref xRight);
+
+            {
+                bool flipped = sprite.Flipped ? rx2 * ry1 < ry2 * rx1 : rx2 * ry1 > ry2 * rx1;
+                sprite.Flipped = flipped;
+            }
 
             // order left to right
             if (xLeft > xRight)

@@ -225,6 +225,11 @@ namespace RenderingEngine.Engine
                 transform |= TextureTransform.FlippedX;
             }
 
+            if (sprite.Flipped)
+            {
+                transform ^= TextureTransform.FlippedX;
+            }
+
             ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(sprite.Shade ?? sector.FloorShade, transform);
 
             int xLeft = sprite.XLeft;
@@ -320,7 +325,9 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
 
             Texture texture = TextureCache.GetTexture(textureInfo);
-            ref uint texturePtr = ref texture.GetBinaryRef<uint>(sector.FloorShade, TextureTransform.Rotated);
+
+            ref uint texturePtr = ref texture.GetBinaryRef<uint>(sector.FloorShade,
+                wall.Flipped ? TextureTransform.RotatedFlipped : TextureTransform.Rotated);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
 
@@ -470,6 +477,11 @@ namespace RenderingEngine.Engine
             if (flipX)
             {
                 transform |= TextureTransform.FlippedX;
+            }
+
+            if (wall.Flipped)
+            {
+                transform ^= TextureTransform.FlippedX;
             }
 
             Texture texture = TextureCache.GetTexture(textureInfo);
