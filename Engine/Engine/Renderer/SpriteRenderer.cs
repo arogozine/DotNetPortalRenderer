@@ -61,6 +61,11 @@ namespace RenderingEngine.Engine
                 transform |= TextureTransform.FlippedX;
             }
 
+            if (sprite.Flipped)
+            {
+                transform ^= TextureTransform.FlippedX;
+            }
+
             ref uint texturePtr = ref texture.Texture.GetBinaryRef<uint>(sprite.Shade ?? sector.FloorShade,
                 transform);
 

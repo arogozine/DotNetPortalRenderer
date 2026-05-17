@@ -61,6 +61,23 @@ namespace RenderingEngine.Engine
             intersectionY = lineDirectionY * t;
         }
 
+        public static Point ReflectPoint(Point point, Point mirrorP1, Point mirrorP2)
+        {
+            float dx = mirrorP2.X - mirrorP1.X;
+            float dy = mirrorP2.Y - mirrorP1.Y;
+            float lenSq = dx * dx + dy * dy;
+
+            float t = ((point.X - mirrorP1.X) * dx + (point.Y - mirrorP1.Y) * dy) / lenSq;
+
+            float footX = mirrorP1.X + t * dx;
+            float footY = mirrorP1.Y + t * dy;
+
+            float x = 2 * footX - point.X;
+            float y = 2 * footY - point.Y;
+
+            return new Point(x, y);
+        }
+
         internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalCeil(Sector sector)
         {
             return CalculatePlaneNormal(sector, true);

@@ -12,6 +12,7 @@ internal sealed class Line : IEquatable<Line>
     public required TextureInfo? LowerTexture { get; set; }
 
     public bool TwoSided { get; set; }
+    public bool IsMirror { get; set; }
 
     public required short Shade { get; set; }
 

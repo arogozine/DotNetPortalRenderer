@@ -32,7 +32,7 @@ namespace RenderingEngine.Engine
 
         public Span<RenderableWall> DetermineWallsToRender(Sector sector, Span<RenderableWall> portalWallsToOcclude, NeighborsToRender sectorInfo, PortalPlayerSnapshot player)
         {
-            Span<RenderableWall> rotatedWalls = CalculateRotatedWallsRelativeToPlayer(sector, player);
+            Span<RenderableWall> rotatedWalls = CalculateRotatedWallsRelativeToPlayer(sector, player, sectorInfo);
 
             rotatedWalls = CullWallsOutsideOfWindow(rotatedWalls, sectorInfo);
 
@@ -112,14 +112,32 @@ namespace RenderingEngine.Engine
             return orderedWalls[..j];
         }
 
-        public Span<RenderableWall> CalculateRotatedWallsRelativeToPlayer(Sector sector, PortalPlayerSnapshot player)
+        public Span<RenderableWall> CalculateRotatedWallsRelativeToPlayer(Sector sector, PortalPlayerSnapshot player, NeighborsToRender sectorInfo)
         {
             float pSin = player.Sin;
             float pCos = player.Cos;
             float px = player.X;
             float py = player.Y;
+
+            for (int i = 0; i < sector.Walls.Length; i++)
+            {
+                RenderableWall wall = sector.Walls[i];
+
+                wall.R1 = wall.PointA;
+                wall.R2 = wall.PointB;
+                wall.Flipped = false;
+            }
+
+            bool flipped = sectorInfo.MirrorWall is not null && sectorInfo.ParentWalls.Contains(sectorInfo.MirrorWall);
+
+            if (flipped)
+            {
+                MirrorWalls(sector.Walls, sectorInfo.MirrorWall!);
+            }
+
             Span<RenderableWall> rotatedWalls = RotateSectorWallsRelativeToPlayer(sector, pSin, pCos, px, py);
-            rotatedWalls = FilterOutWallsBehindPlayer(rotatedWalls);
+
+            rotatedWalls = FilterOutWallsBehindPlayer(rotatedWalls, flipped);
             CalculateWallPlanes(rotatedWalls, player);
             rotatedWalls = FilterOutWallsOutsideView(rotatedWalls);
 
@@ -127,6 +145,23 @@ namespace RenderingEngine.Engine
             rotatedWalls.CopyTo(copy);
 
             return rotatedWalls;
+        }
+
+        public static void MirrorWalls(Span<RenderableWall> rotatedWalls, RenderableWall mirroredWall)
+        {
+            for (int i = 0; i < rotatedWalls.Length; i++)
+            {
+                RenderableWall wall = rotatedWalls[i];
+
+                if (wall.Id == mirroredWall.Id)
+                {
+                    continue;
+                }
+
+                wall.R1 = MathFormulas.ReflectPoint(wall.PointA, mirroredWall.PointB, mirroredWall.PointA);
+                wall.R2 = MathFormulas.ReflectPoint(wall.PointB, mirroredWall.PointB, mirroredWall.PointA);
+                wall.Flipped = true;
+            }
         }
 
         public static void CalculateConnectingSectorsForSlope(PortalPlayerSnapshot player, ReadOnlySpan<Sector> sectors, Sector sector)
@@ -150,6 +185,9 @@ namespace RenderingEngine.Engine
 
             foreach (Sector s in connectingSectors)
             {
+                s.Walls[0].R1 = s.Walls[0].PointA;
+                s.Walls[0].R2 = s.Walls[0].PointB;
+
                 _ = RotateWall(s.Walls[0], pSin, pCos, px, py);
             }
         }
@@ -294,7 +332,7 @@ namespace RenderingEngine.Engine
             return bunches[..bunchCount];
         }
 
-        public static Span<RenderableWall> FilterOutWallsBehindPlayer(Span<RenderableWall> walls)
+        public static Span<RenderableWall> FilterOutWallsBehindPlayer(Span<RenderableWall> walls, bool flipped)
         {
             int j = 0;
 
@@ -322,7 +360,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                if (!wall.TwoSided && x2 * y1 < y2 * x1)
+                if (!wall.TwoSided && (flipped ? x2 * y1 > y2 * x1 : x2 * y1 < y2 * x1))
                 {
                     continue;
                 }
@@ -577,10 +615,10 @@ namespace RenderingEngine.Engine
         {
             // Vertex Points (Wall)
             // point 1 (vx1, vy1), point 2 (vx2, vy2)
-            float vx1 = wall.PointA.X;
-            float vy1 = wall.PointA.Y;
-            float vx2 = wall.PointB.X;
-            float vy2 = wall.PointB.Y;
+            float vx1 = wall.R1.X;
+            float vy1 = wall.R1.Y;
+            float vx2 = wall.R2.X;
+            float vy2 = wall.R2.Y;
 
             // offset by player coordinates for easier calculations
             float tx1 = vx1 - px;

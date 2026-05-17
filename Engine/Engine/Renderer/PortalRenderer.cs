@@ -94,6 +94,7 @@ namespace RenderingEngine.Engine
         private readonly List<RenderablePortalWall> neightbors = [];
         private readonly List<RenderablePortalWall> renderableWalls = [];
         private readonly HashSet<int> renderedSectors = [];
+        private readonly HashSet<int> mirroredSectors = [];
 
         public void DrawScreen(PortalPlayerSnapshot player)
         {
@@ -136,6 +137,13 @@ namespace RenderingEngine.Engine
                 foreach (RenderablePortalWall renderableWall in neighborsForDepth)
                 {
                     _ = renderedSectors.Add(renderableWall.Wall.Neighbor);
+
+                    if (renderableWall.MirrorWall is not null)
+                    {
+                        _ = mirroredSectors.Add(renderableWall.MirrorWall.Neighbor);
+                        _ = mirroredSectors.Add(renderableWall.Wall.Neighbor);
+                    }
+
                     if (renderableWall.IsPortalWithMiddleTexture)
                     {
                         transparentWalls.Add(new RenderWindowWallSnapshot
@@ -156,7 +164,8 @@ namespace RenderingEngine.Engine
 
                     var neighborToRender = new NeighborsToRender(renderableWall, renderableWall.ParentWalls!)
                     {
-                        SectorId = neighbor.Neighbor
+                        SectorId = neighbor.Neighbor,
+                        MirrorWall = neighbor.IsMirror ? neighbor : renderableWall.MirrorWall
                     };
 
                     sectorRenderQueue.Add(neighborToRender);
@@ -174,6 +183,7 @@ namespace RenderingEngine.Engine
             transparentWalls.Clear();
             sectorRenderQueue.Clear();
             renderedSectors.Clear();
+            mirroredSectors.Clear();
         }
 
         /// <summary>
@@ -201,7 +211,7 @@ namespace RenderingEngine.Engine
                 WallHelper.CalculateConnectingSectorsForSlope(player, sectors, sector);
 
                 // 2. Determine where ceiling, floor, and walls start and end
-                RenderColumnStatus sectorStatus = CalculateRenderWindow(player, sectorInfo, sectors, sector, walls);
+                RenderColumnStatus sectorStatus = CalculateRenderWindow(sectorInfo, sectors, sector, walls);
 
                 // 3. Nothing to render, bail early
                 if (sectorStatus == default || renderableWalls.Count == 0)
@@ -217,6 +227,7 @@ namespace RenderingEngine.Engine
                 for (int i = 0; i < neighborsSpan.Length; i++)
                 {
                     neighborsSpan[i].ParentWalls = parentWalls;
+                    neighborsSpan[i].MirrorWall = sectorInfo.MirrorWall;
                 }
 
                 neighborsForDepth.AddRange(neighbors);
@@ -232,7 +243,7 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors = Sectors;
 
             Span<float> depthBuffer = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance);
-            Span<RenderableSprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites, sectors);
+            Span<RenderableSprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites, Sectors, mirroredSectors);
 
             // render transparent walls and sprites
             Span<RenderableSpriteSnapshot> transparentWallsSpan = CollectionsMarshal.AsSpan(transparentWalls);
@@ -262,7 +273,6 @@ namespace RenderingEngine.Engine
         }
 
         private RenderColumnStatus CalculateRenderWindow(
-            PortalPlayerSnapshot player,
             NeighborsToRender sectorInfo,
             ReadOnlySpan<Sector> sectors,
             Sector sector,

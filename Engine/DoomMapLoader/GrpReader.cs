@@ -182,6 +182,7 @@ namespace RenderingEngine.DoomMapLoader
                 sectors.Add(mapSector);
             }
 
+            DetermineMirrors(sectors);
             RecalculateOffsets(sectors);
             DetermineSkyboxWalls(sectors);
 
@@ -403,6 +404,39 @@ namespace RenderingEngine.DoomMapLoader
                             }
                         }
                     }
+                }
+            }
+        }
+
+        private static void DetermineMirrors(List<MapSector> sectorList)
+        {
+            string placeHolderMirrorTexture = ToTile(560);
+            string mirrorTexture = ToTile(503);
+
+            Span<MapSector> sectors = CollectionsMarshal.AsSpan(sectorList);
+
+            foreach (MapSector sector in sectors)
+            {
+                foreach (Line line in sector.Walls)
+                {
+                    var middleTexture = line.MiddleTexture;
+
+                    if (middleTexture is null || line.SectorTo is null)
+                    {
+                        continue;
+                    }
+
+                    if (middleTexture.Name != placeHolderMirrorTexture)
+                    {
+                        continue;
+                    }
+
+                    line.IsMirror = true;
+                    line.SectorTo = sector.Id;
+
+                    middleTexture.Name = mirrorTexture;
+                    middleTexture.RenderingOptions |= TextureRenderingOptions.Translucent;
+                    middleTexture.Alpha = 0.5f;
                 }
             }
         }

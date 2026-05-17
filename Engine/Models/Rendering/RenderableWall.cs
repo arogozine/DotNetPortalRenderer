@@ -14,6 +14,7 @@ namespace RenderingEngine.Models
         public int? SectorTo => Line.SectorTo;
         public short Shade => Line.Shade;
         public bool TwoSided => Line.TwoSided;
+        public bool IsMirror => Line.IsMirror;
 
         public Line Line { get; }
 

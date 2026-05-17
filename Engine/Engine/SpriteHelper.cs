@@ -58,10 +58,46 @@ namespace RenderingEngine.Engine
             this.height = height;
         }
 
-        public Span<RenderableSprite> GetSpritesForPlayer(PortalPlayerSnapshot player, Span<RenderableSprite> sprites, ReadOnlySpan<Sector> sectors)
+        public Span<RenderableSprite> GetSpritesForPlayer(PortalPlayerSnapshot player, Span<RenderableSprite> sprites,
+            Sector[] sectors)
         {
             Span<RenderableSprite> rotatedSprites = RotateSprites(sprites, player);
 
+            return GetSpritesForPlayerShared(player, rotatedSprites, sectors);
+        }
+
+        public Span<RenderableSprite> GetMirroredSprites(PortalPlayerSnapshot player, Span<RenderableSprite> sprites,
+            Sector[] sectors, HashSet<int> mirroredSectorsSet, RenderWindowSpriteSnapshot sectorSprites)
+        {
+            if (mirroredSectorsSet.Count == 0 || sectorSprites.MirroredWalls is null || sectorSprites.MirroredWalls.Count == 0)
+            {
+                return [];
+            }
+
+            List<RenderableSprite> spritesToMirror = [];
+            foreach (RenderableSprite sprite in sprites)
+            {
+                if (mirroredSectorsSet.Contains(sprite.SectorId))
+                {
+                    spritesToMirror.Add(sprite);
+                }
+            }
+
+            if (spritesToMirror.Count == 0)
+            {
+                return [];
+            }
+
+            Sector[] mirroredSectors = mirroredSectorsSet.Select(x => sectors[x]).ToArray();
+
+            Span<RenderableSprite> rotatedSprites = RotateMirrorSprites(CollectionsMarshal.AsSpan(spritesToMirror), player, sectorSprites.MirroredWalls.First());
+
+            return GetSpritesForPlayerShared(player, rotatedSprites, sectors);
+        }
+
+        private Span<RenderableSprite> GetSpritesForPlayerShared(PortalPlayerSnapshot player, Span<RenderableSprite> rotatedSprites,
+            Sector[] sectors)
+        {
             rotatedSprites = FilterOutSpritesBehindPlayer(rotatedSprites);
             rotatedSprites = FilterOutSpritesWithoutSector(rotatedSprites);
 
@@ -452,55 +488,63 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static Span<RenderableSprite> RotateSprites(scoped ReadOnlySpan<RenderableSprite> sprites, PortalPlayerSnapshot player)
+        public static Span<RenderableSprite> RotateMirrorSprites(scoped ReadOnlySpan<RenderableSprite> sprites, PortalPlayerSnapshot player, RenderableWall flippedWall)
         {
-            var rotatedSprites = new RenderableSprite[sprites.Length];
+            Span<RenderableSprite> rotatedSprites = RotateSprites(sprites, player);
 
             float pSin = player.Sin;
             float pCos = player.Cos;
             float px = player.X;
             float py = player.Y;
 
-            for (int i = 0; i < sprites.Length; i++)
+            for (int i = 0; i < rotatedSprites.Length; i++)
             {
-                RenderableSprite s = sprites[i];
+                rotatedSprites[i] = CreateMirroredRotatedCopy(rotatedSprites[i], flippedWall);
+            }
+
+            return rotatedSprites;
+
+            RenderableSprite CreateMirroredRotatedCopy(RenderableSprite s, RenderableWall flippedWall)
+            {
                 TextureInfo texture = s.Texture;
 
-                Point rotated = RotateVertex(s.Location);
+                Point rotated = RotateVertex(MathFormulas.ReflectPoint(s.Location, flippedWall.PointA, flippedWall.PointB));
 
                 if (s is RenderableFloorSprite floorSprite)
                 {
-                    Point r1 = SharedHelpers.RotateVertex(floorSprite.PointA, pSin, pCos, px, py);
-                    Point r2 = SharedHelpers.RotateVertex(floorSprite.PointB, pSin, pCos, px, py);
-                    Point r3 = SharedHelpers.RotateVertex(floorSprite.PointC, pSin, pCos, px, py);
-                    Point r4 = SharedHelpers.RotateVertex(floorSprite.PointD, pSin, pCos, px, py);
+                    Point r1 = SharedHelpers.RotateVertex(
+                        MathFormulas.ReflectPoint(floorSprite.PointA, flippedWall.PointA, flippedWall.PointB), pSin, pCos, px, py);
+                    Point r2 = SharedHelpers.RotateVertex(
+                        MathFormulas.ReflectPoint(floorSprite.PointB, flippedWall.PointA, flippedWall.PointB), pSin, pCos, px, py);
+                    Point r3 = SharedHelpers.RotateVertex(
+                        MathFormulas.ReflectPoint(floorSprite.PointC, flippedWall.PointA, flippedWall.PointB), pSin, pCos, px, py);
+                    Point r4 = SharedHelpers.RotateVertex(
+                        MathFormulas.ReflectPoint(floorSprite.PointD, flippedWall.PointA, flippedWall.PointB), pSin, pCos, px, py);
 
-                    rotatedSprites[i] = new RenderableFloorSprite
+                    return new RenderableFloorSprite
                     {
                         Sprite = s.Sprite,
                         Rotated = rotated,
                         R1 = r1,
                         R2 = r2,
                         R3 = r3,
-                        R4 = r4
+                        R4 = r4,
+                        Flipped = true
                     };
-
-                    continue;
                 }
                 else if (s is RenderableWallSprite)
                 {
-                    Point r1 = RotateVertex(s.PointA);
-                    Point r2 = RotateVertex(s.PointB);
+                    Point r1 = RotateVertex(MathFormulas.ReflectPoint(s.PointA, flippedWall.PointA, flippedWall.PointB));
+                    Point r2 = RotateVertex(MathFormulas.ReflectPoint(s.PointB, flippedWall.PointA, flippedWall.PointB));
 
-                    rotatedSprites[i] = new RenderableWallSprite
+                    return new RenderableWallSprite
                     {
                         Sprite = s.Sprite,
                         Rotated = rotated,
                         R1 = r1,
-                        R2 = r2
+                        R2 = r2,
+                        Flipped = true
                     };
-
-                    continue;
                 }
                 else
                 {
@@ -514,17 +558,100 @@ namespace RenderingEngine.Engine
                     Point r1 = new(rx1, ry1);
                     Point r2 = new(rx2, ry2);
 
-                    rotatedSprites[i] = new RenderableBasicSprite
+                    return new RenderableBasicSprite
+                    {
+                        Sprite = s.Sprite,
+                        Rotated = rotated,
+                        R1 = r1,
+                        R2 = r2,
+                        Flipped = true
+                    };
+                }
+            }
+
+            (float x, float y) RotateVertex(Point p)
+            {
+                // offset by player coordinates for easier calculations
+                // rotate vertex points to face 'up' from player at (0, 0)
+                return SharedHelpers.RotateVertex(p.X, p.Y, pSin, pCos, px, py);
+            }
+        }
+
+        public static Span<RenderableSprite> RotateSprites(scoped ReadOnlySpan<RenderableSprite> sprites, PortalPlayerSnapshot player)
+        {
+            var rotatedSprites = new List<RenderableSprite>(sprites.Length);
+
+            float pSin = player.Sin;
+            float pCos = player.Cos;
+            float px = player.X;
+            float py = player.Y;
+
+            for (int i = 0; i < sprites.Length; i++)
+            {
+                RenderableSprite s = sprites[i];
+                CreateRotatedCopy(s);
+            }
+
+            return CollectionsMarshal.AsSpan(rotatedSprites);
+
+            void CreateRotatedCopy(RenderableSprite s)
+            {
+                TextureInfo texture = s.Texture;
+
+                Point rotated = RotateVertex(s.Location);
+
+                if (s is RenderableFloorSprite floorSprite)
+                {
+                    Point r1 = SharedHelpers.RotateVertex(floorSprite.PointA, pSin, pCos, px, py);
+                    Point r2 = SharedHelpers.RotateVertex(floorSprite.PointB, pSin, pCos, px, py);
+                    Point r3 = SharedHelpers.RotateVertex(floorSprite.PointC, pSin, pCos, px, py);
+                    Point r4 = SharedHelpers.RotateVertex(floorSprite.PointD, pSin, pCos, px, py);
+
+                    rotatedSprites.Add(new RenderableFloorSprite
+                    {
+                        Sprite = s.Sprite,
+                        Rotated = rotated,
+                        R1 = r1,
+                        R2 = r2,
+                        R3 = r3,
+                        R4 = r4
+                    });
+                }
+                else if (s is RenderableWallSprite)
+                {
+                    Point r1 = RotateVertex(s.PointA);
+                    Point r2 = RotateVertex(s.PointB);
+
+                    rotatedSprites.Add(new RenderableWallSprite
                     {
                         Sprite = s.Sprite,
                         Rotated = rotated,
                         R1 = r1,
                         R2 = r2
-                    };
+                    });
+                }
+                else
+                {
+                    float textureWidth = texture.Width * (texture.XScale ?? 1f);
+
+                    float rx1 = rotated.X - textureWidth / 2;
+                    float rx2 = rotated.X + textureWidth / 2;
+                    float ry1 = rotated.Y;
+                    float ry2 = rotated.Y;
+
+                    Point r1 = new(rx1, ry1);
+                    Point r2 = new(rx2, ry2);
+
+                    rotatedSprites.Add(new RenderableBasicSprite
+                    {
+                        Sprite = s.Sprite,
+                        Rotated = rotated,
+                        R1 = r1,
+                        R2 = r2
+                    });
                 }
             }
 
-            return rotatedSprites;
 
             (float x, float y) RotateVertex(Point p)
             {
@@ -590,7 +717,7 @@ namespace RenderingEngine.Engine
                     xRight = width - 1;
 
                     sprite.IntersectsView = true;
-                    sprite.Flipped = true;
+                    sprite.Flipped = !sprite.Flipped;
                 }
                 else if (intersectsL || intersectsR)
                 {
@@ -610,7 +737,7 @@ namespace RenderingEngine.Engine
                         xRight = halfWidth - rx2 / ry2 * scale;
                     }
 
-                    sprite.Flipped = true;
+                    sprite.Flipped = !sprite.Flipped;
                 }
                 else
                 {
@@ -770,7 +897,7 @@ namespace RenderingEngine.Engine
 
             {
                 bool flipped = sprite.Flipped ? rx2 * ry1 < ry2 * rx1 : rx2 * ry1 > ry2 * rx1;
-                sprite.Flipped = flipped;
+                sprite.Flipped = sprite.Flipped ? !flipped : flipped;
             }
 
             // order left to right

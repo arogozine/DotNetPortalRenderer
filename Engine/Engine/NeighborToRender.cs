@@ -16,6 +16,7 @@ namespace RenderingEngine.Engine
             ParentWalls[^1] = renderableWall.Wall;
         }
 
+        public RenderableWall? MirrorWall { get; set; }
         public required int SectorId { get; init; }
         public RenderablePortalWall? RenderableWall { get; init; }
         public RenderableWall[] ParentWalls { get; }

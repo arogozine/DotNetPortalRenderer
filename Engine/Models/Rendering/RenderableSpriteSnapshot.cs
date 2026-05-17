@@ -23,4 +23,5 @@ internal class RenderWindowSpriteSnapshot : RenderableSpriteSnapshot
 {
     public required int RenderDepth { get; init; }
     public required HashSet<int> RenderedSectors { get; init; }
+    public HashSet<RenderableWall>? MirroredWalls { get; set; }
 }
