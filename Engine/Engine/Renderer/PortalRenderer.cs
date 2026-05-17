@@ -124,22 +124,27 @@ namespace RenderingEngine.Engine
 
                 // 3. We render sprites after all the walls were rendered
                 var renderedSectorsCopy = new HashSet<int>(this.renderedSectors);
-                transparentWalls.Add(new RenderWindowSpriteSnapshot
+                var spriteSnapShot = new RenderWindowSpriteSnapshot
                 {
                     Depth = renderDepth,
                     XLeft = 0,
                     XRight = PixelWidth,
                     RenderDepth = renderDepth,
                     RenderedSectors = renderedSectorsCopy
-                });
+                };
+                transparentWalls.Add(spriteSnapShot);
 
                 // 4. We render transparent walls after all the walls were rendered
                 foreach (RenderablePortalWall renderableWall in neighborsForDepth)
                 {
                     _ = renderedSectors.Add(renderableWall.Wall.Neighbor);
 
+                    // Keep track of mirrored wall for sprite rendering later on
                     if (renderableWall.MirrorWall is not null)
                     {
+                        spriteSnapShot.MirroredWalls ??= [];
+                        _ = spriteSnapShot.MirroredWalls.Add(renderableWall.MirrorWall);
+
                         _ = mirroredSectors.Add(renderableWall.MirrorWall.Neighbor);
                         _ = mirroredSectors.Add(renderableWall.Wall.Neighbor);
                     }
@@ -243,7 +248,7 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<Sector> sectors = Sectors;
 
             Span<float> depthBuffer = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance);
-            Span<RenderableSprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites, Sectors, mirroredSectors);
+            Span<RenderableSprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites, Sectors);
 
             // render transparent walls and sprites
             Span<RenderableSpriteSnapshot> transparentWallsSpan = CollectionsMarshal.AsSpan(transparentWalls);
@@ -263,6 +268,8 @@ namespace RenderingEngine.Engine
 
                     List<RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
                         renderedSectors, currentDistance, nextDistance);
+
+                    sprites.AddRange(SpriteHelper.GetMirroredSprites(player, Sprites, Sectors, mirroredSectors, sectorSprites));
 
                     foreach (RenderableSprite s in sprites)
                     {

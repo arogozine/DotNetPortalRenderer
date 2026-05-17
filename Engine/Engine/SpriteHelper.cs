@@ -88,8 +88,6 @@ namespace RenderingEngine.Engine
                 return [];
             }
 
-            Sector[] mirroredSectors = mirroredSectorsSet.Select(x => sectors[x]).ToArray();
-
             Span<RenderableSprite> rotatedSprites = RotateMirrorSprites(CollectionsMarshal.AsSpan(spritesToMirror), player, sectorSprites.MirroredWalls.First());
 
             return GetSpritesForPlayerShared(player, rotatedSprites, sectors);
