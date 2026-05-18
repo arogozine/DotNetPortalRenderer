@@ -9,11 +9,8 @@ namespace RenderingEngine.Engine
     internal sealed class TempBuffer<T> : IDisposable
         where T : unmanaged
     {
-        public int Index { get; set; } = -1;
         private readonly int _length;
         private readonly T[] _buffer;
-
-        public ref T Pointer => ref MemoryMarshal.GetArrayDataReference(_buffer);
 
         public Span<T> Span => _buffer.AsSpan(0, _length);
 

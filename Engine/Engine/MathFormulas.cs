@@ -315,10 +315,10 @@ namespace RenderingEngine.Engine
             return (floorZ, ceilZ);
         }
 
-        public sealed class FloorCeilSlope
+        public readonly ref struct FloorCeilSlope
         {
-            public required float FloorZ { get; set; }
-            public required float CeilZ { get; set; }
+            public required float FloorZ { get; init; }
+            public required float CeilZ { get; init; }
             public required float FloorZIncrament { get; init; }
             public required float CeilZIncrament { get; init; }
         }

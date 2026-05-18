@@ -1,6 +1,6 @@
 ﻿namespace RenderingEngine.Models;
 
-public sealed class RenderablePlaneInfo
+public readonly ref struct RenderablePlaneInfo
 {
     public required float WallStartY { get; init; }
     public required float WallEndY { get; init; }

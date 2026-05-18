@@ -577,7 +577,7 @@ namespace RenderingEngine.Engine
 
         public static Span<RenderableSprite> RotateSprites(scoped ReadOnlySpan<RenderableSprite> sprites, PortalPlayerSnapshot player)
         {
-            var rotatedSprites = new List<RenderableSprite>(sprites.Length);
+            var rotatedSprites = new RenderableSprite[sprites.Length];
 
             float pSin = player.Sin;
             float pCos = player.Cos;
@@ -587,12 +587,13 @@ namespace RenderingEngine.Engine
             for (int i = 0; i < sprites.Length; i++)
             {
                 RenderableSprite s = sprites[i];
-                CreateRotatedCopy(s);
+                RotateSprite(s);
+                rotatedSprites[i] = s;
             }
 
-            return CollectionsMarshal.AsSpan(rotatedSprites);
+            return rotatedSprites;
 
-            void CreateRotatedCopy(RenderableSprite s)
+            void RotateSprite(RenderableSprite s)
             {
                 TextureInfo texture = s.Texture;
 
@@ -605,28 +606,20 @@ namespace RenderingEngine.Engine
                     Point r3 = SharedHelpers.RotateVertex(floorSprite.PointC, pSin, pCos, px, py);
                     Point r4 = SharedHelpers.RotateVertex(floorSprite.PointD, pSin, pCos, px, py);
 
-                    rotatedSprites.Add(new RenderableFloorSprite
-                    {
-                        Sprite = s.Sprite,
-                        Rotated = rotated,
-                        R1 = r1,
-                        R2 = r2,
-                        R3 = r3,
-                        R4 = r4
-                    });
+                    floorSprite.Rotated = rotated;
+                    floorSprite.R1 = r1;
+                    floorSprite.R2 = r2;
+                    floorSprite.R3 = r3;
+                    floorSprite.R4 = r4;
                 }
-                else if (s is RenderableWallSprite)
+                else if (s is RenderableWallSprite wallSprite)
                 {
                     Point r1 = RotateVertex(s.PointA);
                     Point r2 = RotateVertex(s.PointB);
 
-                    rotatedSprites.Add(new RenderableWallSprite
-                    {
-                        Sprite = s.Sprite,
-                        Rotated = rotated,
-                        R1 = r1,
-                        R2 = r2
-                    });
+                    wallSprite.Rotated = rotated;
+                    wallSprite.R1 = r1;
+                    wallSprite.R2 = r2;
                 }
                 else
                 {
@@ -640,16 +633,11 @@ namespace RenderingEngine.Engine
                     Point r1 = new(rx1, ry1);
                     Point r2 = new(rx2, ry2);
 
-                    rotatedSprites.Add(new RenderableBasicSprite
-                    {
-                        Sprite = s.Sprite,
-                        Rotated = rotated,
-                        R1 = r1,
-                        R2 = r2
-                    });
+                    s.Rotated = rotated;
+                    s.R1 = r1;
+                    s.R2 = r2;
                 }
             }
-
 
             (float x, float y) RotateVertex(Point p)
             {

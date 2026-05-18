@@ -26,18 +26,18 @@ namespace RenderingEngine.Engine
                 return;
             }
 
+            int width = PixelWidth;
+
             Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
 
-            int width = PixelWidth;
+            Span<int> spriteWindowTop = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXLocation)[..width];
+            Span<int> spriteWindowBottom = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureYIncrement)[..width];
 
             int bufferOffset = PixelWidth * renderableWall.Depth;
 
             Span<float> distance = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance)[bufferOffset..];
             Span<int> wallStartSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
             Span<int> wallEndSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];
-
-            Span<int> spriteWindowTop = TempBuffer<int>.GetBuffer(width);
-            Span<int> spriteWindowBottom = TempBuffer<int>.GetBuffer(width);
 
             spriteWindowTop[from..to].Fill(int.MaxValue);
             spriteWindowBottom[from..to].Fill(int.MinValue);

@@ -87,12 +87,17 @@ namespace RenderingEngine.Engine
 
             int length = spriteToX - spriteFromX;
 
-            Span<int> textureYPosArray = TempBuffer<int>.GetBuffer(length);
-            Span<int> textureXPosArray = TempBuffer<int>.GetBuffer(length);
-            Span<int> clampedFromYArray = TempBuffer<int>.GetBuffer(length);
-            Span<int> clampedToYArray = TempBuffer<int>.GetBuffer(length);
-            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
-            Span<ushort> repeatedCountB = TempBuffer<ushort>.GetBuffer(length);
+            Span<int> tmpBuffer = TempBuffer<int>.GetBuffer(length * 5);
+            Span<int> textureYPosArray = tmpBuffer[..length];
+            tmpBuffer = tmpBuffer[length..];
+            Span<int> textureXPosArray = tmpBuffer[..length];
+            tmpBuffer = tmpBuffer[length..];
+            Span<int> clampedFromYArray = tmpBuffer[..length];
+            tmpBuffer = tmpBuffer[length..];
+            Span<int> clampedToYArray = tmpBuffer[..length];
+            tmpBuffer = tmpBuffer[length..];
+            Span<ushort> repeatedCount = MemoryMarshal.Cast<int, ushort>(tmpBuffer)[..length];
+            Span<ushort> repeatedCountB = MemoryMarshal.Cast<int, ushort>(tmpBuffer)[length..];
 
             int textureXIncr = (textureWidth << 16) / (spriteEndY - spriteStartY);
 
