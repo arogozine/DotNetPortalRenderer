@@ -408,7 +408,6 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-
             if (sprite.R1.Y < 0f || sprite.R2.Y < 0f || sprite.R3.Y < 0f || sprite.R4.Y < 0f)
             {
                 for (int i = 0; i < spriteWindowBottom.Length; i++)
@@ -421,7 +420,7 @@ namespace RenderingEngine.Engine
                         continue;
                     }
 
-                    spriteWindowTop[i] = 0;
+                    spriteWindowBottom[i] = PixelHeight - 1;
                 }
             }
         }

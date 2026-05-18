@@ -894,8 +894,7 @@ namespace RenderingEngine.Engine
             Clamp(ref xLeft, ref xRight);
 
             {
-                bool flipped = sprite.Flipped ? rx2 * ry1 < ry2 * rx1 : rx2 * ry1 > ry2 * rx1;
-                sprite.Flipped = sprite.Flipped ? !flipped : flipped;
+                sprite.Flipped = sprite.Flipped ? rx2 * ry1 < ry2 * rx1 : rx2 * ry1 > ry2 * rx1;
             }
 
             // order left to right

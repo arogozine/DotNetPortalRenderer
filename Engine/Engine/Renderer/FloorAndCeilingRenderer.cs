@@ -309,6 +309,8 @@ namespace RenderingEngine.Engine
 
             fixed (uint* texturePtr = &floorTexturePtr)
             {
+                Sse.Prefetch2(texturePtr);
+
                 RenderFloorOrCeilingColumn(repeatedCount, screenPtr, texturePtr, sectorFromX, sectorToX, floorEnd[sectorFromX..], wallEndClamped, width,
                     yfloor, yOffset, xOffset, textureWidth,
                     textureHeightMask, textureWidthMask, rotated, rSinV, rCosV, alignWallXV, alignWallYV, xyOpts, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);
@@ -319,7 +321,7 @@ namespace RenderingEngine.Engine
         private unsafe void RenderFloorOrCeilingColumn(
             Span<ushort> repeatedCount,
             uint* screenPtr,
-            uint* textureRef,
+            uint* texturePtr,
             int sectorFrom, int sectorTo,
             Span<int> floorTo,
             Span<int> floorFrom,
@@ -371,8 +373,8 @@ namespace RenderingEngine.Engine
 
             int halfHeight = PixelHeight / 2;
 
-            float* xMapPosMultiplierCacheRef = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
-            float* incrCacheRef = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
+            float* xMapPosMultiplierCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
+            float* incrCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
             CreateSlopeVectors();
 
@@ -407,7 +409,7 @@ namespace RenderingEngine.Engine
                     int floorFromY = floorFrom[x - sectorFrom];
                     int floorToY = floorTo[x - sectorFrom];
 
-                    RenderColumn(floorToY, floorFromY, x, *(xMapPosMultiplierCacheRef + x));
+                    RenderColumn(floorToY, floorFromY, x, *(xMapPosMultiplierCachePtr + x));
                     x++;
                 }
             }
@@ -420,7 +422,7 @@ namespace RenderingEngine.Engine
                 int min_t, int max_t, int min_b, int max_b
                 )
             {
-                Vector<float> xMapPosMultiplierCacheV = Vector.Load(xMapPosMultiplierCacheRef + x);
+                Vector<float> xMapPosMultiplierCacheV = Vector.Load(xMapPosMultiplierCachePtr + x);
 
                 // render tops where there is no shared window
                 if (min_t != max_t)
@@ -430,7 +432,7 @@ namespace RenderingEngine.Engine
 
                 for (int y = max_t, screenIndex = y * width + x; y <= min_b; y++, screenIndex += width)
                 {
-                    Vector<float> incramentVector = Vector.Create(*(incrCacheRef + y));
+                    Vector<float> incramentVector = Vector.Create(*(incrCachePtr + y));
 
                     uint* screenTexPtr = screenPtr + screenIndex;
 
@@ -438,18 +440,15 @@ namespace RenderingEngine.Engine
 
                     if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                     {
-                        Vector256<uint> gathered = Avx2.GatherVector256(textureRef, textureIndex.AsVector256(), scale: sizeof(int));
+                        Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndex.AsVector256(), scale: sizeof(int));
 
-                        for (int i = 0; i < Vector<int>.Count; i++)
-                        {
-                            screenTexPtr[i] = gathered[i];
-                        }
+                        gathered.Store(screenTexPtr);
                     }
                     else
                     {
                         for (int i = 0; i < Vector<int>.Count; i++)
                         {
-                            screenTexPtr[i] = textureRef[textureIndex[i]];
+                            screenTexPtr[i] = texturePtr[textureIndex[i]];
                         }
                     }
                 }
@@ -468,9 +467,9 @@ namespace RenderingEngine.Engine
                 int xStart)
             {
                 uint* screenTexPtr = screenPtr + floorFromY * width + xStart;
-                float* xMapPosMult = xMapPosMultiplierCacheRef + xStart;
+                float* xMapPosMult = xMapPosMultiplierCachePtr + xStart;
 
-                float* incr = incrCacheRef + floorFromY;
+                float* incr = incrCachePtr + floorFromY;
 
                 for (int y = floorFromY; y < floorToY; y++)
                 {
@@ -480,7 +479,7 @@ namespace RenderingEngine.Engine
                         {
                             float xMult = *(xMapPosMult + i);
                             int textureIndex = GetXyFromScreenSpaceScalar(*incr, xMult);
-                            screenTexPtr[i] = textureRef[textureIndex];
+                            screenTexPtr[i] = texturePtr[textureIndex];
                         }
                     }
 
@@ -496,9 +495,9 @@ namespace RenderingEngine.Engine
                 int xStart)
             {
                 uint* screenTexPtr = screenPtr + min_t * width + xStart;
-                float* xMapPosMult = xMapPosMultiplierCacheRef + xStart;
+                float* xMapPosMult = xMapPosMultiplierCachePtr + xStart;
 
-                float* incr = incrCacheRef + min_t;
+                float* incr = incrCachePtr + min_t;
 
                 for (int y = min_t; y < max_t; y++)
                 {
@@ -511,7 +510,7 @@ namespace RenderingEngine.Engine
 
                         float xMult = *(xMapPosMult + i);
                         int textureIndex = GetXyFromScreenSpaceScalar(*incr, xMult);
-                        screenTexPtr[i] = textureRef[textureIndex];
+                        screenTexPtr[i] = texturePtr[textureIndex];
                     }
 
                     screenTexPtr += width;
@@ -530,7 +529,7 @@ namespace RenderingEngine.Engine
                 int columnHeight = floorToY - floorFromY;
                 int rem = columnHeight & (Vector<int>.Count - 1);
 
-                Vector<float> incramentVector = Vector.Load(incrCacheRef + floorFromY);
+                Vector<float> incramentVector = Vector.Load(incrCachePtr + floorFromY);
 
                 if (columnHeight != rem)
                 {
@@ -546,7 +545,7 @@ namespace RenderingEngine.Engine
 
                         if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                         {
-                            Vector256<uint> gathered = Avx2.GatherVector256(textureRef, textureIndex.AsVector256(), scale: sizeof(uint));
+                            Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndex.AsVector256(), scale: sizeof(uint));
 
                             for (int i = 0; i < Vector<int>.Count; i++)
                             {
@@ -558,13 +557,13 @@ namespace RenderingEngine.Engine
                         {
                             for (int i = 0; i < Vector<int>.Count; i++)
                             {
-                                *cur = textureRef[textureIndex[i]];
+                                *cur = texturePtr[textureIndex[i]];
                                 cur += width;
                             }
                         }
 
                         floorFromY += Vector<float>.Count;
-                        incramentVector = Vector.Load(incrCacheRef + floorFromY);
+                        incramentVector = Vector.Load(incrCachePtr + floorFromY);
                     }
 
                     screenTexPtr = cur;
@@ -574,7 +573,7 @@ namespace RenderingEngine.Engine
                 {
                     int textureIndex = GetXyFromScreenSpaceScalar(incramentVector[i], xMapPosMultiplier);
 
-                    *screenTexPtr = textureRef[textureIndex];
+                    *screenTexPtr = texturePtr[textureIndex];
                     screenTexPtr += width;
                 }
             }

@@ -12,7 +12,7 @@ namespace RenderingEngine.Engine
             return ref Unsafe.AsRef<T>(buffer);
         }
 
-        private bool DrawBasicWall(
+        private unsafe bool DrawBasicWall(
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall)
         {
@@ -53,8 +53,8 @@ namespace RenderingEngine.Engine
                 statusRef = ref Unsafe.Add(ref statusRef, 1);
             }
 
-            Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStartClamped);
-            Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEndClamped);
+            uint* wallStartClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.WallStartClamped);
+            uint* wallEndClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.WallEndClamped);
 
             DrawWallShared(renderableWall, wall.MiddleTexture!, repeatedCount, wallStartClamped, wallEndClamped);
 

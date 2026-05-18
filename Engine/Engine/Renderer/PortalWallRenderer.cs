@@ -118,7 +118,7 @@ namespace RenderingEngine.Engine
             return repeatedCount;
         }
 
-        private void DrawUpperPortalWall(
+        private unsafe void DrawUpperPortalWall(
             RenderablePortalWall renderableWall)
         {
             RenderableWall wall = renderableWall.Wall;
@@ -126,15 +126,15 @@ namespace RenderingEngine.Engine
 
             Debug.Assert(upperTexture != null);
 
-            Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallStartClamped);
-            Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.PortalFromClamped);
+            uint* wallStartClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.WallStartClamped);
+            uint* wallEndClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalFromClamped);
 
             Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall);
 
             DrawWallShared(renderableWall, upperTexture, repeatedCount, wallStartClamped, wallEndClamped);
         }
 
-        private void DrawLowerPortalWall(
+        private unsafe void DrawLowerPortalWall(
             RenderablePortalWall renderableWall)
         {
             RenderableWall wall = renderableWall.Wall;
@@ -142,8 +142,8 @@ namespace RenderingEngine.Engine
 
             Debug.Assert(lowerTexture != null);
 
-            Span<uint> wallStartClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.PortalToClamped);
-            Span<uint> wallEndClamped = memoryPool.GetBucket<uint>(MemoryPoolBucket.WallEndClamped);
+            uint* wallStartClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalToClamped);
+            uint* wallEndClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.WallEndClamped);
 
             Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall);
 
