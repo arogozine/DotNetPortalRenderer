@@ -611,6 +611,7 @@ namespace RenderingEngine.Engine
                     floorSprite.R2 = r2;
                     floorSprite.R3 = r3;
                     floorSprite.R4 = r4;
+                    floorSprite.Flipped = false;
                 }
                 else if (s is RenderableWallSprite wallSprite)
                 {
@@ -620,6 +621,7 @@ namespace RenderingEngine.Engine
                     wallSprite.Rotated = rotated;
                     wallSprite.R1 = r1;
                     wallSprite.R2 = r2;
+                    wallSprite.Flipped = false;
                 }
                 else
                 {

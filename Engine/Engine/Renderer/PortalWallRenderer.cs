@@ -66,30 +66,28 @@ namespace RenderingEngine.Engine
         }
 
 
-        private void DrawUpperSkyboxPortalWall(
+        private unsafe void DrawUpperSkyboxPortalWall(
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall)
         {
-            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFromClamped);
-
-
+            int* wallStartClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
+            int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
             RenderableWall wall = renderableWall.Wall;
 
             Debug.Assert(wall.UpperTexture is not null);
-            DrawBasicSkyboxWall(player, renderableWall, wallStartClamped, wallEndClamped, wall.UpperTexture);
+            DrawBasicSkyboxWall(player, renderableWall, wallStartClampedPtr, wallEndClampedPtr, wall.UpperTexture);
         }
 
-        private void DrawLowerSkyboxPortalWall(
+        private unsafe void DrawLowerSkyboxPortalWall(
                 PortalPlayerSnapshot player,
                 RenderablePortalWall renderableWall)
         {
-            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalToClamped);
-            Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            int* wallStartClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
+            int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
             RenderableWall wall = renderableWall.Wall;
 
             Debug.Assert(wall.LowerTexture is not null);
-            DrawBasicSkyboxWall(player, renderableWall, wallStartClamped, wallEndClamped, wall.LowerTexture);
+            DrawBasicSkyboxWall(player, renderableWall, wallStartClampedPtr, wallEndClampedPtr, wall.LowerTexture);
         }
 
         private Span<ushort> DetermineMaxHorizontalRenderingDistance(RenderablePortalWall renderableWall)

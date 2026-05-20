@@ -10,212 +10,379 @@ namespace RenderingEngine.Engine
     {
         private unsafe void RenderSkyboxVector(PortalPlayerSnapshot player, Sector sector)
         {
-            const float oneOverTwoPi = 1f / (2 * MathF.PI);
-
-            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-
-            int width = PixelWidth;
-            int height = PixelHeight;
-            float viewAngle = player.Angle;
-
             TextureInfo textureInfo = sector.CeilTexture;
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
+
             ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(sector.CeilingShade, TextureTransform.Normal);
-            ref uint screenPtr = ref GetScreenPtr<uint>();
-            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
+
+            uint* screenPtr = (uint*)buffer;
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            int textureWidth = texture.Width;
-            int textureHeight = texture.Height;
+            int* wallStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
+            int* ceilingStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
+            int* floorEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
 
+            fixed (uint* texturePtr = &ceilingTexturePtr)
+            {
+                Sse.Prefetch2(texturePtr);
+
+                RenderSkyboxShared(player, RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderCeiling,
+                    screenPtr, texturePtr, sectorFromX, sectorToX,
+                    ceilingStartPtr, wallStartPtr,
+                    ceilingStartPtr, floorEndPtr,
+                    PixelWidth,
+                    texture.Width, texture.Height);
+            }
+        }
+
+        private unsafe void RenderSkyboxShared(PortalPlayerSnapshot player,
+            RenderColumnStatus renderColumnStatus,
+            uint* screenPtr,
+            uint* texturePtr,
+            int sectorFromX, int sectorToX,
+            int* fromYPtr, int* toYPtr,
+            int* ceilingStartPtr, int* floorEndPtr,
+            int width,
+            int textureWidth,
+            int textureHeight)
+        {
+            float* angleCache = stackalloc float[Vector<float>.Count];
+
+            const float oneOverTwoPi = 1f / (2 * MathF.PI);
+            float viewAngle = player.Angle;
             float textureWidth4 = textureWidth * 4f * oneOverTwoPi;
 
-            int yTextureIncr = float.ConvertToInteger<int>((1f / height) * (textureHeight << 16));
+            float yTextureIncr = ((float)textureHeight) / PixelHeight;
 
-            Vector<int> textureWidthV = Vector.Create(texture.Width);
-            Vector<int> ivIncrF = new(yTextureIncr * Vector<float>.Count);
+            Vector<float> textureWidth4V = Vector.Create(textureWidth4);
+            Vector<float> yTextureIncrV = Vector.Create(yTextureIncr);
+            Vector<float> viewAngleV = Vector.Create(viewAngle);
+            Vector<int> widthMask = Vector.Create(textureWidth - 1);
 
-            Vector<int> incramentVector = Vector.CreateSequence(0, yTextureIncr);
+            float* angleCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.AngleCache);
 
-            for (int x = sectorFromX; x <= sectorToX; x++)
+            Span<ushort> repeatedCount = CaclulateRepeatedCount();
+            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
+
+            for (int x = sectorFromX; x < sectorToX;)
             {
-                RenderColumnStatus columnStatus = RenderWindowHelper.Status[x];
+                ushort count = repeatedCount[x - sectorFromX];
 
-                if (!columnStatus.CeilingRenderable)
+                if (count == 0)
                 {
+                    x++;
                     continue;
                 }
 
-                // calculate angle between 0 to 2 PI
-                float angleX = Unsafe.Add(ref angleCachePtr, x) - viewAngle;
+                if (count >= Vector<int>.Count)
+                {
+                    Vector<int> wallStartY = Vector.Load(fromYPtr + x);
+                    Vector<int> wallEndY = Vector.Load(toYPtr + x);
+
+                    Vector<int> ceilingStartY = Vector.Load(ceilingStartPtr + x);
+                    Vector<int> floorEndY = Vector.Load(floorEndPtr + x);
+
+                    wallStartY = Vector.ClampNative(wallStartY, ceilingStartY, floorEndY);
+                    wallEndY = Vector.ClampNative(wallEndY, ceilingStartY, floorEndY);
+
+                    (int min_t, int max_t, int min_b, int max_b) = CalculateLaneTopBottoms(wallStartY, wallEndY);
+
+                    if (min_b > max_t + 16)
+                    {
+                        RenderLine(x, wallEndY, wallStartY, min_t, max_t, min_b, max_b);
+
+                        x += Vector<int>.Count;
+                        count -= (ushort)Vector<int>.Count;
+                        continue;
+                    }
+
+                }
+
+                while (count-- > 0)
+                {
+                    int wallStartY = fromYPtr[x];
+                    int wallEndY = toYPtr[x];
+
+                    int ceilingStartY = ceilingStartPtr[x];
+                    int floorEndY = floorEndPtr[x];
+
+                    wallStartY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
+                    wallEndY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
+
+
+                    RenderColumn(player, wallStartY, wallEndY, x);
+
+                    x++;
+                }
+            }
+
+            return;
+
+
+            static (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(Vector<int> from, Vector<int> to)
+            {
+                if (Vector<int>.Count == 8)
+                {
+                    Vector256<int> fromV = from.AsVector256();
+                    Vector256<int> toV = to.AsVector256();
+
+                    (int min_t, int max_t) = GetMinMaxValue(fromV);
+                    (int min_b, int max_b) = GetMinMaxValue(toV);
+
+                    return (min_t, max_t, min_b, max_b);
+                }
+                else if (Vector<int>.Count == 4)
+                {
+                    Vector128<int> fromV = from.AsVector128();
+                    Vector128<int> toV = to.AsVector128();
+
+                    (int min_t, int max_t) = GetMinMaxValue(fromV);
+                    (int min_b, int max_b) = GetMinMaxValue(toV);
+
+                    return (min_t, max_t, min_b, max_b);
+                }
+                else
+                {
+                    int min_t = int.MaxValue, max_t = int.MinValue;
+                    int min_b = int.MaxValue, max_b = int.MinValue;
+
+                    // compute per-lane tops/bottoms
+                    for (int i = 0; i < Vector<int>.Count; i++)
+                    {
+                        int top = from[i];
+                        min_t = MathFormulas.Min(min_t, top);
+                        max_t = MathFormulas.Max(max_t, top);
+
+                        int bottom = to[i];
+                        min_b = MathFormulas.Min(min_b, bottom);
+                        max_b = MathFormulas.Max(max_b, bottom);
+                    }
+
+                    return (min_t, max_t, min_b, max_b);
+                }
+            }
+
+
+            void RenderLine(
+                int x,
+                Vector<int> to, Vector<int> from,
+                int min_t, int max_t, int min_b, int max_b
+                )
+            {
+                Vector<float> angleXV = Vector.Load(angleCachePtr + x) - viewAngleV;
+                for (int i = 0; i < Vector<float>.Count; i++)
+                {
+                    angleCache[i] = MathFormulas.ClampAngle(angleXV[i]);
+                }
+                angleXV = Vector.Load(angleCache);
+
+                // render tops where there is no shared window
+                if (min_t != max_t)
+                {
+                    RenderColumnAngleTop(min_t, max_t, from, x);
+                }
+
+                Vector<float> vScreenV = max_t * yTextureIncrV;
+                Vector<int> texXV = Vector.ConvertToInt32Native(textureWidth4V * angleXV) & widthMask;
+
+                uint* fromPtr = screenPtr + max_t * width + x;
+
+                if (Avx2.IsSupported && Vector<uint>.Count == Vector256<uint>.Count)
+                {
+                    for (int y = max_t; y <= min_b; y++)
+                    {
+                        Vector<int> textureIndex = texXV + textureWidth * Vector.ConvertToInt32Native(vScreenV);
+                        Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndex.AsVector256(), scale: sizeof(int));
+                        gathered.Store(fromPtr);
+
+                        fromPtr += width;
+                        vScreenV += yTextureIncrV;
+                    }
+                }
+                else
+                {
+                    for (int y = max_t; y <= min_b; y++)
+                    {
+                        Vector<int> textureIndex = texXV + textureWidth * Vector.ConvertToInt32Native(vScreenV);
+
+                        for (int i = 0; i < Vector<float>.Count; i++)
+                        {
+                            *(fromPtr + i) = *(texturePtr + textureIndex[i]);
+                        }
+
+                        fromPtr += width;
+                        vScreenV += yTextureIncrV;
+                    }
+                }
+
+                // render bottoms where there is no shared window
+                if (min_b != max_b)
+                {
+                    RenderColumnAngleBottom(min_b, max_b, to, x);
+                }
+            }
+
+            void RenderColumnAngleBottom(
+                int floorFromY,
+                int floorToY,
+                Vector<int> to,
+                int xStart)
+            {
+                uint* screenTexPtr = screenPtr + floorFromY * width + xStart;
+                float* anglePtr = angleCachePtr + xStart;
+                float vScreen = floorFromY * yTextureIncr;
+
+                for (int y = floorFromY; y < floorToY; y++)
+                {
+                    for (int i = 0; i < Vector<uint>.Count; i++)
+                    {
+                        if (to[i] <= y)
+                        {
+                            continue;
+                        }
+
+                        float angleX = MathFormulas.ClampAngle(*(anglePtr + i) - viewAngle);
+                        int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
+
+
+
+                        uint* textureColumnPtr = texturePtr + texX;
+
+                        int index = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
+
+
+                        screenTexPtr[i] = texturePtr[index];
+
+                    }
+
+                    screenTexPtr += width;
+                    vScreen += yTextureIncr;
+                }
+            }
+
+            void RenderColumnAngleTop(
+                int min_t,
+                int max_t,
+                Vector<int> from,
+                int xStart)
+            {
+                uint* screenTexPtr = screenPtr + min_t * width + xStart;
+                float* anglePtr = angleCachePtr + xStart;
+
+                float vScreen = min_t * yTextureIncr;
+
+                for (int y = min_t; y < max_t; y++)
+                {
+                    for (int i = 0; i < Vector<uint>.Count; i++)
+                    {
+                        if (from[i] >= y)
+                        {
+                            continue;
+                        }
+
+                        float angleX = MathFormulas.ClampAngle(*(anglePtr + i) - viewAngle);
+                        int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
+
+                        uint* textureColumnPtr = texturePtr + texX;
+
+                        int index = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
+
+                        uint tex = texturePtr[index];
+                        screenTexPtr[i] = tex;
+                    }
+
+                    screenTexPtr += width;
+                    vScreen += yTextureIncr;
+                }
+            }
+
+            void RenderColumn(PortalPlayerSnapshot player, int fromY, int toY, int x)
+            {
+                uint* fromPtr = screenPtr + fromY * width + x;
+                uint* toPtr = screenPtr + toY * width + x;
+
+                float angleX = *(angleCachePtr + x) - viewAngle;
                 angleX = MathFormulas.ClampAngle(angleX);
 
                 int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
 
-                int wallStartY = wallStart[x];
-                int ceilingStartY = ceilingStart[x];
-                int floorEndY = floorEnd[x];
-                int wallStartClampedY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
+                float vScreen = fromY * yTextureIncr;
+                uint* textureColumnPtr = texturePtr + texX;
 
-                int rem = (wallStartClampedY - ceilingStartY) % Vector<int>.Count;
-                wallStartClampedY -= rem;
-
-                ref uint screenColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * ceilingStartY);
-                ref uint screenEndColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * wallStartClampedY);
-                ref uint textureColumnPtr = ref Unsafe.Add(ref ceilingTexturePtr, texX);
-
-                int vScreen = ceilingStartY * yTextureIncr;
-                Vector<int> vScreenV = Vector.Create(vScreen) + incramentVector;
-
-                for (; !Unsafe.AreSame(ref screenColumnPtr, ref screenEndColumnPtr); vScreenV += ivIncrF)
+                for (; fromPtr != toPtr; vScreen += yTextureIncr, fromPtr += width)
                 {
-                    Vector<int> texY = (vScreenV >> 16) * textureWidthV;
+                    int index = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
+                    uint tex = *(textureColumnPtr + index);
+                    *fromPtr = tex;
+                }
+            }
 
-                    if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
+            Span<ushort> CaclulateRepeatedCount()
+            {
+                RenderColumnStatus* status = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+
+                int length = sectorToX - sectorFromX;
+
+                Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length + 1);
+
+                for (int x = sectorFromX; x <= sectorToX; x++)
+                {
+                    RenderColumnStatus columnStatus = status[x];
+
+                    if (!columnStatus.HasFlag(renderColumnStatus))
                     {
-                        Vector256<uint> gathered = Avx2.GatherVector256(
-                            (uint*)Unsafe.AsPointer(ref textureColumnPtr),
-                            texY.AsVector256(),
-                            scale: sizeof(uint)
-                        );
-
-                        for (int j = 0; j < Vector<int>.Count; j++)
-                        {
-                            screenColumnPtr = gathered[j];
-                            screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
-                        }
+                        repeatedCount[x - sectorFromX] = 0;
+                        continue;
                     }
-                    else
-                    {
-                        ref int texYPtr = ref Unsafe.As<Vector<int>, int>(ref texY);
 
-                        for (int j = 0; j < Vector<int>.Count; j++)
-                        {
-                            int index = Unsafe.Add(ref texYPtr, j);
-
-                            screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
-                            screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
-                        }
-                    }
+                    repeatedCount[x - sectorFromX] = (ushort)length;
                 }
 
-                Vector<int> vScreenVInt = textureWidthV * (vScreenV >> 16);
-
-                for (int y = 0; y < rem; y++)
-                {
-                    int index = vScreenVInt[y];
-                    screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
-                    screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
-                }
+                return repeatedCount;
             }
         }
 
-        private void RenderSkyboxFloorVector(
+        private unsafe void RenderSkyboxFloorVector(
             PortalPlayerSnapshot player,
             Sector sector)
         {
-            const float oneOverTwoPi = 1f / (2 * MathF.PI);
-
-            ReadOnlySpan<RenderColumnStatus> statusSpan = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            ReadOnlySpan<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            ReadOnlySpan<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            ReadOnlySpan<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-
-            int width = PixelWidth;
-            int height = PixelHeight;
-            float viewAngle = player.Angle;
-
             TextureInfo textureInfo = sector.FloorTexture;
             Texture texture = TextureCache.GetTexture(textureInfo.Name);
-            ref BGRA ceilingTexturePtr = ref texture.GetBinaryRef<BGRA>(sector.FloorShade, TextureTransform.Normal);
-            ref BGRA screenPtr = ref GetScreenPtr<BGRA>();
-            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
+
+            ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(sector.CeilingShade, TextureTransform.Normal);
+
+            uint* screenPtr = (uint*)buffer;
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
-            int textureWidth = texture.Width;
-            int textureHeight = texture.Height;
+            int* wallEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
+            int* ceilingStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
+            int* floorEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
 
-            float textureWidth4 = textureWidth * 4f * oneOverTwoPi;
-            float yTextureIncr = (1f / height) * textureHeight;
-
-            Vector<int> textureWidthV = Vector.Create(texture.Width);
-
-            Vector<float> ivIncrF = new(yTextureIncr * Vector<float>.Count);
-
-            Vector<float> incramentVector = Vector.CreateSequence(0f, yTextureIncr);
-
-            for (int x = sectorFromX; x <= sectorToX; x++)
+            fixed (uint* texturePtr = &ceilingTexturePtr)
             {
-                RenderColumnStatus columnStatus = statusSpan[x];
+                Sse.Prefetch2(texturePtr);
 
-                if (!columnStatus.FloorRenderable)
-                {
-                    continue;
-                }
-
-                // calculate angle between 0 to 2 PI
-                float angleX = Unsafe.Add(ref angleCachePtr, x) - viewAngle;
-                angleX = MathFormulas.ClampAngle(angleX);
-
-                int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
-
-                int wallStart = wallStartSpan[x];
-                int ceilingStart = ceilingStartSpan[x];
-                int floorEnd = floorEndSpan[x];
-                int wallStartClamped = Math.Clamp(wallStart, ceilingStart, floorEnd);
-
-                int rem = (floorEnd - wallStartClamped) % Vector<int>.Count;
-                floorEnd -= rem;
-
-                ref BGRA screenColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * wallStartClamped);
-                ref BGRA screenEndColumnPtr = ref Unsafe.Add(ref screenPtr, x + width * floorEnd);
-                ref BGRA textureColumnPtr = ref Unsafe.Add(ref ceilingTexturePtr, texX);
-
-                float vScreen = wallStartClamped * yTextureIncr;
-                Vector<float> vScreenV = Vector.Create(vScreen) + incramentVector;
-
-                for (; !Unsafe.AreSame(ref screenColumnPtr, ref screenEndColumnPtr); vScreenV += ivIncrF)
-                {
-                    Vector<int> texY = Vector.ConvertToInt32Native(vScreenV) * textureWidthV;
-
-                    ref int texYPtr = ref Unsafe.As<Vector<int>, int>(ref texY);
-
-                    for (int j = 0; j < Vector<int>.Count; j++)
-                    {
-                        int index = Unsafe.Add(ref texYPtr, j);
-
-                        screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
-                        screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
-                    }
-                }
-
-                Vector<int> vScreenVInt = Vector.ConvertToInt32Native(vScreenV);
-
-                for (int y = 0; y < rem; y++)
-                {
-                    int index = vScreenVInt[y] * textureWidth;
-
-                    screenColumnPtr = Unsafe.Add(ref textureColumnPtr, index);
-                    screenColumnPtr = ref Unsafe.Add(ref screenColumnPtr, width);
-                }
+                RenderSkyboxShared(player, RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderFloor,
+                    screenPtr, texturePtr, sectorFromX, sectorToX,
+                    wallEndPtr, floorEndPtr,
+                    ceilingStartPtr, floorEndPtr,
+                    PixelWidth,
+                    texture.Width, texture.Height);
             }
-
         }
 
-        private bool DrawBasicSkyboxWall(
+        private unsafe bool DrawBasicSkyboxWall(
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall)
         {
-            Span<int> wallStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            Span<int> wallEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            int* wallStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
+            int* wallEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
 
             RenderableWall wall = renderableWall.Wall;
             Debug.Assert(wall.MiddleTexture != null);
-            DrawBasicSkyboxWall(player, renderableWall, wallStartSpan, wallEndSpan, wall.MiddleTexture);
+            DrawBasicSkyboxWall(player, renderableWall, wallStartPtr, wallEndPtr, wall.MiddleTexture);
 
             // Set render status to finished
             int wallFromX = renderableWall.XLeft;
@@ -226,104 +393,36 @@ namespace RenderingEngine.Engine
             return true;
         }
 
-        private void DrawBasicSkyboxWall(
+        private unsafe void DrawBasicSkyboxWall(
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall,
-            Span<int> wallStartSpan, Span<int> wallEndSpan,
+            int* wallStartPtr, int* wallEndPtr,
             TextureInfo wallTexture)
         {
-            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            Span<int> ceilingStartSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> floorEndSpan = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-
-            int width = PixelWidth;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            ref uint screenPtr = ref GetScreenPtr<uint>();
-
+            TextureInfo textureInfo = wallTexture;
             ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(0, TextureTransform.Normal);
-            ref float angleCachePtr = ref memoryPool.GetBucketRef<float>(MemoryPoolBucket.AngleCache);
 
-            for (int x = wallFromX; x <= wallToX; x++)
+            uint* screenPtr = (uint*)buffer;
+
+            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
+            int* ceilingStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
+            int* floorEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
+
+            fixed (uint* texturePtr = &wallTextureUintPtr)
             {
-                RenderColumnStatus columnStatus = status[x];
+                Sse.Prefetch2(texturePtr);
 
-                if (!columnStatus.WallRenderable)
-                {
-                    continue;
-                }
-
-                int ceilingStart = ceilingStartSpan[x];
-                int wallStartY = wallStartSpan[x];
-                int wallEndY = wallEndSpan[x];
-                int floorEndY = floorEndSpan[x];
-
-                int clamptedFromY = Math.Clamp(wallStartY, ceilingStart, floorEndY);
-                int clamptedToY = Math.Clamp(wallEndY, ceilingStart, floorEndY);
-
-                ref uint screenIndexPtr = ref Unsafe.Add(ref screenPtr, clamptedFromY * width + x);
-                ref uint screenIndexPtrEnd = ref Unsafe.Add(ref screenPtr, clamptedToY * width + x);
-
-                RenderSkyboxLine(player,
-                    wallStartSpan,
-                    x,
-                    wallTexture,
-                    ref wallTextureUintPtr,
-                    ref angleCachePtr,
-                    ref screenIndexPtr,
-                    ref screenIndexPtrEnd);
+                RenderSkyboxShared(player, RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall,
+                    screenPtr, texturePtr, sectorFromX, sectorToX,
+                    wallStartPtr, wallEndPtr,
+                    ceilingStartPtr, floorEndPtr,
+                    PixelWidth,
+                    wallTexture.Width, wallTexture.Height);
             }
         }
-
-        private void RenderSkyboxLine(PortalPlayerSnapshot player,
-            Span<int> wallStart,
-            int x,
-            TextureInfo upperTexture,
-            ref uint upperTextureUintPtr,
-            ref float angleCachePtr,
-            ref uint screenIndexPtr,
-            ref readonly uint screenIndexPtrEnd)
-        {
-            var ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            var floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-
-            const float oneOverTwoPi = 1f / (2 * MathF.PI);
-
-            int width = PixelWidth;
-            int height = PixelHeight;
-
-            float viewAngle = player.Angle;
-
-            int textureWidth = upperTexture.Width;
-            int textureHeight = upperTexture.Height;
-
-            float textureWidth4 = textureWidth * 4f * oneOverTwoPi;
-            float yTextureIncr = (1f / height) * textureHeight;
-
-            // calculate angle between 0 to 2 PI
-            float angleX = Unsafe.Add(ref angleCachePtr, x) - viewAngle;
-            angleX = MathFormulas.ClampAngle(angleX);
-
-            int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
-
-            int wallStartY = wallStart[x];
-            int ceilingStartY = ceilingStart[x];
-            int floorEndY = floorEnd[x];
-            int fromYClamped = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
-            float vScreen = fromYClamped * yTextureIncr;
-
-            ref uint textureColumnPtr = ref Unsafe.Add(ref upperTextureUintPtr, texX);
-
-            for (;
-                    Unsafe.IsAddressGreaterThan(in screenIndexPtrEnd, in screenIndexPtr);
-                    vScreen += yTextureIncr, screenIndexPtr = ref Unsafe.Add(ref screenIndexPtr, width)
-                )
-            {
-                int index = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
-                screenIndexPtr = Unsafe.Add(ref textureColumnPtr, index);
-            }
-        }
-
     }
 }
