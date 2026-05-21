@@ -12,7 +12,7 @@ namespace RenderingEngine.Models
         public Point PointA => Line.PointA;
         public Point PointB => Line.PointB;
         public int? SectorTo => Line.SectorTo;
-        public short Shade => Line.Shade;
+        public short? Shade => Line.Shade;
         public bool TwoSided => Line.TwoSided;
         public bool IsMirror => Line.IsMirror;
 

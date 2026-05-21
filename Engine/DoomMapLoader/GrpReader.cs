@@ -774,7 +774,8 @@ namespace RenderingEngine.DoomMapLoader
                             Name = textureName,
                             RenderingOptions = ToRenderingOptions(sprite.CStat),
                             XScale = xScale,
-                            YScale = yScale
+                            YScale = yScale,
+                            Alpha = 1f
                         },
                         SectorId = sprite.SectorNumber,
                         Shade = sprite.Shade
@@ -793,7 +794,8 @@ namespace RenderingEngine.DoomMapLoader
                             Name = textureName,
                             RenderingOptions = ToRenderingOptions(sprite.CStat),
                             XScale = xScale,
-                            YScale = yScale
+                            YScale = yScale,
+                            Alpha = 1f
                         },
                         SectorId = sprite.SectorNumber,
                         Shade = sprite.Shade
@@ -812,7 +814,8 @@ namespace RenderingEngine.DoomMapLoader
                             Name = textureName,
                             RenderingOptions = ToRenderingOptions(sprite.CStat),
                             XScale = xScale,
-                            YScale = yScale
+                            YScale = yScale,
+                            Alpha = 1f
                         },
                         SectorId = sprite.SectorNumber,
                         Shade = sprite.Shade

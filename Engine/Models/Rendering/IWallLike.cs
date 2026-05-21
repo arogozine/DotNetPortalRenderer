@@ -13,5 +13,6 @@
         public int YLeftFloor { get; }
         public int YRightCeil { get; }
         public int YRightFloor { get; }
+        public short? Shade { get; }
     }
 }

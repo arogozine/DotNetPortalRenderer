@@ -256,30 +256,6 @@ namespace RenderingEngine.Engine
 
             return;
 
-            static uint BlendBGRA(uint bgraDstU, uint bgraSrcU)
-            {
-                BGRA bgraDst = Unsafe.As<uint, BGRA>(ref bgraDstU);
-                BGRA bgraSrc = Unsafe.As<uint, BGRA>(ref bgraSrcU);
-
-                const uint a = 127;
-                const uint aInv = 128;
-                const uint Alpha = (uint)byte.MaxValue << 24;
-
-                uint bDst = bgraDst.B;
-                uint gDst = bgraDst.G;
-                uint rDst = bgraDst.R;
-
-                uint bSrc = bgraSrc.B;
-                uint gSrc = bgraSrc.G;
-                uint rSrc = bgraSrc.R;
-
-                uint bOut = (bSrc * a + bDst * aInv) >> 8;
-                uint gOut = (gSrc * a + gDst * aInv) >> 8;
-                uint rOut = (rSrc * a + rDst * aInv) >> 8;
-
-                return (Alpha | (rOut << 16) | (gOut << 8) | bOut);
-            }
-
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             Vector<int> GetXyFromScreenSpace(
                     Vector<float> incramentVector,
