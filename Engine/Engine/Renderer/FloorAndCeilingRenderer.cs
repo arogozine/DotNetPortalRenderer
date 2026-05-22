@@ -108,10 +108,10 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             Sector sector)
         {
-            ReadOnlySpan<RenderColumnStatus> statusSpan = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            ReadOnlySpan<int> wallStartSloped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            ReadOnlySpan<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            RenderColumnStatus* statusPtr = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            int* ceilingStart = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
+            int* wallStartSloped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
+            int* floorEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateCeiling);
 
@@ -180,7 +180,7 @@ namespace RenderingEngine.Engine
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                RenderColumnStatus columnStatus = statusSpan[x];
+                RenderColumnStatus columnStatus = statusPtr[x];
 
                 if (!columnStatus.CeilingRenderable)
                 {
@@ -196,9 +196,10 @@ namespace RenderingEngine.Engine
 
             _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
 
+            fixed (int* wallStartClampedPtr = &wallStartClamped[0])
             fixed (uint* texturePtr = &ceilingTexturePtr)
             {
-                RenderFloorOrCeilingColumn(repeatedCount, screenPtr, texturePtr, sectorFromX, sectorToX, wallStartClamped, ceilingStart[sectorFromX..], width,
+                RenderFloorOrCeilingColumn(repeatedCount, screenPtr, texturePtr, sectorFromX, sectorToX, wallStartClampedPtr, ceilingStart + sectorFromX, width,
                     yCeil, yOffset, xOffset, textureWidth,
                     textureHeightMask, textureWidthMask, rotated, rSinV, rCosV, alignXV, alignYV, xyOpts, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling) ? false : null);
             }
@@ -207,10 +208,10 @@ namespace RenderingEngine.Engine
         [SkipLocalsInit]
         public unsafe void RenderFloorVector(PortalPlayerSnapshot player, Sector sector)
         {
-            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
-            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
-            ReadOnlySpan<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            RenderColumnStatus* statusPtr = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            int* wallEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
+            int* floorEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
+            int* ceilingStart = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateFloor);
             TextureInfo floorTexture = sector.FloorTexture;
@@ -291,7 +292,7 @@ namespace RenderingEngine.Engine
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
-                RenderColumnStatus columnStatus = status[x];
+                RenderColumnStatus columnStatus = statusPtr[x];
 
                 if (!columnStatus.FloorRenderable)
                 {
@@ -307,11 +308,12 @@ namespace RenderingEngine.Engine
 
             _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
 
+            fixed (int* wallClampedPtr = &wallEndClamped[0])
             fixed (uint* texturePtr = &floorTexturePtr)
             {
                 Sse.Prefetch2(texturePtr);
 
-                RenderFloorOrCeilingColumn(repeatedCount, screenPtr, texturePtr, sectorFromX, sectorToX, floorEnd[sectorFromX..], wallEndClamped, width,
+                RenderFloorOrCeilingColumn(repeatedCount, screenPtr, texturePtr, sectorFromX, sectorToX, floorEnd + sectorFromX, wallClampedPtr, width,
                     yfloor, yOffset, xOffset, textureWidth,
                     textureHeightMask, textureWidthMask, rotated, rSinV, rCosV, alignWallXV, alignWallYV, xyOpts, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);
             }
@@ -323,8 +325,8 @@ namespace RenderingEngine.Engine
             uint* screenPtr,
             uint* texturePtr,
             int sectorFrom, int sectorTo,
-            Span<int> floorTo,
-            Span<int> floorFrom,
+            int* floorTo,
+            int* floorFrom,
             int width,
             float cameraPosition,
             int yOffset,
@@ -395,7 +397,7 @@ namespace RenderingEngine.Engine
 
                     if (min_b > max_t + 16)
                     {
-                        RenderLine(x, floorTo[(x - sectorFrom)..], floorFrom[(x - sectorFrom)..],
+                        RenderLine(x, floorTo + (x - sectorFrom), floorFrom + (x - sectorFrom),
                             min_t, max_t, min_b, max_b);
 
                         x += Vector<int>.Count;
@@ -418,7 +420,7 @@ namespace RenderingEngine.Engine
 
             unsafe void RenderLine(
                 int x,
-                ReadOnlySpan<int> to, ReadOnlySpan<int> from,
+                int* to, int* from,
                 int min_t, int max_t, int min_b, int max_b
                 )
             {
@@ -463,7 +465,7 @@ namespace RenderingEngine.Engine
             unsafe void RenderColumnAngleBottom(
                 int floorFromY,
                 int floorToY,
-                ReadOnlySpan<int> to,
+                int* to,
                 int xStart)
             {
                 uint* screenTexPtr = screenPtr + floorFromY * width + xStart;
@@ -491,7 +493,7 @@ namespace RenderingEngine.Engine
             unsafe void RenderColumnAngleTop(
                 int min_t,
                 int max_t,
-                ReadOnlySpan<int> from,
+                int* from,
                 int xStart)
             {
                 uint* screenTexPtr = screenPtr + min_t * width + xStart;
@@ -717,12 +719,15 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(int x, Span<int> from, Span<int> to)
+        private unsafe static (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(int x, int* from, int* to)
         {
+            from += x;
+            to += x;
+
             if (Vector<int>.Count == 8)
             {
-                Vector256<int> fromV = Vector256.LoadUnsafe(ref from[x]);
-                Vector256<int> toV = Vector256.LoadUnsafe(ref to[x]);
+                Vector256<int> fromV = Vector256.Load(from);
+                Vector256<int> toV = Vector256.Load(to);
 
                 (int min_t, int max_t) = GetMinMaxValue(fromV);
                 (int min_b, int max_b) = GetMinMaxValue(toV);
@@ -731,8 +736,8 @@ namespace RenderingEngine.Engine
             }
             else if (Vector<int>.Count == 4)
             {
-                Vector128<int> fromV = Vector128.LoadUnsafe(ref from[x]);
-                Vector128<int> toV = Vector128.LoadUnsafe(ref to[x]);
+                Vector128<int> fromV = Vector128.Load(from);
+                Vector128<int> toV = Vector128.Load(to);
 
                 (int min_t, int max_t) = GetMinMaxValue(fromV);
                 (int min_b, int max_b) = GetMinMaxValue(toV);
@@ -741,10 +746,6 @@ namespace RenderingEngine.Engine
             }
             else
             {
-
-                from = from[x..];
-                to = to[x..];
-
                 int min_t = int.MaxValue, max_t = int.MinValue;
                 int min_b = int.MaxValue, max_b = int.MinValue;
 

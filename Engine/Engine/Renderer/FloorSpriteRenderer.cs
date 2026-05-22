@@ -28,8 +28,6 @@ namespace RenderingEngine.Engine
 
             int width = PixelWidth;
 
-            Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
-
             Span<int> spriteWindowTop = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXLocation)[..width];
             Span<int> spriteWindowBottom = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureYIncrement)[..width];
 
@@ -52,8 +50,8 @@ namespace RenderingEngine.Engine
             uint* screenPtr = (uint*)buffer;
 
             Vector<float> yFloorV = Vector.Create(yFloor);
-            Vector<int> textureHeightMaskV = Vector.Create(texture.Height - 1);
-            Vector<int> textureWidthMaskV = Vector.Create(texture.Width - 1);
+            int textureHeightMask = texture.Height - 1;
+            int textureWidthMask = texture.Width - 1;
             Vector<int> textureWidthV = Vector.Create(textureWidth);
 
             int xOffset = -texture.XOffset;
@@ -81,11 +79,14 @@ namespace RenderingEngine.Engine
             PopulateFloorTextureBounds(spriteWindowTop, spriteWindowBottom, sprite);
             LimitToDepth(yFloorV, sprite, spriteWindowTop, spriteWindowBottom, distance);
 
-            Vector<int> xOffSetV = Vector.Create(xOffset);
-            Vector<int> yOffSetV = Vector.Create(yOffset);
-
             Vector<float> xScaleV = Vector.Create(1f / xScale);
             Vector<float> yScaleV = Vector.Create(1f / yScale);
+
+            int length = to - from + 1;
+            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
+
+            int* portalFromClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
+            int* portalToClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
 
             for (int x = from; x < to; x++)
             {
@@ -94,6 +95,7 @@ namespace RenderingEngine.Engine
 
                 if (wallEnd <= wallStart)
                 {
+                    repeatedCount[x - from] = 0;
                     continue;
                 }
 
@@ -105,156 +107,288 @@ namespace RenderingEngine.Engine
 
                 if (clamptedFromY >= clamptedToY)
                 {
+                    repeatedCount[x - from] = 0;
                     continue;
                 }
 
-                int screenIndex = clamptedFromY * width + x;
+                portalFromClampedPtr[x] = clamptedFromY;
+                portalToClampedPtr[x] = clamptedToY;
+                repeatedCount[x - from] = (ushort)length;
+            }
 
-                float xMapPosMultiplier = xMapPosMultiplierCache[x];
+            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
 
-                RenderFloorOrCeilingSpriteColumn(screenPtr, ref floorTexturePtr, screenIndex, clamptedToY, clamptedFromY, width,
-                    x, yFloorV, xMapPosMultiplier, yOffSetV, xOffSetV, textureWidthV,
-                    textureHeightMaskV, textureWidthMaskV, rotated, rSinV, rCosV, alignXV, alignYV, xScaleV, yScaleV, translucent);
+            fixed (uint* texturePtr = &floorTexturePtr)
+            {
+                Sse.Prefetch2(texturePtr);
+
+                if (translucent)
+                {
+                    RenderFloorOrCeilingSprite(new DrawAlphaPixel(), repeatedCount, screenPtr, texturePtr, from, to,
+                        portalFromClampedPtr, portalToClampedPtr,
+                        width,
+                        yFloor, yOffset, xOffset, textureWidth,
+                        textureHeightMask, textureWidthMask, rotated, rSinV, rCosV, alignXV, alignYV, xScaleV, yScaleV);
+                }
+                else
+                {
+                    RenderFloorOrCeilingSprite(new DrawTransparentPixel(), repeatedCount, screenPtr, texturePtr, from, to,
+                        portalFromClampedPtr, portalToClampedPtr,
+                        width,
+                        yFloor, yOffset, xOffset, textureWidth,
+                        textureHeightMask, textureWidthMask, rotated, rSinV, rCosV, alignXV, alignYV, xScaleV, yScaleV);
+                }
             }
         }
 
-        private unsafe void RenderFloorOrCeilingSpriteColumn(
+        private unsafe void RenderFloorOrCeilingSprite<T>(
+            T drawPixel,
+            Span<ushort> repeatedCount,
             uint* screenPtr,
-            scoped ref uint texturePtr,
-            int screenIndex,
-            int floorToY,
-            int floorFromY,
+            uint* texturePtr,
+            int from, int to,
+            int* fromYPtr,
+            int* toYPtr,
             int width,
-            int x,
-            Vector<float> cameraPositionV,
-            float xMapPosMultiplier,
-            Vector<int> yOffSetV,
-            Vector<int> xOffSetV,
-            Vector<int> textureWidthV,
-            Vector<int> textureHeightMaskV,
-            Vector<int> textureWidthMaskV,
+            float cameraPosition,
+            int yOffset,
+            int xOffset,
+            int textureWidth,
+            int textureHeightMask,
+            int textureWidthMask,
             bool rotated,
             Vector<float> rSinV,
             Vector<float> rCosV,
             Vector<float> alignXV,
             Vector<float> alignYV,
             Vector<float> xScaleV,
-            Vector<float> yScaleV,
-            bool translucent
+            Vector<float> yScaleV
         )
+            where T : IDrawPixel, allows ref struct
         {
-            Span<float> incrVectorCache = memoryPool.GetBucket<float>(MemoryPoolBucket.CameraHeightToMapYPos);
-            Vector<float> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
+            // Texture
+            Vector<int> textureWidthV = Vector.Create(textureWidth);
+            Vector<int> textureHeightMaskV = Vector.Create(textureHeightMask);
+            Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
+            Vector<int> xOffSetV = Vector.Create(xOffset);
+            Vector<int> yOffSetV = Vector.Create(yOffset);
+            // Player height compared to ceiling/floor
+            Vector<float> cameraPositionV = Vector.Create(cameraPosition);
+            // Player Position
+            Vector<float> pSinV = this.pSinV;
+            Vector<float> pCosV = this.pCosV;
+            Vector<float> pxV = this.pxV;
+            Vector<float> pyV = this.pyV;
+            // scalar
+            float alignX = alignXV[0];
+            float alignY = alignYV[0];
+            float rSin = rSinV[0];
+            float rCos = rCosV[0];
+            float pSin = pSinV[0];
+            float pCos = pCosV[0];
+            float px = pxV[0];
+            float py = pyV[0];
 
-            int rem = (floorToY - floorFromY) % Vector<int>.Count;
-            floorToY -= rem;
+            float* xMapPosMultiplierCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
+            float* incrCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
-            Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
-
-            uint* screenTex = screenPtr + screenIndex;
-            uint* toScalePtr = screenPtr + floorToY * width + x;
-
-            while (screenTex != toScalePtr)
+            for (int x = from; x <= to; )
             {
-                Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
+                int count = repeatedCount[x - from];
 
-                if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
+                if (count == 0)
                 {
-                    Vector256<uint> gathered = Avx2.GatherVector256(
-                        (uint*)Unsafe.AsPointer(ref texturePtr),
-                        textureIndex.AsVector256(),
-                        scale: sizeof(uint)
-                    );
-
-                    if (translucent)
-                    {
-                        for (int i = 0; i < Vector256<int>.Count; i++, screenTex += width)
-                        {
-                            uint tex = gathered[i];
-
-                            if (tex != 0U)
-                            {
-                                *screenTex = BlendBGRA(tex, *screenTex);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        for (int i = 0; i < Vector256<int>.Count; i++, screenTex += width)
-                        {
-                            uint tex = gathered[i];
-
-                            if (tex != 0U)
-                            {
-                                *screenTex = gathered[i];
-                            }
-                        }
-                    }
+                    x++;
+                    continue;
                 }
-                else
+
+                // Attempt horizontal rendering
+                if (count >= Vector<int>.Count)
                 {
-                    if (translucent)
-                    {
-                        for (int i = 0; i < Vector<int>.Count; i++, screenTex += width)
-                        {
-                            uint tex = Unsafe.Add(ref texturePtr, textureIndex[i]);
+                    (int min_t, int max_t, int min_b, int max_b) = CalculateLaneTopBottoms(x, fromYPtr, toYPtr);
 
-                            if (tex != 0U)
-                            {
-                                *screenTex = BlendBGRA(tex, *screenTex);
-                            }
-                        }
-                    }
-                    else
+                    if (min_b > max_t + 16)
                     {
-                        for (int i = 0; i < Vector<int>.Count; i++, screenTex += width)
-                        {
-                            uint tex = Unsafe.Add(ref texturePtr, textureIndex[i]);
+                        RenderLine(drawPixel, x, fromYPtr + x, toYPtr + x,
+                            min_t, max_t, min_b, max_b);
 
-                            if (tex != 0U)
-                            {
-                                *screenTex = tex;
-                            }
-                        }
+                        x += Vector<int>.Count;
+                        count -= (ushort)Vector<int>.Count;
+                        continue;
                     }
                 }
 
-                floorFromY += Vector<float>.Count;
-                incramentVector = Vector.LoadUnsafe(ref incrVectorCache[floorFromY]);
-            }
-
-            if (rem > 0)
-            {
-                Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
-
-                if (translucent)
+                while (count-- > 0)
                 {
-                    for (int i = 0; i < rem; i++, screenTex += width)
-                    {
-                        uint tex = Unsafe.Add(ref texturePtr, textureIndex[i]);
+                    int clamptedFromY = fromYPtr[x];
+                    int clamptedToY = toYPtr[x];
+                    float xMapPosMultiplier = *(xMapPosMultiplierCachePtr + x);
 
-                        if (tex != 0U)
-                        {
-                            *screenTex = BlendBGRA(tex, *screenTex);
-                        }
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < rem; i++, screenTex += width)
-                    {
-                        uint tex = Unsafe.Add(ref texturePtr, textureIndex[i]);
-                        uint screen = *screenTex;
-
-                        if (tex != 0U)
-                        {
-                            *screenTex = tex;
-                        }
-                    }
+                    RenderColumn(drawPixel, clamptedFromY, clamptedToY, x, xMapPosMultiplier);
+                    x++;
                 }
             }
 
             return;
+
+            void RenderLine(
+                T drawPixel,
+                int x,
+                int* to, int* from,
+                int min_t, int max_t, int min_b, int max_b
+                )
+            {
+                Vector<float> xMapPosMultiplierCacheV = Vector.Load(xMapPosMultiplierCachePtr + x);
+
+                // render tops where there is no shared window
+                if (min_t != max_t)
+                {
+                    RenderColumnAngleTop(drawPixel, min_t, max_t, from, x);
+                }
+
+                for (int y = max_t, screenIndex = y * width + x; y <= min_b; y++, screenIndex += width)
+                {
+                    Vector<float> incramentVector = Vector.Create(*(incrCachePtr + y));
+                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierCacheV);
+
+                    uint* screenTexPtr = screenPtr + screenIndex;
+
+                    if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
+                    {
+                        Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndex.AsVector256(), scale: sizeof(int));
+                        drawPixel.DrawLine(screenTexPtr, gathered);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < Vector<int>.Count; i++)
+                        {
+                            drawPixel.Draw(screenTexPtr + i, texturePtr[textureIndex[i]]);
+                        }
+                    }
+                }
+
+                // render bottoms where there is no shared window
+                if (min_b != max_b)
+                {
+                    RenderColumnAngleBottom(drawPixel, min_b, max_b, to, x);
+                }
+            }
+
+            void RenderColumnAngleBottom(
+                T drawPixel,
+                int floorFromY,
+                int floorToY,
+                int* to,
+                int xStart)
+            {
+                uint* screenTexPtr = screenPtr + floorFromY * width + xStart;
+                float* xMapPosMult = xMapPosMultiplierCachePtr + xStart;
+
+                float* incr = incrCachePtr + floorFromY;
+
+                for (int y = floorFromY; y < floorToY; y++)
+                {
+                    for (int i = 0; i < Vector<uint>.Count; i++)
+                    {
+                        if (to[i] > y)
+                        {
+                            float xMult = *(xMapPosMult + i);
+                            int textureIndex = GetXyFromScreenSpaceScalar(*incr, xMult);
+                            drawPixel.Draw(screenTexPtr + i, texturePtr[textureIndex]);
+                        }
+                    }
+
+                    screenTexPtr += width;
+                    incr++;
+                }
+            }
+
+            void RenderColumnAngleTop(
+                T drawPixel,
+                int min_t,
+                int max_t,
+                int* from,
+                int xStart)
+            {
+                uint* screenTexPtr = screenPtr + min_t * width + xStart;
+                float* xMapPosMult = xMapPosMultiplierCachePtr + xStart;
+
+                float* incr = incrCachePtr + min_t;
+
+                for (int y = min_t; y < max_t; y++)
+                {
+                    for (int i = 0; i < Vector<uint>.Count; i++)
+                    {
+                        if (from[i] >= y)
+                        {
+                            continue;
+                        }
+
+                        float xMult = *(xMapPosMult + i);
+                        int textureIndex = GetXyFromScreenSpaceScalar(*incr, xMult);
+                        drawPixel.Draw(screenTexPtr + i, texturePtr[textureIndex]);
+                    }
+
+                    screenTexPtr += width;
+                    incr++;
+                }
+            }
+
+            void RenderColumn(T drawPixel, int floorFromY, int floorToY, int x, float xMapPosMultiplier)
+            {
+                int rem = (floorToY - floorFromY) & (Vector<int>.Count - 1);
+                floorToY -= rem;
+
+                Vector<float> incramentVector = Vector.Load(incrCachePtr + floorFromY);
+                Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
+
+                uint* screenTex = screenPtr + floorFromY * width + x;
+                uint* toScalePtr = screenPtr + floorToY * width + x;
+
+                while (screenTex != toScalePtr)
+                {
+                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
+
+                    if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
+                    {
+                        Vector256<uint> gathered = Avx2.GatherVector256(
+                            texturePtr,
+                            textureIndex.AsVector256(),
+                            scale: sizeof(uint)
+                        );
+
+                        for (int i = 0; i < Vector256<int>.Count; i++, screenTex += width)
+                        {
+                            uint tex = gathered[i];
+                            drawPixel.Draw(screenTex, tex);
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < Vector<int>.Count; i++, screenTex += width)
+                        {
+                            uint tex = *(texturePtr + textureIndex[i]);
+
+                            drawPixel.Draw(screenTex, tex);
+                        }
+                    }
+
+                    floorFromY += Vector<float>.Count;
+                    incramentVector = Vector.Load(incrCachePtr + floorFromY);
+                }
+
+                if (rem > 0)
+                {
+                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
+
+                    for (int i = 0; i < rem; i++, screenTex += width)
+                    {
+                        uint tex = *(texturePtr + textureIndex[i]);
+
+                        drawPixel.Draw(screenTex, tex);
+                    }
+                }
+            }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             Vector<int> GetXyFromScreenSpace(
@@ -287,16 +421,45 @@ namespace RenderingEngine.Engine
 
                 return _y1 * textureWidthV + _x1;
             }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            int GetXyFromScreenSpaceScalar(float incrament, float xMapPosMultiplier)
+            {
+                float yMapPosR = cameraPosition * incrament;
+                float xMapPosR = yMapPosR * xMapPosMultiplier;
+
+                (float xMapPos, float yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
+
+                if (rotated)
+                {
+                    xMapPos -= alignX;
+                    yMapPos -= alignY;
+
+                    float xMapPosSR = MathF.FusedMultiplyAdd(xMapPos, rCos, -yMapPos * rSin);
+                    float yMapPosSR = MathF.FusedMultiplyAdd(xMapPos, rSin, yMapPos * rCos);
+
+                    xMapPos = xMapPosSR;
+                    yMapPos = yMapPosSR;
+                }
+
+                int _y1 = float.ConvertToIntegerNative<int>(yMapPos);
+                int _x1 = float.ConvertToIntegerNative<int>(xMapPos);
+
+                _y1 = (_y1 + yOffset) & textureHeightMask;
+                _x1 = (_x1 + xOffset) & textureWidthMask;
+
+                return _y1 * textureWidth + _x1;
+            }
         }
 
-        private void LimitToDepth(
+        private unsafe void LimitToDepth(
             Vector<float> yCeilV,
             RenderableFloorSprite sprite,
             Span<int> spriteWindowTop,
             Span<int> spriteWindowBottom,
             ReadOnlySpan<float> depth)
         {
-            Span<float> incrVectorCache = memoryPool.GetBucket<float>(MemoryPoolBucket.CameraHeightToMapYPos);
+            float* incrVectorCache = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
             bool next;
 
@@ -314,7 +477,7 @@ namespace RenderingEngine.Engine
 
                 float y = depth[x];
 
-                Vector<float> incramentVector = Vector.LoadUnsafe(ref incrVectorCache[spriteFromY]);
+                Vector<float> incramentVector = Vector.Load(incrVectorCache + spriteFromY);
 
                 // compare Y position of pixel to depth
                 while (spriteFromY < spriteToY)
@@ -337,7 +500,7 @@ namespace RenderingEngine.Engine
                         break;
                     }
 
-                    incramentVector = Vector.LoadUnsafe(ref incrVectorCache[spriteFromY]);
+                    incramentVector = Vector.Load(incrVectorCache + spriteFromY);
                 }
 
                 spriteWindowTop[x] = spriteFromY;
@@ -349,15 +512,20 @@ namespace RenderingEngine.Engine
             Span<int> spriteWindowBottom,
             RenderableFloorSprite sprite)
         {
-            FloorSpriteWallInfo[] allWalls = [sprite.Wall1!, sprite.Wall2!, sprite.Wall3!, sprite.Wall4!];
-
             int maxHeight = PixelHeight - 1;
 
             bool hasNonIntersecting = false;
             
-            for (int w = 0; w < allWalls.Length; w++)
+            for (int w = 0; w < 4; w++)
             {
-                FloorSpriteWallInfo spriteBound = allWalls[w];
+                FloorSpriteWallInfo spriteBound = w switch
+                {
+                    0 => sprite.Wall1!,
+                    1 => sprite.Wall2!,
+                    2 => sprite.Wall3!,
+                    3 => sprite.Wall4!,
+                    _ => throw new NotSupportedException(),
+                };
 
                 if (!spriteBound.IntersectsView)
                 {
