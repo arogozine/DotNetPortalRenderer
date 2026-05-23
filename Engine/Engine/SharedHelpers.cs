@@ -27,6 +27,38 @@ namespace RenderingEngine.Engine
             return repeated;
         }
 
+        internal static unsafe bool PopulateRepeatedValuesInPlace<T>(
+            T* values, int length)
+            where T : unmanaged, IBinaryInteger<T>
+        {
+            bool repeated = false;
+
+            for (int i = 0; i < length;)
+            {
+                T count = T.One;
+                T l = values[i];
+
+                if (l == T.Zero)
+                {
+                    i++;
+                    continue;
+                }
+
+                for (int j = i + 1; j < length && values[j] == l; j++)
+                {
+                    count++;
+                }
+
+                repeated = repeated || count > T.One;
+
+                for (; count > T.Zero; count--, i++)
+                {
+                    values[i] = count;
+                }
+            }
+
+            return repeated;
+        }
 
         internal static bool PopulateRepeatedValuesInPlace<T>(
             scoped Span<T> values)

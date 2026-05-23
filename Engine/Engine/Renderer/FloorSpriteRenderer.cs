@@ -83,10 +83,9 @@ namespace RenderingEngine.Engine
             Vector<float> yScaleV = Vector.Create(1f / yScale);
 
             int length = to - from + 1;
-            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
-
             int* portalFromClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
             int* portalToClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
+            ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.WallEnd);
 
             for (int x = from; x < to; x++)
             {
@@ -95,7 +94,7 @@ namespace RenderingEngine.Engine
 
                 if (wallEnd <= wallStart)
                 {
-                    repeatedCount[x - from] = 0;
+                    repeatedCountPtr[x - from] = 0;
                     continue;
                 }
 
@@ -107,16 +106,16 @@ namespace RenderingEngine.Engine
 
                 if (clamptedFromY >= clamptedToY)
                 {
-                    repeatedCount[x - from] = 0;
+                    repeatedCountPtr[x - from] = 0;
                     continue;
                 }
 
                 portalFromClampedPtr[x] = clamptedFromY;
                 portalToClampedPtr[x] = clamptedToY;
-                repeatedCount[x - from] = (ushort)length;
+                repeatedCountPtr[x - from] = (ushort)length;
             }
 
-            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
+            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCountPtr, length);
 
             fixed (uint* texturePtr = &floorTexturePtr)
             {
@@ -124,7 +123,7 @@ namespace RenderingEngine.Engine
 
                 if (translucent)
                 {
-                    RenderFloorOrCeilingSprite(new DrawAlphaPixel(), repeatedCount, screenPtr, texturePtr, from, to,
+                    RenderFloorOrCeilingSprite(new DrawAlphaPixel(), repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,
@@ -132,7 +131,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    RenderFloorOrCeilingSprite(new DrawTransparentPixel(), repeatedCount, screenPtr, texturePtr, from, to,
+                    RenderFloorOrCeilingSprite(new DrawTransparentPixel(), repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,
@@ -143,7 +142,7 @@ namespace RenderingEngine.Engine
 
         private unsafe void RenderFloorOrCeilingSprite<T>(
             T drawPixel,
-            Span<ushort> repeatedCount,
+            ushort* repeatedCount,
             uint* screenPtr,
             uint* texturePtr,
             int from, int to,

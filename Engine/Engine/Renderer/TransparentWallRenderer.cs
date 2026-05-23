@@ -6,14 +6,16 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        private void DrawTransparentWall(
-    ReadOnlySpan<Sector> sectors,
-    RenderWindowWallSnapshot renderableWall)
+        private unsafe void DrawTransparentWall(
+            ReadOnlySpan<Sector> sectors,
+            RenderWindowWallSnapshot renderableWall)
         {
             RenderableWall wall = renderableWall.Wall;
             TextureInfo textureInfo = wall.MiddleTexture!;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
 
-            Span<ushort> repeatedCount;
+            ushort* repeatedCount;
             if (textureInfo.XScale is not null)
             {
                 repeatedCount = CalculateTransparentWallBuild(sectors, renderableWall);
@@ -23,16 +25,14 @@ namespace RenderingEngine.Engine
                 repeatedCount = CalculateTransparentWallDoom(sectors, renderableWall);
             }
 
-            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
+            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount, wallToX - wallFromX + 1);
 
-            int wallFromX = renderableWall.XLeft;
-            int wallToX = renderableWall.XRight;
             Sector sector = wall.Sector;
 
             DrawSpriteShared(sector, renderableWall.Wall, repeatedCount, wallFromX, wallToX, false, textureInfo);
         }
 
-        private unsafe Span<ushort> CalculateTransparentWallDoom(
+        private unsafe ushort* CalculateTransparentWallDoom(
             ReadOnlySpan<Sector> sectors,
             RenderWindowWallSnapshot renderableWall)
         {
@@ -94,10 +94,9 @@ namespace RenderingEngine.Engine
 
             int* portalFromClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
             int* portalToClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
-
+            ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.WallEnd);
 
             int length = wallToX - wallFromX;
-            Span<ushort> buffer = TempBuffer<ushort>.GetBuffer(length + 1);
 
             bool renderFromTop = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromTop);
 
@@ -108,7 +107,7 @@ namespace RenderingEngine.Engine
 
                 if (status.PortalRenderable)
                 {
-                    buffer[x - wallFromX] = 0;
+                    repeatedCountPtr[x - wallFromX] = 0;
                     continue;
                 }
 
@@ -120,7 +119,7 @@ namespace RenderingEngine.Engine
 
                 if (fromToYdist > dist)
                 {
-                    buffer[x - wallFromX] = 0;
+                    repeatedCountPtr[x - wallFromX] = 0;
                     wallStartY += ceilDistIncr;
                     wallEndY += floorDistIncr;
                     continue;
@@ -158,7 +157,7 @@ namespace RenderingEngine.Engine
 
                 if (textureStartYClamped >= textureEndYClamped)
                 {
-                    buffer[x - wallFromX] = 0;
+                    repeatedCountPtr[x - wallFromX] = 0;
                     continue;
                 }
 
@@ -179,13 +178,13 @@ namespace RenderingEngine.Engine
                 textureXLocationPtr[x] = textureXPos;
                 textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
                 textureYIncramentPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
-                buffer[x - wallFromX] = (ushort)length;
+                repeatedCountPtr[x - wallFromX] = (ushort)length;
             }
 
-            return buffer;
+            return repeatedCountPtr;
         }
 
-        private unsafe Span<ushort> CalculateTransparentWallBuild(
+        private unsafe ushort* CalculateTransparentWallBuild(
             ReadOnlySpan<Sector> sectors,
             RenderWindowWallSnapshot renderableWall)
         {
@@ -245,10 +244,9 @@ namespace RenderingEngine.Engine
 
             int* portalFromClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
             int* portalToClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
-
+            ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.WallEnd);
 
             int length = wallToX - wallFromX;
-            Span<ushort> buffer = TempBuffer<ushort>.GetBuffer(length + 1);
 
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
             {
@@ -256,7 +254,7 @@ namespace RenderingEngine.Engine
 
                 if (columnStatusY.PortalRenderable)
                 {
-                    buffer[x - wallFromX] = 0;
+                    repeatedCountPtr[x - wallFromX] = 0;
                     continue;
                 }
 
@@ -268,7 +266,7 @@ namespace RenderingEngine.Engine
 
                 if (fromToYdist > distance)
                 {
-                    buffer[x - wallFromX] = 0;
+                    repeatedCountPtr[x - wallFromX] = 0;
                     wallStartY += ceilDistIncr;
                     wallEndY += floorDistIncr;
                     continue;
@@ -288,7 +286,7 @@ namespace RenderingEngine.Engine
 
                 if (clampedFromY >= clampedToY)
                 {
-                    buffer[x - wallFromX] = 0;
+                    repeatedCountPtr[x - wallFromX] = 0;
                     continue;
                 }
 
@@ -310,10 +308,10 @@ namespace RenderingEngine.Engine
                 textureXLocationPtr[x] = textureXPos;
                 textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
                 textureYIncramentPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
-                buffer[x - wallFromX] = (ushort)length;
+                repeatedCountPtr[x - wallFromX] = (ushort)length;
             }
 
-            return buffer;
+            return repeatedCountPtr;
         }
 
     }

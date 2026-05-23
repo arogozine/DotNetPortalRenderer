@@ -36,6 +36,7 @@ namespace RenderingEngine.Engine
             uint* textureYIncramentPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
             uint* portalFromClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalFromClamped);
             uint* portalToClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalToClamped);
+            ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.WallEnd);
 
             int bufferOffset = PixelWidth * renderableWall.Depth;
 
@@ -72,7 +73,6 @@ namespace RenderingEngine.Engine
             float xScale = texture.Width / sprite.Length;
 
             int length = spriteToX - spriteFromX;
-            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length + 1);
 
             for (int x = spriteFromX; x <= spriteToX; x++, cameraRay += cameraWidthIncr)
             {
@@ -81,7 +81,7 @@ namespace RenderingEngine.Engine
 
                 if (floorEnd <= ceilingStart || distance[x] < fromToYDist)
                 {
-                    repeatedCount[x - spriteFromX] = 0;
+                    repeatedCountPtr[x - spriteFromX] = 0;
                     continue;
                 }
 
@@ -92,7 +92,7 @@ namespace RenderingEngine.Engine
 
                 if (clamptedFromY >= clamptedToY)
                 {
-                    repeatedCount[x - spriteFromX] = 0;
+                    repeatedCountPtr[x - spriteFromX] = 0;
                     continue;
                 }
 
@@ -101,7 +101,7 @@ namespace RenderingEngine.Engine
 
                 if (textureXLocation >= textureWidth)
                 {
-                    repeatedCount[x - spriteFromX] = 0;
+                    repeatedCountPtr[x - spriteFromX] = 0;
                     continue;
                 }
 
@@ -116,12 +116,12 @@ namespace RenderingEngine.Engine
                 textureXLocationPtr[x] = (uint)textureXLocation;
                 textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
                 textureYIncramentPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
-                repeatedCount[x - spriteFromX] = (ushort)length;
+                repeatedCountPtr[x - spriteFromX] = (ushort)length;
             }
 
-            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
+            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCountPtr, length + 1);
 
-            DrawSpriteShared(sector, sprite, repeatedCount, spriteFromX, spriteToX, true, texture);
+            DrawSpriteShared(sector, sprite, repeatedCountPtr, spriteFromX, spriteToX, true, texture);
         }
 
         private unsafe void DrawWallSprite(ReadOnlySpan<Sector> sectors, RenderableWallSprite sprite, RenderWindowSpriteSnapshot renderableWall)
@@ -131,6 +131,7 @@ namespace RenderingEngine.Engine
             uint* textureYIncramentPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
             uint* portalFromClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalFromClamped);
             uint* portalToClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalToClamped);
+            ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.WallEnd);
 
             int bufferOffset = PixelWidth * renderableWall.Depth;
 
@@ -167,7 +168,6 @@ namespace RenderingEngine.Engine
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(sprite, width, spriteFromX);
 
             int length = spriteToX - spriteFromX;
-            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length + 1);
 
             for (int x = spriteFromX; x <= spriteToX; x++, cameraRay += cameraWidthIncr, spriteStartY += ceilDistIncr, spriteEndY += floorDistIncr)
             {
@@ -176,7 +176,7 @@ namespace RenderingEngine.Engine
 
                 if (floorEnd <= ceilingStart)
                 {
-                    repeatedCount[x - spriteFromX] = 0;
+                    repeatedCountPtr[x - spriteFromX] = 0;
                     continue;
                 }
 
@@ -187,7 +187,7 @@ namespace RenderingEngine.Engine
 
                 if (clamptedFromY >= clamptedToY)
                 {
-                    repeatedCount[x - spriteFromX] = 0;
+                    repeatedCountPtr[x - spriteFromX] = 0;
                     continue;
                 }
 
@@ -195,7 +195,7 @@ namespace RenderingEngine.Engine
 
                 if ((int)distance[x] < (int)fromToYdist)
                 {
-                    repeatedCount[x - spriteFromX] = 0;
+                    repeatedCountPtr[x - spriteFromX] = 0;
                     continue;
                 }
 
@@ -203,7 +203,7 @@ namespace RenderingEngine.Engine
 
                 if (textureXLocation >= textureWidth)
                 {
-                    repeatedCount[x - spriteFromX] = 0;
+                    repeatedCountPtr[x - spriteFromX] = 0;
                     continue;
                 }
 
@@ -219,18 +219,18 @@ namespace RenderingEngine.Engine
                 textureXLocationPtr[x] = (uint)textureXPos;
                 textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
                 textureYIncramentPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
-                repeatedCount[x - spriteFromX] = (ushort)length;
+                repeatedCountPtr[x - spriteFromX] = (ushort)length;
             }
 
-            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
+            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCountPtr, length + 1);
 
-            DrawSpriteShared(sector, sprite, repeatedCount, spriteFromX, spriteToX, false, texture);
+            DrawSpriteShared(sector, sprite, repeatedCountPtr, spriteFromX, spriteToX, false, texture);
         }
 
         private unsafe void DrawSpriteShared(
             Sector sector,
             IWallLike sprite,
-            Span<ushort> repeatedCount,
+            ushort* repeatedCount,
             int spriteFromX, int spriteToX,
             bool renderHorizontally,
             TextureInfo texture
@@ -257,29 +257,29 @@ namespace RenderingEngine.Engine
                 {
                     if (alpha == 1f)
                     {
-                        DrawHorizontally(new DrawTransparentPixel(), repeatedCount, texturePtr);
+                        DrawHorizontally(new DrawTransparentPixel(), texturePtr);
                     }
                     else
                     {
-                        DrawHorizontally(new DrawAlphaPixel(), repeatedCount, texturePtr);
+                        DrawHorizontally(new DrawAlphaPixel(), texturePtr);
                     }
                 }
                 else
                 {
                     if (alpha == 1f)
                     {
-                        Draw(new DrawTransparentPixel(), repeatedCount, texturePtr);
+                        Draw(new DrawTransparentPixel(), texturePtr);
                     }
                     else
                     {
-                        Draw(new DrawAlphaPixel(), repeatedCount, texturePtr);
+                        Draw(new DrawAlphaPixel(), texturePtr);
                     }
                 }
             }
 
             return;
 
-            void DrawHorizontally<T>(T drawPixel, Span<ushort> repeatedCount, uint* texturePtr)
+            void DrawHorizontally<T>(T drawPixel, uint* texturePtr)
                 where T : IDrawPixel, allows ref struct
             {
                 for (int x = spriteFromX; x <= spriteToX;)
@@ -301,13 +301,13 @@ namespace RenderingEngine.Engine
                     (uint min_t, uint max_t) = GetMinMaxValue(clampedFromY, count);
                     (uint min_b, uint max_b) = GetMinMaxValue(clampedToY, count);
 
-                    RenderMultipleHorizontalLines2(drawPixel, count, width, (uint)x, textureHeight, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
+                    RenderMultipleHorizontalLines(drawPixel, count, width, (uint)x, textureHeight, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
 
                     x += count;
                 }
             }
 
-            void Draw<T>(T drawPixel, Span<ushort> repeatedCount, uint* texturePtr)
+            void Draw<T>(T drawPixel, uint* texturePtr)
                 where T : IDrawPixel, allows ref struct
             {
                 for (int x = spriteFromX; x <= spriteToX;)
@@ -745,7 +745,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private static unsafe void RenderMultipleHorizontalLines2<T>(
+        private static unsafe void RenderMultipleHorizontalLines<T>(
             T drawPixel,
             uint count,
             uint width,
@@ -1028,7 +1028,7 @@ namespace RenderingEngine.Engine
                         uint textureYPos = *(textureYPos_u + i);
                         uint incr = *(textureYIncr_u + i);
 
-                        RenderWallColumn2(drawPixel, isPowerOfTwo, width, x, textureHeight, min_b, bottom, textureYPos, incr, screenPtr,
+                        RenderWallColumn(drawPixel, isPowerOfTwo, width, x, textureHeight, min_b, bottom, textureYPos, incr, screenPtr,
                             textureBuffer + *(texturePos + i));
                     }
                 }
