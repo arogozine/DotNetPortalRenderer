@@ -310,7 +310,7 @@ namespace RenderingEngine.Engine
                 float vScreen = fromY * yTextureIncr;
                 uint* textureColumnPtr = texturePtr + texX;
 
-                for (; fromPtr != toPtr; vScreen += yTextureIncr, fromPtr += width)
+                for (; fromPtr < toPtr; vScreen += yTextureIncr, fromPtr += width)
                 {
                     int index = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
                     uint tex = *(textureColumnPtr + index);

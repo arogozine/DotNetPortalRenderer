@@ -282,7 +282,6 @@ namespace RenderingEngine.Engine
             uint* portalFromClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalFromClamped);
             uint* portalToClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalToClamped);
 
-
             int bufferOffset = PixelWidth * renderableWall.Depth;
 
             Span<float> distance = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance)[bufferOffset..];
@@ -292,50 +291,49 @@ namespace RenderingEngine.Engine
             TextureInfo texture = sprite.Texture;
 
             int width = PixelWidth;
-            int textureWidth = texture.Height;
-            int textureHeight = texture.Width;
+            int textureHeight = texture.Height;
+            int textureWidth = texture.Width;
 
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
 
             Sector sector = sectors[sprite.SectorId];
 
-            bool isPowerOfTwo = SharedHelpers.IsPowerOfTwo(textureHeight);
-
             float rx1 = sprite.R1.X;
 
-            int xLeft = sprite.XLeft;
-            int xRight = sprite.XRight;
+            int spriteFromX = sprite.XLeft;
+            int spriteToX = sprite.XRight;
 
             int spriteStartY = sprite.YLeftCeil;
             int spriteEndY = sprite.YLeftFloor;
 
-            int spriteFromX = xLeft;
-            int spriteToX = xRight;
-
             float fromToYDist = sprite.DistanceMin;
 
-            float cameraRay = -1f * EngineConstants.CameraPlaneX;
-            cameraRay += cameraWidthIncr * spriteFromX;
+            float cameraRay = -1f * EngineConstants.CameraPlaneX + cameraWidthIncr * spriteFromX;
 
-            int length = spriteToX - spriteFromX;
-            int textureXIncr = (textureWidth << 16) / (spriteEndY - spriteStartY);
+            Debug.Assert(renderableWall.XLeft <= spriteFromX);
 
             float textureLen = texture.Width / sprite.Length;
+
+            float xScale = texture.Width / sprite.Length;
+
+            int length = spriteToX - spriteFromX;
             Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length + 1);
 
             for (int x = spriteFromX; x <= spriteToX; x++, cameraRay += cameraWidthIncr)
             {
-                int wallStart = wallStartSpan[x];
-                int wallEnd = wallEndSpan[x];
+                int ceilingStart = wallStartSpan[x];
+                int floorEnd = wallEndSpan[x];
 
-                if (wallEnd <= wallStart || distance[x] < fromToYDist)
+                if (floorEnd <= ceilingStart || distance[x] < fromToYDist)
                 {
                     repeatedCount[x - spriteFromX] = 0;
                     continue;
                 }
 
-                int clamptedFromY = Math.Clamp(spriteStartY, wallStart, wallEnd);
-                int clamptedToY = Math.Clamp(spriteEndY, wallStart, wallEnd);
+                int spriteStartY_Int = float.ConvertToIntegerNative<int>(spriteStartY);
+                int spriteEndY_Int = float.ConvertToIntegerNative<int>(spriteEndY);
+                int clamptedFromY = Math.Clamp(spriteStartY_Int, ceilingStart, floorEnd);
+                int clamptedToY = Math.Clamp(spriteEndY_Int, ceilingStart, floorEnd);
 
                 if (clamptedFromY >= clamptedToY)
                 {
@@ -343,36 +341,32 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                int textureXLocation = CalculateTextureXPosition(cameraRay);
-                if (textureXLocation >= textureHeight) {
-                    textureXLocation = 0;
+                float distX = MathF.FusedMultiplyAdd(fromToYDist, cameraRay, -rx1);
+                int textureXLocation = float.ConvertToIntegerNative<int>(MathF.Abs(distX) * textureLen);
+
+                if (textureXLocation >= textureWidth)
+                {
+                    repeatedCount[x - spriteFromX] = 0;
+                    continue;
                 }
 
-                int textureYIncr = textureXIncr;
-                int textureXPos = float.ConvertToIntegerNative<int>(textureXLocation);
-                textureXPos = isPowerOfTwo ? (textureXPos & (textureHeight - 1)) : (textureXPos % textureHeight);
-                textureXPos *= textureWidth;
-                int textureYPos = (clamptedFromY - spriteStartY) * textureYIncr;
+                int textureYIncr = (textureHeight << 16) / (spriteEndY_Int - spriteStartY_Int);
+                textureXLocation *= textureHeight;
 
-                textureYIncramentPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
-                textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
-                textureXLocationPtr[x] = (uint)textureXPos;
+                int textureYPos = (clamptedFromY - spriteStartY_Int) * textureYIncr;
+
                 portalFromClampedPtr[x] = (uint)clamptedFromY;
                 portalToClampedPtr[x] = (uint)clamptedToY;
+
+                textureXLocationPtr[x] = (uint)textureXLocation;
+                textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
+                textureYIncramentPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
                 repeatedCount[x - spriteFromX] = (ushort)length;
             }
 
             _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
 
             DrawSpriteShared(sector, sprite, repeatedCount, spriteFromX, spriteToX, texture);
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            int CalculateTextureXPosition(float cameraRay)
-            {
-                float distX = MathF.FusedMultiplyAdd(fromToYDist, cameraRay, - rx1);
-
-                return float.ConvertToIntegerNative<int>(MathF.Abs(distX) * textureLen);
-            }
         }
 
         private unsafe void DrawWallSprite(ReadOnlySpan<Sector> sectors, RenderableWallSprite sprite, RenderWindowSpriteSnapshot renderableWall)
@@ -391,17 +385,11 @@ namespace RenderingEngine.Engine
 
             TextureInfo texture = sprite.Texture;
 
-            ref uint screenRef = ref GetScreenPtr<uint>();
-            uint* screenPtr = (uint*)buffer;
-
             int width = PixelWidth;
-            int textureWidth = texture.Height;
-            int textureHeight = texture.Width;
-            bool isPowerOfTwo = SharedHelpers.IsPowerOfTwo(textureHeight);
-            Sector sector = sectors[sprite.SectorId];
+            int textureHeight = texture.Height;
+            int textureWidth = texture.Width;
 
-            bool flipY = sprite.Texture.RenderingOptions.IsFlippedY;
-            bool flipX = sprite.Texture.RenderingOptions.IsFlippedX;
+            Sector sector = sectors[sprite.SectorId];
 
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;
@@ -457,10 +445,16 @@ namespace RenderingEngine.Engine
                 }
 
                 textureXLocation = MathF.FusedMultiplyAdd(textureXLocation, xScale, xOffset);
-                int textureYIncr = (textureWidth << 16) / (spriteEndY_Int - spriteStartY_Int);
+
+                if (textureXLocation >= textureWidth)
+                {
+                    repeatedCount[x - spriteFromX] = 0;
+                    continue;
+                }
+
+                int textureYIncr = (textureHeight << 16) / (spriteEndY_Int - spriteStartY_Int);
                 int textureXPos = float.ConvertToIntegerNative<int>(textureXLocation);
-                textureXPos = isPowerOfTwo ? (textureXPos & (textureHeight - 1)) : (textureXPos % textureHeight);
-                textureXPos *= textureWidth;
+                textureXPos *= textureHeight;
 
                 int textureYPos = (clamptedFromY - spriteStartY_Int) * textureYIncr;
 
@@ -580,7 +574,7 @@ namespace RenderingEngine.Engine
 
                 if (status.PortalRenderable)
                 {
-                    buffer[x - wallFromX] = 0; 
+                    buffer[x - wallFromX] = 0;
                     continue;
                 }
 
@@ -760,7 +754,7 @@ namespace RenderingEngine.Engine
 
                 if (clampedFromY >= clampedToY)
                 {
-                    buffer[x] = 0;
+                    buffer[x - wallFromX] = 0;
                     continue;
                 }
 
@@ -802,8 +796,7 @@ namespace RenderingEngine.Engine
             uint* portalFromClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalFromClamped);
             uint* portalToClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalToClamped);
 
-            int textureWidth = texture.Height;
-            int textureHeight = texture.Width;
+            int textureHeight = texture.Height;
 
             uint* screenPtr = (uint*)buffer;
             uint width = (uint)PixelWidth;
@@ -851,7 +844,7 @@ namespace RenderingEngine.Engine
                             isPowerOfTwo,
                             width,
                             (uint)x,
-                            textureWidth,
+                            textureHeight,
                             clampedFromY,
                             clampedToY,
                             textureYPos,
@@ -872,7 +865,7 @@ namespace RenderingEngine.Engine
                             isPowerOfTwo,
                             width,
                             (uint)x,
-                            textureWidth,
+                            textureHeight,
                             clampedFromY,
                             clampedToY,
                             textureYPos,
@@ -892,7 +885,7 @@ namespace RenderingEngine.Engine
                         count,
                         width,
                         (uint)x,
-                        textureWidth,
+                        textureHeight,
                         clampedFromY,
                         clampedToY,
                         textureYPos,
@@ -1088,12 +1081,12 @@ namespace RenderingEngine.Engine
 
                     if (bottom > min_b)
                     {
-                        uint textureXPos = textureYPos_uV[i];
+                        uint textureYPos = textureYPos_uV[i];
                         uint incr = textureXIncr_uV[i];
 
                         uint xi = x + (uint)i;
 
-                        RenderWallColumn(drawPixel, isPowerOfTwo, width, xi, textureHeight, min_b, bottom, textureXPos, incr, screenPtr,
+                        RenderWallColumn(drawPixel, isPowerOfTwo, width, xi, textureHeight, min_b, bottom, textureYPos, incr, screenPtr,
                             textureBuffer + *(texturePos + i)
                         );
                     }
@@ -1178,14 +1171,13 @@ namespace RenderingEngine.Engine
                 {
                     Vector128<uint> textureMaskV = Vector128.Create((uint)(textureHeight - 1));
 
-                    // go down the column set
-                    while (screenIndexPtr < screenIndexPtrEnd)
+                    if (Avx2.IsSupported)
                     {
-                        Vector128<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
-                        texelIndexV += textureXPosV;
-
-                        if (Avx2.IsSupported)
+                        while (screenIndexPtr < screenIndexPtrEnd)
                         {
+                            Vector128<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
+                            texelIndexV += textureXPosV;
+
                             Vector128<uint> gathered = Avx2.GatherVector128(
                                 textureBuffer,
                                 texelIndexV.AsInt32(),
@@ -1193,11 +1185,18 @@ namespace RenderingEngine.Engine
                             );
 
                             drawPixel.DrawLine(screenIndexPtr, gathered);
-                            screenIndexPtr += Vector128<uint>.Count;
+
+                            textureYPos_uV += textureXIncr_uV;
+                            screenIndexPtr += width;
                         }
-                        else
+                    }
+                    else
+                    {
+                        while (screenIndexPtr < screenIndexPtrEnd)
                         {
-                            // horizontally draw the texture (keeps per-lane behavior but with cached Ptrs)
+                            Vector128<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
+                            texelIndexV += textureXPosV;
+
                             for (int i = 0; i < Vector128<uint>.Count; i++)
                             {
                                 uint pixel = *(textureBuffer + texelIndexV[i]);
@@ -1207,10 +1206,9 @@ namespace RenderingEngine.Engine
                                 screenIndexPtr++;
                             }
 
+                            textureYPos_uV += textureXIncr_uV;
+                            screenIndexPtr += widthMinusLanes;
                         }
-
-                        textureYPos_uV += textureXIncr_uV;
-                        screenIndexPtr += widthMinusLanes;
                     }
                 }
                 else
