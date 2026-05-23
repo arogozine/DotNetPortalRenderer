@@ -130,6 +130,37 @@ namespace RenderingEngine.Engine
             }
         }
 
+        private unsafe (uint min, uint max) GetMinMaxValue(uint* ptr, int count)
+        {
+            uint max_agg = uint.MinValue;
+            uint min_agg = uint.MaxValue;
+
+            if (Vector256.IsHardwareAccelerated && count > Vector256<int>.Count)
+            {
+                while (count > Vector256<uint>.Count)
+                {
+                    (uint min, uint max) = GetMinMaxValue(Vector256.Load(ptr));
+
+                    max_agg = MathFormulas.Max(max_agg, max);
+                    min_agg = MathFormulas.Min(min_agg, min);
+
+                    ptr += Vector256<uint>.Count;
+                    count -= Vector256<uint>.Count;
+                }
+            }
+
+            while (count > 0)
+            {
+                max_agg = MathFormulas.Max(max_agg, * ptr);
+                min_agg = MathFormulas.Min(min_agg, * ptr);
+
+                ptr++;
+                count--;
+            }
+
+            return (min_agg, max_agg);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static (uint min, uint max) GetMinMaxValue(Vector128<uint> value)
         {
