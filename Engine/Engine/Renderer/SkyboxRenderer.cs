@@ -388,7 +388,7 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
 
             TextureInfo textureInfo = wallTexture;
-            ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(0, TextureTransform.Normal);
+            ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(renderableWall.Wall.Shade ?? byte.MaxValue, TextureTransform.Normal);
 
             uint* screenPtr = (uint*)buffer;
 

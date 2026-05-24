@@ -38,15 +38,10 @@ namespace RenderingEngine.Engine
         {
             int width = PixelWidth;
 
-            int bufferOffset = PixelWidth * renderableWall.Depth;
+            int bufferOffset = PixelWidth * (renderableWall.Depth + 1);
 
             Span<float> distanceSpan = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance)[bufferOffset..];
             Span<RenderColumnStatus> columnStatus = spriteCacheMemoryPool.GetBucket<RenderColumnStatus>(SpriteCachePoolBucket.RenderStatus)[bufferOffset..];
-
-            if (renderableWall.Depth > 1)
-            {
-                bufferOffset = PixelWidth * (renderableWall.Depth - 1);
-            }
 
             Span<int> wallStart = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
             Span<int> wallEnd = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];

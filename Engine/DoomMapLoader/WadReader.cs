@@ -653,6 +653,7 @@ namespace RenderingEngine.DoomMapLoader
                     ry2 += y;
                 }
 
+                sprite.Texture.Alpha = 1f;
                 sprite.Length = textureWidth;
                 sprite.PointA = new Point(rx1, ry1);
                 sprite.PointB = new Point(rx2, ry2);
@@ -715,6 +716,7 @@ namespace RenderingEngine.DoomMapLoader
                                 Name = skyTexture,
                                 RenderingOptions = TextureRenderingOptions.Skybox
                             };
+                            wall.Shade = byte.MaxValue;
                         }
                         else
                         {
@@ -723,6 +725,7 @@ namespace RenderingEngine.DoomMapLoader
                                 Name = skyTexture,
                                 RenderingOptions = TextureRenderingOptions.Skybox
                             };
+                            wall.Shade = byte.MaxValue;
                         }
                     }
                     else
@@ -732,6 +735,7 @@ namespace RenderingEngine.DoomMapLoader
                             Name = skyTexture,
                             RenderingOptions = TextureRenderingOptions.Skybox
                         };
+                        wall.Shade = byte.MaxValue;
                     }
                 }
             }
@@ -837,21 +841,24 @@ namespace RenderingEngine.DoomMapLoader
             static string GetTextureName(ThingType type)
             {
                 DescriptionAttribute descriptionAttribute = typeof(ThingType).GetField(type.ToString())!.GetCustomAttribute<DescriptionAttribute>()!;
-                string name = descriptionAttribute.Description;
 
-                if (TextureCache.TextureExists(name))
+                foreach (string animFrame in new string[] { string.Empty, "A", "B" })
                 {
-                    return name;
+                    foreach (string viewingAngle in new string[] { string.Empty, "0", "1" })
+                    {
+                        foreach (string walking in new string[] { string.Empty, "C1", "D1" })
+                        {
+                            string name = descriptionAttribute.Description + animFrame + viewingAngle + walking;
+
+                            if (TextureCache.TextureExists(name))
+                            {
+                                return name;
+                            }
+                        }
+                    }
                 }
 
-                name = descriptionAttribute.Description + "A0";
-
-                if (TextureCache.TextureExists(name))
-                {
-                    return name;
-                }
-
-                return descriptionAttribute.Description + "A1";
+                return descriptionAttribute.Description;
             }
         }
 
