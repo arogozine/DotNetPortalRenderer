@@ -700,6 +700,8 @@ namespace RenderingEngine.DoomMapLoader
                     continue;
                 }
 
+                sector.CeilingShade = byte.MaxValue;
+
                 foreach (Line wall in sector.Walls)
                 {
                     if (wall.SectorTo is int sectorId)
