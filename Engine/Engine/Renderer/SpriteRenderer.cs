@@ -33,7 +33,7 @@ namespace RenderingEngine.Engine
         {
             uint* textureXLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureXLocation);
             uint* textureYLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.StartingYTexturePosition);
-            uint* textureYIncramentPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
+            uint* textureYIncrementPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
             uint* portalFromClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalFromClamped);
             uint* portalToClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalToClamped);
             ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.WallEnd);
@@ -69,9 +69,6 @@ namespace RenderingEngine.Engine
             Debug.Assert(renderableWall.XLeft <= spriteFromX);
 
             float textureLen = texture.Width / sprite.Length;
-
-            float xScale = texture.Width / sprite.Length;
-
             int length = spriteToX - spriteFromX;
 
             for (int x = spriteFromX; x <= spriteToX; x++, cameraRay += cameraWidthIncr)
@@ -87,10 +84,10 @@ namespace RenderingEngine.Engine
 
                 int spriteStartY_Int = float.ConvertToIntegerNative<int>(spriteStartY);
                 int spriteEndY_Int = float.ConvertToIntegerNative<int>(spriteEndY);
-                int clamptedFromY = Math.Clamp(spriteStartY_Int, ceilingStart, floorEnd);
-                int clamptedToY = Math.Clamp(spriteEndY_Int, ceilingStart, floorEnd);
+                int clampedFromY = Math.Clamp(spriteStartY_Int, ceilingStart, floorEnd);
+                int clampedToY = Math.Clamp(spriteEndY_Int, ceilingStart, floorEnd);
 
-                if (clamptedFromY >= clamptedToY)
+                if (clampedFromY >= clampedToY)
                 {
                     repeatedCountPtr[x - spriteFromX] = 0;
                     continue;
@@ -108,14 +105,14 @@ namespace RenderingEngine.Engine
                 int textureYIncr = (textureHeight << 16) / (spriteEndY_Int - spriteStartY_Int);
                 textureXLocation *= textureHeight;
 
-                int textureYPos = (clamptedFromY - spriteStartY_Int) * textureYIncr;
+                int textureYPos = (clampedFromY - spriteStartY_Int) * textureYIncr;
 
-                portalFromClampedPtr[x] = (uint)clamptedFromY;
-                portalToClampedPtr[x] = (uint)clamptedToY;
+                portalFromClampedPtr[x] = (uint)clampedFromY;
+                portalToClampedPtr[x] = (uint)clampedToY;
 
                 textureXLocationPtr[x] = (uint)textureXLocation;
                 textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
-                textureYIncramentPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
+                textureYIncrementPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
                 repeatedCountPtr[x - spriteFromX] = (ushort)length;
             }
 
@@ -128,7 +125,7 @@ namespace RenderingEngine.Engine
         {
             uint* textureXLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureXLocation);
             uint* textureYLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.StartingYTexturePosition);
-            uint* textureYIncramentPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
+            uint* textureYIncrementPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
             uint* portalFromClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalFromClamped);
             uint* portalToClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalToClamped);
             ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.WallEnd);
@@ -182,10 +179,10 @@ namespace RenderingEngine.Engine
 
                 int spriteStartY_Int = float.ConvertToIntegerNative<int>(spriteStartY);
                 int spriteEndY_Int = float.ConvertToIntegerNative<int>(spriteEndY);
-                int clamptedFromY = Math.Clamp(spriteStartY_Int, ceilingStart, floorEnd);
-                int clamptedToY = Math.Clamp(spriteEndY_Int, ceilingStart, floorEnd);
+                int clampedFromY = Math.Clamp(spriteStartY_Int, ceilingStart, floorEnd);
+                int clampedToY = Math.Clamp(spriteEndY_Int, ceilingStart, floorEnd);
 
-                if (clamptedFromY >= clamptedToY)
+                if (clampedFromY >= clampedToY)
                 {
                     repeatedCountPtr[x - spriteFromX] = 0;
                     continue;
@@ -211,14 +208,14 @@ namespace RenderingEngine.Engine
                 int textureXPos = float.ConvertToIntegerNative<int>(textureXLocation);
                 textureXPos *= textureHeight;
 
-                int textureYPos = (clamptedFromY - spriteStartY_Int) * textureYIncr;
+                int textureYPos = (clampedFromY - spriteStartY_Int) * textureYIncr;
 
-                portalFromClampedPtr[x] = (uint)clamptedFromY;
-                portalToClampedPtr[x] = (uint)clamptedToY;
+                portalFromClampedPtr[x] = (uint)clampedFromY;
+                portalToClampedPtr[x] = (uint)clampedToY;
 
                 textureXLocationPtr[x] = (uint)textureXPos;
                 textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
-                textureYIncramentPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
+                textureYIncrementPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
                 repeatedCountPtr[x - spriteFromX] = (ushort)length;
             }
 
@@ -238,12 +235,11 @@ namespace RenderingEngine.Engine
         {
             uint* textureXLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureXLocation);
             uint* textureYLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.StartingYTexturePosition);
-            uint* textureYIncramentPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
+            uint* textureYIncrementPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
             uint* portalFromClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalFromClamped);
             uint* portalToClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalToClamped);
 
             int textureHeight = texture.Height;
-            int textureWidth = texture.Width;
 
             uint* screenPtr = (uint*)buffer;
             uint width = (uint)PixelWidth;
@@ -296,12 +292,12 @@ namespace RenderingEngine.Engine
                     uint* clampedToY = portalToClampedPtr + x;
                     uint* textureXPos = textureXLocationPtr + x;
                     uint* textureYPos = textureYLocationPtr + x;
-                    uint* textureYIncr = textureYIncramentPtr + x;
+                    uint* textureYIncr = textureYIncrementPtr + x;
 
                     (uint min_t, uint max_t) = GetMinMaxValue(clampedFromY, count);
                     (uint min_b, uint max_b) = GetMinMaxValue(clampedToY, count);
 
-                    RenderMultipleHorizontalLines(drawPixel, count, width, (uint)x, textureHeight, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
+                    RenderMultipleHorizontalLines(drawPixel, count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
 
                     x += count;
                 }
@@ -324,7 +320,7 @@ namespace RenderingEngine.Engine
                     uint* clampedToY = portalToClampedPtr + x;
                     uint* textureXPos = textureXLocationPtr + x;
                     uint* textureYPos = textureYLocationPtr + x;
-                    uint* textureYIncr = textureYIncramentPtr + x;
+                    uint* textureYIncr = textureYIncrementPtr + x;
 
                     Debug.Assert(*clampedFromY < *clampedToY);
 
@@ -420,7 +416,7 @@ namespace RenderingEngine.Engine
 
         #region Render Wall with Blend Mode
 
-        private unsafe static void RenderMultipleWallLinesV256<T>(
+        private static unsafe void RenderMultipleWallLinesV256<T>(
             T drawPixel,
             bool isPowerOfTwo,
             uint width,
@@ -436,9 +432,9 @@ namespace RenderingEngine.Engine
         )
             where T : IDrawPixel, allows ref struct
         {
-            var startYV = Vector256.Load(startY);
-            var endYV = Vector256.Load(endY);
-            var textureXIncr_uV = Vector256.Load(textureYIncr_u);
+            Vector256<uint> startYV = Vector256.Load(startY);
+            Vector256<uint> endYV = Vector256.Load(endY);
+            Vector256<uint> textureXIncr_uV = Vector256.Load(textureYIncr_u);
 
             (uint min_t, uint max_t) = GetMinMaxValue(startYV);
             (uint min_b, uint max_b) = GetMinMaxValue(endYV);
@@ -467,16 +463,18 @@ namespace RenderingEngine.Engine
                 {
                     uint top = startYV[i];
 
-                    if (top < max_t)
+                    if (top >= max_t)
                     {
-                        uint* textureYPos = textureYPos_u + i;
-                        uint incr = textureXIncr_uV[i];
-                        uint xi = x + (uint)i;
-
-                        *textureYPos = RenderWallColumn2(drawPixel, isPowerOfTwo, width, xi, textureHeight, top, max_t, *textureYPos, incr, screenPtr,
-                            textureBuffer + *(texturePos + i)
-                        );
+                        continue;
                     }
+
+                    uint* textureYPos = textureYPos_u + i;
+                    uint incr = textureXIncr_uV[i];
+                    uint xi = x + (uint)i;
+
+                    *textureYPos = RenderWallColumn2(drawPixel, isPowerOfTwo, width, xi, textureHeight, top, max_t, *textureYPos, incr, screenPtr,
+                        textureBuffer + *(texturePos + i)
+                    );
                 }
             }
             Vector256<uint> textureYPos_uV = Vector256.Load(textureYPos_u);
@@ -563,24 +561,28 @@ namespace RenderingEngine.Engine
             }
 
             // render bottoms where there is no shared window
-            if (min_b != max_b)
+            if (min_b == max_b)
             {
-                for (int i = 0; i < Vector256<uint>.Count; i++)
+                return;
+            }
+
+            for (int i = 0; i < Vector256<uint>.Count; i++)
+            {
+                uint bottom = endYV[i];
+
+                if (bottom <= min_b)
                 {
-                    uint bottom = endYV[i];
-
-                    if (bottom > min_b)
-                    {
-                        uint textureYPos = textureYPos_uV[i];
-                        uint incr = textureXIncr_uV[i];
-
-                        uint xi = x + (uint)i;
-
-                        RenderWallColumn(drawPixel, isPowerOfTwo, width, xi, textureHeight, min_b, bottom, textureYPos, incr, screenPtr,
-                            textureBuffer + *(texturePos + i)
-                        );
-                    }
+                    continue;
                 }
+
+                uint textureYPos = textureYPos_uV[i];
+                uint incr = textureXIncr_uV[i];
+
+                uint xi = x + (uint)i;
+
+                RenderWallColumn(drawPixel, isPowerOfTwo, width, xi, textureHeight, min_b, bottom, textureYPos, incr, screenPtr,
+                    textureBuffer + *(texturePos + i)
+                );
             }
         }
 
@@ -631,15 +633,17 @@ namespace RenderingEngine.Engine
                 {
                     uint top = startYV[i];
 
-                    if (top < max_t)
+                    if (top >= max_t)
                     {
-                        uint* textureYPos = textureYPos_u + i;
-                        uint incr = textureXIncr_uV[i];
-                        uint xi = x + (uint)i;
-
-                        *textureYPos = RenderWallColumn2(drawPixel, isPowerOfTwo, width, xi, textureHeight, top, max_t, *textureYPos, incr, screenPtr,
-                            textureBuffer + *(texturePos + i));
+                        continue;
                     }
+
+                    uint* textureYPos = textureYPos_u + i;
+                    uint incr = textureXIncr_uV[i];
+                    uint xi = x + (uint)i;
+
+                    *textureYPos = RenderWallColumn2(drawPixel, isPowerOfTwo, width, xi, textureHeight, top, max_t, *textureYPos, incr, screenPtr,
+                        textureBuffer + *(texturePos + i));
                 }
             }
 
@@ -750,7 +754,6 @@ namespace RenderingEngine.Engine
             uint count,
             uint width,
             uint x,
-            int textureHeight,
             uint* startY,
             uint* endY,
             uint min_t, uint max_t,
@@ -808,7 +811,7 @@ namespace RenderingEngine.Engine
                         }
 
                         textureYPosV += Vector.Load(textureYIncr_u + i);
-                        Vector.Store(textureYPosV, textureYPos);
+                        textureYPosV.Store(textureYPos);
                         screenIndexPtr += Vector<uint>.Count;
                     }
 
@@ -945,16 +948,18 @@ namespace RenderingEngine.Engine
                 {
                     uint top = *(startY + i);
 
-                    if (top < max_t)
+                    if (top >= max_t)
                     {
-                        uint* textureYPos = textureYPos_u + i;
-                        uint incr = *(textureYIncr_u + i);
-
-                        uint xi = x + i;
-
-                        *textureYPos = RenderWallColumn2(drawPixel, isPowerOfTwo, width, xi, textureHeight, top, max_t, *textureYPos, incr, screenPtr,
-                            textureBuffer + *(texturePos + i));
+                        continue;
                     }
+
+                    uint* textureYPos = textureYPos_u + i;
+                    uint incr = *(textureYIncr_u + i);
+
+                    uint xi = x + i;
+
+                    *textureYPos = RenderWallColumn2(drawPixel, isPowerOfTwo, width, xi, textureHeight, top, max_t, *textureYPos, incr, screenPtr,
+                        textureBuffer + *(texturePos + i));
                 }
             }
 
@@ -1017,21 +1022,25 @@ namespace RenderingEngine.Engine
             }
 
             // render bottoms of each line where there is no shared window
-            if (min_b < max_b)
+            if (min_b >= max_b)
             {
-                for (uint i = 0; i < count; i++, x++)
+                return;
+            }
+
+            for (uint i = 0; i < count; i++, x++)
+            {
+                uint bottom = *(endY + i);
+
+                if (bottom <= min_b)
                 {
-                    uint bottom = *(endY + i);
-
-                    if (bottom > min_b)
-                    {
-                        uint textureYPos = *(textureYPos_u + i);
-                        uint incr = *(textureYIncr_u + i);
-
-                        RenderWallColumn(drawPixel, isPowerOfTwo, width, x, textureHeight, min_b, bottom, textureYPos, incr, screenPtr,
-                            textureBuffer + *(texturePos + i));
-                    }
+                    continue;
                 }
+
+                uint textureYPos = *(textureYPos_u + i);
+                uint incr = *(textureYIncr_u + i);
+
+                RenderWallColumn(drawPixel, isPowerOfTwo, width, x, textureHeight, min_b, bottom, textureYPos, incr, screenPtr,
+                    textureBuffer + *(texturePos + i));
             }
         }
 

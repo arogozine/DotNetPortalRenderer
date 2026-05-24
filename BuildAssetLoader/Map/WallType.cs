@@ -48,7 +48,7 @@
         public readonly sbyte Shade;
 
         /// <summary>
-        /// Palette lookup table number (0 = standard colours)
+        /// Palette lookup table number (0 = standard colors)
         /// </summary>
         public readonly byte Pal;
 

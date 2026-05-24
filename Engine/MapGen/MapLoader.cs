@@ -11,8 +11,6 @@ namespace RenderingEngine.MapGen
     {
         private static void StripInvalidNeighbors(Map map)
         {
-            int sectorCount = map.Sectors.Count;
-
             Dictionary<int, int> sectorIdToIndex = map.Sectors.Select((x, i) => new { x, i }).ToDictionary(
                 x => x.x.Id, x => x.i);
 

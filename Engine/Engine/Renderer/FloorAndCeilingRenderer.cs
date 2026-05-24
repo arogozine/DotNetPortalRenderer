@@ -10,14 +10,14 @@ namespace RenderingEngine.Engine
     {
         #region Shared Precalculated Vectors
 
-        private Vector<float> pxV = default;
-        private Vector<float> pyV = default;
-        private Vector<float> pzV = default;
-        private Vector<float> pSinV = default;
-        private Vector<float> pCosV = default;
+        private Vector<float> pxV;
+        private Vector<float> pyV;
+        private Vector<float> pzV;
+        private Vector<float> pSinV;
+        private Vector<float> pCosV;
 
         [SkipLocalsInit]
-        public void InitializeSharedVectors(PortalPlayerSnapshot player)
+        private void InitializeSharedVectors(PortalPlayerSnapshot player)
         {
             float px = player.X;
             float py = player.Y;
@@ -372,9 +372,7 @@ namespace RenderingEngine.Engine
             float px = pxV[0];
             float py = pyV[0];
             Vector3 linePoint = new(0f, 0f, pzV[0]);
-
-            int halfHeight = PixelHeight / 2;
-
+            
             float* xMapPosMultiplierCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
             float* incrCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
@@ -434,11 +432,11 @@ namespace RenderingEngine.Engine
 
                 for (int y = max_t, screenIndex = y * width + x; y <= min_b; y++, screenIndex += width)
                 {
-                    Vector<float> incramentVector = Vector.Create(*(incrCachePtr + y));
+                    Vector<float> incrementVector = Vector.Create(*(incrCachePtr + y));
 
                     uint* screenTexPtr = screenPtr + screenIndex;
 
-                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierCacheV);
+                    Vector<int> textureIndex = GetXyFromScreenSpace(incrementVector, xMapPosMultiplierCacheV);
 
                     if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                     {
@@ -531,7 +529,7 @@ namespace RenderingEngine.Engine
                 int columnHeight = floorToY - floorFromY;
                 int rem = columnHeight & (Vector<int>.Count - 1);
 
-                Vector<float> incramentVector = Vector.Load(incrCachePtr + floorFromY);
+                Vector<float> incrementVector = Vector.Load(incrCachePtr + floorFromY);
 
                 if (columnHeight != rem)
                 {
@@ -543,7 +541,7 @@ namespace RenderingEngine.Engine
 
                     while (cur != toScalePtr)
                     {
-                        Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
+                        Vector<int> textureIndex = GetXyFromScreenSpace(incrementVector, xMapPosMultiplierV);
 
                         if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                         {
@@ -565,7 +563,7 @@ namespace RenderingEngine.Engine
                         }
 
                         floorFromY += Vector<float>.Count;
-                        incramentVector = Vector.Load(incrCachePtr + floorFromY);
+                        incrementVector = Vector.Load(incrCachePtr + floorFromY);
                     }
 
                     screenTexPtr = cur;
@@ -573,7 +571,7 @@ namespace RenderingEngine.Engine
 
                 for (int i = 0; i < rem; i++)
                 {
-                    int textureIndex = GetXyFromScreenSpaceScalar(incramentVector[i], xMapPosMultiplier);
+                    int textureIndex = GetXyFromScreenSpaceScalar(incrementVector[i], xMapPosMultiplier);
 
                     *screenTexPtr = texturePtr[textureIndex];
                     screenTexPtr += width;
@@ -582,18 +580,18 @@ namespace RenderingEngine.Engine
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             Vector<int> GetXyFromScreenSpace(
-                Vector<float> incramentVector,
+                Vector<float> incrementVector,
                 Vector<float> xMapPosMultiplierV
             )
             {
-                Vector<float> yMapPosR = cameraPositionV * incramentVector;
+                Vector<float> yMapPosR = cameraPositionV * incrementVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 if (slopeFloor is not null)
                 {
                     // direction vector
-                    var dir_x = - xMapPosR;
-                    var dir_y = - yMapPosR;
+                    Vector<float> dir_x = - xMapPosR;
+                    Vector<float> dir_y = - yMapPosR;
 
                     // Vectorized intersection for the whole vector lane
                     MathFormulas.FindIntersectionVectorZero(nX, nY, nZ, pX, pY, pZ, pzV,
@@ -719,7 +717,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe static (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(int x, int* from, int* to)
+        private static unsafe (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(int x, int* from, int* to)
         {
             from += x;
             to += x;

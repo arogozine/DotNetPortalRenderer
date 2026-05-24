@@ -72,6 +72,7 @@ namespace RenderingEngine.Engine
             CalculateTextureDistanceAndXPosition(renderableWall, renderableWall.Wall.MiddleTexture!);
         }
 
+        // TODO: Simplify
         private static (int Height, int Width, float XScale, float ScaledTextureHeight) CalculateScale(
             Sector sector,
             RenderableWall wall,

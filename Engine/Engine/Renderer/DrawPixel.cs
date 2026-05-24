@@ -60,6 +60,11 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly unsafe void DrawLine(uint* surface, Vector256<uint> pixels)
         {
+            if (pixels == Vector256<uint>.Zero)
+            {
+                return;
+            }
+
             if (Avx2.IsSupported)
             {
                 Vector256<uint> gtMask = Vector256.GreaterThan(pixels, Vector256<uint>.Zero);
@@ -83,6 +88,11 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly unsafe void DrawLine(uint* surface, Vector128<uint> pixels)
         {
+            if (pixels == Vector128<uint>.Zero)
+            {
+                return;
+            }
+
             if (Avx2.IsSupported)
             {
                 Vector128<uint> gtMask = Vector128.GreaterThan(pixels, Vector128<uint>.Zero);
@@ -106,6 +116,11 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly unsafe void DrawLine(uint* surface, Vector<uint> pixels)
         {
+            if (pixels == Vector<uint>.Zero)
+            {
+                return;
+            }
+
             for (int i = 0; i < Vector<uint>.Count; i++)
             {
                 uint pixel = pixels[i];

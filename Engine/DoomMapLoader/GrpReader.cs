@@ -642,19 +642,7 @@ namespace RenderingEngine.DoomMapLoader
 
             return (x, y);
         }
-
-        private static int DetermineTextureOffsetFromBottom(float textureHeight, float sectorHeight)
-        {
-            if (sectorHeight >= textureHeight)
-            {
-                return float.ConvertToIntegerNative<int>(sectorHeight % textureHeight);
-            }
-            else
-            {
-                return float.ConvertToIntegerNative<int>(textureHeight - sectorHeight);
-            }
-        }
-
+        
         private static (int XOffset, int YOffset) CalculateFloorOffset(in SectorType sector, string textureName)
         {
             // XPanning

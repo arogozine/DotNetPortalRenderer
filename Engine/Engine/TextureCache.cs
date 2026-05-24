@@ -89,7 +89,7 @@ internal static class TextureTransformHelper
 }
 
 [SkipLocalsInit]
-internal static partial class TextureCache
+internal static class TextureCache
 {
     private const string FallBack = "-";
     private static readonly Dictionary<string, Texture> Cache = [];

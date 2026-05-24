@@ -167,22 +167,10 @@ namespace RenderingEngine.Engine
                         if (minDepthX >= maxDepthX)
                             continue;
 
-                        if (SharedHelpers.WithinInclusive(distanceMin, minDepthX, maxDepthX))
-                        {
-                            return sectors.Contains(sprite.SectorId);
-                        }
-
-                        if (SharedHelpers.WithinInclusive(distanceMax, minDepthX, maxDepthX))
-                        {
-                            return sectors.Contains(sprite.SectorId);
-                        }
-
-                        if (SharedHelpers.WithinInclusive(minDepthX, distanceMin, distanceMax))
-                        {
-                            return sectors.Contains(sprite.SectorId);
-                        }
-
-                        if (SharedHelpers.WithinInclusive(maxDepthX, distanceMin, distanceMax))
+                        if (SharedHelpers.WithinInclusive(distanceMin, minDepthX, maxDepthX) ||
+                            SharedHelpers.WithinInclusive(distanceMax, minDepthX, maxDepthX) ||
+                            SharedHelpers.WithinInclusive(minDepthX, distanceMin, distanceMax) ||
+                            SharedHelpers.WithinInclusive(maxDepthX, distanceMin, distanceMax))
                         {
                             return sectors.Contains(sprite.SectorId);
                         }
@@ -497,12 +485,12 @@ namespace RenderingEngine.Engine
 
             for (int i = 0; i < rotatedSprites.Length; i++)
             {
-                rotatedSprites[i] = CreateMirroredRotatedCopy(rotatedSprites[i], flippedWall);
+                rotatedSprites[i] = CreateMirroredRotatedCopy(rotatedSprites[i]);
             }
 
             return rotatedSprites;
 
-            RenderableSprite CreateMirroredRotatedCopy(RenderableSprite s, RenderableWall flippedWall)
+            RenderableSprite CreateMirroredRotatedCopy(RenderableSprite s)
             {
                 TextureInfo texture = s.Texture;
 

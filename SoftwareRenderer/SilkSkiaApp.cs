@@ -36,30 +36,22 @@ namespace SoftwareRenderer
         [MemberNotNull(nameof(grgInterface), nameof(grContext))]
         private void Window_Load()
         {
-            grgInterface = GRGlInterface.Create(GetProcAddress);
+            grgInterface = GRGlInterface.Create();
             grContext = GRContext.CreateGl(grgInterface);
             
             SetupRenderAndCanvas();
             SetupKeyEvents();
 
             Engine.StartTheGameLoop(window.Size.X, window.Size.Y);
-
-            nint GetProcAddress(string name)
-            {
-                if (window.GLContext!.TryGetProcAddress(name, out nint addr))
-                {
-                    return addr;
-                }
-
-                return IntPtr.Zero;
-        }
         }
 
         private unsafe void Window_Render(double delta)
         {
             ThrowIfNull(canvas);
+            ThrowIfNull(grContext);
 
             grContext.ResetContext(GRBackendState.All);
+
             void* bgraPtr = Engine.RenderNextFrame();
 
             if (bgraPtr == null)

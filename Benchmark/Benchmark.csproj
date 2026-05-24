@@ -14,7 +14,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BuildAssetLoader\BuildAssetLoader.csproj" />
-    <ProjectReference Include="..\BuildEngineFormulas\BuildEngineFormulas.csproj" />
     <ProjectReference Include="..\Engine\RenderingEngine.csproj" />
   </ItemGroup>
 

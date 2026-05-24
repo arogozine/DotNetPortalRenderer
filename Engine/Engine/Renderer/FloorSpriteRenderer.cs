@@ -52,8 +52,6 @@ namespace RenderingEngine.Engine
             Vector<float> yFloorV = Vector.Create(yFloor);
             int textureHeightMask = texture.Height - 1;
             int textureWidthMask = texture.Width - 1;
-            Vector<int> textureWidthV = Vector.Create(textureWidth);
-
             int xOffset = -texture.XOffset;
             int yOffset = texture.YOffset;
 
@@ -101,17 +99,17 @@ namespace RenderingEngine.Engine
                 int spriteFromY = spriteWindowTop[x];
                 int spriteToY = spriteWindowBottom[x];
 
-                int clamptedFromY = Math.Clamp(spriteFromY, wallStart, wallEnd);
-                int clamptedToY = Math.Clamp(spriteToY, wallStart, wallEnd);
+                int clampedFromY = Math.Clamp(spriteFromY, wallStart, wallEnd);
+                int clampedToY = Math.Clamp(spriteToY, wallStart, wallEnd);
 
-                if (clamptedFromY >= clamptedToY)
+                if (clampedFromY >= clampedToY)
                 {
                     repeatedCountPtr[x - from] = 0;
                     continue;
                 }
 
-                portalFromClampedPtr[x] = clamptedFromY;
-                portalToClampedPtr[x] = clamptedToY;
+                portalFromClampedPtr[x] = clampedFromY;
+                portalToClampedPtr[x] = clampedToY;
                 repeatedCountPtr[x - from] = (ushort)length;
             }
 
@@ -212,18 +210,17 @@ namespace RenderingEngine.Engine
                             min_t, max_t, min_b, max_b);
 
                         x += Vector<int>.Count;
-                        count -= (ushort)Vector<int>.Count;
                         continue;
                     }
                 }
 
                 while (count-- > 0)
                 {
-                    int clamptedFromY = fromYPtr[x];
-                    int clamptedToY = toYPtr[x];
+                    int clampedFromY = fromYPtr[x];
+                    int clampedToY = toYPtr[x];
                     float xMapPosMultiplier = *(xMapPosMultiplierCachePtr + x);
 
-                    RenderColumn(drawPixel, clamptedFromY, clamptedToY, x, xMapPosMultiplier);
+                    RenderColumn(drawPixel, clampedFromY, clampedToY, x, xMapPosMultiplier);
                     x++;
                 }
             }
@@ -247,8 +244,8 @@ namespace RenderingEngine.Engine
 
                 for (int y = max_t, screenIndex = y * width + x; y <= min_b; y++, screenIndex += width)
                 {
-                    Vector<float> incramentVector = Vector.Create(*(incrCachePtr + y));
-                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierCacheV);
+                    Vector<float> incrementVector = Vector.Create(*(incrCachePtr + y));
+                    Vector<int> textureIndex = GetXyFromScreenSpace(incrementVector, xMapPosMultiplierCacheV);
 
                     uint* screenTexPtr = screenPtr + screenIndex;
 
@@ -338,15 +335,16 @@ namespace RenderingEngine.Engine
                 int rem = (floorToY - floorFromY) & (Vector<int>.Count - 1);
                 floorToY -= rem;
 
-                Vector<float> incramentVector = Vector.Load(incrCachePtr + floorFromY);
+                Vector<float> incrementVector = Vector.Load(incrCachePtr + floorFromY);
                 Vector<float> xMapPosMultiplierV = Vector.Create(xMapPosMultiplier);
-
+                Vector<int> textureIndex;
+                
                 uint* screenTex = screenPtr + floorFromY * width + x;
                 uint* toScalePtr = screenPtr + floorToY * width + x;
 
                 while (screenTex != toScalePtr)
                 {
-                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
+                    textureIndex = GetXyFromScreenSpace(incrementVector, xMapPosMultiplierV);
 
                     if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                     {
@@ -373,29 +371,31 @@ namespace RenderingEngine.Engine
                     }
 
                     floorFromY += Vector<float>.Count;
-                    incramentVector = Vector.Load(incrCachePtr + floorFromY);
+                    incrementVector = Vector.Load(incrCachePtr + floorFromY);
                 }
 
-                if (rem > 0)
+                if (rem <= 0)
                 {
-                    Vector<int> textureIndex = GetXyFromScreenSpace(incramentVector, xMapPosMultiplierV);
+                    return;
+                }
+                
+                textureIndex = GetXyFromScreenSpace(incrementVector, xMapPosMultiplierV);
 
-                    for (int i = 0; i < rem; i++, screenTex += width)
-                    {
-                        uint tex = *(texturePtr + textureIndex[i]);
+                for (int i = 0; i < rem; i++, screenTex += width)
+                {
+                    uint tex = *(texturePtr + textureIndex[i]);
 
-                        drawPixel.Draw(screenTex, tex);
-                    }
+                    drawPixel.Draw(screenTex, tex);
                 }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             Vector<int> GetXyFromScreenSpace(
-                    Vector<float> incramentVector,
+                    Vector<float> incrementVector,
                     Vector<float> xMapPosMultiplierV
                 )
             {
-                Vector<float> yMapPosR = cameraPositionV * incramentVector;
+                Vector<float> yMapPosR = cameraPositionV * incrementVector;
                 Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
 
                 (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
@@ -422,9 +422,9 @@ namespace RenderingEngine.Engine
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            int GetXyFromScreenSpaceScalar(float incrament, float xMapPosMultiplier)
+            int GetXyFromScreenSpaceScalar(float increment, float xMapPosMultiplier)
             {
-                float yMapPosR = cameraPosition * incrament;
+                float yMapPosR = cameraPosition * increment;
                 float xMapPosR = yMapPosR * xMapPosMultiplier;
 
                 (float xMapPos, float yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
@@ -459,12 +459,10 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<float> depth)
         {
             float* incrVectorCache = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
-
-            bool next;
-
+            
             for (int x = sprite.XLeft; x < sprite.XRight; x++)
             {
-                next = false;
+                bool next = false;
 
                 int spriteFromY = spriteWindowTop[x];
                 int spriteToY = spriteWindowBottom[x];
@@ -476,12 +474,12 @@ namespace RenderingEngine.Engine
 
                 float y = depth[x];
 
-                Vector<float> incramentVector = Vector.Load(incrVectorCache + spriteFromY);
+                Vector<float> incrementVector = Vector.Load(incrVectorCache + spriteFromY);
 
                 // compare Y position of pixel to depth
                 while (spriteFromY < spriteToY)
                 {
-                    Vector<float> yMapPosR = yCeilV * incramentVector;
+                    Vector<float> yMapPosR = yCeilV * incrementVector;
 
                     for (int i = 0; i < Vector<float>.Count; i++)
                     {
@@ -499,7 +497,7 @@ namespace RenderingEngine.Engine
                         break;
                     }
 
-                    incramentVector = Vector.Load(incrVectorCache + spriteFromY);
+                    incrementVector = Vector.Load(incrVectorCache + spriteFromY);
                 }
 
                 spriteWindowTop[x] = spriteFromY;

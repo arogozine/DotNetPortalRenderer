@@ -83,14 +83,9 @@ namespace RenderingEngine.Engine
             int xOffset = textureInfo.XOffset;
             int yOffset = textureInfo.YOffset > sectorHeight ? textureInfo.YOffset - 65536 : textureInfo.YOffset;
 
-            Sector sector = wall.Sector;
-            (float xScale, float yScale) = (textureInfo.XScale!.Value, textureInfo.YScale!.Value);
-            yScale = (sector.Ceil - sector.Floor) * yScale;
-            xScale = xScale / wall.Length * texture.Width;
-
             int* textureXLocationPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureXLocation);
             uint* textureYLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.StartingYTexturePosition);
-            uint* textureYIncramentPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
+            uint* textureYIncrementPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
 
             int* portalFromClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
             int* portalToClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
@@ -147,6 +142,7 @@ namespace RenderingEngine.Engine
                     }
                     else
                     {
+                        // TODO: same expression in true and false branch
                         textureStartY = renderFromTop ? textureStartY - yOffsetF : textureStartY - yOffsetF;
                         textureEndY = renderFromTop ? textureEndY - yOffsetF : textureEndY - yOffsetF;
                     }
@@ -164,7 +160,7 @@ namespace RenderingEngine.Engine
                 float offset = textureStartYClamped - textureStartY;
 
                 // Calculate Middle Texture Position
-                float textureYIncr = (float)(sectorHeight / (wallEndY - wallStartY));
+                float textureYIncr = sectorHeight / (wallEndY - wallStartY);
                 int textureXPos = ((float.ConvertToIntegerNative<int>(distance) + xOffset) % textureHeight) * textureWidth;
                 float textureYPos = MathF.FusedMultiplyAdd(textureYIncr, offset, textureWidth);
 
@@ -177,7 +173,7 @@ namespace RenderingEngine.Engine
 
                 textureXLocationPtr[x] = textureXPos;
                 textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
-                textureYIncramentPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
+                textureYIncrementPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
                 repeatedCountPtr[x - wallFromX] = (ushort)length;
             }
 
@@ -240,7 +236,7 @@ namespace RenderingEngine.Engine
 
             int* textureXLocationPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureXLocation);
             uint* textureYLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.StartingYTexturePosition);
-            uint* textureYIncramentPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
+            uint* textureYIncrementPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
 
             int* portalFromClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
             int* portalToClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
@@ -307,7 +303,7 @@ namespace RenderingEngine.Engine
 
                 textureXLocationPtr[x] = textureXPos;
                 textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
-                textureYIncramentPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
+                textureYIncrementPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
                 repeatedCountPtr[x - wallFromX] = (ushort)length;
             }
 
