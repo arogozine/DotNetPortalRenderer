@@ -177,14 +177,14 @@ namespace RenderingEngine.Engine
                 }
                 angleXV = Vector.Load(angleCache);
 
+                Vector<float> vScreenV = max_t * yTextureIncrV;
+                Vector<int> texXV = Vector.ConvertToInt32Native(textureWidth4V * angleXV) & widthMask;
+
                 // render tops where there is no shared window
                 if (min_t != max_t)
                 {
-                    RenderColumnAngleTop(min_t, max_t, from, x);
+                    RenderColumnAngleTop(min_t, max_t, from, texXV, x);
                 }
-
-                Vector<float> vScreenV = max_t * yTextureIncrV;
-                Vector<int> texXV = Vector.ConvertToInt32Native(textureWidth4V * angleXV) & widthMask;
 
                 uint* fromPtr = screenPtr + max_t * width + x;
 
@@ -219,21 +219,22 @@ namespace RenderingEngine.Engine
                 // render bottoms where there is no shared window
                 if (min_b != max_b)
                 {
-                    RenderColumnAngleBottom(min_b, max_b, to, x);
+                    RenderColumnAngleBottom(min_b, max_b, to, texXV, x);
                 }
             }
 
             void RenderColumnAngleBottom(
-                int floorFromY,
-                int floorToY,
+                int min_b,
+                int max_b,
                 Vector<int> to,
+                Vector<int> texXV,
                 int xStart)
             {
-                uint* screenTexPtr = screenPtr + floorFromY * width + xStart;
-                float* anglePtr = angleCachePtr + xStart;
-                float vScreen = floorFromY * yTextureIncr;
+                uint* screenTexPtr = screenPtr + min_b * width + xStart;
 
-                for (int y = floorFromY; y < floorToY; y++)
+                float vScreen = min_b * yTextureIncr;
+
+                for (int y = min_b; y < max_b; y++)
                 {
                     for (int i = 0; i < Vector<uint>.Count; i++)
                     {
@@ -242,16 +243,7 @@ namespace RenderingEngine.Engine
                             continue;
                         }
 
-                        float angleX = MathFormulas.ClampAngle(*(anglePtr + i) - viewAngle);
-                        int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
-
-
-
-                        uint* textureColumnPtr = texturePtr + texX;
-
-                        int index = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
-
-
+                        int index = texXV[i] + textureWidth * float.ConvertToIntegerNative<int>(vScreen);
                         screenTexPtr[i] = texturePtr[index];
 
                     }
@@ -265,10 +257,10 @@ namespace RenderingEngine.Engine
                 int min_t,
                 int max_t,
                 Vector<int> from,
+                Vector<int> texXV,
                 int xStart)
             {
                 uint* screenTexPtr = screenPtr + min_t * width + xStart;
-                float* anglePtr = angleCachePtr + xStart;
 
                 float vScreen = min_t * yTextureIncr;
 
@@ -281,15 +273,8 @@ namespace RenderingEngine.Engine
                             continue;
                         }
 
-                        float angleX = MathFormulas.ClampAngle(*(anglePtr + i) - viewAngle);
-                        int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
-
-                        uint* textureColumnPtr = texturePtr + texX;
-
-                        int index = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
-
-                        uint tex = texturePtr[index];
-                        screenTexPtr[i] = tex;
+                        int index = texXV[i] + textureWidth * float.ConvertToIntegerNative<int>(vScreen);
+                        screenTexPtr[i] = texturePtr[index];
                     }
 
                     screenTexPtr += width;
