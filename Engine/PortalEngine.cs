@@ -1,7 +1,8 @@
-﻿using RenderingEngine.Engine;
+﻿using OpenTK.Windowing.Common;
+using OpenTK.Windowing.GraphicsLibraryFramework;
+using RenderingEngine.Engine;
 using RenderingEngine.MapGen;
 using RenderingEngine.Models;
-using Silk.NET.Input;
 
 namespace RenderingEngine
 {
@@ -24,17 +25,17 @@ namespace RenderingEngine
             (Player, Sectors, Sprites) = MapLoader.LoadData(arguments);
         }
 
-        private readonly HashSet<Key> PressedKeys = [];
+        private readonly HashSet<KeyboardKeyEventArgs> PressedKeys = [];
 
         public void Update()
         {
-            foreach (Key key in PressedKeys)
+            foreach (KeyboardKeyEventArgs key in PressedKeys)
             {
                 OnKey(key);
             }
         }
 
-        public void OnKeyDown(Key key)
+        public void OnKeyDown(KeyboardKeyEventArgs key)
         {
             if (!PressedKeys.Add(key))
             {
@@ -43,32 +44,32 @@ namespace RenderingEngine
             }
         }
 
-        public void OnKeyUp(Key key)
+        public void OnKeyUp(KeyboardKeyEventArgs key)
         {
             _ = PressedKeys.Remove(key);
         }
 
-        private void OnKey(Key key)
+        private void OnKey(KeyboardKeyEventArgs keys)
         {
             const float moveSpeed = 0.5f;
             const float rotSpeed = 0.08f;
 
-            switch (key)
+            switch (keys.Key)
             {
-                case Key.Up:
-                case Key.W:
+                case Keys.Up:
+                case Keys.W:
                     MoveUpDown(moveSpeed);
                     break;
-                case Key.Down:
-                case Key.S:
+                case Keys.Down:
+                case Keys.S:
                     MoveUpDown(-moveSpeed);
                     break;
-                case Key.Right:
-                case Key.D:
+                case Keys.Right:
+                case Keys.D:
                     Rotate(-rotSpeed);
                     break;
-                case Key.Left:
-                case Key.A:
+                case Keys.Left:
+                case Keys.A:
                     Rotate(rotSpeed);
                     break;
             }

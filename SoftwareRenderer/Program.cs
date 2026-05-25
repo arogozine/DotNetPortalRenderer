@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Models;
+//using System.CommandLine;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 
@@ -9,14 +10,53 @@ namespace SoftwareRenderer
         [STAThread]
         static void Main(string[] args)
         {
+            /*
+            RootCommand rootCommand = new("Software Renderer");
+
+
+            var iwadOption = new Option<string>("--iwad")
+            {
+                Description = "Doom IWAD"
+            };
+
+            var pwadOption = new Option<string>("--pwad")
+            {
+                Description = "Doom PWAD"
+            };
+
+            var grpOption = new Option<string>("--grp")
+            {
+                Description = "Duke GRP"
+            };
+
+            var mapOption = new Option<string>("--map")
+            {
+                Description = "Map Name"
+            };
+
+            var paletteOption = new Option<string>("--palette")
+            {
+                Description = "Enable verbose output"
+            };
+            */
+
+            // rootCommand.Options.Add
+
             if (!TryParseArgs(args, out var parsedArgs))
             {
                 PrintUsage();
                 return;
             }
 
-            var app = new SilkSkiaApp(parsedArgs);
-            app.Run();
+            try
+            {
+                using var skiaWindow = SkiaWindow.CreateNew(parsedArgs);
+                skiaWindow.Run();
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
         }
 
         private static bool TryParseArgs(Span<string> args,
