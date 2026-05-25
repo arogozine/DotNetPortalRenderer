@@ -226,7 +226,7 @@ namespace DoomAssetLoader.Map
         ComputerMap = 2026,
         [Description("COLU")]
         FloorLamp = 2028,
-        [Description("BAR112")]
+        [Description("BAR1")]
         ExplodingBarrel = 2035,
         [Description("PVIS")]
         LightAmplificationVisor = 2045,

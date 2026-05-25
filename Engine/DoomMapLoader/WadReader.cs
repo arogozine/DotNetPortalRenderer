@@ -412,6 +412,7 @@ namespace RenderingEngine.DoomMapLoader
                     var line = new Line
                     {
                         Id = lineInfo.LineDefId,
+                        TwoSided = true,
                         PointA = lineInfo.Left ? ToVector(vertex1, linedef.Vertex1) : ToVector(vertex2, linedef.Vertex2),
                         PointB = lineInfo.Left ? ToVector(vertex2, linedef.Vertex2) : ToVector(vertex1, linedef.Vertex1),
                         SectorTo = lineInfo.ParentSectorId,
