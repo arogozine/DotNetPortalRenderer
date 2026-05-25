@@ -88,15 +88,12 @@ namespace RenderingEngine.Engine
 
                     (int min_t, int max_t, int min_b, int max_b) = CalculateLaneTopBottoms(wallStartY, wallEndY);
 
-                    if (min_b > max_t + 16)
-                    {
-                        RenderLine(x, wallEndY, wallStartY, min_t, max_t, min_b, max_b);
+                    RenderLine(x, wallEndY, wallStartY, min_t, max_t, min_b, max_b);
 
-                        x += Vector<int>.Count;
-                        count -= (ushort)Vector<int>.Count;
-                        continue;
-                    }
+                    x += Vector<int>.Count;
+                    count -= (ushort)Vector<int>.Count;
 
+                    continue;
                 }
 
                 while (count-- > 0)
@@ -402,7 +399,7 @@ namespace RenderingEngine.Engine
                 Sse.Prefetch2(texturePtr);
 
                 RenderSkyboxShared(player, RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall,
-                    screenPtr, texturePtr, sectorFromX, sectorToX,
+                    screenPtr, texturePtr, wallFromX, wallToX,
                     wallStartPtr, wallEndPtr,
                     ceilingStartPtr, floorEndPtr,
                     PixelWidth,
