@@ -112,19 +112,19 @@ namespace RenderingEngine
         }
 
         [MemberNotNull(nameof(mtRenderer))]
-        public void StartTheGameLoop(int width, int height)
+        public nint StartTheGameLoop(int width, int height)
         {
             Width = width;
             Height = height;
             mtRenderer = new GameEngineLoop(this);
-            mtRenderer.StartTheGameLoop();
+            return mtRenderer.StartTheGameLoop();
         }
 
-        public unsafe void* RenderNextFrame()
+        public nint RenderNextFrame()
         {
             if (mtRenderer == null)
             {
-                return (void*)null;
+                return nint.Zero;
             }
 
             return mtRenderer.RenderFrame();

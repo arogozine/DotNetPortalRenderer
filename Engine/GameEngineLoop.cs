@@ -19,7 +19,7 @@ namespace RenderingEngine
         }
 
         [MemberNotNull(nameof(engineLoopTask))]
-        private void MainEngineLoop(CancellationToken cancellationToken)
+        private nint MainEngineLoop(CancellationToken cancellationToken)
         {
             var renderer = new PortalRenderer(Engine.Width, Engine.Height)
             {
@@ -36,7 +36,7 @@ namespace RenderingEngine
                     Debugger.Break();
                 }, TaskContinuationOptions.OnlyOnFaulted);
             
-            return;
+            return (nint)renderer.Buffer;
 
             void TaskBody() 
             {
@@ -56,23 +56,23 @@ namespace RenderingEngine
             currentFrame = null;
         }
 
-        public void StartTheGameLoop()
+        public nint StartTheGameLoop()
         {
             EngineLoopCancellationToken = new CancellationTokenSource();
-            MainEngineLoop(EngineLoopCancellationToken.Token);
+            return MainEngineLoop(EngineLoopCancellationToken.Token);
         }
 
-        public void* RenderFrame()
+        public nint RenderFrame()
         {
             if (engineLoopTask == null)
             {
-                return null;
+                return nint.Zero;
             }
 
             _ = StartRenderingSemaphore.Release();
             RenderedFrameSemaphore.Wait();
 
-            return currentFrame;
+            return (nint)currentFrame;
         }
 
         public void Dispose()

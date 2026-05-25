@@ -50,7 +50,7 @@ namespace SoftwareRenderer
 
             try
             {
-                using var skiaWindow = SkiaWindow.CreateNew(parsedArgs);
+                using var skiaWindow = SoftwareRendererWindow.CreateNew(parsedArgs);
                 skiaWindow.Run();
             }
             catch (Exception ex)

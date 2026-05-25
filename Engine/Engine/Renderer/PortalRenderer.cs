@@ -11,6 +11,8 @@ namespace RenderingEngine.Engine
         public required Player Player { get; set; }
         public required Sector[] Sectors { get; set; }
 
+        public void* Buffer => buffer;
+
         private readonly WallHelper WallHelper;
         private readonly SpriteHelper SpriteHelper;
 
