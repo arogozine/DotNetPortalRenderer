@@ -25,36 +25,36 @@ namespace RenderingEngine
             (Player, Sectors, Sprites) = MapLoader.LoadData(arguments);
         }
 
-        private readonly HashSet<KeyboardKeyEventArgs> PressedKeys = [];
+        private readonly HashSet<Keys> PressedKeys = [];
 
         public void Update()
         {
-            foreach (KeyboardKeyEventArgs key in PressedKeys)
+            foreach (Keys key in PressedKeys)
             {
                 OnKey(key);
             }
         }
 
-        public void OnKeyDown(KeyboardKeyEventArgs key)
+        public void OnKeyDown(KeyboardKeyEventArgs keyArg)
         {
-            if (!PressedKeys.Add(key))
+            if (!PressedKeys.Add(keyArg.Key))
             {
-                _ = PressedKeys.Remove(key);
+                _ = PressedKeys.Remove(keyArg.Key);
                 return;
             }
         }
 
-        public void OnKeyUp(KeyboardKeyEventArgs key)
+        public void OnKeyUp(KeyboardKeyEventArgs keyArg)
         {
-            _ = PressedKeys.Remove(key);
+            _ = PressedKeys.Remove(keyArg.Key);
         }
 
-        private void OnKey(KeyboardKeyEventArgs keys)
+        private void OnKey(Keys key)
         {
             const float moveSpeed = 0.5f;
             const float rotSpeed = 0.08f;
 
-            switch (keys.Key)
+            switch (key)
             {
                 case Keys.Up:
                 case Keys.W:
