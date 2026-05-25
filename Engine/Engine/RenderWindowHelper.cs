@@ -37,19 +37,17 @@ namespace RenderingEngine.Engine
             Span<RenderColumnStatus> status = alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             Span<int> floorEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             Span<int> wallEndSloped = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
-            Span<int> wallEnd = alignedMemoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
             Span<float> distance = alignedMemoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
 
             status.Fill(RenderColumnStatus.NewRender);
             floorEnd.Fill(height - 1);
             wallEndSloped.Fill(height - 1);
-            wallEnd.Fill(height - 1);
             distance.Fill(float.MaxValue);
 
             alignedMemoryPool.ClearBuckets(
                 MemoryPoolBucket.PortalFrom, MemoryPoolBucket.PortalFromClamped,
                 MemoryPoolBucket.PortalTo, MemoryPoolBucket.PortalToClamped,
-                MemoryPoolBucket.CeilingStart, MemoryPoolBucket.WallStart,
+                MemoryPoolBucket.CeilingStart,
                 MemoryPoolBucket.TextureYIncrement, MemoryPoolBucket.StartingYTexturePosition);
         }
 

@@ -35,7 +35,7 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
             ushort length = (ushort)(wallToX - wallFromX + 1);
-            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp)[..length];
             repeatedCount.Fill(length);
 
             // Set the X position as "FinishedRendering" for this wall

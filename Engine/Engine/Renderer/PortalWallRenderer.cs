@@ -96,7 +96,7 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
             ushort length = (ushort)(wallToX - wallFromX + 1);
 
-            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp)[..length];
             repeatedCount.Fill(length);
 
             // set repeat count to 0 where there is nothing to draw

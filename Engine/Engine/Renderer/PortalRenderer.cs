@@ -385,8 +385,6 @@ namespace RenderingEngine.Engine
 
             Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
             Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
-            Span<int> wallStart = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStart);
-            Span<int> wallEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEnd);
 
             Span<int> portalFrom = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFrom);
             Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
@@ -492,13 +490,9 @@ namespace RenderingEngine.Engine
 
                 }
 
-                int wallStartYInt = float.ConvertToIntegerNative<int>(wallStartY);
-                int wallEndYInt = float.ConvertToIntegerNative<int>(wallEndY);
                 int wallStartYClampedInt = float.ConvertToIntegerNative<int>(wallStartYClamped);
                 int wallEndYClampedInt = float.ConvertToIntegerNative<int>(wallEndYClamped);
 
-                wallStart[x] = upperWallIsSkybox ? wallEndYInt : wallStartYInt;
-                wallEnd[x] = wallEndYInt;
                 wallStartClamped[x] = upperWallIsSkybox ? wallEndYClampedInt : wallStartYClampedInt;
                 wallEndClamped[x] = wallEndYClampedInt;
 

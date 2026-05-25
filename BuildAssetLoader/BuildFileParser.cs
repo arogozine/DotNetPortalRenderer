@@ -47,7 +47,6 @@ namespace BuildAssetLoader
                 offset += sizeof(ushort);
                 int spriteSizeInBytes = numSprites * sizeof(SpriteType);
                 sprites = (offset, spriteSizeInBytes);
-                offset += spriteSizeInBytes;
 
                 mapFiles.Add(new MapFile(fileAndBinary.Value, sectors, walls, sprites)
                 {
@@ -64,7 +63,7 @@ namespace BuildAssetLoader
         {
             List<ArtFile> artFiles = [];
 
-            foreach (var fileAndBinary in grpFile.Files.Where(IsArtFile))
+            foreach (KeyValuePair<string, byte[]> fileAndBinary in grpFile.Files.Where(IsArtFile))
             {
                 string fileName = fileAndBinary.Key;
                 Span<byte> binary = fileAndBinary.Value;

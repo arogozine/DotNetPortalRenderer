@@ -112,6 +112,7 @@ namespace RenderingEngine.Engine
             int* ceilingStart = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
             int* wallStartSloped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
             int* floorEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
+            int* wallStartClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.Temp);
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateCeiling);
 
@@ -174,7 +175,6 @@ namespace RenderingEngine.Engine
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
             int length = sectorToX - sectorFromX + 1;
-            Span<int> wallStartClamped = TempBuffer<int>.GetBuffer(length);
             Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
             repeatedCount.Fill((ushort)length);
 
@@ -191,12 +191,11 @@ namespace RenderingEngine.Engine
                 int floorEndY = floorEnd[x];
                 int ceilingStartY = ceilingStart[x];
 
-                wallStartClamped[x - sectorFromX] = SharedHelpers.Clamp(wallStartSloped[x], ceilingStartY, floorEndY);
+                wallStartClampedPtr[x - sectorFromX] = SharedHelpers.Clamp(wallStartSloped[x], ceilingStartY, floorEndY);
             }
 
             _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
 
-            fixed (int* wallStartClampedPtr = &wallStartClamped[0])
             fixed (uint* texturePtr = &ceilingTexturePtr)
             {
                 RenderFloorOrCeilingColumn(repeatedCount, screenPtr, texturePtr, sectorFromX, sectorToX, wallStartClampedPtr, ceilingStart + sectorFromX, width,
@@ -212,6 +211,7 @@ namespace RenderingEngine.Engine
             int* wallEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
             int* floorEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
             int* ceilingStart = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
+            int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.Temp);
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateFloor);
             TextureInfo floorTexture = sector.FloorTexture;
@@ -286,7 +286,6 @@ namespace RenderingEngine.Engine
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
             int length = sectorToX - sectorFromX + 1;
-            Span<int> wallEndClamped = TempBuffer<int>.GetBuffer(length);
             Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
             repeatedCount.Fill((ushort)length);
 
@@ -303,17 +302,16 @@ namespace RenderingEngine.Engine
                 int floorEndY = floorEnd[x];
                 int ceilingStartY = ceilingStart[x];
 
-                wallEndClamped[x - sectorFromX] = SharedHelpers.Clamp(wallEnd[x], ceilingStartY, floorEndY);
+                wallEndClampedPtr[x - sectorFromX] = SharedHelpers.Clamp(wallEnd[x], ceilingStartY, floorEndY);
             }
 
             _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
 
-            fixed (int* wallClampedPtr = &wallEndClamped[0])
             fixed (uint* texturePtr = &floorTexturePtr)
             {
                 Sse.Prefetch2(texturePtr);
 
-                RenderFloorOrCeilingColumn(repeatedCount, screenPtr, texturePtr, sectorFromX, sectorToX, floorEnd + sectorFromX, wallClampedPtr, width,
+                RenderFloorOrCeilingColumn(repeatedCount, screenPtr, texturePtr, sectorFromX, sectorToX, floorEnd + sectorFromX, wallEndClampedPtr, width,
                     yfloor, yOffset, xOffset, textureWidth,
                     textureHeightMask, textureWidthMask, rotated, rSinV, rCosV, alignWallXV, alignWallYV, xyOpts, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);
             }
