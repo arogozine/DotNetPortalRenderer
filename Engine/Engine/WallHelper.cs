@@ -179,16 +179,18 @@ namespace RenderingEngine.Engine
 
                 if (wall.IsPortal && wall.Neighbor != sector.Id)
                 {
-                    _= connectingSectors.Add(sectors[wall.Neighbor]);
+                    var n = sectors[wall.Neighbor];
+
+                    if (connectingSectors.Add(n))
+                    {
+                        RenderableWall firstWall = n.Walls[0];
+
+                        firstWall.R1 = firstWall.PointA;
+                        firstWall.R2 = firstWall.PointB;
+
+                        _ = RotateWall(firstWall, pSin, pCos, px, py);
+                    }
                 }
-            }
-
-            foreach (Sector s in connectingSectors)
-            {
-                s.Walls[0].R1 = s.Walls[0].PointA;
-                s.Walls[0].R2 = s.Walls[0].PointB;
-
-                _ = RotateWall(s.Walls[0], pSin, pCos, px, py);
             }
         }
 

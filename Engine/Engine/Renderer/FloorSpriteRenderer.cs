@@ -111,6 +111,9 @@ namespace RenderingEngine.Engine
                 portalFromClampedPtr[x] = clampedFromY;
                 portalToClampedPtr[x] = clampedToY;
                 repeatedCountPtr[x - from] = (ushort)length;
+
+                Debug.Assert(length > x - from);
+                Debug.Assert(clampedFromY >= 0);
             }
 
             _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCountPtr, length);
@@ -189,7 +192,7 @@ namespace RenderingEngine.Engine
             float* xMapPosMultiplierCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
             float* incrCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
-            for (int x = from; x <= to; )
+            for (int x = from; x < to; )
             {
                 int count = repeatedCount[x - from];
 
