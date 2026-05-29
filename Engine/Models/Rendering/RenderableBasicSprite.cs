@@ -26,6 +26,7 @@ namespace RenderingEngine.Models
         public float Length => Sprite.Length;
         public short? Shade => Sprite.Shade;
 
+        public float AngleToPlayer { get; set; }
 
         public bool IntersectsView { get; set; }
         public Point Rotated { get; set; }

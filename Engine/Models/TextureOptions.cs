@@ -1,19 +1,12 @@
-﻿using RenderingEngine.Engine;
-
-namespace RenderingEngine.Models
+﻿namespace RenderingEngine.Models
 {
     internal sealed class TextureInfo
     {
-        public Texture Texture {
-            get {
-                return (field ??= TextureCache.GetTexture(Name));
-            }
-        }
+        public required Texture Texture { get; set; }
 
+        public string Name => Texture.Name;
         public int Width => Texture.Width;
         public int Height => Texture.Height;
-
-        public required string Name { get; set; }
         public int XOffset { get; set; }
         public int YOffset { get; set; }
         public float Alpha { get; set; }

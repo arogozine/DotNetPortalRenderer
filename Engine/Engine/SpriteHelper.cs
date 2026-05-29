@@ -587,6 +587,34 @@ namespace RenderingEngine.Engine
 
                 Point rotated = RotateVertex(s.Location);
 
+                if (s.Sprite.AnimationAngle?.AnimationToAngleToTexture?[0] is { } animationAngle)
+                {
+                    (float mx, float my) = s.Location;
+                    float dx = px - mx;
+                    float dy = py - my;
+                    s.AngleToPlayer = MathFormulas.ClampAngle(MathF.Atan2(dy, dx) - 0.5f * MathF.PI);
+
+                    TextureAngle selectedAngle = animationAngle[0];
+                    float dist = float.MaxValue;
+                    float angleToPlayer = s.AngleToPlayer;
+
+                    for (int i = 0; i < animationAngle.Length; i++)
+                    {
+                        TextureAngle textureAngle = animationAngle[i];
+
+                        float dist2 = MathF.Abs(angleToPlayer - textureAngle.Angle);
+
+                        if (dist2 < dist)
+                        {
+                            dist = dist2;
+                            selectedAngle = textureAngle;
+                        }
+                    }
+
+                    s.Flipped = selectedAngle.Flipped;
+                    s.Sprite.Texture.Texture = selectedAngle.Texture;
+                }
+
                 if (s is RenderableFloorSprite floorSprite)
                 {
                     Point r1 = SharedHelpers.RotateVertex(floorSprite.PointA, pSin, pCos, px, py);

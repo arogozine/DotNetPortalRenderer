@@ -64,17 +64,17 @@ namespace RenderingEngine.DoomMapLoader
 
             foreach ((string name, var info) in floorTextures)
             {
-                TextureCache.Add(name, new DoomTexture(info.Width, info.Height, info.Data));
+                TextureCache.Add(name, new DoomTexture(name, info.Width, info.Height, info.Data));
             }
 
             foreach ((string name, var info) in textures)
             {
-                TextureCache.Add(name, new DoomTexture(info.Width, info.Height, info.Data));
+                TextureCache.Add(name, new DoomTexture(name, info.Width, info.Height, info.Data));
             }
 
             foreach ((string name, var info) in sprites)
             {
-                TextureCache.Add(name, new DoomTexture(info.Width, info.Height, info.Data));
+                TextureCache.Add(name, new DoomTexture(name, info.Width, info.Height, info.Data));
             }
 
             ExtractAllPallettes(wad);
@@ -397,8 +397,8 @@ namespace RenderingEngine.DoomMapLoader
                     Settings = default,
                     Ceiling = ceiling,
                     Floor = floor,
-                    FloorTexture = new Models.TextureInfo { Name = sector.FloorTexture },
-                    CeilingTexture = new Models.TextureInfo { Name = sector.CeilingTexture },
+                    FloorTexture = new Models.TextureInfo { Texture = TextureCache.GetTexture(sector.FloorTexture) },
+                    CeilingTexture = new Models.TextureInfo { Texture = TextureCache.GetTexture(sector.CeilingTexture) },
                     FloorShade = sector.LightLevel,
                     CeilingShade = sector.LightLevel
                 };
@@ -665,7 +665,7 @@ namespace RenderingEngine.DoomMapLoader
         {
             var defaultTexture = new Models.TextureInfo
             {
-                Name = "-"
+                Texture = TextureCache.GetTexture((string?)null)
             };
 
             // This seems to be hard coded,
@@ -682,13 +682,13 @@ namespace RenderingEngine.DoomMapLoader
 
                 if (hasSkyBox)
                 {
-                    sector.CeilingTexture.Name = skyTexture;
+                    sector.CeilingTexture.Texture = TextureCache.GetTexture(skyTexture);
                     sector.CeilingTexture.RenderingOptions |= TextureRenderingOptions.Skybox;
                 }
 
                 if (hasFloorBox)
                 {
-                    sector.FloorTexture.Name = skyTexture;
+                    sector.FloorTexture.Texture = TextureCache.GetTexture(skyTexture);
                     sector.FloorTexture.RenderingOptions |= TextureRenderingOptions.Skybox;
                 }
             }
@@ -714,7 +714,7 @@ namespace RenderingEngine.DoomMapLoader
                         {
                             wall.UpperTexture = new Models.TextureInfo
                             {
-                                Name = skyTexture,
+                                Texture = TextureCache.GetTexture(skyTexture),
                                 RenderingOptions = TextureRenderingOptions.Skybox
                             };
                             wall.Shade = byte.MaxValue;
@@ -723,7 +723,7 @@ namespace RenderingEngine.DoomMapLoader
                         {
                             wall.UpperTexture ??= new Models.TextureInfo
                             {
-                                Name = skyTexture,
+                                Texture = TextureCache.GetTexture(skyTexture),
                                 RenderingOptions = TextureRenderingOptions.Skybox
                             };
                             wall.Shade = byte.MaxValue;
@@ -733,7 +733,7 @@ namespace RenderingEngine.DoomMapLoader
                     {
                         wall.MiddleTexture ??= new Models.TextureInfo
                         {
-                            Name = skyTexture,
+                            Texture = TextureCache.GetTexture(skyTexture),
                             RenderingOptions = TextureRenderingOptions.Skybox
                         };
                         wall.Shade = byte.MaxValue;
@@ -756,6 +756,8 @@ namespace RenderingEngine.DoomMapLoader
 
         private static List<Sprite> ExtractSprites(ReadOnlySpan<UdmfThing> things)
         {
+            var spriteLookup = GetMultiAngleSprites();
+
             List<Sprite> sprites = new(things.Length);
 
             for (int i = 0; i < things.Length; i++)
@@ -771,45 +773,162 @@ namespace RenderingEngine.DoomMapLoader
                         continue;
                 }
 
+                _ = spriteLookup.TryGetValue((ThingType)thing.Type, out SpriteAnimationAngle? spriteAnimationAngle);
+
+                var firstTexture = spriteAnimationAngle?.AnimationToAngleToTexture?.First()?.First().Texture ??
+                    TextureCache.GetTexture((string?)null);
+
                 sprites.Add(new Sprite
                 {
                     Id = i,
-                    Angle = thing.Angle,
+                    Angle = DetermineAngleInRadians(thing.Angle),
                     Location = new Point(thing.X, thing.Y),
                     Height = thing.Height ?? 0f,
-                    Texture = new Models.TextureInfo { Name = GetTextureName((ThingType)thing.Type) }
+                    Texture = new Models.TextureInfo { Texture = firstTexture },
+                    AnimationAngle = spriteAnimationAngle
                 });
             }
 
             PrecalculateWallSprites(CollectionsMarshal.AsSpan(sprites));
 
             return sprites;
+        }
 
-            static string GetTextureName(ThingType type)
+        private sealed record DoomTextureInfo(
+                string Name, char AnimationFrame, float Angle, bool Flipped);
+
+        private static Dictionary<ThingType, SpriteAnimationAngle> GetMultiAngleSprites()
+        {
+            // https://doomwiki.org/wiki/Sprite
+
+            string[] textures = TextureCache.TextureNames.Where(Valid).ToArray();
+            (ThingType Val, string Code)[] thingCodes = GetThingCodes();
+            var multiAngleTextures = new Dictionary<ThingType, SpriteAnimationAngle>(119);
+
+            for (int i = 0; i < thingCodes.Length; i++)
             {
-                DescriptionAttribute descriptionAttribute = (typeof(ThingType).GetField(type.ToString()) ?? typeof(ThingType).GetField(nameof(ThingType.RadiationSuit)))
-                    !.GetCustomAttribute<DescriptionAttribute>()!;
+                (ThingType Thing, string Code) = thingCodes[i];
 
-                string name = descriptionAttribute.Description;
+                var foundTextures = textures.Where(x => x.StartsWith(Code))
+                    .ToList();
 
-                if (TextureCache.TextureExists(name))
+                // "NONE"
+                if (foundTextures.Count == 0)
                 {
-                    return name;
+                    continue;
                 }
 
-                name = descriptionAttribute.Description + "A0";
+                var animationFrames = foundTextures
+                    .SelectMany(GetAnimFrameAndAngle)
+                    .GroupBy(x => x.AnimationFrame)
+                    .OrderBy(g => g.Key)
+                    .ToArray();
 
-                if (TextureCache.TextureExists(name))
+                TextureAngle[][] animationFramesA = new TextureAngle[animationFrames.Length][];
+
+                for (int a = 0; a < animationFrames.Length; a++)
                 {
-                    return name;
+                    DoomTextureInfo[] frames = animationFrames[a]
+                        .OrderBy(x => x.Angle)
+                        .ToArray();
+
+                    animationFramesA[a] = new TextureAngle[frames.Length];
+
+                    for (int t = 0; t < frames.Length; t++)
+                    {
+                        DoomTextureInfo frame = frames[t];
+                        animationFramesA[a][t] = new TextureAngle(frame.Angle, TextureCache.GetTexture(frame.Name), frame.Flipped);
+                    }
                 }
 
-                return descriptionAttribute.Description + "A1";
+                multiAngleTextures[Thing] = new SpriteAnimationAngle
+                {
+                    AnimationToAngleToTexture = animationFramesA
+                };
+            }
+
+            return multiAngleTextures;
+
+            static bool Valid(string texture)
+            {
+                switch (texture.Length)
+                {
+                    case 4:
+                        return true;
+                    case 6:
+                        return !char.IsDigit(texture[4]) && char.IsDigit(texture[5]);
+                    case 8:
+                        return !char.IsDigit(texture[4]) && char.IsDigit(texture[5])
+                            && !char.IsDigit(texture[6]) && char.IsDigit(texture[7]);
+                }
+
+                return false;
+            }
+
+            static DoomTextureInfo[] GetAnimFrameAndAngle(string texture)
+            {
+                if (texture.Length == 4)
+                {
+                    return [new (texture, 'A', 0f, false)];
+                }
+
+                if (texture.Length == 6)
+                {
+                    return [
+                        new (texture, texture[4], DetermineAngle(texture[5]), false)
+                    ];
+                }
+
+                if (texture.Length == 8)
+                {
+                    return [
+                        new (texture, texture[4], DetermineAngle(texture[5]), false),
+                        new (texture, texture[6], DetermineAngle(texture[7]), true),
+                    ];
+                }
+
+                throw new NotImplementedException();
+            }
+
+            static float DetermineAngle (char angleChar)
+            {
+                Debug.Assert(char.IsDigit(angleChar));
+
+                if (angleChar == '0')
+                {
+                    return 0f;
+                }
+
+                int angle = (angleChar - '1') * 45;
+                Debug.Assert(angle >= 0 && angle <= (360 - 45));
+                return DetermineAngleInRadians(angle);
+            }
+
+            static (ThingType Val, string Code)[] GetThingCodes()
+            {
+                ThingType[] thingTypes = Enum.GetValues<ThingType>();
+                var valToCode = new (ThingType Val, string Code)[thingTypes.Length];
+
+                for (int i = 0; i < thingTypes.Length; i++)
+                {
+                    ThingType thing = thingTypes[i];
+
+                    FieldInfo field = typeof(ThingType).GetField(thingTypes[i].ToString())!;
+                    DescriptionAttribute? descriptionAttribute = field
+                        .GetCustomAttribute<DescriptionAttribute>();
+                    Debug.Assert(descriptionAttribute != null);
+
+                    valToCode[i] = (thing, descriptionAttribute.Description);
+                }
+
+                return valToCode;
             }
         }
 
         private static List<Sprite> ExtractSprites(Span<Thing> things)
         {
+            var spriteLookup = GetMultiAngleSprites();
+
             List<Sprite> sprites = new(things.Length);
 
             for (int i = 0; i < things.Length; i++)
@@ -825,42 +944,25 @@ namespace RenderingEngine.DoomMapLoader
                         continue;
                 }
 
+                var firstTexture = spriteLookup[thing.Type].AnimationToAngleToTexture
+                    .First()
+                    .First()
+                    .Texture;
+
                 sprites.Add(new Sprite
                 {
                     Id = i,
-                    Angle = thing.Angle,
+                    Angle = DetermineAngleInRadians(thing.Angle),
                     Location = new Point(thing.X, thing.Y),
                     Height = 0f,
-                    Texture = new Models.TextureInfo { Name = GetTextureName(thing.Type) }
+                    Texture = new Models.TextureInfo { Texture = firstTexture },
+                    AnimationAngle = spriteLookup[thing.Type]
                 });
             }
 
             PrecalculateWallSprites(CollectionsMarshal.AsSpan(sprites));
 
             return sprites;
-
-            static string GetTextureName(ThingType type)
-            {
-                DescriptionAttribute descriptionAttribute = typeof(ThingType).GetField(type.ToString())!.GetCustomAttribute<DescriptionAttribute>()!;
-
-                foreach (string animFrame in new string[] { string.Empty, "A", "B" })
-                {
-                    foreach (string viewingAngle in new string[] { string.Empty, "0", "1" })
-                    {
-                        foreach (string walking in new string[] { string.Empty, "C1", "D1" })
-                        {
-                            string name = descriptionAttribute.Description + animFrame + viewingAngle + walking;
-
-                            if (TextureCache.TextureExists(name))
-                            {
-                                return name;
-                            }
-                        }
-                    }
-                }
-
-                return descriptionAttribute.Description;
-            }
         }
 
         private static Map ExtractDoomMap(WadLump textLump, string mapName)
@@ -971,7 +1073,7 @@ namespace RenderingEngine.DoomMapLoader
             {
                 return new Models.TextureInfo
                 {
-                    Name = sector.TextureCeiling,
+                    Texture = TextureCache.GetTexture(sector.TextureCeiling),
                     XOffset = ToInt32(sector.XPanningCeiling),
                     YOffset = ToInt32(sector.YPanningCeiling)
                 };
@@ -981,7 +1083,7 @@ namespace RenderingEngine.DoomMapLoader
             {
                 return new Models.TextureInfo
                 {
-                    Name = sector.TextureFloor,
+                    Texture = TextureCache.GetTexture(sector.TextureFloor),
                     XOffset = ToInt32(sector.XPanningFloor),
                     YOffset = ToInt32(sector.YPanningFloor)
                 };
@@ -1200,12 +1302,17 @@ namespace RenderingEngine.DoomMapLoader
 
             return new Models.TextureInfo
             {
-                Name = name,
+                Texture = TextureCache.GetTexture(name),
                 XOffset = xOffset,
                 YOffset = yOffset,
                 RenderingOptions = renderFromBottom ? TextureRenderingOptions.FromBottom : TextureRenderingOptions.FromTop,
                 Alpha = 1f
             };
+        }
+
+        private static float DetermineAngleInRadians(int angle)
+        {
+            return MathF.PI * (angle / 180f);
         }
     }
 }

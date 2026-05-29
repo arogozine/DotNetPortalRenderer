@@ -49,7 +49,7 @@ namespace RenderingEngine.DoomMapLoader
 
             foreach ((string name, var info) in textures)
             {
-                TextureCache.Add(name, new BuildTexture(info.Width, info.Height, info.Data));
+                TextureCache.Add(name, new BuildTexture(name, info.Width, info.Height, info.Data));
             }
         }
 
@@ -252,7 +252,7 @@ namespace RenderingEngine.DoomMapLoader
                 Floor = floor,
                 FloorTexture = new Models.TextureInfo
                 {
-                    Name = floorTexture,
+                    Texture = TextureCache.GetTexture(floorTexture),
                     XOffset = fXoffset,
                     YOffset = fYOffset,
                     XScale = floorXScale,
@@ -262,7 +262,7 @@ namespace RenderingEngine.DoomMapLoader
                 },
                 CeilingTexture = new Models.TextureInfo
                 {
-                    Name = ceilingTexture,
+                    Texture = TextureCache.GetTexture(ceilingTexture),
                     XOffset = cXoffset,
                     YOffset = cYOffset,
                     XScale = ceilXScale,
@@ -361,7 +361,7 @@ namespace RenderingEngine.DoomMapLoader
 
             return new Models.TextureInfo
             {
-                Name = textureName,
+                Texture = TextureCache.GetTexture(textureName),
                 XOffset = xOffset,
                 YOffset = yOffset,
                 XScale = scaleX,
@@ -393,13 +393,13 @@ namespace RenderingEngine.DoomMapLoader
 
                             if (ceilSkybox && ceilSkyboxChild)
                             {
-                                line.UpperTexture.Name = sector.CeilingTexture.Name;
+                                line.UpperTexture.Texture = TextureCache.GetTexture(sector.CeilingTexture);
                                 line.UpperTexture!.RenderingOptions |= TextureRenderingOptions.Skybox;
                             }
 
                             if (floorSkybox && floorSkyboxChild)
                             {
-                                line.LowerTexture.Name = sector.FloorTexture.Name;
+                                line.LowerTexture.Texture = TextureCache.GetTexture(sector.FloorTexture);
                                 line.LowerTexture!.RenderingOptions |= TextureRenderingOptions.Skybox;
                             }
                         }
@@ -434,7 +434,7 @@ namespace RenderingEngine.DoomMapLoader
                     line.IsMirror = true;
                     line.SectorTo = sector.Id;
 
-                    middleTexture.Name = mirrorTexture;
+                    middleTexture.Texture = TextureCache.GetTexture(mirrorTexture);
                     middleTexture.RenderingOptions |= TextureRenderingOptions.Translucent;
                     middleTexture.Alpha = 0.5f;
                 }
@@ -759,7 +759,7 @@ namespace RenderingEngine.DoomMapLoader
                         TwoSided = !sprite.CStat.HasFlag(SpriteCStat.OneSided),
                         Texture = new Models.TextureInfo
                         {
-                            Name = textureName,
+                            Texture = TextureCache.GetTexture(textureName),
                             RenderingOptions = ToRenderingOptions(sprite.CStat),
                             XScale = xScale,
                             YScale = yScale,
@@ -779,7 +779,7 @@ namespace RenderingEngine.DoomMapLoader
                         Height = elevation,
                         Texture = new Models.TextureInfo
                         {
-                            Name = textureName,
+                            Texture = TextureCache.GetTexture(textureName),
                             RenderingOptions = ToRenderingOptions(sprite.CStat),
                             XScale = xScale,
                             YScale = yScale,
@@ -799,7 +799,7 @@ namespace RenderingEngine.DoomMapLoader
                         Height = elevation,
                         Texture = new Models.TextureInfo
                         {
-                            Name = textureName,
+                            Texture = TextureCache.GetTexture(textureName),
                             RenderingOptions = ToRenderingOptions(sprite.CStat),
                             XScale = xScale,
                             YScale = yScale,

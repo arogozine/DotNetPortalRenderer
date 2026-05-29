@@ -95,12 +95,14 @@ internal static class TextureCache
     private static readonly Dictionary<string, Texture> Cache = [];
     private static readonly Dictionary<int, BGRA[]> PalletteLookup = [];
 
+    public static IEnumerable<string> TextureNames => Cache.Keys;
+
     static TextureCache()
     {
         var data = new BGRA[128 * 128];
         data.AsSpan().Fill(BGRA.Green);
 
-        Cache[FallBack] = new DoomTexture(128, 128, data);
+        Cache[FallBack] = new DoomTexture(FallBack, 128, 128, data);
     }
 
     public static void Add(string name, Texture texture)

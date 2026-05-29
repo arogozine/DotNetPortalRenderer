@@ -46,6 +46,8 @@ namespace RenderingEngine.Engine
             Span<int> wallStart = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
             Span<int> wallEnd = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];
 
+            // RenderOutline(wallStart, wallEnd, BGRA.Red, BGRA.Green);//, renderableWall.XLeft, renderableWall.XRight);
+
             RenderableWall wall = renderableWall.Wall;
             int wallFromXOffset = renderableWall.Offset;
             int wallFromX = renderableWall.XLeft;

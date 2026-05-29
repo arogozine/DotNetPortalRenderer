@@ -16,13 +16,15 @@ internal enum TextureTransform : byte
 
 internal abstract class Texture
 {
+    public string Name { get; }
     public int Width { get; }
     public int Height { get; }
 
     protected readonly Dictionary<int, BGRA[]>[] TransformToPallette = new Dictionary<int, BGRA[]>[1 + (int)TextureTransform.All];
 
-    public Texture(int width, int height)
+    public Texture(string name, int width, int height)
     {
+        Name = name;
         Width = width;
         Height = height;
 
@@ -97,8 +99,8 @@ internal abstract class PalletteTexture : Texture
 {
     protected readonly byte[] _lookup;
 
-    public PalletteTexture(int width, int height, byte[] lookup)
-        : base (width, height)
+    public PalletteTexture(string name, int width, int height, byte[] lookup)
+        : base (name, width, height)
     {;
         _lookup = lookup;
     }
@@ -108,8 +110,8 @@ internal class DoomTexture : Texture
 {
     private readonly BGRA[] _texture;
 
-    public DoomTexture(int width, int height, BGRA[] texture)
-        : base(width, height)
+    public DoomTexture(string name, int width, int height, BGRA[] texture)
+        : base(name, width, height)
     {
         _texture = texture;
     }
@@ -127,7 +129,8 @@ internal class DoomTexture : Texture
 
 internal class BuildTexture : PalletteTexture
 {
-    public BuildTexture(int width, int height, byte[] lookup) : base(width, height, lookup)
+    public BuildTexture(string name, int width, int height, byte[] lookup)
+        : base(name ,width, height, lookup)
     {
     }
 

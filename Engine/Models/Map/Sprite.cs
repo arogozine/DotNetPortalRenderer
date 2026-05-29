@@ -1,4 +1,13 @@
-﻿namespace RenderingEngine.Models;
+﻿using System.Collections.Frozen;
+
+namespace RenderingEngine.Models;
+
+internal sealed record TextureAngle(float Angle, Texture Texture, bool Flipped);
+
+internal sealed class SpriteAnimationAngle
+{
+    public required TextureAngle[][] AnimationToAngleToTexture { get; init; }
+}
 
 internal class Sprite
 {
@@ -10,7 +19,7 @@ internal class Sprite
     public required float Angle { get; init; }
     public required float Height { get; init; }
     public required TextureInfo Texture { get; init; }
-
+    public SpriteAnimationAngle? AnimationAngle { get; set; }
     public float Length { get; set; }
     public short? Shade { get; set; }
 
