@@ -2,7 +2,7 @@
 
 public sealed class MapSector : IFixedState
 {
-    public required int Id { get; set; }
+    public required int Id { get; init; }
     public required MapSectorSettings Settings { get; set; }
     public List<Line> Walls { get; set; } = [];
     public required int Floor { get; set; }

@@ -1,5 +1,6 @@
 ﻿using SoftwareRendererModels;
 using System.CommandLine;
+using System.Diagnostics;
 
 namespace SoftwareRenderer
 {
@@ -163,6 +164,7 @@ namespace SoftwareRenderer
             }
             catch (Exception ex)
             {
+                Debugger.Break();
                 throw;
             }
         }

@@ -2,9 +2,9 @@
 
 namespace SoftwareRendererModels;
 
-public class Sprite
+public class Sprite : IFixedState
 {
-    public required int Id { get; set; }
+    public required int Id { get; init; }
     public int SectorId { get; set; }
     public required Vector2 Location { get; init; }
     public Vector2 PointA { get; set; }
@@ -15,15 +15,4 @@ public class Sprite
     public GameSpriteAnimation? AnimationAngle { get; set; }
     public float Length { get; set; }
     public short? Shade { get; set; }
-}
-
-public sealed class WallSprite : Sprite
-{
-    public bool TwoSided { get; set; }
-}
-
-public sealed class FloorSprite : Sprite
-{
-    public Vector2 PointC { get; set; }
-    public Vector2 PointD { get; set; }
 }

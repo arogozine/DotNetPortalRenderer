@@ -2,13 +2,9 @@
 
 public sealed class Arguments : IFixedState
 {
-    // IWad is optional when using Palette/Grp mode
-    public string? IWad { get; set; }
-    public string? PWad { get; set; }
-    public required string Map { get; set; }
-
-    // Optional alternative resources: palette and grp (when using custom assets instead of IWAD/PWAD)
-    public string? Palette { get; set; }
-    public string? Grp { get; set; }
-
+    public required string? IWad { get; init; }
+    public required string? PWad { get; init; }
+    public required string Map { get; init; }
+    public required string? Palette { get; init; }
+    public required string? Grp { get; init; }
 }

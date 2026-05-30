@@ -5,6 +5,10 @@ namespace RenderingEngine.Engine
 {
     internal sealed class SpriteComparer : IComparer<RenderableSprite>
     {
+        private SpriteComparer() { }
+
+        public readonly static SpriteComparer Instance = new();
+
         public int Compare(RenderableSprite? x, RenderableSprite? y)
         {
             ArgumentNullException.ThrowIfNull(x);

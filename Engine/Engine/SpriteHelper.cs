@@ -127,7 +127,7 @@ namespace RenderingEngine.Engine
             FilterOutNonIntersectingSprites(ref rotatedSprites);
             AssignDistance(rotatedSprites);
 
-            rotatedSprites.Sort(new SpriteComparer());
+            rotatedSprites.Sort(SpriteComparer.Instance);
 
             return rotatedSprites;
         }

@@ -1,6 +1,4 @@
-﻿using SoftwareRendererModels;
-
-namespace SoftwareRendererModels;
+﻿namespace SoftwareRendererModels;
 
 public sealed class PortalPlayerSnapshot : IFixedState
 {
