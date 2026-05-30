@@ -1,5 +1,5 @@
-﻿using RenderingEngine.Models;
-using RenderingEngine.Tooling;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -9,7 +9,7 @@ namespace RenderingEngine.Engine
     {
         private unsafe void DrawWallShared(
             RenderablePortalWall renderableWall,
-            TextureInfo textureInfo,
+            GameTextureInfo textureInfo,
             scoped Span<ushort> repeatedCount,
             uint* fromYClamped,
             uint* toYClamped)

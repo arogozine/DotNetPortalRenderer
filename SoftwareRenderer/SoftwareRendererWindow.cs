@@ -2,7 +2,7 @@
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using RenderingEngine;
-using RenderingEngine.Models;
+using SoftwareRendererModels;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 

@@ -1,5 +1,5 @@
-﻿using RenderingEngine.Models;
-using RenderingEngine.Tooling;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine
 {
@@ -7,7 +7,7 @@ namespace RenderingEngine.Engine
     {
         private bool DrawPortalWall(
             PortalPlayerSnapshot player,
-            ReadOnlySpan<Sector> sectors,
+            ReadOnlySpan<RenderableSector> sectors,
             RenderablePortalWall renderableWall)
         {
             (bool renderLower, bool renderUpper, bool basicWall) = CalculateCanRenderPortalWall(sectors, renderableWall.Wall);
@@ -27,7 +27,7 @@ namespace RenderingEngine.Engine
 
             if (renderLower)
             {
-                TextureInfo lowerTexture = wall.LowerTexture!;
+                GameTextureInfo lowerTexture = wall.LowerTexture!;
 
                 if (lowerTexture.RenderingOptions.IsSkybox)
                 {
@@ -44,7 +44,7 @@ namespace RenderingEngine.Engine
 
             if (renderUpper)
             {
-                TextureInfo upperTexture = wall.UpperTexture!;
+                GameTextureInfo upperTexture = wall.UpperTexture!;
 
                 if (upperTexture.RenderingOptions.IsSkybox)
                 {
@@ -120,7 +120,7 @@ namespace RenderingEngine.Engine
             RenderablePortalWall renderableWall)
         {
             RenderableWall wall = renderableWall.Wall;
-            TextureInfo upperTexture = wall.UpperTexture!;
+            GameTextureInfo upperTexture = wall.UpperTexture!;
 
             Debug.Assert(upperTexture != null);
 
@@ -136,7 +136,7 @@ namespace RenderingEngine.Engine
             RenderablePortalWall renderableWall)
         {
             RenderableWall wall = renderableWall.Wall;
-            TextureInfo lowerTexture = wall.LowerTexture!;
+            GameTextureInfo lowerTexture = wall.LowerTexture!;
 
             Debug.Assert(lowerTexture != null);
 

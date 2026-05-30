@@ -1,5 +1,5 @@
-﻿using RenderingEngine.Models;
-using RenderingEngine.Tooling;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine
 {
@@ -18,7 +18,7 @@ namespace RenderingEngine.Engine
         {
             // separate path for skybox rendering
             RenderableWall wall = renderableWall.Wall;
-            TextureInfo textureInfo = wall.MiddleTexture!;
+            GameTextureInfo textureInfo = wall.MiddleTexture!;
 
             Debug.Assert(textureInfo != null);
 
@@ -74,9 +74,9 @@ namespace RenderingEngine.Engine
 
         // TODO: Simplify
         private static (int Height, int Width, float XScale, float ScaledTextureHeight) CalculateScale(
-            Sector sector,
+            RenderableSector sector,
             RenderableWall wall,
-            TextureInfo wallTexture)
+            GameTextureInfo wallTexture)
         {
             int textureHeight = wallTexture.Height;
             int textureWidth = wallTexture.Width;
@@ -110,10 +110,12 @@ namespace RenderingEngine.Engine
 
         #region Calculation Helpers
 
-        private static (bool RenderLower, bool RenderUpper, bool IsBasicWall) CalculateCanRenderPortalWall(ReadOnlySpan<Sector> sectors, RenderableWall wall)
+        private static (bool RenderLower, bool RenderUpper, bool IsBasicWall) CalculateCanRenderPortalWall(ReadOnlySpan<RenderableSector> sectors, RenderableWall wall)
         {
-            Sector sector = wall.Sector;
-            Sector neighborSector = sectors[wall.Neighbor];
+            Debug.Assert(wall.Neighbor != null);
+
+            RenderableSector sector = wall.Sector;
+            RenderableSector neighborSector = sectors[wall.Neighbor.Value];
             bool wallSloped = sector.Settings.Sloped || neighborSector.Settings.Sloped;
 
             bool renderLower, renderUpper, basicWall;
@@ -153,10 +155,12 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private static (float SectorHeight, float CeilingOffset, float FloorOffset) CalculatePortalOffsets(ReadOnlySpan<Sector> sectors, RenderableWall wall)
+        private static (float SectorHeight, float CeilingOffset, float FloorOffset) CalculatePortalOffsets(ReadOnlySpan<RenderableSector> sectors, RenderableWall wall)
         {
-            Sector sector = wall.Sector;
-            Sector neighborSector = sectors[wall.Neighbor];
+            Debug.Assert(wall.Neighbor != null);
+
+            RenderableSector sector = wall.Sector;
+            RenderableSector neighborSector = sectors[wall.Neighbor.Value];
 
             return CalculatePortalOffsets(sector.Floor, sector.Ceil, neighborSector.Floor, neighborSector.Ceil);
         }

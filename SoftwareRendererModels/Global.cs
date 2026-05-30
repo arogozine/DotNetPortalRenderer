@@ -1,0 +1,1 @@
+﻿global using XyzTuple = (float X, float Y, float Z);

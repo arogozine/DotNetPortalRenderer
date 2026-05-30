@@ -1,5 +1,5 @@
-﻿using RenderingEngine.Models;
-using RenderingEngine.Tooling;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -10,11 +10,11 @@ namespace RenderingEngine.Engine
     {
         private unsafe void DrawFloorSprite(
             PortalPlayerSnapshot player,
-            ReadOnlySpan<Sector> sectors,
+            ReadOnlySpan<RenderableSector> sectors,
             RenderableFloorSprite sprite,
             RenderWindowSpriteSnapshot renderableWall)
         {
-            Sector sector = sectors[sprite.SectorId];
+            RenderableSector sector = sectors[sprite.SectorId];
 
             (float xScale, float yScale) = sprite.Texture.GetScale();
             (int from, int to) = (sprite.XLeft, sprite.XRight);
@@ -40,7 +40,7 @@ namespace RenderingEngine.Engine
             spriteWindowTop[from..to].Fill(int.MaxValue);
             spriteWindowBottom[from..to].Fill(int.MinValue);
 
-            TextureInfo texture = sprite.Texture;
+            GameTextureInfo texture = sprite.Texture;
             bool translucent = texture.RenderingOptions.HasFlag(TextureRenderingOptions.Translucent);
 
             int textureWidth = texture.Width;

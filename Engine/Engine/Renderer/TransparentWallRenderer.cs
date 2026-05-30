@@ -1,17 +1,17 @@
 ﻿
-using RenderingEngine.Models;
 using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
         private unsafe void DrawTransparentWall(
-            ReadOnlySpan<Sector> sectors,
+            ReadOnlySpan<RenderableSector> sectors,
             RenderWindowWallSnapshot renderableWall)
         {
             RenderableWall wall = renderableWall.Wall;
-            TextureInfo textureInfo = wall.MiddleTexture!;
+            GameTextureInfo textureInfo = wall.MiddleTexture!;
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
@@ -27,13 +27,13 @@ namespace RenderingEngine.Engine
 
             _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount, wallToX - wallFromX + 1);
 
-            Sector sector = wall.Sector;
+            RenderableSector sector = wall.Sector;
 
             DrawSpriteShared(sector, renderableWall.Wall, repeatedCount, wallFromX, wallToX, false, textureInfo);
         }
 
         private unsafe ushort* CalculateTransparentWallDoom(
-            ReadOnlySpan<Sector> sectors,
+            ReadOnlySpan<RenderableSector> sectors,
             RenderWindowWallSnapshot renderableWall)
         {
             int width = PixelWidth;
@@ -66,9 +66,9 @@ namespace RenderingEngine.Engine
             float oneOverSectorHeight = 1f / sectorHeight;
 
             // Texture Calculations
-            TextureInfo? textureInfo = wall.MiddleTexture;
+            GameTextureInfo? textureInfo = wall.MiddleTexture;
             Debug.Assert(textureInfo != null);
-            Texture texture = TextureCache.GetTexture(textureInfo);
+            GameTexture texture = TextureCache.GetTexture(textureInfo);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
             bool texHeightDivisible2 = SharedHelpers.IsPowerOfTwo(textureHeight);
@@ -178,7 +178,7 @@ namespace RenderingEngine.Engine
         }
 
         private unsafe ushort* CalculateTransparentWallBuild(
-            ReadOnlySpan<Sector> sectors,
+            ReadOnlySpan<RenderableSector> sectors,
             RenderWindowWallSnapshot renderableWall)
         {
             int width = PixelWidth;
@@ -214,9 +214,9 @@ namespace RenderingEngine.Engine
             float oneOverSectorHeight = 1f / sectorHeight;
 
             // Texture Calculations
-            TextureInfo? textureInfo = wall.MiddleTexture;
+            GameTextureInfo? textureInfo = wall.MiddleTexture;
             Debug.Assert(textureInfo != null);
-            Texture texture = TextureCache.GetTexture(textureInfo);
+            GameTexture texture = TextureCache.GetTexture(textureInfo);
             int textureWidth = texture.Height;
             int textureHeight = texture.Width;
             bool texHeightDivisible2 = SharedHelpers.IsPowerOfTwo(textureHeight);
@@ -226,7 +226,7 @@ namespace RenderingEngine.Engine
             }
             int xOffset = textureInfo.XOffset;
             int yOffset = textureInfo.YOffset;
-            Sector sector = wall.Sector;
+            RenderableSector sector = wall.Sector;
             (float xScale, float yScale) = (textureInfo.XScale!.Value, textureInfo.YScale!.Value);
             yScale = (sector.Ceil - sector.Floor) * yScale;
             xScale = xScale / wall.Length * texture.Width;

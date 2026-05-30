@@ -1,5 +1,5 @@
-﻿using RenderingEngine.Models;
-using RenderingEngine.Tooling;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine
 {
@@ -8,8 +8,8 @@ namespace RenderingEngine.Engine
         public readonly int PixelWidth;
         public readonly int PixelHeight;
         public required RenderableSprite[] Sprites { get; set; }
-        public required Player Player { get; set; }
-        public required Sector[] Sectors { get; set; }
+        public required PlayerLocation Player { get; set; }
+        public required RenderableSector[] Sectors { get; set; }
 
         public void* Buffer => buffer;
 
@@ -139,7 +139,9 @@ namespace RenderingEngine.Engine
                 // 4. We render transparent walls after all the walls were rendered
                 foreach (RenderablePortalWall renderableWall in neighborsForDepth)
                 {
-                    _ = renderedSectors.Add(renderableWall.Wall.Neighbor);
+                    Debug.Assert(renderableWall.Wall.Neighbor != null);
+
+                    _ = renderedSectors.Add(renderableWall.Wall.Neighbor.Value);
 
                     // Keep track of mirrored wall for sprite rendering later on
                     if (renderableWall.MirrorWall is not null)
@@ -147,8 +149,10 @@ namespace RenderingEngine.Engine
                         spriteSnapShot.MirroredWalls ??= [];
                         _ = spriteSnapShot.MirroredWalls.Add(renderableWall.MirrorWall);
 
-                        _ = mirroredSectors.Add(renderableWall.MirrorWall.Neighbor);
-                        _ = mirroredSectors.Add(renderableWall.Wall.Neighbor);
+                        Debug.Assert(renderableWall.MirrorWall.Neighbor != null);
+
+                        _ = mirroredSectors.Add(renderableWall.MirrorWall.Neighbor.Value);
+                        _ = mirroredSectors.Add(renderableWall.Wall.Neighbor.Value);
                     }
 
                     if (renderableWall.IsPortalWithMiddleTexture)
@@ -169,9 +173,11 @@ namespace RenderingEngine.Engine
                 {
                     RenderableWall neighbor = renderableWall.Wall;
 
+                    Debug.Assert(neighbor.Neighbor != null);
+
                     var neighborToRender = new NeighborsToRender(renderableWall, renderableWall.ParentWalls!)
                     {
-                        SectorId = neighbor.Neighbor,
+                        SectorId = neighbor.Neighbor.Value,
                         MirrorWall = neighbor.IsMirror ? neighbor : renderableWall.MirrorWall
                     };
 
@@ -200,7 +206,7 @@ namespace RenderingEngine.Engine
         /// <returns>Set of portal walls to render nexts</returns>
         public List<RenderablePortalWall> DrawScreenStep(PortalPlayerSnapshot player)
         {
-            ReadOnlySpan<Sector> sectors = Sectors;
+            ReadOnlySpan<RenderableSector> sectors = Sectors;
 
             List<RenderablePortalWall> neighborsForDepth = [];
 
@@ -210,7 +216,7 @@ namespace RenderingEngine.Engine
             {
                 NeighborsToRender sectorInfo = renderQueueSpan[s];
 
-                Sector sector = sectors[sectorInfo.SectorId];
+                RenderableSector sector = sectors[sectorInfo.SectorId];
                 RenderableWall[] parentWalls = sectorInfo.ParentWalls;
 
                 // 1. Filter out walls outside the player's view and sort them closest to furthest
@@ -247,7 +253,7 @@ namespace RenderingEngine.Engine
 
         public void RenderSpritesAndTransparentWalls(PortalPlayerSnapshot player)
         {
-            ReadOnlySpan<Sector> sectors = Sectors;
+            ReadOnlySpan<RenderableSector> sectors = Sectors;
 
             Span<float> depthBuffer = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance);
             Span<RenderableSprite> playerVisibleSprites = SpriteHelper.GetSpritesForPlayer(player, Sprites, Sectors);
@@ -283,8 +289,8 @@ namespace RenderingEngine.Engine
 
         private RenderColumnStatus CalculateRenderWindow(
             NeighborsToRender sectorInfo,
-            ReadOnlySpan<Sector> sectors,
-            Sector sector,
+            ReadOnlySpan<RenderableSector> sectors,
+            RenderableSector sector,
             Span<RenderableWall> walls)
         {
             neightbors.Clear();
@@ -313,8 +319,8 @@ namespace RenderingEngine.Engine
 
         private List<RenderablePortalWall> RenderSector(
             PortalPlayerSnapshot player,
-            Sector sector,
-            ReadOnlySpan<Sector> sectors,
+            RenderableSector sector,
+            ReadOnlySpan<RenderableSector> sectors,
             RenderColumnStatus sectorStatus)
         {
             if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderFloor))
@@ -373,8 +379,8 @@ namespace RenderingEngine.Engine
 
         private RenderColumnStatus CalculateRenderWindow(
             RenderableWall wall,
-            Sector sector,
-            ReadOnlySpan<Sector> sectors,
+            RenderableSector sector,
+            ReadOnlySpan<RenderableSector> sectors,
             List<RenderablePortalWall> renderableWalls)
         {
             if (!RenderWindowHelper.SetWallToCalculate(wall))
@@ -413,7 +419,9 @@ namespace RenderingEngine.Engine
             float? portalStartIncr = yPlaneInfo.PortalStartIncr;
             float? portalEndIncr = yPlaneInfo.PortalEndIncr;
 
-            Sector? neighborSector = wall.IsPortal ? sectors[wall.Neighbor] : null;
+            Debug.Assert(wall.IsPortal ? wall.Neighbor != null : wall.Neighbor == null);
+
+            RenderableSector? neighborSector = wall.IsPortal ? sectors[wall.Neighbor!.Value] : null;
             bool sloped = neighborSector is not null && (sector.Settings.Sloped || neighborSector.Settings.Sloped);
 
             // minor performance hack

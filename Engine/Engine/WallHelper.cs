@@ -1,4 +1,5 @@
-﻿using RenderingEngine.Models;
+﻿using SoftwareRendererModels;
+using System.Numerics;
 using static RenderingEngine.Engine.SharedHelpers;
 
 namespace RenderingEngine.Engine
@@ -30,7 +31,7 @@ namespace RenderingEngine.Engine
             _player = player;
         }
 
-        public Span<RenderableWall> DetermineWallsToRender(Sector sector, Span<RenderableWall> portalWallsToOcclude, NeighborsToRender sectorInfo, PortalPlayerSnapshot player)
+        public Span<RenderableWall> DetermineWallsToRender(RenderableSector sector, Span<RenderableWall> portalWallsToOcclude, NeighborsToRender sectorInfo, PortalPlayerSnapshot player)
         {
             Span<RenderableWall> rotatedWalls = CalculateRotatedWallsRelativeToPlayer(sector, player, sectorInfo);
 
@@ -112,7 +113,7 @@ namespace RenderingEngine.Engine
             return orderedWalls[..j];
         }
 
-        public Span<RenderableWall> CalculateRotatedWallsRelativeToPlayer(Sector sector, PortalPlayerSnapshot player, NeighborsToRender sectorInfo)
+        public Span<RenderableWall> CalculateRotatedWallsRelativeToPlayer(RenderableSector sector, PortalPlayerSnapshot player, NeighborsToRender sectorInfo)
         {
             float pSin = player.Sin;
             float pCos = player.Cos;
@@ -164,14 +165,14 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static void CalculateConnectingSectorsForSlope(PortalPlayerSnapshot player, ReadOnlySpan<Sector> sectors, Sector sector)
+        public static void CalculateConnectingSectorsForSlope(PortalPlayerSnapshot player, ReadOnlySpan<RenderableSector> sectors, RenderableSector sector)
         {
             float pSin = player.Sin;
             float pCos = player.Cos;
             float px = player.X;
             float py = player.Y;
 
-            HashSet<Sector> connectingSectors = [];
+            HashSet<RenderableSector> connectingSectors = [];
 
             for (int i = 0; i < sector.Walls.Length; i++)
             {
@@ -179,7 +180,7 @@ namespace RenderingEngine.Engine
 
                 if (wall.IsPortal && wall.Neighbor != sector.Id)
                 {
-                    var n = sectors[wall.Neighbor];
+                    var n = sectors[wall.Neighbor!.Value];
 
                     if (connectingSectors.Add(n))
                     {
@@ -194,13 +195,13 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static void AssignBunches(scoped ReadOnlySpan<Sector> sectors)
+        public static void AssignBunches(scoped ReadOnlySpan<RenderableSector> sectors)
         {
             Queue<RenderableWall> assignedWallsQueue = [];
 
             for (int s = 0; s < sectors.Length; s++)
             {
-                Sector sector = sectors[s];
+                RenderableSector sector = sectors[s];
                 Span<RenderableWall> walls = sector.Walls;
 
                 int currentGroupId = 0;
@@ -281,7 +282,7 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        public static RenderableWall[] RotateSectorWallsRelativeToPlayer(Sector sector, float pSin, float pCos, float px, float py)
+        public static RenderableWall[] RotateSectorWallsRelativeToPlayer(RenderableSector sector, float pSin, float pCos, float px, float py)
         {
             ReadOnlySpan<RenderableWall> walls = sector.Walls;
             RenderableWall[] rotatedWalls = new RenderableWall[walls.Length];
@@ -638,8 +639,8 @@ namespace RenderingEngine.Engine
             float dy = vy1 - vy2;
             float length = MathF.Sqrt((dx * dx) + (dy * dy));
 
-            wall.R1 = new Point(rx1, ry1);
-            wall.R2 = new Point(rx2, ry2);
+            wall.R1 = new Vector2(rx1, ry1);
+            wall.R2 = new Vector2(rx2, ry2);
             wall.Length = length;
 
             return wall;

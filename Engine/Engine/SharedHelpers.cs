@@ -1,4 +1,4 @@
-﻿using RenderingEngine.Models;
+﻿using SoftwareRendererModels;
 using System.Numerics;
 
 namespace RenderingEngine.Engine
@@ -136,7 +136,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static (float rx1, float ry1) RotateVertexAroundPoint(
+        internal static Vector2 RotateVertexAroundPoint(
             float x, float y,
             float sin, float cos,
             float px, float py)
@@ -147,12 +147,12 @@ namespace RenderingEngine.Engine
             float rx1 = MathF.FusedMultiplyAdd(x, sin, -y * cos);
             float ry1 = MathF.FusedMultiplyAdd(x, cos, +y * sin);
 
-            return (rx1 + px, ry1 + py);
+            return new Vector2(rx1 + px, ry1 + py);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static (float rx1, float ry1) RotateVertex(
-            Point p,
+        internal static Vector2 RotateVertex(
+            Vector2 p,
             float sin, float cos,
             float px, float py)
         {
@@ -164,11 +164,11 @@ namespace RenderingEngine.Engine
             float rx1 = MathF.FusedMultiplyAdd(x, sin, -y * cos);
             float ry1 = MathF.FusedMultiplyAdd(x, cos, y * sin);
 
-            return (rx1, ry1);
+            return new(rx1, ry1);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static (float rx1, float ry1) RotateVertex(
+        internal static Vector2 RotateVertex(
             float x, float y,
             float sin, float cos,
             float px, float py)
@@ -179,7 +179,7 @@ namespace RenderingEngine.Engine
             float rx1 = MathF.FusedMultiplyAdd(x, sin, -y * cos);
             float ry1 = MathF.FusedMultiplyAdd(x, cos, +y * sin);
 
-            return (rx1, ry1);
+            return new(rx1, ry1);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -242,7 +242,7 @@ namespace RenderingEngine.Engine
             return value >= from && value <= to;
         }
 
-        public static bool IsPointInPolygon(scoped ReadOnlySpan<RenderableWall> walls, Point point)
+        public static bool IsPointInPolygon(scoped ReadOnlySpan<RenderableWall> walls, Vector2 point)
         {
             float x = point.X;
             float y = point.Y;

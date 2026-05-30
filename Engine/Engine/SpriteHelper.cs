@@ -1,11 +1,11 @@
-﻿using RenderingEngine.Models;
-using RenderingEngine.Models.Rendering;
+﻿using SoftwareRendererModels;
+using System.Numerics;
 
 namespace RenderingEngine.Engine
 {
-    internal sealed class SectorInSectorComparer : IComparer<Sector>
+    internal sealed class SectorInSectorComparer : IComparer<RenderableSector>
     {
-        public int Compare(Sector? x, Sector? y)
+        public int Compare(RenderableSector? x, RenderableSector? y)
         {
             ArgumentNullException.ThrowIfNull(x);
             ArgumentNullException.ThrowIfNull(y);
@@ -23,7 +23,7 @@ namespace RenderingEngine.Engine
             return 0;
         }
 
-        public static bool IsSectorInSector(Sector a, Sector b)
+        public static bool IsSectorInSector(RenderableSector a, RenderableSector b)
         {
             for (int i = 0; i < a.Walls.Length; i++)
             {
@@ -59,7 +59,7 @@ namespace RenderingEngine.Engine
         }
 
         public Span<RenderableSprite> GetSpritesForPlayer(PortalPlayerSnapshot player, Span<RenderableSprite> sprites,
-            Sector[] sectors)
+            RenderableSector[] sectors)
         {
             Span<RenderableSprite> rotatedSprites = RotateSprites(sprites, player);
 
@@ -67,7 +67,7 @@ namespace RenderingEngine.Engine
         }
 
         public Span<RenderableSprite> GetMirroredSprites(PortalPlayerSnapshot player, Span<RenderableSprite> sprites,
-            Sector[] sectors, HashSet<int> mirroredSectorsSet, RenderWindowSpriteSnapshot sectorSprites)
+            RenderableSector[] sectors, HashSet<int> mirroredSectorsSet, RenderWindowSpriteSnapshot sectorSprites)
         {
             if (mirroredSectorsSet.Count == 0 || sectorSprites.MirroredWalls is null || sectorSprites.MirroredWalls.Count == 0)
             {
@@ -94,7 +94,7 @@ namespace RenderingEngine.Engine
         }
 
         private Span<RenderableSprite> GetSpritesForPlayerShared(PortalPlayerSnapshot player, Span<RenderableSprite> rotatedSprites,
-            Sector[] sectors)
+            RenderableSector[] sectors)
         {
             rotatedSprites = FilterOutSpritesBehindPlayer(rotatedSprites);
             rotatedSprites = FilterOutSpritesWithoutSector(rotatedSprites);
@@ -106,7 +106,7 @@ namespace RenderingEngine.Engine
             {
                 RenderableSprite sprite = rotatedSprites[i];
 
-                Sector sector = sectors[sprite.SectorId];
+                RenderableSector sector = sectors[sprite.SectorId];
                 float yCeil = sector.Ceil - pz + sprite.Height;
                 float yFloor = sector.Floor - pz + sprite.Height;
 
@@ -343,16 +343,16 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static void AssignSectors(scoped ReadOnlySpan<RenderableSprite> sprites, scoped ReadOnlySpan<Sector> sectors)
+        public static void AssignSectors(scoped ReadOnlySpan<RenderableSprite> sprites, scoped ReadOnlySpan<RenderableSector> sectors)
         {
             for (int j = 0; j < sprites.Length; j++)
             {
                 RenderableSprite sprite = sprites[j];
-                List<Sector> potentialSectors = [];
+                List<RenderableSector> potentialSectors = [];
 
                 for (int i = sectors.Length - 1; i >= 0; i--)
                 {
-                    Sector sector = sectors[i];
+                    RenderableSector sector = sectors[i];
 
                     if (SharedHelpers.IsPointInPolygon(sector.Walls, sprite.Location))
                     {
@@ -459,7 +459,7 @@ namespace RenderingEngine.Engine
                 return (distanceMin, distanceMax);
             }
 
-            float CalculateDistance2(Point r1, Point r2, int x)
+            float CalculateDistance2(Vector2 r1, Vector2 r2, int x)
             {
                 float rx1 = r1.X;
                 float ry1 = r1.Y;
@@ -492,19 +492,19 @@ namespace RenderingEngine.Engine
 
             RenderableSprite CreateMirroredRotatedCopy(RenderableSprite s)
             {
-                TextureInfo texture = s.Texture;
+                GameTextureInfo texture = s.Texture;
 
-                Point rotated = RotateVertex(MathFormulas.ReflectPoint(s.Location, flippedWall.PointA, flippedWall.PointB));
+                Vector2 rotated = RotateVertex(MathFormulas.ReflectPoint(s.Location, flippedWall.PointA, flippedWall.PointB));
 
                 if (s is RenderableFloorSprite floorSprite)
                 {
-                    Point r1 = SharedHelpers.RotateVertex(
+                    Vector2 r1 = SharedHelpers.RotateVertex(
                         MathFormulas.ReflectPoint(floorSprite.PointA, flippedWall.PointA, flippedWall.PointB), pSin, pCos, px, py);
-                    Point r2 = SharedHelpers.RotateVertex(
+                    Vector2 r2 = SharedHelpers.RotateVertex(
                         MathFormulas.ReflectPoint(floorSprite.PointB, flippedWall.PointA, flippedWall.PointB), pSin, pCos, px, py);
-                    Point r3 = SharedHelpers.RotateVertex(
+                    Vector2 r3 = SharedHelpers.RotateVertex(
                         MathFormulas.ReflectPoint(floorSprite.PointC, flippedWall.PointA, flippedWall.PointB), pSin, pCos, px, py);
-                    Point r4 = SharedHelpers.RotateVertex(
+                    Vector2 r4 = SharedHelpers.RotateVertex(
                         MathFormulas.ReflectPoint(floorSprite.PointD, flippedWall.PointA, flippedWall.PointB), pSin, pCos, px, py);
 
                     return new RenderableFloorSprite
@@ -520,8 +520,8 @@ namespace RenderingEngine.Engine
                 }
                 else if (s is RenderableWallSprite)
                 {
-                    Point r1 = RotateVertex(MathFormulas.ReflectPoint(s.PointA, flippedWall.PointA, flippedWall.PointB));
-                    Point r2 = RotateVertex(MathFormulas.ReflectPoint(s.PointB, flippedWall.PointA, flippedWall.PointB));
+                    Vector2 r1 = RotateVertex(MathFormulas.ReflectPoint(s.PointA, flippedWall.PointA, flippedWall.PointB));
+                    Vector2 r2 = RotateVertex(MathFormulas.ReflectPoint(s.PointB, flippedWall.PointA, flippedWall.PointB));
 
                     return new RenderableWallSprite
                     {
@@ -541,8 +541,8 @@ namespace RenderingEngine.Engine
                     float ry1 = rotated.Y;
                     float ry2 = rotated.Y;
 
-                    Point r1 = new(rx1, ry1);
-                    Point r2 = new(rx2, ry2);
+                    Vector2 r1 = new(rx1, ry1);
+                    Vector2 r2 = new(rx2, ry2);
 
                     return new RenderableBasicSprite
                     {
@@ -555,7 +555,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            (float x, float y) RotateVertex(Point p)
+            Vector2 RotateVertex(Vector2 p)
             {
                 // offset by player coordinates for easier calculations
                 // rotate vertex points to face 'up' from player at (0, 0)
@@ -583,9 +583,9 @@ namespace RenderingEngine.Engine
 
             void RotateSprite(RenderableSprite s)
             {
-                TextureInfo texture = s.Texture;
+                GameTextureInfo texture = s.Texture;
 
-                Point rotated = RotateVertex(s.Location);
+                Vector2 rotated = RotateVertex(s.Location);
 
                 if (s.Sprite.AnimationAngle?.AnimationToAngleToTexture?[0] is { } animationAngle)
                 {
@@ -617,10 +617,10 @@ namespace RenderingEngine.Engine
 
                 if (s is RenderableFloorSprite floorSprite)
                 {
-                    Point r1 = SharedHelpers.RotateVertex(floorSprite.PointA, pSin, pCos, px, py);
-                    Point r2 = SharedHelpers.RotateVertex(floorSprite.PointB, pSin, pCos, px, py);
-                    Point r3 = SharedHelpers.RotateVertex(floorSprite.PointC, pSin, pCos, px, py);
-                    Point r4 = SharedHelpers.RotateVertex(floorSprite.PointD, pSin, pCos, px, py);
+                    Vector2 r1 = SharedHelpers.RotateVertex(floorSprite.PointA, pSin, pCos, px, py);
+                    Vector2 r2 = SharedHelpers.RotateVertex(floorSprite.PointB, pSin, pCos, px, py);
+                    Vector2 r3 = SharedHelpers.RotateVertex(floorSprite.PointC, pSin, pCos, px, py);
+                    Vector2 r4 = SharedHelpers.RotateVertex(floorSprite.PointD, pSin, pCos, px, py);
 
                     floorSprite.Rotated = rotated;
                     floorSprite.R1 = r1;
@@ -631,8 +631,8 @@ namespace RenderingEngine.Engine
                 }
                 else if (s is RenderableWallSprite wallSprite)
                 {
-                    Point r1 = RotateVertex(s.PointA);
-                    Point r2 = RotateVertex(s.PointB);
+                    Vector2 r1 = RotateVertex(s.PointA);
+                    Vector2 r2 = RotateVertex(s.PointB);
 
                     wallSprite.Rotated = rotated;
                     wallSprite.R1 = r1;
@@ -648,8 +648,8 @@ namespace RenderingEngine.Engine
                     float ry1 = rotated.Y;
                     float ry2 = rotated.Y;
 
-                    Point r1 = new(rx1, ry1);
-                    Point r2 = new(rx2, ry2);
+                    Vector2 r1 = new(rx1, ry1);
+                    Vector2 r2 = new(rx2, ry2);
 
                     s.Rotated = rotated;
                     s.R1 = r1;
@@ -657,7 +657,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            (float x, float y) RotateVertex(Point p)
+            Vector2 RotateVertex(Vector2 p)
             {
                 // offset by player coordinates for easier calculations
                 // rotate vertex points to face 'up' from player at (0, 0)
@@ -669,8 +669,8 @@ namespace RenderingEngine.Engine
 
         public void CalculateSpritePlane(RenderableBasicSprite sprite, float yCeil, float yFloor, float yaw)
         {
-            TextureInfo textureInfo = sprite.Texture;
-            Texture texture = TextureCache.GetTexture(textureInfo);
+            GameTextureInfo textureInfo = sprite.Texture;
+            GameTexture texture = TextureCache.GetTexture(textureInfo);
             float textureHeight = texture.Height * (textureInfo.YScale ?? 1f);
 
             (float rx1, float ry1) = sprite.R1;
@@ -807,8 +807,8 @@ namespace RenderingEngine.Engine
 
         public void CalculateSpritePlane(RenderableWallSprite sprite, float yCeil, float yFloor, float yaw)
         {
-            TextureInfo textureInfo = sprite.Texture;
-            Texture texture = TextureCache.GetTexture(textureInfo);
+            GameTextureInfo textureInfo = sprite.Texture;
+            GameTexture texture = TextureCache.GetTexture(textureInfo);
             float textureHeight = texture.Height * (textureInfo.YScale ?? 1f);
 
             (float rx1, float ry1) = sprite.R1;
@@ -949,7 +949,7 @@ namespace RenderingEngine.Engine
 
         public void CalculateFloorPlane(RenderableFloorSprite sprite, float yCeil, float yFloor, float yaw)
         {
-            (Point topLeft, Point topRight, Point bottomLeft, Point bottomRight) = (sprite.R1, sprite.R2, sprite.R3, sprite.R4);
+            (Vector2 topLeft, Vector2 topRight, Vector2 bottomLeft, Vector2 bottomRight) = (sprite.R1, sprite.R2, sprite.R3, sprite.R4);
 
             FloorSpriteWallInfo topWall = CalculateWallPlane(topLeft, topRight, yCeil, yFloor, yaw);
             FloorSpriteWallInfo rightWall = CalculateWallPlane(topRight, bottomRight, yCeil, yFloor, yaw);
@@ -993,7 +993,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private FloorSpriteWallInfo CalculateWallPlane(Point r1, Point r2, float yCeil, float yFloor, float yaw)
+        private FloorSpriteWallInfo CalculateWallPlane(Vector2 r1, Vector2 r2, float yCeil, float yFloor, float yaw)
         {
             // calculate the x, y for the wall on the screen for both points
             (float rx1, float ry1) = r1;

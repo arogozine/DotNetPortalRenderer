@@ -1,5 +1,4 @@
-﻿using RenderingEngine.Models;
-using RenderingEngine.Models.Rendering;
+﻿using SoftwareRendererModels;
 using System.Numerics;
 
 namespace RenderingEngine.Engine
@@ -20,9 +19,9 @@ namespace RenderingEngine.Engine
         internal static uint Min(uint a, uint b) => a < b ? a : b;
 
 
-        internal static Vector3 ToVector3(Point p, float z)
+        internal static Vector3 ToVector3(Vector2 p, float z)
         {
-            return new Vector3(p.X, p.Y, z);
+            return new Vector3(p, z);
         }
 
         internal static void FindIntersectionVectorZero(
@@ -61,7 +60,7 @@ namespace RenderingEngine.Engine
             intersectionY = lineDirectionY * t;
         }
 
-        public static Point ReflectPoint(Point point, Point mirrorP1, Point mirrorP2)
+        public static Vector2 ReflectPoint(Vector2 point, Vector2 mirrorP1, Vector2 mirrorP2)
         {
             float dx = mirrorP2.X - mirrorP1.X;
             float dy = mirrorP2.Y - mirrorP1.Y;
@@ -75,20 +74,20 @@ namespace RenderingEngine.Engine
             float x = 2 * footX - point.X;
             float y = 2 * footY - point.Y;
 
-            return new Point(x, y);
+            return new Vector2(x, y);
         }
 
-        internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalCeil(Sector sector)
+        internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalCeil(RenderableSector sector)
         {
             return CalculatePlaneNormal(sector, true);
         }
 
-        internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalFloor(Sector sector)
+        internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalFloor(RenderableSector sector)
         {
             return CalculatePlaneNormal(sector, false);
         }
 
-        internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormal(Sector sector, bool calcCeil)
+        internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormal(RenderableSector sector, bool calcCeil)
         {
             // We need 3 points, with at least two distinct values for Z
             // We take point 1 and point 2 from the first wall (wall that is the "hinge"/start for the slope)
@@ -97,9 +96,9 @@ namespace RenderingEngine.Engine
             RenderableWall wall0 = sector.Walls[0];
             RenderableWall wall1 = sector.Walls[1];
 
-            Point p1 = wall0.R1;
-            Point p2 = wall1.R1;
-            Point p3 = p2;
+            Vector2 p1 = wall0.R1;
+            Vector2 p2 = wall1.R1;
+            Vector2 p3 = p2;
 
             bool sameX = wall0.PointA.X == wall1.PointA.X;
             bool sameY = wall0.PointA.Y == wall1.PointA.Y;
@@ -271,7 +270,7 @@ namespace RenderingEngine.Engine
             return fromToYDist;
         }
 
-        internal static (float FloorZ, float CeilingZ) CalculateZAtPoint(Sector sector, Point point, bool useNonRotatedCoordinates = false)
+        internal static (float FloorZ, float CeilingZ) CalculateZAtPoint(RenderableSector sector, Vector2 point, bool useNonRotatedCoordinates = false)
         {
             float ceilZ = sector.Ceil;
             float floorZ = sector.Floor;
@@ -285,8 +284,8 @@ namespace RenderingEngine.Engine
 
             // PointA and PointB of first line
             RenderableWall firstWall = sector.Walls[0];
-            Point pointA = useNonRotatedCoordinates ? firstWall.PointA : firstWall.R1;
-            Point pointB = useNonRotatedCoordinates ? firstWall.PointB : firstWall.R2;
+            Vector2 pointA = useNonRotatedCoordinates ? firstWall.PointA : firstWall.R1;
+            Vector2 pointB = useNonRotatedCoordinates ? firstWall.PointB : firstWall.R2;
 
             float dx = pointB.X - pointA.X;
             float dy = pointB.Y - pointA.Y;
@@ -323,7 +322,7 @@ namespace RenderingEngine.Engine
             public required float CeilZIncrament { get; init; }
         }
 
-        internal static (float floorZ_a, float ceilingZ_a, float floorZ_b, float ceilingZ_b) CalculateSlopedFloorCeiling(Sector sector, RenderableWall parentWall, bool flipped)
+        internal static (float floorZ_a, float ceilingZ_a, float floorZ_b, float ceilingZ_b) CalculateSlopedFloorCeiling(RenderableSector sector, RenderableWall parentWall, bool flipped)
         {
 
             flipped = flipped ? !parentWall.Flipped : parentWall.Flipped;
@@ -334,7 +333,7 @@ namespace RenderingEngine.Engine
             return (floorZ_a, ceilingZ_a, floorZ_b, ceilingZ_b);
         }
 
-        internal static FloorCeilSlope CalculateFloorCeilingSlope(Sector sector, RenderableWall parentWall, int wallFromXOffset, bool flipped)
+        internal static FloorCeilSlope CalculateFloorCeilingSlope(RenderableSector sector, RenderableWall parentWall, int wallFromXOffset, bool flipped)
         {
 
             flipped = flipped ? !parentWall.Flipped : parentWall.Flipped;
@@ -371,7 +370,7 @@ namespace RenderingEngine.Engine
         }
 
         internal static RenderablePlaneInfo CalculateLeftWallYPlaneInfo2(
-            ReadOnlySpan<Sector> sectors, RenderableWall wall, int wallFromXOffset)
+            ReadOnlySpan<RenderableSector> sectors, RenderableWall wall, int wallFromXOffset)
         {
             float wallLengthX = wall.XRight - wall.XLeft;
             float wallStartY = wall.YLeftCeil;
@@ -390,8 +389,8 @@ namespace RenderingEngine.Engine
             float? portalFromStartY = null, portalToStartY = null;
             float? portalFromIncr = null, portalToIncr = null;
 
-            Sector sector = wall.Sector;
-            Sector? neighborSector = wall.IsPortal ? sectors[wall.Neighbor] : null;
+            RenderableSector sector = wall.Sector;
+            RenderableSector? neighborSector = wall.IsPortal ? sectors[wall.Neighbor!.Value] : null;
 
             bool wallSloped = neighborSector is not null && (sector.Settings.Sloped || neighborSector.Settings.Sloped);
 

@@ -1,10 +1,11 @@
-﻿using RenderingEngine.Models;
+﻿using SoftwareRendererModels;
+using System.Numerics;
 
 namespace RenderingEngine.Engine
 {
     internal static class PlayerMovement
     {
-        public static void MovePlayer(Player player, ReadOnlySpan<Sector> sectors, float dx, float dy)
+        public static void MovePlayer(PlayerLocation player, ReadOnlySpan<RenderableSector> sectors, float dx, float dy)
         {
             int oldSectorId = player.Sector;
             int? sector = GetNewSector(player, sectors, dx, dy);
@@ -25,9 +26,9 @@ namespace RenderingEngine.Engine
             else
             {
                 player.Sector = sector.Value;
-                Sector newSector = sectors[sector.Value];
+                RenderableSector newSector = sectors[sector.Value];
 
-                (float sectorFloor, _) = MathFormulas.CalculateZAtPoint(newSector, new Point(x, y), true);
+                (float sectorFloor, _) = MathFormulas.CalculateZAtPoint(newSector, new Vector2(x, y), true);
 
                 z = sectorFloor + EngineConstants.PlayerHeight;
 
@@ -35,11 +36,11 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private static void SnapPlayerZ(Player player, Sector sector)
+        private static void SnapPlayerZ(PlayerLocation player, RenderableSector sector)
         {
             (float x, float y, float z) = player.Where;
 
-            (float sectorFloor, _) = MathFormulas.CalculateZAtPoint(sector, new Point(x, y), true);
+            (float sectorFloor, _) = MathFormulas.CalculateZAtPoint(sector, new Vector2(x, y), true);
 
             if (z < sectorFloor || sector.Settings.Sloped)
             {
@@ -48,11 +49,11 @@ namespace RenderingEngine.Engine
         }
 
 
-        public static int? GetNewSector(Player player, ReadOnlySpan<Sector> sectors, float dx, float dy)
+        public static int? GetNewSector(PlayerLocation player, ReadOnlySpan<RenderableSector> sectors, float dx, float dy)
         {
-            Point location = new (player.Where.X + dx, player.Where.Y + dy);
+            Vector2 location = new (player.Where.X + dx, player.Where.Y + dy);
 
-            Sector playerSector = sectors[player.Sector];
+            RenderableSector playerSector = sectors[player.Sector];
 
             // only look at adjacent sectors
             var childSectors = new HashSet<int> { player.Sector };
@@ -63,13 +64,14 @@ namespace RenderingEngine.Engine
 
                 if (wall.IsPortal)
                 {
-                    _ = childSectors.Add(wall.Neighbor);
+                    Debug.Assert(wall.Neighbor != null);
+                    _ = childSectors.Add(wall.Neighbor.Value);
                 }
             }
 
             foreach (int s in childSectors)
             {
-                Sector sector = sectors[s];
+                RenderableSector sector = sectors[s];
                 RenderableWall[] walls = sector.Walls;
 
                 if (SharedHelpers.IsPointInPolygon(walls, location))
@@ -81,7 +83,7 @@ namespace RenderingEngine.Engine
             // expand search
             for (int s = 0; s < sectors.Length; s++)
             {
-                Sector sector = sectors[s];
+                RenderableSector sector = sectors[s];
                 RenderableWall[] walls = sector.Walls;
 
                 if (SharedHelpers.IsPointInPolygon(walls, location))

@@ -1,5 +1,5 @@
-﻿using RenderingEngine.Models;
-using RenderingEngine.Tooling;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -8,10 +8,10 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        private unsafe void RenderSkyboxVector(PortalPlayerSnapshot player, Sector sector)
+        private unsafe void RenderSkyboxVector(PortalPlayerSnapshot player, RenderableSector sector)
         {
-            TextureInfo textureInfo = sector.CeilTexture;
-            Texture texture = TextureCache.GetTexture(textureInfo.Name);
+            GameTextureInfo textureInfo = sector.CeilTexture;
+            GameTexture texture = TextureCache.GetTexture(textureInfo.Name);
 
             ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(sector.CeilingShade, TextureTransform.Normal);
 
@@ -327,10 +327,10 @@ namespace RenderingEngine.Engine
 
         private unsafe void RenderSkyboxFloorVector(
             PortalPlayerSnapshot player,
-            Sector sector)
+            RenderableSector sector)
         {
-            TextureInfo textureInfo = sector.FloorTexture;
-            Texture texture = TextureCache.GetTexture(textureInfo.Name);
+            GameTextureInfo textureInfo = sector.FloorTexture;
+            GameTexture texture = TextureCache.GetTexture(textureInfo.Name);
 
             ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(sector.CeilingShade, TextureTransform.Normal);
 
@@ -379,12 +379,12 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall,
             int* wallStartPtr, int* wallEndPtr,
-            TextureInfo wallTexture)
+            GameTextureInfo wallTexture)
         {
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            TextureInfo textureInfo = wallTexture;
+            GameTextureInfo textureInfo = wallTexture;
             ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(renderableWall.Wall.Shade ?? byte.MaxValue, TextureTransform.Normal);
 
             uint* screenPtr = (uint*)buffer;

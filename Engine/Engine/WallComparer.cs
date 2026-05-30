@@ -1,4 +1,5 @@
-﻿using RenderingEngine.Models;
+﻿using SoftwareRendererModels;
+using System.Numerics;
 using static RenderingEngine.Engine.SharedHelpers;
 
 namespace RenderingEngine.Engine
@@ -14,7 +15,7 @@ namespace RenderingEngine.Engine
             ArgumentNullException.ThrowIfNull(x);
             ArgumentNullException.ThrowIfNull(y);
 
-            return x.Bunch - y.Bunch;
+            return (x.Bunch ?? 0) - (y.Bunch ?? 0);
         }
     }
 
@@ -47,10 +48,10 @@ namespace RenderingEngine.Engine
                 return 0;
             }
 
-            Point xC1 = x.C1;
-            Point xC2 = x.C2;
-            Point yC1 = y.C1;
-            Point yC2 = y.C2;
+            Vector2 xC1 = x.C1;
+            Vector2 xC2 = x.C2;
+            Vector2 yC1 = y.C1;
+            Vector2 yC2 = y.C2;
 
             float xCY1 = xC1.Y;
             float xCY2 = xC2.Y;

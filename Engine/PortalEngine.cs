@@ -1,28 +1,31 @@
 ﻿using OpenTK.Windowing.Common;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using RenderingEngine.Engine;
-using RenderingEngine.MapGen;
-using RenderingEngine.Models;
+using RenderingEngine.MapLoader;
+using SoftwareRendererModels;
 
 namespace RenderingEngine
 {
     public sealed class PortalEngine
     {
-        public Player Player { get; private set; }
-
-        internal Sector[] Sectors { get; private set; }
+        public PlayerLocation Player{ get; private set; }
+        internal RenderableSector[] Sectors { get; private set; }
         internal RenderableSprite[] Sprites { get; private set; }
-
         internal Arguments Arguments { get; }
-
         public int Width { get; set; }
-
         public int Height { get; set; }
 
         public PortalEngine(Arguments arguments)
         {
             this.Arguments = arguments;
-            (Player, Sectors, Sprites) = MapLoader.LoadData(arguments);
+            (var player, Sectors, Sprites) = GameLoader.LoadData(arguments);
+
+            this.Player = new PlayerLocation
+            {
+                Angle = player.ViewAngle,
+                Sector = player.Sector,
+                Where = player.Where
+            };
         }
 
         private readonly HashSet<Keys> PressedKeys = [];

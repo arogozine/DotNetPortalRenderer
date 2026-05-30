@@ -1,11 +1,11 @@
-﻿using RenderingEngine.Models;
-using RenderingEngine.Tooling;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        private void CalculateUpperTextureYIncrement(RenderablePortalWall portalWall, TextureInfo textureInfo)
+        private void CalculateUpperTextureYIncrement(RenderablePortalWall portalWall, GameTextureInfo textureInfo)
         {
             RenderableWall wall = portalWall.Wall;
 
@@ -63,7 +63,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private void CalculateLowerTextureYIncrement(RenderablePortalWall portalWall, TextureInfo textureInfo)
+        private void CalculateLowerTextureYIncrement(RenderablePortalWall portalWall, GameTextureInfo textureInfo)
         {
             RenderableWall wall = portalWall.Wall;
 
@@ -139,7 +139,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private void CalculateTextureDistanceAndXPosition(RenderablePortalWall renderableWall, TextureInfo textureInfo)
+        private void CalculateTextureDistanceAndXPosition(RenderablePortalWall renderableWall, GameTextureInfo textureInfo)
         {
             Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXLocation);
 

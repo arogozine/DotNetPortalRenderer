@@ -1,4 +1,4 @@
-﻿using RenderingEngine.Models;
+﻿using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine;
 
@@ -92,7 +92,7 @@ internal static class TextureTransformHelper
 internal static class TextureCache
 {
     private const string FallBack = "-";
-    private static readonly Dictionary<string, Texture> Cache = [];
+    private static readonly Dictionary<string, GameTexture> Cache = [];
     private static readonly Dictionary<int, BGRA[]> PalletteLookup = [];
 
     public static IEnumerable<string> TextureNames => Cache.Keys;
@@ -105,7 +105,7 @@ internal static class TextureCache
         Cache[FallBack] = new DoomTexture(FallBack, 128, 128, data);
     }
 
-    public static void Add(string name, Texture texture)
+    public static void Add(string name, GameTexture texture)
     {
         name = name.ToUpperInvariant();
         Cache[name] = texture;
@@ -117,9 +117,9 @@ internal static class TextureCache
         return Cache.ContainsKey(name);
     }
 
-    public static Texture GetTexture(TextureInfo? textureInfo) => GetTexture(textureInfo?.Name);
+    public static GameTexture GetTexture(GameTextureInfo? textureInfo) => GetTexture(textureInfo?.Name);
 
-    public static Texture GetTexture(string? name)
+    public static GameTexture GetTexture(string? name)
     {
         if (name == null)
         {
@@ -128,7 +128,7 @@ internal static class TextureCache
 
         name = name.ToUpperInvariant();
 
-        if (!Cache.TryGetValue(name, out Texture? texture))
+        if (!Cache.TryGetValue(name, out GameTexture? texture))
         {
             texture = Cache[FallBack];
         }

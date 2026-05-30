@@ -1,8 +1,9 @@
 ﻿using BuildAssetLoader.Map;
 using RenderingEngine.DoomMapLoader;
 using RenderingEngine.Engine;
-using RenderingEngine.MapGen;
-using RenderingEngine.Models;
+using RenderingEngine.MapLoader;
+using SoftwareRendererModels;
+using System.Numerics;
 
 namespace Tests
 {
@@ -11,7 +12,7 @@ namespace Tests
         [Fact]
         public void SlopeGetsCalculatedProperly()
         {
-            (Sector slopedSector, Sector upperSector) = Setup();
+            (RenderableSector slopedSector, RenderableSector upperSector) = Setup();
 
             var lowerCeilHeight = slopedSector.Ceil;
             var lowerFloorHeight = slopedSector.Floor;
@@ -24,8 +25,8 @@ namespace Tests
             // at highest wall, slope calculation for slope sector matches the value for upper sector
             {
                 RenderableWall touchingWall = slopedSector.Walls.Single(x => x.Neighbor == upperSector.Id);
-                Point pointA = touchingWall.PointA;
-                Point pointB = touchingWall.PointB;
+                Vector2 pointA = touchingWall.PointA;
+                Vector2 pointB = touchingWall.PointB;
 
                 touchingWall.C1 = touchingWall.PointA;
                 touchingWall.C2 = touchingWall.PointB;
@@ -61,8 +62,8 @@ namespace Tests
             // at lowest wall, slope calculation for slope sector matches starting slope 
             {
                 RenderableWall touchingWall = slopedSector.Walls.Single(x => x.Neighbor == 11);
-                Point pointA = touchingWall.PointA;
-                Point pointB = touchingWall.PointB;
+                Vector2 pointA = touchingWall.PointA;
+                Vector2 pointB = touchingWall.PointB;
 
                 touchingWall.C1 = touchingWall.PointA;
                 touchingWall.C2 = touchingWall.PointB;
@@ -93,8 +94,8 @@ namespace Tests
             {
                 RenderableWall slopedWall = slopedSector.Walls.Single(x => x.Id == 52);
 
-                Point pointA = slopedWall.PointA;
-                Point pointB = slopedWall.PointB;
+                Vector2 pointA = slopedWall.PointA;
+                Vector2 pointB = slopedWall.PointB;
 
                 slopedWall.C1 = slopedWall.PointA;
                 slopedWall.C2 = slopedWall.PointB;
@@ -129,17 +130,17 @@ namespace Tests
         [Fact]
         public void SlopeGetsCalculatedProperly2()
         {
-            Sector slopedSector = SetupSloped();
+            RenderableSector slopedSector = SetupSloped();
 
             float ceilZ = slopedSector.Ceil;
             float floorZ = slopedSector.Floor;
 
             // 6208
-            Point pt1 = slopedSector.Walls[0].PointA;
-            Point pt2 = slopedSector.Walls[1].PointA;
+            Vector2 pt1 = slopedSector.Walls[0].PointA;
+            Vector2 pt2 = slopedSector.Walls[1].PointA;
             // 5792
-            Point pt3 = slopedSector.Walls[2].PointA;
-            Point pt4 = slopedSector.Walls[3].PointA;
+            Vector2 pt3 = slopedSector.Walls[2].PointA;
+            Vector2 pt4 = slopedSector.Walls[3].PointA;
 
             (float floorz1, float ceilingz1) = MathFormulas.CalculateZAtPoint(slopedSector, pt1);
             (float floorz2, float ceilingz2) = MathFormulas.CalculateZAtPoint(slopedSector, pt2);
@@ -156,7 +157,7 @@ namespace Tests
             Assert.Equal(ceilingz3, ceilingz4);
         }
 
-        internal static Sector SetupSloped()
+        internal static RenderableSector SetupSloped()
         {
             SectorType sector308 = new SectorType(
                 ceilingHeiNum: 2560,
@@ -271,10 +272,10 @@ namespace Tests
             slopedSector.Walls.Add(ParseWallType(2027, 2027, in wall2027, in wall2028, in wall2028));
             slopedSector.Walls.Add(ParseWallType(2028, 2028, in wall2028, in wall2025, in wall2025));
 
-            return MapLoader.ParseMapSector(slopedSector);
+            return GameLoader.ParseMapSector(slopedSector);
         }
 
-        internal static (Sector slopedSector, Sector upperSector) Setup()
+        internal static (RenderableSector slopedSector, RenderableSector upperSector) Setup()
         {
             SectorType sector10 = new SectorType(
                 ceilingHeiNum: 0,
@@ -457,7 +458,7 @@ namespace Tests
             slopedSector.Walls.Add(ParseWallType(55, 55, in wall55, in wall56, in wall56));
             slopedSector.Walls.Add(ParseWallType(56, 51, in wall56, in wall51, in wall51));
 
-            return (MapLoader.ParseMapSector(slopedSector), MapLoader.ParseMapSector(upperSector));
+            return (GameLoader.ParseMapSector(slopedSector), GameLoader.ParseMapSector(upperSector));
         }
 
         internal static Line ParseWallType(int index, int j, in WallType wall, in WallType nextWall, in WallType point2Wall)

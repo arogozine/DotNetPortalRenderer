@@ -1,6 +1,5 @@
-﻿using RenderingEngine.Models;
-using RenderingEngine.Models.Rendering;
-using RenderingEngine.Tooling;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -11,7 +10,7 @@ namespace RenderingEngine.Engine
     {
         private void DrawSprite(
             PortalPlayerSnapshot player,
-            ReadOnlySpan<Sector> sectors,
+            ReadOnlySpan<RenderableSector> sectors,
             RenderableSprite sprite,
             RenderWindowSpriteSnapshot renderableWall)
         {
@@ -29,7 +28,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private unsafe void DrawSprite(ReadOnlySpan<Sector> sectors, RenderableBasicSprite sprite, RenderWindowSpriteSnapshot renderableWall)
+        private unsafe void DrawSprite(ReadOnlySpan<RenderableSector> sectors, RenderableBasicSprite sprite, RenderWindowSpriteSnapshot renderableWall)
         {
             uint* textureXLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureXLocation);
             uint* textureYLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.StartingYTexturePosition);
@@ -44,7 +43,7 @@ namespace RenderingEngine.Engine
             Span<int> wallStartSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
             Span<int> wallEndSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];
 
-            TextureInfo texture = sprite.Texture;
+            GameTextureInfo texture = sprite.Texture;
 
             int width = PixelWidth;
             int textureHeight = texture.Height;
@@ -52,7 +51,7 @@ namespace RenderingEngine.Engine
 
             float cameraWidthIncr = 2.0f / width * EngineConstants.CameraPlaneX;
 
-            Sector sector = sectors[sprite.SectorId];
+            RenderableSector sector = sectors[sprite.SectorId];
 
             float rx1 = sprite.R1.X;
 
@@ -121,7 +120,7 @@ namespace RenderingEngine.Engine
             DrawSpriteShared(sector, sprite, repeatedCountPtr, spriteFromX, spriteToX, true, texture);
         }
 
-        private unsafe void DrawWallSprite(ReadOnlySpan<Sector> sectors, RenderableWallSprite sprite, RenderWindowSpriteSnapshot renderableWall)
+        private unsafe void DrawWallSprite(ReadOnlySpan<RenderableSector> sectors, RenderableWallSprite sprite, RenderWindowSpriteSnapshot renderableWall)
         {
             uint* textureXLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureXLocation);
             uint* textureYLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.StartingYTexturePosition);
@@ -136,13 +135,13 @@ namespace RenderingEngine.Engine
             Span<int> wallStart = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
             Span<int> wallEnd = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];
 
-            TextureInfo texture = sprite.Texture;
+            GameTextureInfo texture = sprite.Texture;
 
             int width = PixelWidth;
             int textureHeight = texture.Height;
             int textureWidth = texture.Width;
 
-            Sector sector = sectors[sprite.SectorId];
+            RenderableSector sector = sectors[sprite.SectorId];
 
             int xLeft = sprite.XLeft;
             int xRight = sprite.XRight;
@@ -225,12 +224,12 @@ namespace RenderingEngine.Engine
         }
 
         private unsafe void DrawSpriteShared(
-            Sector sector,
+            RenderableSector sector,
             IWallLike sprite,
             ushort* repeatedCount,
             int spriteFromX, int spriteToX,
             bool renderHorizontally,
-            TextureInfo texture
+            GameTextureInfo texture
             )
         {
             uint* textureXLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureXLocation);

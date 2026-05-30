@@ -1,4 +1,4 @@
-﻿using RenderingEngine.Models;
+﻿using SoftwareRendererModels;
 using System.CommandLine;
 
 namespace SoftwareRenderer

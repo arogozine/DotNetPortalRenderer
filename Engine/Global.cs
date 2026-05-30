@@ -1,6 +1,4 @@
-﻿global using XyzTuple = (float X, float Y, float Z);
-
-// Various compiler attributes
+﻿// Various compiler attributes
 global using System.Diagnostics;
 global using System.Runtime.CompilerServices;
 global using System.Diagnostics.CodeAnalysis;

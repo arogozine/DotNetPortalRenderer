@@ -1,5 +1,5 @@
-﻿using RenderingEngine.Models;
-using RenderingEngine.Tooling;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -46,7 +46,7 @@ namespace RenderingEngine.Engine
         }
 
         private static (int xOffset, int yOffset, XyOpts Opts) DetermineOffsets(
-            TextureInfo textureInfo)
+            GameTextureInfo textureInfo)
         {
             int textureWidth = textureInfo.Width;
             int textureHeight = textureInfo.Height;
@@ -106,7 +106,7 @@ namespace RenderingEngine.Engine
         [SkipLocalsInit]
         private unsafe void RenderCeilingVector(
             PortalPlayerSnapshot player,
-            Sector sector)
+            RenderableSector sector)
         {
             RenderColumnStatus* statusPtr = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             int* ceilingStart = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
@@ -121,7 +121,7 @@ namespace RenderingEngine.Engine
             float pz = player.Z;
             float yCeil = sector.Ceil - pz;
 
-            TextureInfo ceilingTexture = sector.CeilTexture;
+            GameTextureInfo ceilingTexture = sector.CeilTexture;
 
             int textureWidth = ceilingTexture.Width;
             int textureHeightMask = ceilingTexture.Height - 1;
@@ -205,7 +205,7 @@ namespace RenderingEngine.Engine
         }
 
         [SkipLocalsInit]
-        public unsafe void RenderFloorVector(PortalPlayerSnapshot player, Sector sector)
+        public unsafe void RenderFloorVector(PortalPlayerSnapshot player, RenderableSector sector)
         {
             RenderColumnStatus* statusPtr = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             int* wallEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
@@ -214,7 +214,7 @@ namespace RenderingEngine.Engine
             int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.Temp);
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateFloor);
-            TextureInfo floorTexture = sector.FloorTexture;
+            GameTextureInfo floorTexture = sector.FloorTexture;
             int width = PixelWidth;
 
             float yfloor = sector.Floor - player.Z;
@@ -338,7 +338,7 @@ namespace RenderingEngine.Engine
             Vector<float> alignXV,
             Vector<float> alignYV,
             XyOpts xyOpts,
-            Sector sector,
+            RenderableSector sector,
             bool? slopeFloor
         )
         {
@@ -761,7 +761,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        internal static (float FloorZ, float CeilingZ) CalculateZAtPoint(Sector sector, Point point)
+        internal static (float FloorZ, float CeilingZ) CalculateZAtPoint(RenderableSector sector, Vector2 point)
         {
             float ceilZ = sector.Ceil;
             float floorZ = sector.Floor;
@@ -775,8 +775,8 @@ namespace RenderingEngine.Engine
 
             // PointA and PointB of first line
             RenderableWall firstWall = sector.Walls[0];
-            Point pointA = firstWall.R1;
-            Point pointB = firstWall.R2;
+            Vector2 pointA = firstWall.R1;
+            Vector2 pointB = firstWall.R2;
 
             float dx = pointB.X - pointA.X;
             float dy = pointB.Y - pointA.Y;

@@ -1,5 +1,5 @@
 ﻿using BenchmarkDotNet.Attributes;
-using RenderingEngine.Models;
+using SoftwareRendererModels;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
