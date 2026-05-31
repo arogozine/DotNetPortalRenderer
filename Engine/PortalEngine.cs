@@ -8,33 +8,25 @@ namespace RenderingEngine
 {
     public sealed class PortalEngine
     {
-        public PlayerLocation Player{ get; private set; }
-        internal RenderableSector[] Sectors { get; private set; }
-        internal RenderableSprite[] Sprites { get; private set; }
-        internal Arguments Arguments { get; }
-        public int Width { get; set; }
-        public int Height { get; set; }
+        public FixedGameState LoadedGameState { get; }
+        public RenderableMap RenderableState { get; }
+        public PlayerLocation PlayerLocation { get; }
+        public GameRenderingThread? Renderer { get; private set; }
 
         public PortalEngine(Arguments arguments)
         {
-            this.Arguments = arguments;
-            (var player, Sectors, Sprites) = GameLoader.LoadData(arguments);
-
-            this.Player = new PlayerLocation
-            {
-                Angle = player.ViewAngle,
-                Sector = player.Sector,
-                Where = player.Where
-            };
+            LoadedGameState = GameLoader.LoadFixedGameState(arguments);
+            RenderableState = GameRenderStateLoader.GenerateRenderableMap(LoadedGameState);
+            PlayerLocation = GameRenderStateLoader.GeneratePlayerLocation(LoadedGameState);
         }
 
         private readonly HashSet<Keys> PressedKeys = [];
 
-        public void Update()
+        public void Update(float scale)
         {
             foreach (Keys key in PressedKeys)
             {
-                OnKey(key);
+                OnKey(key, scale);
             }
         }
 
@@ -52,7 +44,7 @@ namespace RenderingEngine
             _ = PressedKeys.Remove(keyArg.Key);
         }
 
-        private void OnKey(Keys key)
+        private void OnKey(Keys key, float scale)
         {
             const float moveSpeed = 0.5f;
             const float rotSpeed = 0.08f;
@@ -61,76 +53,62 @@ namespace RenderingEngine
             {
                 case Keys.Up:
                 case Keys.W:
-                    MoveUpDown(moveSpeed);
+                    MoveUpDown(moveSpeed * scale);
                     break;
                 case Keys.Down:
                 case Keys.S:
-                    MoveUpDown(-moveSpeed);
+                    MoveUpDown(-moveSpeed * scale);
                     break;
                 case Keys.Right:
                 case Keys.D:
-                    Rotate(-rotSpeed);
+                    Rotate(-rotSpeed * scale);
                     break;
                 case Keys.Left:
                 case Keys.A:
-                    Rotate(rotSpeed);
+                    Rotate(rotSpeed * scale);
                     break;
             }
         }
 
         private void Rotate(float rotSpeed)
         {
-            Player.Angle += rotSpeed;
-            Player.Angle = MathFormulas.ClampAngle(Player.Angle);
+            PlayerLocation.Angle += rotSpeed;
+            PlayerLocation.Angle = MathFormulas.ClampAngle(PlayerLocation.Angle);
 
-            PlayerMovement.MovePlayer(Player, Sectors, 0, 0);
+            PlayerMovement.MovePlayer(PlayerLocation, RenderableState.Sectors, 0, 0);
         }
 
         private void MoveUpDown(float acceleration)
         {
-            (float sin, float cos) = MathF.SinCos(Player.Angle);
+            (float sin, float cos) = MathF.SinCos(PlayerLocation.Angle);
             float moveX = cos * 5.5f * acceleration;
             float moveY = sin * 5.5f * acceleration;
 
-            PlayerMovement.MovePlayer(Player, Sectors, moveX, moveY);
+            PlayerMovement.MovePlayer(PlayerLocation, RenderableState.Sectors, moveX, moveY);
         }
 
-        internal PortalPlayerSnapshot GetSnapshot()
+        internal PortalPlayerSnapshot PortalPlayerSnapshot()
         {
             return new PortalPlayerSnapshot(
-                Player.Where,
-                Player.Velocity,
-                Player.Angle,
-                Player.Yaw,
-                Player.Sector
+                PlayerLocation.Where,
+                PlayerLocation.Velocity,
+                PlayerLocation.Angle,
+                PlayerLocation.Yaw,
+                PlayerLocation.Sector
             );
         }
 
-        private GameEngineLoop? mtRenderer = null;
-
-        public void StopTheGameLoop()
+        public void StopRenderingThread()
         {
-            mtRenderer?.StopTheGameLoop();
-            mtRenderer = null;
+            Renderer?.StopTheGameLoop();
+            Renderer = null;
         }
 
-        [MemberNotNull(nameof(mtRenderer))]
-        public nint StartTheGameLoop(int width, int height)
+        [MemberNotNull(nameof(Renderer))]
+        public nint StartRenderingThread(int width, int height)
         {
-            Width = width;
-            Height = height;
-            mtRenderer = new GameEngineLoop(this);
-            return mtRenderer.StartTheGameLoop();
-        }
-
-        public nint RenderNextFrame()
-        {
-            if (mtRenderer == null)
-            {
-                return nint.Zero;
-            }
-
-            return mtRenderer.RenderFrame();
+            Renderer = new GameRenderingThread(this);
+            return Renderer.StartTheGameLoop(RenderableState, width, height);
         }
     }
 }

@@ -23,7 +23,7 @@ namespace SoftwareRenderer
 
         // ── Shader sources ───────────────────────────────────────────────────────
         private const string VertSrc = """
-        #version 330 core
+        #version 410 core
         layout(location = 0) in vec2 aPos;
         layout(location = 1) in vec2 aUV;
         out vec2 vUV;
@@ -36,7 +36,7 @@ namespace SoftwareRenderer
         // GL_BGRA upload swizzles B↔R automatically on the GPU, so the sampler
         // already returns RGBA — no manual channel swap needed in the shader.
         private const string FragSrc = """
-        #version 330 core
+        #version 410 core
         in  vec2 vUV;
         out vec4 fragColor;
         uniform sampler2D uTex;
@@ -130,7 +130,9 @@ namespace SoftwareRenderer
 
         protected override void OnUpdateFrame(FrameEventArgs args)
         {
-            Engine.Update();
+            float scale = (float)(args.Time * 60.0);
+            Engine.Update(scale);
+
             base.OnUpdateFrame(args);
         }
 
@@ -138,7 +140,9 @@ namespace SoftwareRenderer
         {
             base.OnRenderFrame(e);
 
-            nint bgraPtr = Engine.RenderNextFrame();
+            Debug.Assert(Engine.Renderer != null);
+
+            nint bgraPtr = Engine.Renderer.RenderFrame();
 
             if (bgraPtr == nint.Zero)
             {
@@ -183,12 +187,12 @@ namespace SoftwareRenderer
 
         private nint StartTheGameLoop()
         {
-            return Engine.StartTheGameLoop(ClientSize.X, ClientSize.Y);
+            return Engine.StartRenderingThread(ClientSize.X, ClientSize.Y);
         }
 
         private void StopTheGameLoop()
         {
-            Engine.StopTheGameLoop();
+            Engine.StopRenderingThread();
         }
 
         protected override void OnUnload()

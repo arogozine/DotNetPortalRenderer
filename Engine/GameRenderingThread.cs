@@ -1,8 +1,9 @@
 ﻿using RenderingEngine.Engine;
+using SoftwareRendererModels;
 
 namespace RenderingEngine
 {
-    public sealed unsafe class GameEngineLoop : IDisposable
+    public sealed unsafe class GameRenderingThread : IDisposable
     {
         private readonly PortalEngine Engine;
         private CancellationTokenSource EngineLoopCancellationToken;
@@ -12,20 +13,19 @@ namespace RenderingEngine
         private readonly SemaphoreSlim StartRenderingSemaphore = new(0, 1);
         private readonly SemaphoreSlim RenderedFrameSemaphore = new(0, 1);
 
-        public GameEngineLoop(PortalEngine engine)
+        public GameRenderingThread(PortalEngine engine)
         {
             Engine = engine;
             EngineLoopCancellationToken = new();
         }
 
         [MemberNotNull(nameof(engineLoopTask))]
-        private nint MainEngineLoop(CancellationToken cancellationToken)
+        private nint MainEngineLoop(RenderableMap map, int width, int height, CancellationToken cancellationToken)
         {
-            var renderer = new PortalRenderer(Engine.Width, Engine.Height)
+            var renderer = new PortalRenderer(width, height)
             {
-                Sprites = Engine.Sprites,
-                Player = Engine.Player,
-                Sectors = Engine.Sectors
+                Sprites = map.Sprites,
+                Sectors = map.Sectors
             };
 
             engineLoopTask = Task.Factory
@@ -43,7 +43,7 @@ namespace RenderingEngine
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     StartRenderingSemaphore.Wait(cancellationToken);
-                    currentFrame = renderer.DrawFrame(Engine.GetSnapshot());
+                    currentFrame = renderer.DrawFrame(Engine.PortalPlayerSnapshot());
                     _ = RenderedFrameSemaphore.Release();
                 }
             }
@@ -56,10 +56,10 @@ namespace RenderingEngine
             currentFrame = null;
         }
 
-        public nint StartTheGameLoop()
+        public nint StartTheGameLoop(RenderableMap map, int width, int height)
         {
             EngineLoopCancellationToken = new CancellationTokenSource();
-            return MainEngineLoop(EngineLoopCancellationToken.Token);
+            return MainEngineLoop(map, width, height, EngineLoopCancellationToken.Token);
         }
 
         public nint RenderFrame()

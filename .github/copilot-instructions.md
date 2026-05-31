@@ -3,9 +3,9 @@
 - DoomAssetLoader: Loads Doom Engine (ID Tech 1) Maps and Textures.
 - RenderingEngine: Portal-Based Sector (Room) Software Renderer lib.
 - SoftwareRenderer: Main executable. Creates Window for rendering. Uses Silk.NET and SkiaSharp.
+- SoftwareRendererModels: Models that hold loaded data, game data, and render state.
 - Tests: Unit Tests.
 - Benchmark: Various benchmarks.
-- BuildEngineFormulas: Research, Misc.
 
 Requirements
 - Renderer must be accurate and optimized
