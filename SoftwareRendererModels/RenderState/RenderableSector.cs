@@ -12,7 +12,7 @@ public sealed class RenderableSector : IRenderState
     public int Floor => MapSector.Floor;
     public int Ceil => MapSector.Ceiling;
     public short FloorShade => MapSector.FloorShade;
-    public short CeilingShade => MapSector.FloorShade;
+    public short CeilingShade => MapSector.CeilingShade;
     public float? RotationFloor => MapSector.RotationFloor;
     public float? RotationCeiling => MapSector.RotationCeiling;
     public float? CeilingSlope => MapSector.CeilingSlope;

@@ -77,7 +77,7 @@ namespace RenderingEngine.Engine
                 textureHeight--;
             }
 
-            int xOffset = textureInfo.XOffset;
+            int xOffset = SharedHelpers.EnsureOffsetIsPositive(textureInfo.Width, textureInfo.XOffset);
             int yOffset = textureInfo.YOffset > sectorHeight ? textureInfo.YOffset - 65536 : textureInfo.YOffset;
 
             int* textureXLocationPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureXLocation);

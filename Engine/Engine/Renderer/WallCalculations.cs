@@ -155,7 +155,7 @@ namespace RenderingEngine.Engine
 
             int textureHeight = textureInfo.Height;
             int textureWidth = textureInfo.Width;
-            float xOffset = textureInfo.XOffset;
+            float xOffset = SharedHelpers.EnsureOffsetIsPositive(textureInfo.Width, textureInfo.XOffset);
 
             if (textureInfo.XScale is float xScale)
             {
@@ -185,6 +185,8 @@ namespace RenderingEngine.Engine
 
                 xLocation[x] = float.ConvertToIntegerNative<int>(MathF.FusedMultiplyAdd(textureDist, xScale, xOffset));
                 xLocation[x] = (xLocation[x] % textureWidth) * textureHeight;
+
+                Debug.Assert(xLocation[x] >= 0);
 
                 distance[x] = fromToYdist;
             }

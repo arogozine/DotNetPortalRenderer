@@ -777,10 +777,13 @@ internal static class WadReader
                     continue;
             }
 
-            _ = spriteLookup.TryGetValue((ThingType)thing.Type, out GameSpriteAnimation? spriteAnimationAngle);
+            if (!spriteLookup.TryGetValue((ThingType)thing.Type, out GameSpriteAnimation? spriteAnimationAngle))
+            {
+                _ = spriteLookup.TryGetValue(ThingType.RadiationSuit, out spriteAnimationAngle);
+                Debug.Assert(spriteAnimationAngle != null);
+            }
 
-            var firstTexture = spriteAnimationAngle?.AnimationToAngleToTexture?.First()?.First().Texture ??
-                TextureCache.GetTexture((string?)null);
+            var firstTexture = spriteAnimationAngle.AnimationToAngleToTexture.First().First().Texture;
 
             sprites.Add(new Sprite
             {
@@ -788,7 +791,8 @@ internal static class WadReader
                 Angle = DetermineAngleInRadians(thing.Angle),
                 Location = new Vector2(thing.X, thing.Y),
                 Height = thing.Height ?? 0f,
-                Texture = new GameTextureInfo {
+                Texture = new GameTextureInfo
+                {
                     Texture = firstTexture,
                     RenderingOptions = TextureRenderingOptions.None,
                     Alpha = 1f,
@@ -881,7 +885,7 @@ internal static class WadReader
         {
             if (texture.Length == 4)
             {
-                return [new (texture, 'A', 0f, false)];
+                return [new(texture, 'A', 0f, false)];
             }
 
             if (texture.Length == 6)
@@ -902,7 +906,7 @@ internal static class WadReader
             throw new NotImplementedException();
         }
 
-        static float DetermineAngle (char angleChar)
+        static float DetermineAngle(char angleChar)
         {
             Debug.Assert(char.IsDigit(angleChar));
 
