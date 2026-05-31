@@ -8,7 +8,6 @@ namespace RenderingEngine.Engine
         public readonly int PixelWidth;
         public readonly int PixelHeight;
         public required RenderableSprite[] Sprites { get; set; }
-        public required PlayerLocation Player { get; set; }
         public required RenderableSector[] Sectors { get; set; }
 
         public void* Buffer => buffer;
