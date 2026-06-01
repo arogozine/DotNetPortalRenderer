@@ -252,29 +252,29 @@ namespace RenderingEngine.Engine
                 {
                     if (alpha == 1f)
                     {
-                        DrawHorizontally(new DrawTransparentPixel(), texturePtr);
+                        DrawHorizontally<DrawTransparentPixel>(texturePtr);
                     }
                     else
                     {
-                        DrawHorizontally(new DrawAlphaPixel(), texturePtr);
+                        DrawHorizontally<DrawAlphaPixel>(texturePtr);
                     }
                 }
                 else
                 {
                     if (alpha == 1f)
                     {
-                        Draw(new DrawTransparentPixel(), texturePtr);
+                        Draw<DrawTransparentPixel>(texturePtr);
                     }
                     else
                     {
-                        Draw(new DrawAlphaPixel(), texturePtr);
+                        Draw<DrawAlphaPixel>(texturePtr);
                     }
                 }
             }
 
             return;
 
-            void DrawHorizontally<T>(T drawPixel, uint* texturePtr)
+            void DrawHorizontally<T>(uint* texturePtr)
                 where T : IDrawPixel, allows ref struct
             {
                 for (int x = spriteFromX; x <= spriteToX;)
@@ -293,16 +293,16 @@ namespace RenderingEngine.Engine
                     uint* textureYPos = textureYLocationPtr + x;
                     uint* textureYIncr = textureYIncrementPtr + x;
 
-                    (uint min_t, uint max_t) = GetMinMaxValue(clampedFromY, count);
-                    (uint min_b, uint max_b) = GetMinMaxValue(clampedToY, count);
+                    (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(clampedFromY, count);
+                    (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(clampedToY, count);
 
-                    RenderMultipleHorizontalLines(drawPixel, count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
+                    RenderMultipleHorizontalLines<T>(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
 
                     x += count;
                 }
             }
 
-            void Draw<T>(T drawPixel, uint* texturePtr)
+            void Draw<T>(uint* texturePtr)
                 where T : IDrawPixel, allows ref struct
             {
                 for (int x = spriteFromX; x <= spriteToX;)
@@ -325,8 +325,7 @@ namespace RenderingEngine.Engine
 
                     if (Vector256.IsHardwareAccelerated && count >= Vector256<uint>.Count)
                     {
-                        RenderMultipleWallLinesV256(
-                            drawPixel,
+                        RenderMultipleWallLinesV256<T>(
                             isPowerOfTwo,
                             width,
                             (uint)x,
@@ -346,8 +345,7 @@ namespace RenderingEngine.Engine
 
                     if (Vector128.IsHardwareAccelerated && count >= Vector128<uint>.Count)
                     {
-                        RenderMultipleWallLinesV128(
-                            drawPixel,
+                        RenderMultipleWallLinesV128<T>(
                             isPowerOfTwo,
                             width,
                             (uint)x,
@@ -365,8 +363,7 @@ namespace RenderingEngine.Engine
                         continue;
                     }
 
-                    RenderMultipleWallLines(
-                        drawPixel,
+                    RenderMultipleWallLines<T>(
                         isPowerOfTwo,
                         count,
                         width,
@@ -416,7 +413,6 @@ namespace RenderingEngine.Engine
         #region Render Wall with Blend Mode
 
         private static unsafe void RenderMultipleWallLinesV256<T>(
-            T drawPixel,
             bool isPowerOfTwo,
             uint width,
             uint x,
@@ -435,8 +431,8 @@ namespace RenderingEngine.Engine
             Vector256<uint> endYV = Vector256.Load(endY);
             Vector256<uint> textureXIncr_uV = Vector256.Load(textureYIncr_u);
 
-            (uint min_t, uint max_t) = GetMinMaxValue(startYV);
-            (uint min_b, uint max_b) = GetMinMaxValue(endYV);
+            (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
+            (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
 
             uint* screenIndexPtr = screenPtr + min_t * width + x;
 
@@ -450,7 +446,7 @@ namespace RenderingEngine.Engine
                     uint top = startYV[i];
                     uint bottom = endYV[i];
 
-                    RenderWallColumn(drawPixel, isPowerOfTwo, width, x, textureHeight, top, bottom, *textureYPos, incr, screenPtr,
+                    RenderWallColumn<T>(isPowerOfTwo, width, x, textureHeight, top, bottom, *textureYPos, incr, screenPtr,
                         textureBuffer + *(texturePos + i));
                 }
 
@@ -466,7 +462,7 @@ namespace RenderingEngine.Engine
             // render tops where there is no shared window
             if (min_t != max_t)
             {
-                RenderTops(drawPixel);
+                RenderTops();
             }
 
             if (min_b > max_t)
@@ -489,7 +485,7 @@ namespace RenderingEngine.Engine
                                 scale: sizeof(uint)
                             );
 
-                            drawPixel.DrawLine(screenIndexPtr, gathered);
+                            T.DrawLine(screenIndexPtr, gathered);
 
                             textureYPos_uV += textureXIncr_uV;
                             screenIndexPtr += width;
@@ -508,7 +504,7 @@ namespace RenderingEngine.Engine
                             {
                                 uint pixel = *(textureBuffer + texelIndexV[i]);
 
-                                drawPixel.Draw(screenIndexPtr + i, pixel);
+                                T.Draw(screenIndexPtr + i, pixel);
                             }
 
                             textureYPos_uV += textureXIncr_uV;
@@ -528,7 +524,7 @@ namespace RenderingEngine.Engine
                         {
                             uint pixel = *(textureBuffer + textureXPosV[i] + (texelIndexV[i] % textureHeightMask));
 
-                            drawPixel.Draw(screenIndexPtr + i, pixel);
+                            T.Draw(screenIndexPtr + i, pixel);
                         }
 
                         textureYPos_uV += textureXIncr_uV;
@@ -543,9 +539,9 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            RenderBottoms(drawPixel);
+            RenderBottoms();
 
-            void RenderTops(T drawPixel)
+            void RenderTops()
             {
                 if (isPowerOfTwo)
                 {
@@ -564,19 +560,17 @@ namespace RenderingEngine.Engine
                                 scale: sizeof(uint)
                             );
 
-                            Avx2.MaskStore(screenIndexPtr, mask, gathered);
+                            T.DrawLine(screenIndexPtr, gathered, mask);
                         }
                         else
                         {
                             for (int i = 0; i < Vector256<uint>.Count; i++)
                             {
-                                uint start = *(startY + i);
-
-                                if (y <= start)
+                                if (mask[i] == 0U)
                                     continue;
 
                                 uint pixel = *(textureBuffer + texelIndexV[i]);
-                                drawPixel.Draw((screenIndexPtr + i), pixel);
+                                T.Draw((screenIndexPtr + i), pixel);
                             }
                         }
 
@@ -593,15 +587,13 @@ namespace RenderingEngine.Engine
 
                         for (int i = 0; i < Vector256<uint>.Count; i++)
                         {
-                            uint start = *(startY + i);
-
-                            if (y <= start)
+                            if (mask[i] == 0U)
                                 continue;
 
                             uint texelIndex = (textureYPos[i] % textureHeightMask) + textureXPosV[i];
 
                             uint pixel = *(textureBuffer + texelIndex);
-                            drawPixel.Draw((screenIndexPtr + i), pixel);
+                            T.Draw((screenIndexPtr + i), pixel);
                         }
 
                         textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
@@ -610,7 +602,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            void RenderBottoms(T drawPixel)
+            void RenderBottoms()
             {
                 if (isPowerOfTwo)
                 {
@@ -629,19 +621,17 @@ namespace RenderingEngine.Engine
                                 scale: sizeof(uint)
                             );
 
-                            Avx2.MaskStore(screenIndexPtr, mask, gathered);
+                            T.DrawLine(screenIndexPtr, gathered, mask);
                         }
                         else
                         {
                             for (int i = 0; i < Vector256<uint>.Count; i++)
                             {
-                                uint end = endYV[i];
-
-                                if (end <= y)
+                                if (mask[i] == 0U)
                                     continue;
 
                                 uint pixel = *(textureBuffer + texelIndexV[i]);
-                                drawPixel.Draw((screenIndexPtr + i), pixel);
+                                T.Draw((screenIndexPtr + i), pixel);
                             }
                         }
 
@@ -658,15 +648,13 @@ namespace RenderingEngine.Engine
 
                         for (int i = 0; i < Vector256<uint>.Count; i++)
                         {
-                            uint end = *(endY + i);
-
-                            if (end <= y)
+                            if (mask[i] == 0U)
                                 continue;
 
                             uint texelIndex = (textureYPos[i] % textureHeightMask) + textureXPosV[i];
 
                             uint pixel = *(textureBuffer + texelIndex);
-                            drawPixel.Draw((screenIndexPtr + i), pixel);
+                            T.Draw((screenIndexPtr + i), pixel);
                         }
 
                         textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
@@ -677,7 +665,6 @@ namespace RenderingEngine.Engine
         }
 
         private static unsafe void RenderMultipleWallLinesV128<T>(
-            T drawPixel,
             bool isPowerOfTwo,
             uint width,
             uint x,
@@ -696,8 +683,8 @@ namespace RenderingEngine.Engine
             var endYV = Vector128.Load(endY);
             var textureXIncr_uV = Vector128.Load(textureYIncr_u);
 
-            (uint min_t, uint max_t) = GetMinMaxValue(startYV);
-            (uint min_b, uint max_b) = GetMinMaxValue(endYV);
+            (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
+            (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
 
             if (min_b <= max_t)
             {
@@ -709,7 +696,7 @@ namespace RenderingEngine.Engine
                     uint top = startYV[i];
                     uint bottom = endYV[i];
 
-                    RenderWallColumn(drawPixel, isPowerOfTwo, width, x, textureHeight, top, bottom, *textureYPos, incr, screenPtr,
+                    RenderWallColumn<T>(isPowerOfTwo, width, x, textureHeight, top, bottom, *textureYPos, incr, screenPtr,
                         textureBuffer + *(texturePos + i));
                 }
 
@@ -726,7 +713,7 @@ namespace RenderingEngine.Engine
             // render tops where there is no shared window
             if (min_t != max_t)
             {
-                RenderTops(drawPixel);
+                RenderTops();
             }
 
             if (min_b > max_t)
@@ -749,7 +736,7 @@ namespace RenderingEngine.Engine
                                 scale: sizeof(uint)
                             );
 
-                            drawPixel.DrawLine(screenIndexPtr, gathered);
+                            T.DrawLine(screenIndexPtr, gathered);
 
                             textureYPos_uV += textureXIncr_uV;
                             screenIndexPtr += width;
@@ -768,7 +755,7 @@ namespace RenderingEngine.Engine
                             {
                                 uint pixel = *(textureBuffer + texelIndexV[i]);
 
-                                drawPixel.Draw(screenIndexPtr + i, pixel);
+                                T.Draw(screenIndexPtr + i, pixel);
                             }
 
                             textureYPos_uV += textureXIncr_uV;
@@ -788,7 +775,7 @@ namespace RenderingEngine.Engine
                         {
                             uint pixel = *(textureBuffer + textureXPosV[i] + (texelIndexV[i] % textureHeightMask));
 
-                            drawPixel.Draw(screenIndexPtr + i, pixel);
+                            T.Draw(screenIndexPtr + i, pixel);
                         }
 
                         textureYPos_uV += textureXIncr_uV;
@@ -803,9 +790,9 @@ namespace RenderingEngine.Engine
                 return;
             }
 
-            RenderBottoms(drawPixel);
+            RenderBottoms();
 
-            void RenderTops(T drawPixel)
+            void RenderTops()
             {
                 if (isPowerOfTwo)
                 {
@@ -824,19 +811,17 @@ namespace RenderingEngine.Engine
                                 scale: sizeof(uint)
                             );
 
-                            Avx2.MaskStore(screenIndexPtr, mask, gathered);
+                            T.DrawLine(screenIndexPtr, gathered, mask);
                         }
                         else
                         {
                             for (int i = 0; i < Vector128<uint>.Count; i++)
                             {
-                                uint start = *(startY + i);
-
-                                if (y <= start)
+                                if (mask[i] == 0U)
                                     continue;
 
                                 uint pixel = *(textureBuffer + texelIndexV[i]);
-                                drawPixel.Draw((screenIndexPtr + i), pixel);
+                                T.Draw((screenIndexPtr + i), pixel);
                             }
                         }
 
@@ -853,15 +838,13 @@ namespace RenderingEngine.Engine
 
                         for (int i = 0; i < Vector128<uint>.Count; i++)
                         {
-                            uint start = *(startY + i);
-
-                            if (y <= start)
+                            if (mask[i] == 0U)
                                 continue;
 
                             uint texelIndex = (textureYPos[i] % textureHeightMask) + textureXPosV[i];
 
                             uint pixel = *(textureBuffer + texelIndex);
-                            drawPixel.Draw((screenIndexPtr + i), pixel);
+                            T.Draw((screenIndexPtr + i), pixel);
                         }
 
                         textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
@@ -870,7 +853,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            void RenderBottoms(T drawPixel)
+            void RenderBottoms()
             {
                 if (isPowerOfTwo)
                 {
@@ -889,19 +872,17 @@ namespace RenderingEngine.Engine
                                 scale: sizeof(uint)
                             );
 
-                            Avx2.MaskStore(screenIndexPtr, mask, gathered);
+                            T.DrawLine(screenIndexPtr, gathered, mask);
                         }
                         else
                         {
                             for (int i = 0; i < Vector128<uint>.Count; i++)
                             {
-                                uint end = endYV[i];
-
-                                if (end <= y)
+                                if (mask[i] == 0U)
                                     continue;
 
                                 uint pixel = *(textureBuffer + texelIndexV[i]);
-                                drawPixel.Draw((screenIndexPtr + i), pixel);
+                                T.Draw((screenIndexPtr + i), pixel);
                             }
                         }
 
@@ -918,15 +899,13 @@ namespace RenderingEngine.Engine
 
                         for (int i = 0; i < Vector128<uint>.Count; i++)
                         {
-                            uint end = *(endY + i);
-
-                            if (end <= y)
+                            if (mask[i] == 0U)
                                 continue;
 
                             uint texelIndex = (textureYPos[i] % textureHeightMask) + textureXPosV[i];
 
                             uint pixel = *(textureBuffer + texelIndex);
-                            drawPixel.Draw((screenIndexPtr + i), pixel);
+                            T.Draw((screenIndexPtr + i), pixel);
                         }
 
                         textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
@@ -937,7 +916,6 @@ namespace RenderingEngine.Engine
         }
 
         private static unsafe void RenderMultipleHorizontalLines<T>(
-            T drawPixel,
             uint count,
             uint width,
             uint x,
@@ -953,13 +931,13 @@ namespace RenderingEngine.Engine
             )
             where T : IDrawPixel, allows ref struct
         {
-            RenderTops(drawPixel);
-            RenderHorizontal(drawPixel);
-            RenderBottoms(drawPixel);
+            RenderTops();
+            RenderHorizontal();
+            RenderBottoms();
 
             return;
 
-            void RenderHorizontal(T drawPixel)
+            void RenderHorizontal()
             {
                 uint* screenIndexPtr = screenPtr + max_t * width + x;
                 uint* screenIndexPtrEnd = screenPtr + min_b * width + x;
@@ -986,14 +964,14 @@ namespace RenderingEngine.Engine
                                 scale: sizeof(uint)
                             );
 
-                            drawPixel.DrawLine(screenIndexPtr, gathered);
+                            T.DrawLine(screenIndexPtr, gathered);
                         }
                         else
                         {
                             for (int j = 0; j < Vector<uint>.Count; j++)
                             {
                                 uint pixel = *(textureBuffer + texelIndexV[j]);
-                                drawPixel.Draw(screenIndexPtr + j, pixel);
+                                T.Draw(screenIndexPtr + j, pixel);
                             }
                         }
 
@@ -1012,7 +990,7 @@ namespace RenderingEngine.Engine
 
                         uint pixel = *(textureBuffer + texelIndex);
 
-                        drawPixel.Draw(screenIndexPtr, pixel);
+                        T.Draw(screenIndexPtr, pixel);
 
                         *textureYPos += *(textureYIncr_u + i);
                         screenIndexPtr++;
@@ -1022,7 +1000,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            void RenderTops(T drawPixel)
+            void RenderTops()
             {
                 uint* screenIndexPtr = screenPtr + min_t * width + x;
 
@@ -1041,7 +1019,7 @@ namespace RenderingEngine.Engine
 
                         uint pixel = *(textureBuffer + texelIndex);
 
-                        drawPixel.Draw((screenIndexPtr + i), pixel);
+                        T.Draw((screenIndexPtr + i), pixel);
 
                         *textureXPos += *(textureYIncr_u + i);
                     }
@@ -1050,7 +1028,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            void RenderBottoms(T drawPixel)
+            void RenderBottoms()
             {
                 uint* screenIndexPtr = screenPtr + min_b * width + x;
 
@@ -1069,7 +1047,7 @@ namespace RenderingEngine.Engine
 
                         uint pixel = *(textureBuffer + texelIndex);
 
-                        drawPixel.Draw((screenIndexPtr + i), pixel);
+                        T.Draw((screenIndexPtr + i), pixel);
 
                         *textureXPos += *(textureYIncr_u + i);
                     }
@@ -1080,7 +1058,6 @@ namespace RenderingEngine.Engine
         }
 
         private static unsafe void RenderMultipleWallLines<T>(
-            T drawPixel,
             bool isPowerOfTwo,
             uint count,
             uint width,
@@ -1121,7 +1098,7 @@ namespace RenderingEngine.Engine
                     uint top = *(startY + i);
                     uint bottom = *(endY + i);
 
-                    RenderWallColumn(drawPixel, isPowerOfTwo, width, x, textureHeight, top, bottom, textureYPos, incr, screenPtr,
+                    RenderWallColumn<T>(isPowerOfTwo, width, x, textureHeight, top, bottom, textureYPos, incr, screenPtr,
                         textureBuffer + *(texturePos + i));
                 }
 
@@ -1145,7 +1122,7 @@ namespace RenderingEngine.Engine
 
                     uint xi = x + i;
 
-                    *textureYPos = RenderWallColumn2(drawPixel, isPowerOfTwo, width, xi, textureHeight, top, max_t, *textureYPos, incr, screenPtr,
+                    *textureYPos = RenderWallColumn2<T>(isPowerOfTwo, width, xi, textureHeight, top, max_t, *textureYPos, incr, screenPtr,
                         textureBuffer + *(texturePos + i));
                 }
             }
@@ -1172,7 +1149,7 @@ namespace RenderingEngine.Engine
 
                             uint pixel = *(textureBuffer + texelIndex);
 
-                            drawPixel.Draw(screenIndexPtr, pixel);
+                            T.Draw(screenIndexPtr, pixel);
 
                             *textureXPos += *(textureYIncr_u + i);
                             screenIndexPtr++;
@@ -1197,7 +1174,7 @@ namespace RenderingEngine.Engine
 
                             uint pixel = *(textureBuffer + texelIndex);
 
-                            drawPixel.Draw(screenIndexPtr, pixel);
+                            T.Draw(screenIndexPtr, pixel);
 
                             *textureYPos += *(textureYIncr_u + i);
                             screenIndexPtr++;
@@ -1226,13 +1203,12 @@ namespace RenderingEngine.Engine
                 uint textureYPos = *(textureYPos_u + i);
                 uint incr = *(textureYIncr_u + i);
 
-                RenderWallColumn(drawPixel, isPowerOfTwo, width, x, textureHeight, min_b, bottom, textureYPos, incr, screenPtr,
+                RenderWallColumn<T>(isPowerOfTwo, width, x, textureHeight, min_b, bottom, textureYPos, incr, screenPtr,
                     textureBuffer + *(texturePos + i));
             }
         }
 
         private static unsafe uint RenderWallColumn2<T>(
-            T drawPixel,
             bool isPowerOfTwo,
             uint width,
             uint x,
@@ -1259,7 +1235,7 @@ namespace RenderingEngine.Engine
                     uint texelIndex = (textureYPos_u >> 16) & textureHeightMask;
                     uint pixel = *(textureBuffer + texelIndex);
 
-                    drawPixel.Draw(screenIndexPtr, pixel);
+                    T.Draw(screenIndexPtr, pixel);
 
                     screenIndexPtr += width;
                     textureYPos_u += textureYIncr_u;
@@ -1274,7 +1250,7 @@ namespace RenderingEngine.Engine
                     uint texelIndex = (textureYPos_u >> 16) % textureHeightMask;
                     uint pixel = *(textureBuffer + texelIndex);
 
-                    drawPixel.Draw(screenIndexPtr, pixel);
+                    T.Draw(screenIndexPtr, pixel);
 
                     screenIndexPtr += width;
                     textureYPos_u += textureYIncr_u;
@@ -1285,7 +1261,6 @@ namespace RenderingEngine.Engine
         }
 
         private static unsafe void RenderWallColumn<T>(
-            T drawPixel,
             bool isPowerOfTwo,
             uint width,
             uint x,
@@ -1312,7 +1287,7 @@ namespace RenderingEngine.Engine
                     uint texelIndex = (textureYPos_u >> 16) & textureHeightMask;
                     uint pixel = *(textureBuffer + texelIndex);
 
-                    drawPixel.Draw(screenIndexPtr, pixel);
+                    T.Draw(screenIndexPtr, pixel);
 
                     screenIndexPtr += width;
                     textureYPos_u += textureYIncr_u;
@@ -1327,7 +1302,7 @@ namespace RenderingEngine.Engine
                     uint texelIndex = (textureYPos_u >> 16) % textureHeightMask;
                     uint pixel = *(textureBuffer + texelIndex);
 
-                    drawPixel.Draw(screenIndexPtr, pixel);
+                    T.Draw(screenIndexPtr, pixel);
 
                     screenIndexPtr += width;
                     textureYPos_u += textureYIncr_u;

@@ -1,10 +1,108 @@
 ﻿using SoftwareRendererModels;
 using System.Numerics;
+using System.Runtime.Intrinsics;
 
 namespace RenderingEngine.Engine
 {
     internal static class MathFormulas
     {
+        public static unsafe (uint min, uint max) GetMinMaxValue(uint* ptr, int count)
+        {
+            uint max_agg = uint.MinValue;
+            uint min_agg = uint.MaxValue;
+
+            if (Vector256.IsHardwareAccelerated && count > Vector256<int>.Count)
+            {
+                while (count > Vector256<uint>.Count)
+                {
+                    (uint min, uint max) = GetMinMaxValue(Vector256.Load(ptr));
+
+                    max_agg = MathFormulas.Max(max_agg, max);
+                    min_agg = MathFormulas.Min(min_agg, min);
+
+                    ptr += Vector256<uint>.Count;
+                    count -= Vector256<uint>.Count;
+                }
+            }
+
+            while (count > 0)
+            {
+                max_agg = MathFormulas.Max(max_agg, *ptr);
+                min_agg = MathFormulas.Min(min_agg, *ptr);
+
+                ptr++;
+                count--;
+            }
+
+            return (min_agg, max_agg);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static (uint min, uint max) GetMinMaxValue(Vector128<uint> value)
+        {
+            var valueShuffled = Vector128.ShuffleNative(value, Vector128.Create(2U, 3U, 0U, 1U));
+            var valueMax = Vector128.MaxNative(value, valueShuffled);
+            var valueMin = Vector128.MinNative(value, valueShuffled);
+
+            uint min = Math.Min(valueMin[0], valueMin[1]);
+            uint max = Math.Max(valueMax[0], valueMax[1]);
+
+            return (min, max);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static (int min, int max) GetMinMaxValue(Vector128<int> value)
+        {
+            var valueShuffled = Vector128.ShuffleNative(value, Vector128.Create(2, 3, 0, 1));
+            var valueMax = Vector128.MaxNative(value, valueShuffled);
+            var valueMin = Vector128.MinNative(value, valueShuffled);
+
+            int min = MathFormulas.Min(valueMin[0], valueMin[1]);
+            int max = MathFormulas.Max(valueMax[0], valueMax[1]);
+
+            return (min, max);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static (int min, int max) GetMinMaxValue(Vector256<int> value)
+        {
+            var valueLower = value.GetLower();
+            var valueUpper = value.GetUpper();
+
+            var value128min = Vector128.MinNative(valueLower, valueUpper);
+            var shuffle = Vector128.ShuffleNative(value128min, Vector128.Create(2, 3, 0, 1));
+            value128min = Vector128.MinNative(value128min, shuffle);
+
+            var value128max = Vector128.MaxNative(valueLower, valueUpper);
+            shuffle = Vector128.ShuffleNative(value128max, Vector128.Create(2, 3, 0, 1));
+            value128max = Vector128.MaxNative(value128max, shuffle);
+
+            int min = MathFormulas.Min(value128min[0], value128min[1]);
+            int max = MathFormulas.Max(value128max[0], value128max[1]);
+
+            return (min, max);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static (uint min, uint max) GetMinMaxValue(Vector256<uint> value)
+        {
+            var valueLower = value.GetLower();
+            var valueUpper = value.GetUpper();
+
+            var value128min = Vector128.MinNative(valueLower, valueUpper);
+            var shuffle = Vector128.ShuffleNative(value128min, Vector128.Create(2U, 3U, 0U, 1U));
+            value128min = Vector128.MinNative(value128min, shuffle);
+
+            var value128max = Vector128.MaxNative(valueLower, valueUpper);
+            shuffle = Vector128.ShuffleNative(value128max, Vector128.Create(2U, 3U, 0U, 1U));
+            value128max = Vector128.MaxNative(value128max, shuffle);
+
+            uint min = Math.Min(value128min[0], value128min[1]);
+            uint max = Math.Max(value128max[0], value128max[1]);
+
+            return (min, max);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int Max(int a, int b) => a > b ? a : b;
 

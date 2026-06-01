@@ -272,7 +272,7 @@ namespace Tests
             slopedSector.Walls.Add(ParseWallType(2027, 2027, in wall2027, in wall2028, in wall2028));
             slopedSector.Walls.Add(ParseWallType(2028, 2028, in wall2028, in wall2025, in wall2025));
 
-            return GameLoader.ParseMapSector(slopedSector);
+            return GameRenderStateLoader.ParseMapSector(slopedSector);
         }
 
         internal static (RenderableSector slopedSector, RenderableSector upperSector) Setup()
@@ -458,7 +458,7 @@ namespace Tests
             slopedSector.Walls.Add(ParseWallType(55, 55, in wall55, in wall56, in wall56));
             slopedSector.Walls.Add(ParseWallType(56, 51, in wall56, in wall51, in wall51));
 
-            return (GameLoader.ParseMapSector(slopedSector), GameLoader.ParseMapSector(upperSector));
+            return (GameRenderStateLoader.ParseMapSector(slopedSector), GameRenderStateLoader.ParseMapSector(upperSector));
         }
 
         internal static Line ParseWallType(int index, int j, in WallType wall, in WallType nextWall, in WallType point2Wall)

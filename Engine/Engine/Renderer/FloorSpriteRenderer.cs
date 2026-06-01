@@ -209,7 +209,7 @@ namespace RenderingEngine.Engine
 
                     if (min_b > max_t + 16)
                     {
-                        RenderLine(drawPixel, x, fromYPtr + x, toYPtr + x,
+                        RenderLine(x, fromYPtr + x, toYPtr + x,
                             min_t, max_t, min_b, max_b);
 
                         x += Vector<int>.Count;
@@ -231,7 +231,6 @@ namespace RenderingEngine.Engine
             return;
 
             void RenderLine(
-                T drawPixel,
                 int x,
                 int* to, int* from,
                 int min_t, int max_t, int min_b, int max_b
@@ -242,7 +241,7 @@ namespace RenderingEngine.Engine
                 // render tops where there is no shared window
                 if (min_t != max_t)
                 {
-                    RenderColumnAngleTop(drawPixel, min_t, max_t, from, x);
+                    RenderColumnAngleTop(min_t, max_t, from, x);
                 }
 
                 for (int y = max_t, screenIndex = y * width + x; y <= min_b; y++, screenIndex += width)
@@ -255,13 +254,13 @@ namespace RenderingEngine.Engine
                     if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                     {
                         Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndex.AsVector256(), scale: sizeof(int));
-                        drawPixel.DrawLine(screenTexPtr, gathered);
+                        T.DrawLine(screenTexPtr, gathered);
                     }
                     else
                     {
                         for (int i = 0; i < Vector<int>.Count; i++)
                         {
-                            drawPixel.Draw(screenTexPtr + i, texturePtr[textureIndex[i]]);
+                            T.Draw(screenTexPtr + i, texturePtr[textureIndex[i]]);
                         }
                     }
                 }
@@ -269,12 +268,11 @@ namespace RenderingEngine.Engine
                 // render bottoms where there is no shared window
                 if (min_b != max_b)
                 {
-                    RenderColumnAngleBottom(drawPixel, min_b, max_b, to, x);
+                    RenderColumnAngleBottom(min_b, max_b, to, x);
                 }
             }
 
             void RenderColumnAngleBottom(
-                T drawPixel,
                 int floorFromY,
                 int floorToY,
                 int* to,
@@ -293,7 +291,7 @@ namespace RenderingEngine.Engine
                         {
                             float xMult = *(xMapPosMult + i);
                             int textureIndex = GetXyFromScreenSpaceScalar(*incr, xMult);
-                            drawPixel.Draw(screenTexPtr + i, texturePtr[textureIndex]);
+                            T.Draw(screenTexPtr + i, texturePtr[textureIndex]);
                         }
                     }
 
@@ -303,7 +301,6 @@ namespace RenderingEngine.Engine
             }
 
             void RenderColumnAngleTop(
-                T drawPixel,
                 int min_t,
                 int max_t,
                 int* from,
@@ -325,7 +322,7 @@ namespace RenderingEngine.Engine
 
                         float xMult = *(xMapPosMult + i);
                         int textureIndex = GetXyFromScreenSpaceScalar(*incr, xMult);
-                        drawPixel.Draw(screenTexPtr + i, texturePtr[textureIndex]);
+                        T.Draw(screenTexPtr + i, texturePtr[textureIndex]);
                     }
 
                     screenTexPtr += width;
@@ -360,7 +357,7 @@ namespace RenderingEngine.Engine
                         for (int i = 0; i < Vector256<int>.Count; i++, screenTex += width)
                         {
                             uint tex = gathered[i];
-                            drawPixel.Draw(screenTex, tex);
+                            T.Draw(screenTex, tex);
                         }
                     }
                     else
@@ -369,7 +366,7 @@ namespace RenderingEngine.Engine
                         {
                             uint tex = *(texturePtr + textureIndex[i]);
 
-                            drawPixel.Draw(screenTex, tex);
+                            T.Draw(screenTex, tex);
                         }
                     }
 
@@ -388,7 +385,7 @@ namespace RenderingEngine.Engine
                 {
                     uint tex = *(texturePtr + textureIndex[i]);
 
-                    drawPixel.Draw(screenTex, tex);
+                    T.Draw(screenTex, tex);
                 }
             }
 

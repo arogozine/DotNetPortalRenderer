@@ -7,49 +7,112 @@ namespace RenderingEngine.Engine
     internal unsafe interface IDrawPixel
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void Draw(uint* surface, uint pixels);
+        static abstract void Draw(uint* surface, uint pixels);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void DrawLine(uint* surface, Vector256<uint> pixels);
+        static abstract void DrawLine(uint* surface, Vector256<uint> pixels);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void DrawLine(uint* surface, Vector128<uint> pixels);
+        static abstract void DrawLine(uint* surface, Vector128<uint> pixels);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void DrawLine(uint* surface, Vector<uint> pixels);
+        static abstract void DrawLine(uint* surface, Vector<uint> pixels);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static abstract void DrawLine(uint* surface, Vector256<uint> pixels, Vector256<uint> mask);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static abstract void DrawLine(uint* surface, Vector128<uint> pixels, Vector128<uint> mask);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static abstract void DrawLine(uint* surface, Vector<uint> pixels, Vector<uint> mask);
     }
 
     internal readonly ref struct DrawSimplePixel : IDrawPixel
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void Draw(uint* surface, uint pixel)
+        public static unsafe void Draw(uint* surface, uint pixel)
         {
             *surface = pixel;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void DrawLine(uint* surface, Vector256<uint> pixels)
+        public static unsafe void DrawLine(uint* surface, Vector256<uint> pixels)
         {
             pixels.Store(surface);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void DrawLine(uint* surface, Vector128<uint> pixels)
+        public static unsafe void DrawLine(uint* surface, Vector128<uint> pixels)
         {
             pixels.Store(surface);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void DrawLine(uint* surface, Vector<uint> pixels)
+        public static unsafe void DrawLine(uint* surface, Vector<uint> pixels)
         {
             pixels.Store(surface);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void DrawLine(uint* surface, Vector256<uint> pixels, Vector256<uint> mask)
+        {
+            if (Avx2.IsSupported)
+            {
+                Avx2.MaskStore(surface, mask, pixels);
+                return;
+            }
+
+            for (int i = 0; i < Vector256<uint>.Count; i++)
+            {
+                if (mask[i] != 0U)
+                {
+                    *surface = pixels[i];
+                }
+
+                surface++;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void DrawLine(uint* surface, Vector128<uint> pixels, Vector128<uint> mask)
+        {
+            if (Avx2.IsSupported)
+            {
+                Avx2.MaskStore(surface, mask, pixels);
+                return;
+            }
+
+            for (int i = 0; i < Vector128<uint>.Count; i++)
+            {
+                if (mask[i] != 0U)
+                {
+                    *surface = pixels[i];
+                }
+
+                surface++;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void DrawLine(uint* surface, Vector<uint> pixels, Vector<uint> mask)
+        {
+            for (int i = 0; i < Vector<uint>.Count; i++)
+            {
+                if (mask[i] != 0U)
+                {
+                    *surface = pixels[i];
+                }
+
+                surface++;
+            }
         }
     }
 
     internal readonly ref struct DrawTransparentPixel : IDrawPixel
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void Draw(uint* surface, uint pixel)
+        public static unsafe void Draw(uint* surface, uint pixel)
         {
             if (pixel != 0U)
             {
@@ -58,7 +121,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void DrawLine(uint* surface, Vector256<uint> pixels)
+        public static unsafe void DrawLine(uint* surface, Vector256<uint> pixels)
         {
             if (pixels == Vector256<uint>.Zero)
             {
@@ -86,7 +149,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void DrawLine(uint* surface, Vector128<uint> pixels)
+        public static unsafe void DrawLine(uint* surface, Vector128<uint> pixels)
         {
             if (pixels == Vector128<uint>.Zero)
             {
@@ -114,7 +177,7 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void DrawLine(uint* surface, Vector<uint> pixels)
+        public static unsafe void DrawLine(uint* surface, Vector<uint> pixels)
         {
             if (pixels == Vector<uint>.Zero)
             {
@@ -133,12 +196,90 @@ namespace RenderingEngine.Engine
                 surface++;
             }
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void DrawLine(uint* surface, Vector256<uint> pixels, Vector256<uint> mask)
+        {
+            if (pixels == Vector256<uint>.Zero || mask == Vector256<uint>.Zero)
+            {
+                return;
+            }
+
+            Vector256<uint> combinedMask = mask & Vector256.GreaterThan(pixels, Vector256<uint>.Zero);
+
+            if (Avx2.IsSupported)
+            {
+                Avx2.MaskStore(surface, combinedMask, pixels);
+                return;
+            }
+
+            for (int i = 0; i < Vector256<uint>.Count; i++)
+            {
+                if (combinedMask[i] != 0U)
+                {
+                    uint pixel = pixels[i];
+                    *surface = pixel;
+                }
+
+                surface++;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void DrawLine(uint* surface, Vector128<uint> pixels, Vector128<uint> mask)
+        {
+            if (pixels == Vector128<uint>.Zero || mask == Vector128<uint>.Zero)
+            {
+                return;
+            }
+
+            Vector128<uint> combinedMask = mask & Vector128.GreaterThan(pixels, Vector128<uint>.Zero);
+
+            if (Avx2.IsSupported)
+            {
+                Avx2.MaskStore(surface, combinedMask, pixels);
+                return;
+            }
+
+            for (int i = 0; i < Vector128<uint>.Count; i++)
+            {
+                if (combinedMask[i] != 0U)
+                {
+                    uint pixel = pixels[i];
+                    *surface = pixel;
+                }
+
+                surface++;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void DrawLine(uint* surface, Vector<uint> pixels, Vector<uint> mask)
+        {
+            if (pixels == Vector<uint>.Zero)
+            {
+                return;
+            }
+
+            Vector<uint> combinedMask = mask & Vector.GreaterThan(pixels, Vector<uint>.Zero);
+
+            for (int i = 0; i < Vector<uint>.Count; i++)
+            {
+                if (combinedMask[i] != 0U)
+                {
+                    uint pixel = pixels[i];
+                    *surface = pixel;
+                }
+
+                surface++;
+            }
+        }
     }
 
     internal readonly ref struct DrawAlphaPixel : IDrawPixel
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void Draw(uint* surface, uint pixel)
+        public static unsafe void Draw(uint* surface, uint pixel)
         {
             if (pixel != 0U)
             {
@@ -147,24 +288,93 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void DrawLine(uint* surface, Vector256<uint> pixels)
+        public static unsafe void DrawLine(uint* surface, Vector256<uint> pixels)
         {
             pixels = BlendBGRA(Vector256.Load(surface), pixels);
             Vector256.Store(pixels, surface);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void DrawLine(uint* surface, Vector128<uint> pixels)
+        public static unsafe void DrawLine(uint* surface, Vector128<uint> pixels)
         {
             pixels = BlendBGRA(Vector128.Load(surface), pixels);
             Vector128.Store(pixels, surface);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly unsafe void DrawLine(uint* surface, Vector<uint> pixels)
+        public static unsafe void DrawLine(uint* surface, Vector<uint> pixels)
         {
             pixels = BlendBGRA(Vector.Load(surface), pixels);
             Vector.Store(pixels, surface);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void DrawLine(uint* surface, Vector256<uint> pixels, Vector256<uint> mask)
+        {
+            if (Avx2.IsSupported)
+            {
+                Vector256<uint> dst = Vector256.Load(surface);
+                Vector256<uint> blended = BlendBGRA(dst, pixels);
+                Vector256<uint> result = Vector256.ConditionalSelect(mask, blended, dst);
+                Vector256.Store(result, surface);
+                return;
+            }
+
+            Vector256<uint> dstLoaded = Vector256.Load(surface);
+            Vector256<uint> blendedFull = BlendBGRA(dstLoaded, pixels);
+
+            for (int i = 0; i < Vector256<uint>.Count; i++)
+            {
+                if (mask[i] != 0U)
+                {
+                    *surface = blendedFull[i];
+                }
+
+                surface++;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void DrawLine(uint* surface, Vector128<uint> pixels, Vector128<uint> mask)
+        {
+            if (Avx2.IsSupported)
+            {
+                Vector128<uint> dst = Vector128.Load(surface);
+                Vector128<uint> blended = BlendBGRA(dst, pixels);
+                Vector128<uint> result = Vector128.ConditionalSelect(mask, blended, dst);
+                Vector128.Store(result, surface);
+                return;
+            }
+
+            Vector128<uint> dstLoaded = Vector128.Load(surface);
+            Vector128<uint> blendedFull = BlendBGRA(dstLoaded, pixels);
+
+            for (int i = 0; i < Vector128<uint>.Count; i++)
+            {
+                if (mask[i] != 0U)
+                {
+                    *surface = blendedFull[i];
+                }
+
+                surface++;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static unsafe void DrawLine(uint* surface, Vector<uint> pixels, Vector<uint> mask)
+        {
+            Vector<uint> dstLoaded = Vector.Load(surface);
+            Vector<uint> blendedFull = BlendBGRA(dstLoaded, pixels);
+
+            for (int i = 0; i < Vector<uint>.Count; i++)
+            {
+                if (mask[i] != 0U)
+                {
+                    *surface = blendedFull[i];
+                }
+
+                surface++;
+            }
         }
 
         static uint BlendBGRA(uint bgraDstU, uint bgraSrcU)

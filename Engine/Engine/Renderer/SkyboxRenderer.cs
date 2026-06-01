@@ -124,8 +124,8 @@ namespace RenderingEngine.Engine
                     Vector256<int> fromV = from.AsVector256();
                     Vector256<int> toV = to.AsVector256();
 
-                    (int min_t, int max_t) = GetMinMaxValue(fromV);
-                    (int min_b, int max_b) = GetMinMaxValue(toV);
+                    (int min_t, int max_t) = MathFormulas.GetMinMaxValue(fromV);
+                    (int min_b, int max_b) = MathFormulas.GetMinMaxValue(toV);
 
                     return (min_t, max_t, min_b, max_b);
                 }
@@ -134,8 +134,8 @@ namespace RenderingEngine.Engine
                     Vector128<int> fromV = from.AsVector128();
                     Vector128<int> toV = to.AsVector128();
 
-                    (int min_t, int max_t) = GetMinMaxValue(fromV);
-                    (int min_b, int max_b) = GetMinMaxValue(toV);
+                    (int min_t, int max_t) = MathFormulas.GetMinMaxValue(fromV);
+                    (int min_b, int max_b) = MathFormulas.GetMinMaxValue(toV);
 
                     return (min_t, max_t, min_b, max_b);
                 }
