@@ -124,7 +124,7 @@ namespace RenderingEngine.Engine
 
                 if (translucent)
                 {
-                    RenderFloorOrCeilingSprite(new DrawAlphaPixel(), repeatedCountPtr, screenPtr, texturePtr, from, to,
+                    RenderFloorOrCeilingSprite<DrawAlphaPixel>(repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,
@@ -132,7 +132,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    RenderFloorOrCeilingSprite(new DrawTransparentPixel(), repeatedCountPtr, screenPtr, texturePtr, from, to,
+                    RenderFloorOrCeilingSprite<DrawTransparentPixel>(repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,
@@ -142,7 +142,6 @@ namespace RenderingEngine.Engine
         }
 
         private unsafe void RenderFloorOrCeilingSprite<T>(
-            T drawPixel,
             ushort* repeatedCount,
             uint* screenPtr,
             uint* texturePtr,
@@ -223,7 +222,7 @@ namespace RenderingEngine.Engine
                     int clampedToY = toYPtr[x];
                     float xMapPosMultiplier = *(xMapPosMultiplierCachePtr + x);
 
-                    RenderColumn(drawPixel, clampedFromY, clampedToY, x, xMapPosMultiplier);
+                    RenderColumn(clampedFromY, clampedToY, x, xMapPosMultiplier);
                     x++;
                 }
             }
@@ -330,7 +329,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            void RenderColumn(T drawPixel, int floorFromY, int floorToY, int x, float xMapPosMultiplier)
+            void RenderColumn(int floorFromY, int floorToY, int x, float xMapPosMultiplier)
             {
                 int rem = (floorToY - floorFromY) & (Vector<int>.Count - 1);
                 floorToY -= rem;
