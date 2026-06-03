@@ -68,7 +68,7 @@ namespace RenderingEngine.Engine
 
                 if (Vector256.IsHardwareAccelerated && count >= Vector256<uint>.Count)
                 {
-                    RenderMultipleWallLinesV256<DrawSimplePixel>(
+                    CoreRenderer<DrawSimplePixel>.RenderMultipleWallLinesV256(
                         isPowerOfTwo,
                         (uint)width,
                         (uint)x,
@@ -88,7 +88,7 @@ namespace RenderingEngine.Engine
 
                 if (Vector128.IsHardwareAccelerated && count >= Vector128<uint>.Count)
                 {
-                    RenderMultipleWallLinesV128<DrawSimplePixel>(
+                    CoreRenderer<DrawSimplePixel>.RenderMultipleWallLinesV128(
                         isPowerOfTwo,
                         (uint)width,
                         (uint)x,
@@ -106,7 +106,7 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                RenderMultipleWallLines<DrawSimplePixel>(
+                CoreRenderer<DrawSimplePixel>.RenderMultipleWallLines(
                     isPowerOfTwo,
                     count,
                     (uint)width,

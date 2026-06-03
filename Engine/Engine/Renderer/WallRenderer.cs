@@ -5,13 +5,6 @@ namespace RenderingEngine.Engine
 {
     internal sealed partial class PortalRenderer
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe ref T GetScreenPtr<T>()
-            where T : unmanaged
-        {
-            return ref Unsafe.AsRef<T>(buffer);
-        }
-
         private unsafe bool DrawBasicWall(
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall)

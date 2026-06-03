@@ -35,16 +35,6 @@ namespace RenderingEngine.Engine
 
         #endregion
 
-        [Flags]
-        private enum XyOpts : byte
-        {
-            None = 0,
-            FlipX = 1,
-            FlipY = 2,
-            SwapXY = 4,
-            DoubleSize = 8
-        }
-
         private static (int xOffset, int yOffset, XyOpts Opts) DetermineOffsets(
             GameTextureInfo textureInfo)
         {
@@ -414,7 +404,7 @@ namespace RenderingEngine.Engine
 
             return;
 
-            unsafe void RenderLine(
+            void RenderLine(
                 int x,
                 int* to, int* from,
                 int min_t, int max_t, int min_b, int max_b
@@ -458,15 +448,14 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            unsafe void RenderColumnAngleBottom(
+            void RenderColumnAngleBottom(
                 int floorFromY,
                 int floorToY,
                 int* to,
                 int xStart)
             {
                 uint* screenTexPtr = screenPtr + floorFromY * width + xStart;
-                float* xMapPosMult = xMapPosMultiplierCachePtr + xStart;
-
+                Vector<float> xMapPosMultV = Vector.Load(xMapPosMultiplierCachePtr + xStart);
                 float* incr = incrCachePtr + floorFromY;
 
                 for (int y = floorFromY; y < floorToY; y++)
@@ -475,7 +464,7 @@ namespace RenderingEngine.Engine
                     {
                         if (to[i] > y)
                         {
-                            float xMult = *(xMapPosMult + i);
+                            float xMult = xMapPosMultV[i];
                             int textureIndex = GetXyFromScreenSpaceScalar(*incr, xMult);
                             screenTexPtr[i] = texturePtr[textureIndex];
                         }
@@ -486,15 +475,14 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            unsafe void RenderColumnAngleTop(
+            void RenderColumnAngleTop(
                 int min_t,
                 int max_t,
                 int* from,
                 int xStart)
             {
                 uint* screenTexPtr = screenPtr + min_t * width + xStart;
-                float* xMapPosMult = xMapPosMultiplierCachePtr + xStart;
-
+                Vector<float> xMapPosMultV = Vector.Load(xMapPosMultiplierCachePtr + xStart);
                 float* incr = incrCachePtr + min_t;
 
                 for (int y = min_t; y < max_t; y++)
@@ -506,7 +494,7 @@ namespace RenderingEngine.Engine
                             continue;
                         }
 
-                        float xMult = *(xMapPosMult + i);
+                        float xMult = xMapPosMultV[i];
                         int textureIndex = GetXyFromScreenSpaceScalar(*incr, xMult);
                         screenTexPtr[i] = texturePtr[textureIndex];
                     }
@@ -516,7 +504,7 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            unsafe void RenderColumn(
+            void RenderColumn(
                 int floorToY, int floorFromY, int x, float xMapPosMultiplier)
             {
                 int screenIndex = floorFromY * width + x;
