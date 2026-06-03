@@ -142,9 +142,6 @@ namespace RenderingEngine.Engine
             CalculateWallPlanes(rotatedWalls, player);
             rotatedWalls = FilterOutWallsOutsideView(rotatedWalls);
 
-            var copy = new RenderableWall[rotatedWalls.Length];
-            rotatedWalls.CopyTo(copy);
-
             return rotatedWalls;
         }
 
@@ -165,14 +162,16 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static void CalculateConnectingSectorsForSlope(PortalPlayerSnapshot player, ReadOnlySpan<RenderableSector> sectors, RenderableSector sector)
+        private readonly HashSet<RenderableSector> connectingSectors = [];
+
+        public void CalculateConnectingSectorsForSlope(PortalPlayerSnapshot player, ReadOnlySpan<RenderableSector> sectors, RenderableSector sector)
         {
             float pSin = player.Sin;
             float pCos = player.Cos;
             float px = player.X;
             float py = player.Y;
 
-            HashSet<RenderableSector> connectingSectors = [];
+            connectingSectors.Clear();
 
             for (int i = 0; i < sector.Walls.Length; i++)
             {
@@ -282,10 +281,18 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        public static RenderableWall[] RotateSectorWallsRelativeToPlayer(RenderableSector sector, float pSin, float pCos, float px, float py)
+        private RenderableWall[] _rotatedWalls = new RenderableWall[32];
+
+        public Span<RenderableWall> RotateSectorWallsRelativeToPlayer(RenderableSector sector, float pSin, float pCos, float px, float py)
         {
             ReadOnlySpan<RenderableWall> walls = sector.Walls;
-            RenderableWall[] rotatedWalls = new RenderableWall[walls.Length];
+
+            if (_rotatedWalls.Length < walls.Length)
+            {
+                Array.Resize(ref _rotatedWalls, walls.Length);
+            }
+
+            Span<RenderableWall> rotatedWalls = _rotatedWalls.AsSpan()[..walls.Length];
 
             // Rotate relative to player
             for (int i = 0; i < walls.Length; i++)

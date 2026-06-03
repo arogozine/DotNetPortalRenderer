@@ -165,7 +165,7 @@ namespace RenderingEngine.Engine
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
             int length = sectorToX - sectorFromX + 1;
-            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[..length];
             repeatedCount.Fill((ushort)length);
 
             for (int x = sectorFromX; x <= sectorToX; x++)
@@ -276,7 +276,7 @@ namespace RenderingEngine.Engine
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
             int length = sectorToX - sectorFromX + 1;
-            Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length);
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[..length];
             repeatedCount.Fill((ushort)length);
 
             for (int x = sectorFromX; x <= sectorToX; x++)

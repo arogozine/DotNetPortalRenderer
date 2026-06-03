@@ -198,6 +198,8 @@ namespace RenderingEngine.Engine
             mirroredSectors.Clear();
         }
 
+        private readonly List<RenderablePortalWall> neighborsForDepth = [];
+
         /// <summary>
         /// Draw all current sectors (one wall at a time) and return the next set of portal walls to drawn
         /// </summary>
@@ -207,7 +209,7 @@ namespace RenderingEngine.Engine
         {
             ReadOnlySpan<RenderableSector> sectors = Sectors;
 
-            List<RenderablePortalWall> neighborsForDepth = [];
+            neighborsForDepth.Clear();
 
             // 0. Dequeue next sector to render. All sectors in the queue are for the current depth.
             Span<NeighborsToRender> renderQueueSpan = CollectionsMarshal.AsSpan(sectorRenderQueue);

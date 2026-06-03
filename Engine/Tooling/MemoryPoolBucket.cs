@@ -47,9 +47,13 @@
         /// </summary>
         TextureYIncrement,
         /// <summary>
-        /// Where to end rendering a wall
+        /// Temp Buffer
         /// </summary>
         Temp,
+        /// <summary>
+        /// Temp Buffer 2
+        /// </summary>
+        Temp2,
         /// <summary>
         /// Portal Top Window. Between [WallStart, WallEnd]
         /// </summary>

@@ -306,7 +306,7 @@ namespace RenderingEngine.Engine
 
                 int length = sectorToX - sectorFromX;
 
-                Span<ushort> repeatedCount = TempBuffer<ushort>.GetBuffer(length + 1);
+                Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[..(length + 1)];
 
                 for (int x = sectorFromX; x <= sectorToX; x++)
                 {
