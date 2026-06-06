@@ -1,8 +1,6 @@
 ﻿using RenderingEngine.Tooling;
 using SoftwareRendererModels;
 using System.Numerics;
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
 {
@@ -352,136 +350,57 @@ namespace RenderingEngine.Engine
                 {
                     if (alpha == 1f)
                     {
-                        DrawHorizontally<DrawTransparentPixel>(texturePtr);
+                        if (isPowerOfTwo)
+                        {
+                            CoreRendererForPowTextures<DrawTransparentPixel>.RenderSpriteHorizontally(spriteFromX, spriteToX, width, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
+                        }
+                        else
+                        {
+                            CoreRendererForOddTextures<DrawTransparentPixel>.RenderSpriteHorizontally(spriteFromX, spriteToX, width, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
+
+                        }
                     }
                     else
                     {
-                        DrawHorizontally<DrawAlphaPixel>(texturePtr);
+                        if (isPowerOfTwo)
+                        {
+                            CoreRendererForPowTextures<DrawAlphaPixel>.RenderSpriteHorizontally(spriteFromX, spriteToX, width, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
+                        }
+                        else
+                        {
+                            CoreRendererForOddTextures<DrawAlphaPixel>.RenderSpriteHorizontally(spriteFromX, spriteToX, width, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
+
+                        }
                     }
                 }
                 else
                 {
                     if (alpha == 1f)
                     {
-                        Draw<DrawTransparentPixel>(texturePtr);
+                        if (isPowerOfTwo)
+                        {
+                            CoreRendererForPowTextures<DrawTransparentPixel>.RenderWall(spriteFromX, spriteToX, width, textureHeight, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
+                        }
+                        else
+                        {
+                            CoreRendererForOddTextures<DrawTransparentPixel>.RenderWall(spriteFromX, spriteToX, width, textureHeight, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
+                        }
                     }
                     else
                     {
-                        Draw<DrawAlphaPixel>(texturePtr);
+                        if (isPowerOfTwo)
+                        {
+                            CoreRendererForPowTextures<DrawAlphaPixel>.RenderWall(spriteFromX, spriteToX, width, textureHeight, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
+                        }
+                        else
+                        {
+                            CoreRendererForOddTextures<DrawAlphaPixel>.RenderWall(spriteFromX, spriteToX, width, textureHeight, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
+                        }
                     }
                 }
             }
 
             return;
-
-            void DrawHorizontally<T>(uint* texturePtr)
-                where T : IDrawPixel
-            {
-                for (int x = spriteFromX; x <= spriteToX;)
-                {
-                    ushort count = repeatedCount[x - spriteFromX];
-
-                    if (count == 0)
-                    {
-                        x++;
-                        continue;
-                    }
-
-                    uint* clampedFromY = portalFromClampedPtr + x;
-                    uint* clampedToY = portalToClampedPtr + x;
-                    uint* textureXPos = textureXLocationPtr + x;
-                    uint* textureYPos = textureYLocationPtr + x;
-                    uint* textureYIncr = textureYIncrementPtr + x;
-
-                    (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(clampedFromY, count);
-                    (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(clampedToY, count);
-
-                    CoreRenderer<T>.RenderMultipleHorizontalLines(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
-
-                    x += count;
-                }
-            }
-
-            void Draw<T>(uint* texturePtr)
-                where T : IDrawPixel
-            {
-                for (int x = spriteFromX; x <= spriteToX;)
-                {
-                    ushort count = repeatedCount[x - spriteFromX];
-
-                    if (count == 0)
-                    {
-                        x++;
-                        continue;
-                    }
-
-                    uint* clampedFromY = portalFromClampedPtr + x;
-                    uint* clampedToY = portalToClampedPtr + x;
-                    uint* textureXPos = textureXLocationPtr + x;
-                    uint* textureYPos = textureYLocationPtr + x;
-                    uint* textureYIncr = textureYIncrementPtr + x;
-
-                    Debug.Assert(*clampedFromY < *clampedToY);
-
-                    if (Vector256.IsHardwareAccelerated && count >= Vector256<uint>.Count)
-                    {
-                        CoreRenderer<T>.RenderMultipleWallLinesV256(
-                            isPowerOfTwo,
-                            width,
-                            (uint)x,
-                            textureHeight,
-                            clampedFromY,
-                            clampedToY,
-                            textureYPos,
-                            textureYIncr,
-                            screenPtr,
-                            textureXPos,
-                            texturePtr
-                        );
-
-                        x += Vector256<uint>.Count;
-                        continue;
-                    }
-
-                    if (Vector128.IsHardwareAccelerated && count >= Vector128<uint>.Count)
-                    {
-                        CoreRenderer<T>.RenderMultipleWallLinesV128(
-                            isPowerOfTwo,
-                            width,
-                            (uint)x,
-                            textureHeight,
-                            clampedFromY,
-                            clampedToY,
-                            textureYPos,
-                            textureYIncr,
-                            screenPtr,
-                            textureXPos,
-                            texturePtr
-                        );
-
-                        x += Vector128<uint>.Count;
-                        continue;
-                    }
-
-                    CoreRenderer<T>.RenderMultipleWallLines(
-                        isPowerOfTwo,
-                        count,
-                        width,
-                        (uint)x,
-                        textureHeight,
-                        clampedFromY,
-                        clampedToY,
-                        textureYPos,
-                        textureYIncr,
-                        screenPtr,
-                        textureXPos,
-                        texturePtr
-                    );
-
-                    x += count;
-                }
-
-            }
 
             ref uint GetTextureRef()
             {
@@ -625,11 +544,9 @@ namespace RenderingEngine.Engine
                 float* xMapPosMultiplierCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
                 float* incrCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
-                Sse.Prefetch2(texturePtr);
-
                 if (translucent)
                 {
-                    CoreRenderer<DrawAlphaPixel>.RenderFloorOrCeilingSprite(xMapPosMultiplierCachePtr, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
+                    CoreRendererForPowTextures<DrawAlphaPixel>.RenderFloorOrCeilingSprite(xMapPosMultiplierCachePtr, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,
@@ -638,7 +555,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    CoreRenderer<DrawTransparentPixel>.RenderFloorOrCeilingSprite(xMapPosMultiplierCachePtr, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
+                    CoreRendererForPowTextures<DrawTransparentPixel>.RenderFloorOrCeilingSprite(xMapPosMultiplierCachePtr, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,

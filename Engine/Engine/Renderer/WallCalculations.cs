@@ -1,9 +1,9 @@
 ﻿using RenderingEngine.Tooling;
 using SoftwareRendererModels;
-
+using System.Numerics;
 namespace RenderingEngine.Engine
 {
-    internal sealed partial class PortalRenderer
+    internal sealed unsafe partial class PortalRenderer
     {
         private void CalculateUpperTextureYIncrement(RenderablePortalWall portalWall, GameTextureInfo textureInfo)
         {
@@ -228,37 +228,78 @@ namespace RenderingEngine.Engine
 
         private void CalculateWallClamp(RenderablePortalWall renderableWall)
         {
-            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            RenderColumnStatus* statusPtr = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
 
-            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
-
-            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            int* wallStartClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
+            int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
+            int* ceilingStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
+            int* floorEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
 
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
+            int length = wallToX - wallFromX;
+
+            if (Vector.IsHardwareAccelerated && length > Vector<int>.Count)
+            {
+                int rem = length & (Vector<int>.Count - 1);
+                wallToX -= rem;
+
+                for (int x = wallFromX; x < wallToX; x += Vector<int>.Count)
+                {
+                    Vector<int> statusV = Vector.Load((int*)(statusPtr + x));
+
+                    Vector<int> ceilingStartY = Vector.Load(ceilingStartPtr + x);
+                    Vector<int> floorEndY = Vector.Load(floorEndPtr + x);
+
+                    Vector<int> wallStartY = Vector.Load(wallStartClampedPtr + x);
+                    Vector<int> wallEndY = Vector.Load(wallEndClampedPtr + x);
+
+                    Vector<int> clamptedFromY = Vector.ClampNative(wallStartY, ceilingStartY, floorEndY);
+                    Vector<int> clamptedToY = Vector.ClampNative(wallEndY, ceilingStartY, floorEndY);
+
+                    Vector.Store(clamptedFromY, wallStartClampedPtr + x);
+                    Vector.Store(clamptedToY, wallEndClampedPtr + x);
+
+                    // limit to Calculated CanRenderWall Mask
+                    statusV &= Vector.Create((int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall));
+                    // check where can render wall is false
+                    statusV = Vector.LessThan(statusV, Vector<int>.Zero);
+                    // OR where fromY >= toY
+                    statusV |= Vector.GreaterThanOrEqual(clamptedFromY, clamptedToY);
+
+                    for (int i = 0; i < Vector<int>.Count; i++)
+                    {
+                        if (statusV[i] != 0)
+                        {
+                            statusPtr[x + i] = RenderColumnStatus.FinishedRendering;
+                        }
+                    }
+                }
+
+                wallFromX = wallToX;
+                wallToX += rem;
+            }
 
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
-                int ceilingStartY = ceilingStart[x];
-                int floorEndY = floorEnd[x];
+                int ceilingStartY = ceilingStartPtr[x];
+                int floorEndY = floorEndPtr[x];
 
-                int wallStartY = wallStartClamped[x];
-                int wallEndY = wallEndClamped[x];
+                int wallStartY = wallStartClampedPtr[x];
+                int wallEndY = wallEndClampedPtr[x];
 
                 int clamptedFromY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
                 int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
 
                 Debug.Assert(ceilingStartY >= 0);
                 Debug.Assert(floorEndY >= 0);
-                wallStartClamped[x] = clamptedFromY;
-                wallEndClamped[x] = clamptedToY;
+                wallStartClampedPtr[x] = clamptedFromY;
+                wallEndClampedPtr[x] = clamptedToY;
 
-                if (!status[x].WallRenderable || clamptedFromY >= clamptedToY)
+                if (!statusPtr[x].WallRenderable || clamptedFromY >= clamptedToY)
                 {
-                    status[x] = RenderColumnStatus.FinishedRendering;
+                    statusPtr[x] = RenderColumnStatus.FinishedRendering;
                 }
             }
         }
@@ -380,6 +421,448 @@ namespace RenderingEngine.Engine
             status[x] = statusY;
             return statusY;
         }
+
+        private Span<ushort> DetermineMaxHorizontalRenderingDistance(RenderablePortalWall renderableWall, uint* wallStartPtr, uint* wallEndPtr)
+        {
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+            ushort length = (ushort)(wallToX - wallFromX + 1);
+
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp)[..length];
+            repeatedCount.Fill(length);
+
+            // set repeat count to 0 where there is nothing to draw
+            ref RenderColumnStatus statusRef = ref memoryPool.GetBucketRef<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            statusRef = ref Unsafe.Add(ref statusRef, wallFromX);
+
+            for (int x = wallFromX; x <= wallToX; x++)
+            {
+                uint wallStart = wallStartPtr[x];
+                uint wallEnd = wallEndPtr[x];
+
+                if (!statusRef.WallRenderable || wallStart >= wallEnd)
+                {
+                    repeatedCount[x - wallFromX] = 0;
+                }
+
+                statusRef = ref Unsafe.Add(ref statusRef, 1);
+            }
+
+            return repeatedCount;
+        }
+
+        private ushort* CalculateTransparentWallDoom(
+            ReadOnlySpan<RenderableSector> sectors,
+            RenderWindowWallSnapshot renderableWall)
+        {
+            int width = PixelWidth;
+
+            int bufferOffset = PixelWidth * (renderableWall.Depth + 1);
+
+            Span<float> distanceSpan = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance)[bufferOffset..];
+            Span<RenderColumnStatus> columnStatus = spriteCacheMemoryPool.GetBucket<RenderColumnStatus>(SpriteCachePoolBucket.RenderStatus)[bufferOffset..];
+
+            Span<int> wallStart = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
+            Span<int> wallEnd = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];
+
+            // RenderOutline(wallStart, wallEnd, BGRA.Red, BGRA.Green);//, renderableWall.XLeft, renderableWall.XRight);
+
+            RenderableWall wall = renderableWall.Wall;
+            int wallFromXOffset = renderableWall.Offset;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
+
+
+            RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
+            float wallStartY = yPlaneInfo.WallStartY;
+            float ceilDistIncr = yPlaneInfo.CeilDistIncr;
+            float wallEndY = yPlaneInfo.WallEndY;
+            float floorDistIncr = yPlaneInfo.FloorDistIncr;
+
+            (float sectorHeight, float ceilOffset, float floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
+            float oneOverSectorHeight = 1f / sectorHeight;
+
+            // Texture Calculations
+            GameTextureInfo? textureInfo = wall.MiddleTexture;
+            Debug.Assert(textureInfo != null);
+            GameTexture texture = TextureCache.GetTexture(textureInfo);
+            int textureWidth = texture.Height;
+            int textureHeight = texture.Width;
+            bool texHeightDivisible2 = SharedHelpers.IsPowerOfTwo(textureHeight);
+            if (texHeightDivisible2)
+            {
+                textureHeight--;
+            }
+
+            int xOffset = SharedHelpers.EnsureOffsetIsPositive(textureInfo.Width, textureInfo.XOffset);
+            int yOffset = textureInfo.YOffset > sectorHeight ? textureInfo.YOffset - 65536 : textureInfo.YOffset;
+
+            int* textureXLocationPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureXLocation);
+            uint* textureYLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.StartingYTexturePosition);
+            uint* textureYIncrementPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
+
+            int* portalFromClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
+            int* portalToClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
+            ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.Temp);
+
+            int length = wallToX - wallFromX;
+
+            bool renderFromTop = textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromTop);
+
+
+            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
+            {
+                RenderColumnStatus status = columnStatus[x];
+
+                if (status.PortalRenderable)
+                {
+                    repeatedCountPtr[x - wallFromX] = 0;
+                    continue;
+                }
+
+                float dist = distanceSpan[x];
+                int floorEnd = wallEnd[x];
+                int ceilingStart = wallStart[x];
+
+                (float distance, float fromToYdist) = MathFormulas.CalculateDistance(wall, cameraRay, t1, d2y, d2x);
+
+                if (fromToYdist > dist)
+                {
+                    repeatedCountPtr[x - wallFromX] = 0;
+                    wallStartY += ceilDistIncr;
+                    wallEndY += floorDistIncr;
+                    continue;
+                }
+
+                float pixelsPerUnit = (wallEndY - wallStartY) * oneOverSectorHeight;
+
+                // Portal Calculation
+                float floorPixelOffset = pixelsPerUnit * floorOffset;
+                float ceilPixelOffset = pixelsPerUnit * ceilOffset;
+                float portalFromY = wallStartY - ceilPixelOffset;
+                float portalToY = wallEndY - floorPixelOffset;
+
+                float textureStartY = renderFromTop ? portalFromY : (portalToY - texture.Height * pixelsPerUnit);
+                float textureEndY = renderFromTop ? (portalFromY + texture.Height * pixelsPerUnit) : portalToY;
+
+                if (yOffset != 0)
+                {
+                    float yOffsetF = yOffset * pixelsPerUnit;
+
+                    if (yOffset > 0)
+                    {
+                        textureStartY = renderFromTop ? textureStartY + yOffsetF : textureStartY - yOffsetF;
+                        textureEndY = renderFromTop ? textureEndY + yOffsetF : textureEndY - yOffsetF;
+                    }
+                    else
+                    {
+                        // TODO: same expression in true and false branch
+                        textureStartY = renderFromTop ? textureStartY - yOffsetF : textureStartY - yOffsetF;
+                        textureEndY = renderFromTop ? textureEndY - yOffsetF : textureEndY - yOffsetF;
+                    }
+                }
+
+                int textureStartYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(textureStartY), ceilingStart, floorEnd);
+                int textureEndYClamped = Math.Clamp(float.ConvertToIntegerNative<int>(textureEndY), ceilingStart, floorEnd);
+
+                if (textureStartYClamped >= textureEndYClamped)
+                {
+                    repeatedCountPtr[x - wallFromX] = 0;
+                    continue;
+                }
+
+                float offset = textureStartYClamped - textureStartY;
+
+                // Calculate Middle Texture Position
+                float textureYIncr = sectorHeight / (wallEndY - wallStartY);
+                int textureXPos = ((float.ConvertToIntegerNative<int>(distance) + xOffset) % textureHeight) * textureWidth;
+                float textureYPos = MathF.FusedMultiplyAdd(textureYIncr, offset, textureWidth);
+
+
+                textureYIncr *= (1 << 16);
+                textureYPos *= (1 << 16);
+
+                portalFromClampedPtr[x] = textureStartYClamped;
+                portalToClampedPtr[x] = textureEndYClamped;
+
+                textureXLocationPtr[x] = textureXPos;
+                textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
+                textureYIncrementPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
+                repeatedCountPtr[x - wallFromX] = (ushort)length;
+            }
+
+            return repeatedCountPtr;
+        }
+
+        private unsafe ushort* CalculateTransparentWallBuild(
+            ReadOnlySpan<RenderableSector> sectors,
+            RenderWindowWallSnapshot renderableWall)
+        {
+            int width = PixelWidth;
+
+            int offset = PixelWidth * renderableWall.Depth;
+
+            Span<float> spriteDistance = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance)[offset..];
+            Span<RenderColumnStatus> columnStatus = spriteCacheMemoryPool.GetBucket<RenderColumnStatus>(SpriteCachePoolBucket.RenderStatus)[offset..];
+
+            if (renderableWall.Depth > 1)
+            {
+                offset = PixelWidth * (renderableWall.Depth - 1);
+            }
+
+            Span<int> wallStart = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[offset..];
+            Span<int> wallEnd = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[offset..];
+
+            RenderableWall wall = renderableWall.Wall;
+            int wallFromXOffset = renderableWall.Offset;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+
+            (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
+
+
+            RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset);
+            float wallStartY = yPlaneInfo.WallStartY;
+            float ceilDistIncr = yPlaneInfo.CeilDistIncr;
+            float wallEndY = yPlaneInfo.WallEndY;
+            float floorDistIncr = yPlaneInfo.FloorDistIncr;
+
+            (float sectorHeight, float ceilOffset, float floorOffset) = CalculatePortalOffsets(sectors, renderableWall.Wall);
+            float oneOverSectorHeight = 1f / sectorHeight;
+
+            // Texture Calculations
+            GameTextureInfo? textureInfo = wall.MiddleTexture;
+            Debug.Assert(textureInfo != null);
+            GameTexture texture = TextureCache.GetTexture(textureInfo);
+            int textureWidth = texture.Height;
+            int textureHeight = texture.Width;
+            bool texHeightDivisible2 = SharedHelpers.IsPowerOfTwo(textureHeight);
+            if (texHeightDivisible2)
+            {
+                textureHeight--;
+            }
+            int xOffset = textureInfo.XOffset;
+            int yOffset = textureInfo.YOffset;
+            RenderableSector sector = wall.Sector;
+            (float xScale, float yScale) = (textureInfo.XScale!.Value, textureInfo.YScale!.Value);
+            yScale = (sector.Ceil - sector.Floor) * yScale;
+            xScale = xScale / wall.Length * texture.Width;
+
+            int* textureXLocationPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureXLocation);
+            uint* textureYLocationPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.StartingYTexturePosition);
+            uint* textureYIncrementPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
+
+            int* portalFromClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
+            int* portalToClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
+            ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.Temp);
+
+            int length = wallToX - wallFromX;
+
+            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr, wallStartY += ceilDistIncr, wallEndY += floorDistIncr)
+            {
+                RenderColumnStatus columnStatusY = columnStatus[x];
+
+                if (columnStatusY.PortalRenderable)
+                {
+                    repeatedCountPtr[x - wallFromX] = 0;
+                    continue;
+                }
+
+                float distance = spriteDistance[x];
+                int floorEndY = wallEnd[x];
+                int ceilingStartY = wallStart[x];
+
+                (float distanceY, float fromToYdist) = MathFormulas.CalculateDistance(wall, cameraRay, t1, d2y, d2x);
+
+                if (fromToYdist > distance)
+                {
+                    repeatedCountPtr[x - wallFromX] = 0;
+                    wallStartY += ceilDistIncr;
+                    wallEndY += floorDistIncr;
+                    continue;
+                }
+
+                float pixelsPerUnit = (wallEndY - wallStartY) * oneOverSectorHeight;
+
+                // Portal Calculation
+                float floorPixelOffset = pixelsPerUnit * floorOffset;
+                float ceilPixelOffset = pixelsPerUnit * ceilOffset;
+                float textureFromY = wallStartY - ceilPixelOffset;
+                float textureToY = wallEndY - floorPixelOffset;
+
+                // Clamp to View Window
+                int clampedFromY = Math.Clamp(float.ConvertToIntegerNative<int>(textureFromY), ceilingStartY, floorEndY);
+                int clampedToY = Math.Clamp(float.ConvertToIntegerNative<int>(textureToY), ceilingStartY, floorEndY);
+
+                if (clampedFromY >= clampedToY)
+                {
+                    repeatedCountPtr[x - wallFromX] = 0;
+                    continue;
+                }
+
+                // Calculate Middle Texture Position
+                int textureXPos = float.ConvertToIntegerNative<int>(distanceY * xScale);
+                textureXPos += xOffset;
+                textureXPos = texHeightDivisible2 ? (textureXPos & textureHeight) : (textureXPos % textureHeight);
+                textureXPos *= textureWidth;
+
+                float textureYIncr = (textureWidth * yScale) / (wallEndY - wallStartY);
+                float textureYPos = yOffset - textureYIncr * (wallStartY - clampedFromY);
+
+                textureYIncr *= (1 << 16);
+                textureYPos *= (1 << 16);
+
+                portalFromClampedPtr[x] = clampedFromY;
+                portalToClampedPtr[x] = clampedToY;
+
+                textureXLocationPtr[x] = textureXPos;
+                textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
+                textureYIncrementPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
+                repeatedCountPtr[x - wallFromX] = (ushort)length;
+            }
+
+            return repeatedCountPtr;
+        }
+
+
+
+        #region Pre Calculate
+
+        private void PrecalculateBasicWallDistance(RenderablePortalWall renderableWall)
+        {
+            Debug.Assert(renderableWall.Wall.MiddleTexture != null);
+
+            CalculateUpperTextureYIncrement(renderableWall, renderableWall.Wall.MiddleTexture);
+            CalculateWallClamp(renderableWall);
+            CalculateTextureDistanceAndXPosition(renderableWall, renderableWall.Wall.MiddleTexture!);
+        }
+
+        // TODO: Simplify
+        private static (int Height, int Width, float XScale, float ScaledTextureHeight) CalculateScale(
+            RenderableSector sector,
+            RenderableWall wall,
+            GameTextureInfo wallTexture)
+        {
+            int textureHeight = wallTexture.Height;
+            int textureWidth = wallTexture.Width;
+
+            if (wallTexture.XScale is float xScale)
+            {
+                float wallLength = wall.Length;
+                xScale = xScale / wallLength * textureWidth;
+            }
+            else
+            {
+                xScale = 1f;
+            }
+
+            float scaledTextureHeight;
+
+            if (wallTexture.YScale is float yScale)
+            {
+                yScale = (sector.Ceil - sector.Floor) * yScale;
+                scaledTextureHeight = (textureHeight << 16) * yScale;
+            }
+            else
+            {
+                scaledTextureHeight = (sector.Ceil - sector.Floor) << 16;
+            }
+
+            return (textureHeight, textureWidth, xScale, scaledTextureHeight);
+        }
+
+        #endregion
+
+        #region Calculation Helpers
+
+        private static (bool RenderLower, bool RenderUpper, bool IsBasicWall) CalculateCanRenderPortalWall(ReadOnlySpan<RenderableSector> sectors, RenderableWall wall)
+        {
+            Debug.Assert(wall.Neighbor != null);
+
+            RenderableSector sector = wall.Sector;
+            RenderableSector neighborSector = sectors[wall.Neighbor.Value];
+            bool wallSloped = sector.Settings.Sloped || neighborSector.Settings.Sloped;
+
+            bool renderLower, renderUpper, basicWall;
+            float sectorHeight, ceilOffset, floorOffset;
+
+            if (wallSloped)
+            {
+                (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, wall.C2);
+                (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, wall.C1);
+
+                (float p_floorZ_a, float p_ceilingZ_a) = CalculateZAtPoint(neighborSector, wall.C1);
+                (float p_floorZ_b, float p_ceilingZ_b) = CalculateZAtPoint(neighborSector, wall.C2);
+
+                (sectorHeight, ceilOffset, floorOffset) = CalculatePortalOffsets(floorZ_a, ceilingZ_a, p_floorZ_a, p_ceilingZ_a);
+
+                renderLower = floorOffset != 0;
+                renderUpper = ceilOffset != 0;
+                basicWall = !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
+
+                (sectorHeight, ceilOffset, floorOffset) = CalculatePortalOffsets(floorZ_b, ceilingZ_b, p_floorZ_b, p_ceilingZ_b);
+
+                renderLower |= floorOffset != 0;
+                renderUpper |= ceilOffset != 0;
+                basicWall &= !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
+
+                return (renderLower, renderUpper, basicWall);
+            }
+            else
+            {
+                (sectorHeight, ceilOffset, floorOffset) = CalculatePortalOffsets(sectors, wall);
+
+                renderLower = floorOffset != 0;
+                renderUpper = ceilOffset != 0;
+                basicWall = !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
+
+                return (renderLower, renderUpper, basicWall);
+            }
+        }
+
+        private static (float SectorHeight, float CeilingOffset, float FloorOffset) CalculatePortalOffsets(ReadOnlySpan<RenderableSector> sectors, RenderableWall wall)
+        {
+            Debug.Assert(wall.Neighbor != null);
+
+            RenderableSector sector = wall.Sector;
+            RenderableSector neighborSector = sectors[wall.Neighbor.Value];
+
+            return CalculatePortalOffsets(sector.Floor, sector.Ceil, neighborSector.Floor, neighborSector.Ceil);
+        }
+
+        private static (float SectorHeight, float CeilingOffset, float FloorOffset) CalculatePortalOffsets(float floorA, float ceilA, float floorB, float ceilB)
+        {
+            float sectorHeight = ceilA - floorA;
+            float floorOffset = floorB - floorA;
+            float ceilOffset = ceilB - ceilA;
+
+            if (floorOffset < 0f)
+            {
+                floorOffset = 0f;
+            }
+
+            if (ceilOffset > 0f)
+            {
+                ceilOffset = 0f;
+            }
+
+            // don't draw beyond the bounds
+            if (ceilOffset < -sectorHeight)
+            {
+                ceilOffset = -sectorHeight;
+            }
+
+            if (floorOffset > sectorHeight)
+            {
+                floorOffset = sectorHeight;
+            }
+
+            return (sectorHeight, ceilOffset, floorOffset);
+        }
+
+        #endregion
 
     }
 }

@@ -3,9 +3,68 @@ using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine
 {
-    internal sealed partial class PortalRenderer
+    internal sealed unsafe partial class PortalRenderer
     {
-        private unsafe bool DrawBasicWall(
+        private void DrawWallShared(
+            RenderablePortalWall renderableWall,
+            GameTextureInfo textureInfo,
+            scoped Span<ushort> repeatedCount,
+            uint* fromYClamped,
+            uint* toYClamped)
+        {
+            RenderableWall wall = renderableWall.Wall;
+
+            bool flipY = textureInfo.RenderingOptions.IsFlippedY;
+            bool flipX = textureInfo.RenderingOptions.IsFlippedX;
+
+            int width = PixelWidth;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+
+            uint* screenPtr = (uint*)buffer;
+
+            var transform = TextureTransform.Rotated;
+
+            if (flipY)
+            {
+                transform |= TextureTransform.FlippedY;
+            }
+
+            if (flipX)
+            {
+                transform |= TextureTransform.FlippedX;
+            }
+
+            uint* textureYPosPtr = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.StartingYTexturePosition);
+            uint* textureXLocation = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureXLocation);
+            uint* textureYIncrementPtr = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
+
+            ref uint wallTextureRef = ref textureInfo.Texture.GetBinaryRef<uint>(wall.Shade ?? default, transform);
+            int textureWidth = textureInfo.Height;
+
+            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
+
+            bool isPowerOfTwo = SharedHelpers.IsPowerOfTwo(textureInfo.Height);
+
+            fixed (uint* wallTexturePtr = &wallTextureRef)
+            fixed (ushort* repeatedCountPtr = &repeatedCount[0])
+            {
+                if (isPowerOfTwo)
+                {
+                    CoreRendererForPowTextures<DrawSimplePixel>.RenderWall(wallFromX, wallToX, (uint)width, textureWidth, repeatedCountPtr,
+                        wallTexturePtr, screenPtr,
+                        fromYClamped, toYClamped, textureXLocation, textureYPosPtr, textureYIncrementPtr);
+                }
+                else
+                {
+                    CoreRendererForOddTextures<DrawSimplePixel>.RenderWall(wallFromX, wallToX, (uint)width, textureWidth, repeatedCountPtr,
+                        wallTexturePtr, screenPtr,
+                        fromYClamped, toYClamped, textureXLocation, textureYPosPtr, textureYIncrementPtr);
+                }
+            }
+        }
+
+        private bool DrawBasicWall(
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall)
         {
@@ -54,140 +113,146 @@ namespace RenderingEngine.Engine
             return true;
         }
 
-        #region Pre Calculate
-
-        private void PrecalculateBasicWallDistance(RenderablePortalWall renderableWall)
+        private unsafe void DrawTransparentWall(
+            ReadOnlySpan<RenderableSector> sectors,
+            RenderWindowWallSnapshot renderableWall)
         {
-            Debug.Assert(renderableWall.Wall.MiddleTexture != null);
+            RenderableWall wall = renderableWall.Wall;
+            GameTextureInfo textureInfo = wall.MiddleTexture!;
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
 
-            CalculateUpperTextureYIncrement(renderableWall, renderableWall.Wall.MiddleTexture);
+            ushort* repeatedCount;
+            if (textureInfo.XScale is not null)
+            {
+                repeatedCount = CalculateTransparentWallBuild(sectors, renderableWall);
+            }
+            else
+            {
+                repeatedCount = CalculateTransparentWallDoom(sectors, renderableWall);
+            }
+
+            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount, wallToX - wallFromX + 1);
+
+            RenderableSector sector = wall.Sector;
+
+            DrawSpriteShared(sector, renderableWall.Wall, repeatedCount, wallFromX, wallToX, false, textureInfo);
+        }
+
+        private bool DrawPortalWall(
+            PortalPlayerSnapshot player,
+            ReadOnlySpan<RenderableSector> sectors,
+            RenderablePortalWall renderableWall)
+        {
+            (bool renderLower, bool renderUpper, bool basicWall) = CalculateCanRenderPortalWall(sectors, renderableWall.Wall);
+
             CalculateWallClamp(renderableWall);
-            CalculateTextureDistanceAndXPosition(renderableWall, renderableWall.Wall.MiddleTexture!);
+            CalculatePortalClamp(renderableWall);
+
+            // ceiling and floor of the sector are the same
+            // so no wall is drawn
+            if (!renderLower && !renderUpper)
+            {
+                CalculateDistance(renderableWall);
+                return true;
+            }
+
+            RenderableWall wall = renderableWall.Wall;
+
+            if (renderLower)
+            {
+                GameTextureInfo lowerTexture = wall.LowerTexture!;
+
+                if (lowerTexture.RenderingOptions.IsSkybox)
+                {
+                    CalculateDistance(renderableWall);
+                    DrawLowerSkyboxPortalWall(player, renderableWall);
+                }
+                else
+                {
+                    CalculateLowerTextureYIncrement(renderableWall, lowerTexture);
+                    CalculateTextureDistanceAndXPosition(renderableWall, lowerTexture);
+                    DrawLowerPortalWall(renderableWall);
+                }
+            }
+
+            if (renderUpper)
+            {
+                GameTextureInfo upperTexture = wall.UpperTexture!;
+
+                if (upperTexture.RenderingOptions.IsSkybox)
+                {
+                    CalculateDistance(renderableWall);
+                    DrawUpperSkyboxPortalWall(player, renderableWall);
+                }
+                else
+                {
+                    CalculateUpperTextureYIncrement(renderableWall, upperTexture);
+                    CalculateTextureDistanceAndXPosition(renderableWall, upperTexture);
+                    DrawUpperPortalWall(renderableWall);
+                }
+            }
+
+
+            // if sector height matches top or bottom offset only top or bottom texture was drawn
+            // no middle texture is possible, thus we can treat this as basic wall
+            return basicWall;
         }
 
-        // TODO: Simplify
-        private static (int Height, int Width, float XScale, float ScaledTextureHeight) CalculateScale(
-            RenderableSector sector,
-            RenderableWall wall,
-            GameTextureInfo wallTexture)
+        private unsafe void DrawUpperSkyboxPortalWall(
+            PortalPlayerSnapshot player,
+            RenderablePortalWall renderableWall)
         {
-            int textureHeight = wallTexture.Height;
-            int textureWidth = wallTexture.Width;
+            int* wallStartClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
+            int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
+            RenderableWall wall = renderableWall.Wall;
 
-            if (wallTexture.XScale is float xScale)
-            {
-                float wallLength = wall.Length;
-                xScale = xScale / wallLength * textureWidth;
-            }
-            else
-            {
-                xScale = 1f;
-            }
-
-            float scaledTextureHeight;
-
-            if (wallTexture.YScale is float yScale)
-            {
-                yScale = (sector.Ceil - sector.Floor) * yScale;
-                scaledTextureHeight = (textureHeight << 16) * yScale;
-            }
-            else
-            {
-                scaledTextureHeight = (sector.Ceil - sector.Floor) << 16;
-            }
-
-            return (textureHeight, textureWidth, xScale, scaledTextureHeight);
+            Debug.Assert(wall.UpperTexture is not null);
+            DrawBasicSkyboxWall(player, renderableWall, wallStartClampedPtr, wallEndClampedPtr, wall.UpperTexture);
         }
 
-        #endregion
-
-        #region Calculation Helpers
-
-        private static (bool RenderLower, bool RenderUpper, bool IsBasicWall) CalculateCanRenderPortalWall(ReadOnlySpan<RenderableSector> sectors, RenderableWall wall)
+        private unsafe void DrawLowerSkyboxPortalWall(
+                PortalPlayerSnapshot player,
+                RenderablePortalWall renderableWall)
         {
-            Debug.Assert(wall.Neighbor != null);
+            int* wallStartClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
+            int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
+            RenderableWall wall = renderableWall.Wall;
 
-            RenderableSector sector = wall.Sector;
-            RenderableSector neighborSector = sectors[wall.Neighbor.Value];
-            bool wallSloped = sector.Settings.Sloped || neighborSector.Settings.Sloped;
-
-            bool renderLower, renderUpper, basicWall;
-            float sectorHeight, ceilOffset, floorOffset;
-
-            if (wallSloped)
-            {
-                (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, wall.C2);
-                (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, wall.C1);
-
-                (float p_floorZ_a, float p_ceilingZ_a) = CalculateZAtPoint(neighborSector, wall.C1);
-                (float p_floorZ_b, float p_ceilingZ_b) = CalculateZAtPoint(neighborSector, wall.C2);
-
-                (sectorHeight, ceilOffset, floorOffset) = CalculatePortalOffsets(floorZ_a, ceilingZ_a, p_floorZ_a, p_ceilingZ_a);
-
-                renderLower = floorOffset != 0;
-                renderUpper = ceilOffset != 0;
-                basicWall = !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
-
-                (sectorHeight, ceilOffset, floorOffset) = CalculatePortalOffsets(floorZ_b, ceilingZ_b, p_floorZ_b, p_ceilingZ_b);
-
-                renderLower |= floorOffset != 0;
-                renderUpper |= ceilOffset != 0;
-                basicWall &= !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
-
-                return (renderLower, renderUpper, basicWall);
-            }
-            else
-            {
-                (sectorHeight, ceilOffset, floorOffset) = CalculatePortalOffsets(sectors, wall);
-
-                renderLower = floorOffset != 0;
-                renderUpper = ceilOffset != 0;
-                basicWall = !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
-
-                return (renderLower, renderUpper, basicWall);
-            }
+            Debug.Assert(wall.LowerTexture is not null);
+            DrawBasicSkyboxWall(player, renderableWall, wallStartClampedPtr, wallEndClampedPtr, wall.LowerTexture);
         }
 
-        private static (float SectorHeight, float CeilingOffset, float FloorOffset) CalculatePortalOffsets(ReadOnlySpan<RenderableSector> sectors, RenderableWall wall)
+        private unsafe void DrawUpperPortalWall(
+            RenderablePortalWall renderableWall)
         {
-            Debug.Assert(wall.Neighbor != null);
+            RenderableWall wall = renderableWall.Wall;
+            GameTextureInfo upperTexture = wall.UpperTexture!;
 
-            RenderableSector sector = wall.Sector;
-            RenderableSector neighborSector = sectors[wall.Neighbor.Value];
+            Debug.Assert(upperTexture != null);
 
-            return CalculatePortalOffsets(sector.Floor, sector.Ceil, neighborSector.Floor, neighborSector.Ceil);
+            uint* wallStartClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.WallStartClamped);
+            uint* wallEndClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalFromClamped);
+
+            Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall, wallStartClamped, wallEndClamped);
+
+            DrawWallShared(renderableWall, upperTexture, repeatedCount, wallStartClamped, wallEndClamped);
         }
 
-        private static (float SectorHeight, float CeilingOffset, float FloorOffset) CalculatePortalOffsets(float floorA, float ceilA, float floorB, float ceilB)
+        private unsafe void DrawLowerPortalWall(
+            RenderablePortalWall renderableWall)
         {
-            float sectorHeight = ceilA - floorA;
-            float floorOffset = floorB - floorA;
-            float ceilOffset = ceilB - ceilA;
+            RenderableWall wall = renderableWall.Wall;
+            GameTextureInfo lowerTexture = wall.LowerTexture!;
 
-            if (floorOffset < 0f)
-            {
-                floorOffset = 0f;
-            }
+            Debug.Assert(lowerTexture != null);
 
-            if (ceilOffset > 0f)
-            {
-                ceilOffset = 0f;
-            }
+            uint* wallStartClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalToClamped);
+            uint* wallEndClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.WallEndClamped);
 
-            // don't draw beyond the bounds
-            if (ceilOffset < -sectorHeight)
-            {
-                ceilOffset = -sectorHeight;
-            }
+            Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall, wallStartClamped, wallEndClamped);
 
-            if (floorOffset > sectorHeight)
-            {
-                floorOffset = sectorHeight;
-            }
-
-            return (sectorHeight, ceilOffset, floorOffset);
+            DrawWallShared(renderableWall, lowerTexture, repeatedCount, wallStartClamped, wallEndClamped);
         }
-
-        #endregion
     }
 }
