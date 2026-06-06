@@ -611,8 +611,26 @@ namespace RenderingEngine.Engine
                         }
                     }
 
-                    s.Flipped = selectedAngle.Flipped;
-                    s.Sprite.Texture.Texture = selectedAngle.Texture;
+                    if (s.Sprite.Texture.Texture != selectedAngle.Texture)
+                    {
+                        s.Flipped = selectedAngle.Flipped;
+                        s.Sprite.Texture.Texture = selectedAngle.Texture;
+
+                        (float width,  _) = texture.GetScaledDemensions();
+
+                        Sprite sprite = s.Sprite;
+
+                        (float x, float y) = s.Sprite.Location;
+
+                        float rx1 = x - width * 0.5f;
+                        float rx2 = x + width * 0.5f;
+                        float ry1 = y;
+                        float ry2 = y;
+
+                        sprite.Length = width;
+                        sprite.PointA = new Vector2(rx1, ry1);
+                        sprite.PointB = new Vector2(rx2, ry2);
+                    }
                 }
 
                 if (s is RenderableFloorSprite floorSprite)

@@ -9,7 +9,6 @@ namespace RenderingEngine.Engine
         private readonly int height;
 
         public Span<RenderColumnStatus> Status => alignedMemoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-        public Span<float> Distance => alignedMemoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
 
         private int sectorFromX;
         private int sectorToX;
@@ -18,9 +17,6 @@ namespace RenderingEngine.Engine
         private int wallFromX;
         private int wallToX;
         private readonly AlignedMemoryPool alignedMemoryPool;
-
-        public int SectorFrom => sectorFromX;
-        public int SectorTo => sectorToX;
 
         public RenderWindowHelper(int width, int height, AlignedMemoryPool alignedMemoryPool)
         {

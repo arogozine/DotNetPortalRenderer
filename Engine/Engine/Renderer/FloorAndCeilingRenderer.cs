@@ -299,8 +299,6 @@ namespace RenderingEngine.Engine
 
             fixed (uint* texturePtr = &floorTexturePtr)
             {
-                Sse.Prefetch2(texturePtr);
-
                 RenderFloorOrCeilingColumn(repeatedCount, screenPtr, texturePtr, sectorFromX, sectorToX, floorEnd + sectorFromX, wallEndClampedPtr, width,
                     yfloor, yOffset, xOffset, textureWidth,
                     textureHeightMask, textureWidthMask, rotated, rSinV, rCosV, alignWallXV, alignWallYV, xyOpts, sector, sector.Settings.HasFlag(MapSectorSettings.SlopeFloor) ? true : null);

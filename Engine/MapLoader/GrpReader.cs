@@ -60,12 +60,24 @@ internal static class GrpReader
         List<ConToken> defsTokens = ConParser.Parse(File.ReadAllText(defsConPath));
         List<ConToken> gameConTokens = ConParser.Parse(File.ReadAllText(gameConPath));
 
-        Dictionary<string, DefineCommand> defines = ParseOutDefines(defsTokens);
-        (Dictionary<string, ActorCommand> actors, Dictionary<string, ActionCommand> actions) = ParseOutActors(gameConTokens);
+        List<Command> commands = ParseOutCommands(defsTokens);
+        commands.AddRange(ParseOutCommands(gameConTokens));
+
+        Dictionary<string, DefineCommand> defines = commands.Where(x => x is DefineCommand)
+            .Cast<DefineCommand>()
+            .ToDictionary(x => x.Name, x => x);
+
+        IEnumerable<BaseActorCommand> actors = commands
+            .Where(x => x is BaseActorCommand)
+            .Cast<BaseActorCommand>();
+
+        var actions = commands.Where(x => x is ActionCommand)
+            .Cast<ActionCommand>()
+            .ToDictionary(x => x.Name, x => x);
 
         Dictionary<int, SpriteAngleRotation[]> spriteToActions = [];
 
-        foreach (var actor in actors.Values)
+        foreach (var actor in actors)
         {
             if (actor.Action == null)
             {
@@ -82,7 +94,6 @@ internal static class GrpReader
                 continue;
             }
 
-
             if (DetermineSpriteAngles(defineCommand.Number, actionCommand, out SpriteAngleRotation[]? spriteAngleInfo))
             {
                 spriteToActions.Add(defineCommand.Number, spriteAngleInfo);
@@ -92,10 +103,7 @@ internal static class GrpReader
         return spriteToActions;
     }
 
-    public record class SpriteAngleRotation(int Sprite, bool Flipped, float? Angle)
-    {
-        public SpriteAngleRotation(int sprite) : this(sprite, false, null) { }
-    }
+    public record class SpriteAngleRotation(int Sprite, bool Flipped, float? Angle);
 
     private static bool DetermineSpriteAngles(int startSprite, ActionCommand actionCommand,
         [NotNullWhen(true)] out SpriteAngleRotation[]? angles)
@@ -170,13 +178,11 @@ internal static class GrpReader
                 throw new NotImplementedException();
 
         }
-        return false;
     }
 
-    private static (Dictionary<string, ActorCommand> Actors, Dictionary<string, ActionCommand> Actions) ParseOutActors(List<ConToken> tokens)
+    private static List<Command> ParseOutCommands(List<ConToken> tokens)
     {
-        Dictionary<string, ActorCommand> actorCommands = [];
-        Dictionary<string, ActionCommand> actionCommands = [];
+        List<Command> commands = [];
 
         for (int i = 0; i < tokens.Count; i++)
         {
@@ -184,36 +190,82 @@ internal static class GrpReader
 
             if (token is CommandToken commandToken)
             {
-                if (commandToken.Command == CommandList.actor)
+                switch (commandToken.Command)
                 {
-                    string picNum = ((ValueToken)tokens[++i]).Value;
+                    case CommandList.define:
+                        {
+                            string name = ((ValueToken)tokens[++i]).Value;
+                            string number = ((ValueToken)tokens[++i]).Value;
+                            commands.Add(new DefineCommand(name, int.Parse(number)));
+                        }
+                        break;
+                    case CommandList.actor:
+                        {
+                            string picNum = ((ValueToken)tokens[++i]).Value;
 
-                    ValueToken? strength = null, action = null, move = null;
+                            ValueToken? strength, action = null, move = null;
 
-                    _ = GetNextIf(ref i, out strength) &&
-                        GetNextIf(ref i, out action) &&
-                        GetNextIf(ref i, out move);
+                            _ = GetNextIf(ref i, out strength) &&
+                                GetNextIf(ref i, out action) &&
+                                GetNextIf(ref i, out move);
 
-                    actorCommands[picNum] = new ActorCommand(picNum, strength?.Value, action?.Value, move?.Value, []);
-                }
-                else if (commandToken.Command == CommandList.action)
-                {
-                    string name = ((ValueToken)tokens[++i]).Value;
+                            commands.Add(new ActorCommand(picNum, strength?.Value, action?.Value, move?.Value, []));
 
-                    int? startFrame = null, frames = null, viewType = null, incValue = null, delay = null;
+                            SkipUntil(ref i, CommandList.enda);
+                        }
+                        break;
+                    case CommandList.useractor:
+                        {
+                            string type = ((ValueToken)tokens[++i]).Value;
+                            string picNum = ((ValueToken)tokens[++i]).Value;
 
-                    _ = GetNext(ref i, out startFrame) &&
-                        GetNext(ref i, out frames) &&
-                        GetNext(ref i, out viewType) &&
-                        GetNext(ref i, out incValue) &&
-                        GetNext(ref i, out delay);
+                            ValueToken? strength, action = null, move = null;
 
-                    actionCommands[name] = new ActionCommand(name, startFrame, frames, viewType, incValue, delay);
+                            _ = GetNextIf(ref i, out strength) &&
+                                GetNextIf(ref i, out action) &&
+                                GetNextIf(ref i, out move);
+
+                            commands.Add(new UserActorCommand(type, picNum, strength?.Value, action?.Value, move?.Value, []));
+
+                            SkipUntil(ref i, CommandList.enda);
+                        }
+                        break;
+                    case CommandList.action:
+                        {
+                            string name = ((ValueToken)tokens[++i]).Value;
+
+                            int? startFrame, frames = null, viewType = null, incValue = null, delay = null;
+
+                            _ = GetNext(ref i, out startFrame) &&
+                                GetNext(ref i, out frames) &&
+                                GetNext(ref i, out viewType) &&
+                                GetNext(ref i, out incValue) &&
+                                GetNext(ref i, out delay);
+
+                            commands.Add(new ActionCommand(name, startFrame, frames, viewType, incValue, delay));
+                        }
+                        break;
+                    case CommandList.state:
+                        {
+                            SkipUntil(ref i, CommandList.ends);
+                        }
+                        break;
                 }
             }
         }
 
-        return (actorCommands, actionCommands);
+        return commands;
+
+        void SkipUntil(ref int i, CommandList command)
+        {
+            ConToken token;
+            do
+            {
+                i++;
+                token = tokens[i];
+            }
+            while (token is not CommandToken commandToken || commandToken.Command != command);
+        }
 
         bool GetNext<T>(ref int i, [NotNullWhen(true)] out T? value)
             where T : struct, IParsable<T>
@@ -244,26 +296,6 @@ internal static class GrpReader
             return false;
         }
     }
-
-    private static Dictionary<string, DefineCommand> ParseOutDefines(List<ConToken> tokens)
-    {
-        Dictionary<string, DefineCommand> dict = [];
-
-        for (int i = 0; i < tokens.Count; i++)
-        {
-            var token = tokens[i];
-
-            if (token.ConTokenType == ConTokenType.Command && ((CommandToken)token).Command == CommandList.define)
-            {
-                string name = ((ValueToken)tokens[++i]).Value;
-                string number = ((ValueToken)tokens[++i]).Value;
-                dict[name] = new DefineCommand(name, int.Parse(number));
-            }
-        }
-
-        return dict;
-    }
-
 
     private static (TextureRenderingOptions, int XScale, int YScale) ToTextureRenderingOptions(Stat stat)
     {
@@ -909,6 +941,20 @@ internal static class GrpReader
             float xScale = ((texture.Width * xRepeat) >> 5) / (float)texture.Width;
             float yScale = textureHeight / texture.Height;
 
+            Dictionary<string, int>? additionalInfo = null;
+
+            if (sprite.HiTag != default)
+            {
+                additionalInfo ??= [];
+                additionalInfo.Add(nameof(SpriteType.HiTag), sprite.HiTag);
+            }
+
+            if (sprite.LoTag != default)
+            {
+                additionalInfo ??= [];
+                additionalInfo.Add(nameof(SpriteType.LoTag), sprite.LoTag);
+            }
+
             if (sprite.CStat.HasFlag(SpriteCStat.Wall))
             {
                 sprites[i] = new WallSprite
@@ -929,7 +975,8 @@ internal static class GrpReader
                         YOffset = 0
                     },
                     SectorId = sprite.SectorNumber,
-                    Shade = sprite.Shade
+                    Shade = sprite.Shade,
+                    AdditionalInfo = additionalInfo
                 };
             }
             else if (sprite.CStat.HasFlag(SpriteCStat.Floor))
@@ -951,12 +998,13 @@ internal static class GrpReader
                         YOffset = 0
                     },
                     SectorId = sprite.SectorNumber,
-                    Shade = sprite.Shade
+                    Shade = sprite.Shade,
+                    AdditionalInfo = additionalInfo
                 };
             }
             else
             {
-                lookup.TryGetValue(sprite.PicNum, out GameSpriteAnimation? animationAngle);
+                _ = lookup.TryGetValue(sprite.PicNum, out GameSpriteAnimation? animationAngle);
 
                 sprites[i] = new Sprite
                 {
@@ -976,7 +1024,8 @@ internal static class GrpReader
                     },
                     SectorId = sprite.SectorNumber,
                     Shade = sprite.Shade,
-                    AnimationAngle = animationAngle
+                    AnimationAngle = animationAngle,
+                    AdditionalInfo = additionalInfo
                 };
             }
         }
