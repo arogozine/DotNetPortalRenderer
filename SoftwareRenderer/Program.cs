@@ -25,14 +25,9 @@ namespace SoftwareRenderer
                 Required = true
             };
 
-            var grpOption = new Option<string?>("--grp")
+            var dukeGrpOption = new Option<string?>("--grp")
             {
-                Description = "Duke GRP file path"
-            };
-
-            var paletteOption = new Option<string?>("--palette")
-            {
-                Description = "Palette file path"
+                Description = "Duke GRP folder path"
             };
 
             mapOption.Validators.Add((result) =>
@@ -47,9 +42,8 @@ namespace SoftwareRenderer
 
             iwadOption.Validators.Add((result) =>
             {
-                string? palette = result.GetValue(paletteOption);
-                string? grp = result.GetValue(grpOption);
-                bool usingPaletteGrp = !string.IsNullOrEmpty(palette) || !string.IsNullOrEmpty(grp);
+                string? grp = result.GetValue(dukeGrpOption);
+                bool usingPaletteGrp = !string.IsNullOrEmpty(grp);
                 string? iwad = result.GetValue(iwadOption);
 
                 if (string.IsNullOrEmpty(iwad))
@@ -60,22 +54,18 @@ namespace SoftwareRenderer
 
             AddFileValidationCheck(iwadOption);
             AddFileValidationCheck(pwadOption);
-            AddFileValidationCheck(grpOption);
-            AddFileValidationCheck(paletteOption);
-            AddDoomOrDukeExclusive(paletteOption);
+            AddPathValidationCheck(dukeGrpOption);
+
             AddDoomOrDukeExclusive(iwadOption);
             AddDoomOrDukeExclusive(pwadOption);
-            AddDoomOrDukeExclusive(grpOption);
-            AddPalletteAndGrpRequired(paletteOption);
-            AddPalletteAndGrpRequired(grpOption);
+            AddDoomOrDukeExclusive(dukeGrpOption);
 
             var rootCommand = new RootCommand("Software Renderer")
             {
                 iwadOption,
                 pwadOption,
                 mapOption,
-                grpOption,
-                paletteOption
+                dukeGrpOption
             };
 
             rootCommand.SetAction(parseResult =>
@@ -83,38 +73,22 @@ namespace SoftwareRenderer
                 var iwad = parseResult.GetValue(iwadOption);
                 var pwad = parseResult.GetValue(pwadOption);
                 var map = parseResult.GetValue(mapOption);
-                var grp = parseResult.GetValue(grpOption);
-                var palette = parseResult.GetValue(paletteOption);
+                var grp = parseResult.GetValue(dukeGrpOption);
 
-                HandleCommand(iwad, pwad, map!, grp, palette);
+                HandleCommand(iwad, pwad, map!, grp);
             });
 
             return rootCommand.Parse(args).Invoke();
-
-            void AddPalletteAndGrpRequired(Option<string?> option)
-            {
-                option.Validators.Add((result) =>
-                {
-                    string? palette = result.GetValue(paletteOption);
-                    string? grp = result.GetValue(grpOption);
-
-                    if (string.IsNullOrEmpty(palette) != string.IsNullOrEmpty(grp))
-                    {
-                        result.AddError("When using palette/grp mode, both --palette and --grp must be provided.");
-                    }
-                });
-            }
 
             void AddDoomOrDukeExclusive(Option<string?> option)
             {
                 option.Validators.Add((result) =>
                 {
-                    string? palette = result.GetValue(paletteOption);
-                    string? grp = result.GetValue(grpOption);
+                    string? grp = result.GetValue(dukeGrpOption);
                     string? iwad = result.GetValue(iwadOption);
                     string? pwad = result.GetValue(pwadOption);
 
-                    bool usingPaletteGrp = !string.IsNullOrEmpty(palette) || !string.IsNullOrEmpty(grp);
+                    bool usingPaletteGrp = !string.IsNullOrEmpty(grp);
                     bool usingWads = !string.IsNullOrEmpty(iwad) || !string.IsNullOrEmpty(pwad);
 
                     if (usingPaletteGrp && usingWads)
@@ -137,6 +111,19 @@ namespace SoftwareRenderer
                 });
             }
 
+            static void AddPathValidationCheck(Option<string?> option)
+            {
+                option.Validators.Add((result) =>
+                {
+                    string? path = result.GetValue(option);
+
+                    if (path != null && !Path.Exists(path))
+                    {
+                        result.AddError($"Path '{path}' doesn't exist");
+                    }
+                });
+            }
+
             static bool IsValidMapName(string? map)
             {
                 if (string.IsNullOrEmpty(map) || map.Length > 32)
@@ -146,15 +133,14 @@ namespace SoftwareRenderer
             }
         }
 
-        private static void HandleCommand(string? iwad, string? pwad, string map, string? grp, string? palette)
+        private static void HandleCommand(string? iwad, string? pwad, string map, string? dukePath)
         {
             var parsedArgs = new Arguments
             {
                 IWad = iwad,
                 PWad = pwad,
                 Map = map,
-                Palette = palette,
-                Grp = grp,
+                DukePath = dukePath
             };
 
             try

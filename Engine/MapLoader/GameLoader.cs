@@ -28,8 +28,11 @@ namespace RenderingEngine.MapLoader
             }
         }
 
-        internal static Map LoadBuildEngineMap(string mapName, string grpPath, string palettePath)
+        internal static Map LoadBuildEngineMap(string mapName, string rootPath)
         {
+            string grpPath = Path.Combine(rootPath, "DUKE3D.GRP");
+            string palettePath = Path.Combine(rootPath, "PALETTE.DAT");
+
             PaletteFile pal = BuildFileLoader.LoadPalFile(palettePath);
             GrpFile grp = BuildFileLoader.LoadGrpFile(grpPath);
 
@@ -50,7 +53,7 @@ namespace RenderingEngine.MapLoader
             }
             else
             {
-                map = LoadBuildEngineMap(arguments.Map, arguments.Grp!, arguments.Palette!);
+                map = LoadBuildEngineMap(arguments.Map, arguments.DukePath!);
                 gameResourceType = GameResourceType.DukeNukem;
             }
 

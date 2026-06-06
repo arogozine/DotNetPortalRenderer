@@ -11,7 +11,7 @@ namespace BuildAssetLoader.ConParser
 
     public record DefineCommand(string Name, int Number) : Command(CommandList.define);
 
-    public record ActionCommand(string Name, int Startframe, int[] Frames, int ViewType, int IncValue, int Delay);
+    public record ActionCommand(string Name, int? Startframe, int? Frames, int? ViewType, int? IncValue, int? Delay);
 
     public record ActorCommand(string PicNum, string? Stength, string? Action, string? Move, string[]? MoveFlag) : Structure(CommandList.actor, CommandList.enda);
 }

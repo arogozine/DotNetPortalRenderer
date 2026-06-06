@@ -1,5 +1,7 @@
 ﻿using System.Collections.Frozen;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace BuildAssetLoader.Con
 {
@@ -10,7 +12,7 @@ namespace BuildAssetLoader.Con
             List<ConToken> tokens = [];
 
             var commandList = Enum.GetValues<CommandList>()
-                .ToFrozenDictionary(x => x.ToString(), x => x);
+                .ToFrozenDictionary(GetCommandName, x => x);
 
             var test = commandList.GetAlternateLookup<ReadOnlySpan<char>>();
 
@@ -77,6 +79,16 @@ namespace BuildAssetLoader.Con
             }
 
             return tokens;
+
+            static string GetCommandName(CommandList command)
+            {
+                string commandStr = command.ToString();
+
+                string? description = typeof(CommandList).GetField(commandStr, BindingFlags.Public | BindingFlags.Static)!
+                    .GetCustomAttribute<DescriptionAttribute>()?.Description;
+
+                return description ?? commandStr;
+            }
         }
 
         private static void SkipStartingSpace(ref int i, ReadOnlySpan<char> str)
