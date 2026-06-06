@@ -16,7 +16,7 @@ namespace BuildAssetLoader.Con
 
             var test = commandList.GetAlternateLookup<ReadOnlySpan<char>>();
 
-            for (int i = 0; i < str.Length; i++)
+            for (int i = 0; i < str.Length; )
             {
                 SkipStartingSpace(ref i, str);
 

@@ -1,4 +1,6 @@
 ﻿using BuildAssetLoader;
+using BuildAssetLoader.Con;
+using BuildAssetLoader.ConParser;
 using BuildAssetLoader.Map;
 using BuildAssetLoader.Texture;
 using RenderingEngine.Engine;
@@ -9,11 +11,11 @@ namespace RenderingEngine.MapLoader;
 
 internal static class GrpReader
 {
-    public static Map LoadBuildMap(GrpFile grp, string mapName)
+    public static Map LoadBuildMap(GrpFile grp, string mapName, Dictionary<int, GrpReader.SpriteAngleRotation[]> spriteToAngleFrames)
     {
         var map = BuildFileParser.ExtractMapFiles(grp);
 
-        return ExtractBuildMap(map.Single(x => x.MapName == mapName));
+        return ExtractBuildMap(map.Single(x => x.MapName == mapName), spriteToAngleFrames);
     }
 
     public static void ExtractAllTextures(GrpFile grp, PaletteFile paletteFile)
@@ -52,6 +54,216 @@ internal static class GrpReader
             TextureCache.Add(name, new BuildTexture(name, info.Width, info.Height, info.Data));
         }
     }
+
+    public static Dictionary<int, SpriteAngleRotation[]> ExtractSpriteAngleInfo(string defsConPath, string gameConPath)
+    {
+        List<ConToken> defsTokens = ConParser.Parse(File.ReadAllText(defsConPath));
+        List<ConToken> gameConTokens = ConParser.Parse(File.ReadAllText(gameConPath));
+
+        Dictionary<string, DefineCommand> defines = ParseOutDefines(defsTokens);
+        (Dictionary<string, ActorCommand> actors, Dictionary<string, ActionCommand> actions) = ParseOutActors(gameConTokens);
+
+        Dictionary<int, SpriteAngleRotation[]> spriteToActions = [];
+
+        foreach (var actor in actors.Values)
+        {
+            if (actor.Action == null)
+            {
+                continue;
+            }
+
+            if (!defines.TryGetValue(actor.PicNum, out DefineCommand? defineCommand))
+            {
+                continue;
+            }
+
+            if (!actions.TryGetValue(actor.Action, out ActionCommand? actionCommand))
+            {
+                continue;
+            }
+
+
+            if (DetermineSpriteAngles(defineCommand.Number, actionCommand, out SpriteAngleRotation[]? spriteAngleInfo))
+            {
+                spriteToActions.Add(defineCommand.Number, spriteAngleInfo);
+            }
+        }
+
+        return spriteToActions;
+    }
+
+    public record class SpriteAngleRotation(int Sprite, bool Flipped, float? Angle)
+    {
+        public SpriteAngleRotation(int sprite) : this(sprite, false, null) { }
+    }
+
+    private static bool DetermineSpriteAngles(int startSprite, ActionCommand actionCommand,
+        [NotNullWhen(true)] out SpriteAngleRotation[]? angles)
+    {
+        angles = null;
+
+        if (actionCommand.ViewType is null)
+        {
+            return false;
+        }
+
+        switch (actionCommand.ViewType)
+        {
+            case 0:
+                return false;
+            // The sprite will appear the same regardless of the angle at which it is viewed.
+            case 1:
+                return false;
+            // The sprite will have 8 angles built from only 2 art tiles.
+            // A new frame is drawn every 45 degrees in a clockwise pattern beginning with the front of the sprite.
+            case 2:
+                {
+                    byte[] spriteNum = [1, 2, 1, 2, 1, 2, 1, 2];
+
+
+                    angles = new SpriteAngleRotation[8];
+                    float angle = 0f;
+
+                    for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 4))
+                    {
+                        int sprite = spriteNum[i] + startSprite - 1;
+                        angles[i] = new SpriteAngleRotation(sprite, false, angle);
+                    }
+                    return true;
+                }
+            case 3:
+            case 4:
+                {
+                    byte[] spriteNum = [1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4, 4, 3, 2, 1];
+
+                    angles = new SpriteAngleRotation[16];
+                    float angle = 0f;
+                    for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 8))
+                    {
+                        bool mirrored = i < 4 || (i > 8 && i < 12);
+                        int sprite = spriteNum[i] + startSprite - 1;
+
+                        angles[i] = new SpriteAngleRotation(sprite, mirrored, angle);
+                    }
+
+                    return true;
+                }
+            case 5:
+                {
+                    byte[] spriteNum = [1, 2, 3, 4, 5, 4, 3, 2];
+
+
+                    angles = new SpriteAngleRotation[8];
+                    float angle = 0f;
+
+                    for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 4))
+                    {
+                        bool mirrored = i > 4;
+
+                        int sprite = spriteNum[i] + startSprite - 1;
+                        angles[i] = new SpriteAngleRotation(sprite, mirrored, angle);
+                    }
+
+                    return true;
+                }
+            default:
+                throw new NotImplementedException();
+
+        }
+        return false;
+    }
+
+    private static (Dictionary<string, ActorCommand> Actors, Dictionary<string, ActionCommand> Actions) ParseOutActors(List<ConToken> tokens)
+    {
+        Dictionary<string, ActorCommand> actorCommands = [];
+        Dictionary<string, ActionCommand> actionCommands = [];
+
+        for (int i = 0; i < tokens.Count; i++)
+        {
+            var token = tokens[i];
+
+            if (token is CommandToken commandToken)
+            {
+                if (commandToken.Command == CommandList.actor)
+                {
+                    string picNum = ((ValueToken)tokens[++i]).Value;
+
+                    ValueToken? strength = null, action = null, move = null;
+
+                    _ = GetNextIf(ref i, out strength) &&
+                        GetNextIf(ref i, out action) &&
+                        GetNextIf(ref i, out move);
+
+                    actorCommands[picNum] = new ActorCommand(picNum, strength?.Value, action?.Value, move?.Value, []);
+                }
+                else if (commandToken.Command == CommandList.action)
+                {
+                    string name = ((ValueToken)tokens[++i]).Value;
+
+                    int? startFrame = null, frames = null, viewType = null, incValue = null, delay = null;
+
+                    _ = GetNext(ref i, out startFrame) &&
+                        GetNext(ref i, out frames) &&
+                        GetNext(ref i, out viewType) &&
+                        GetNext(ref i, out incValue) &&
+                        GetNext(ref i, out delay);
+
+                    actionCommands[name] = new ActionCommand(name, startFrame, frames, viewType, incValue, delay);
+                }
+            }
+        }
+
+        return (actorCommands, actionCommands);
+
+        bool GetNext<T>(ref int i, [NotNullWhen(true)] out T? value)
+            where T : struct, IParsable<T>
+        {
+            if (GetNextIf(ref i, out ValueToken? valueToken))
+            {
+                value = T.Parse(valueToken.Value, null);
+                return true;
+            }
+
+            value = default!;
+            return false;
+        }
+
+        bool GetNextIf<T>(ref int i, [NotNullWhen(true)] out T? value)
+            where T : ConToken
+        {
+            ConToken token = tokens[i + 1];
+
+            value = token as T;
+
+            if (value != null)
+            {
+                i++;
+                return true;
+            }
+
+            return false;
+        }
+    }
+
+    private static Dictionary<string, DefineCommand> ParseOutDefines(List<ConToken> tokens)
+    {
+        Dictionary<string, DefineCommand> dict = [];
+
+        for (int i = 0; i < tokens.Count; i++)
+        {
+            var token = tokens[i];
+
+            if (token.ConTokenType == ConTokenType.Command && ((CommandToken)token).Command == CommandList.define)
+            {
+                string name = ((ValueToken)tokens[++i]).Value;
+                string number = ((ValueToken)tokens[++i]).Value;
+                dict[name] = new DefineCommand(name, int.Parse(number));
+            }
+        }
+
+        return dict;
+    }
+
 
     private static (TextureRenderingOptions, int XScale, int YScale) ToTextureRenderingOptions(Stat stat)
     {
@@ -130,7 +342,7 @@ internal static class GrpReader
         return options;
     }
 
-    private static Map ExtractBuildMap(MapFile mapFile)
+    private static Map ExtractBuildMap(MapFile mapFile, Dictionary<int, GrpReader.SpriteAngleRotation[]> spriteToAngleFrames)
     {
         StartingPosition startingPosition = mapFile.StartingPosition;
         Span<SectorType> grpSectors = mapFile.Sectors;
@@ -194,7 +406,7 @@ internal static class GrpReader
                 Where = (DetermineXLocation(startingPosition.PosX), DetermineYLocation(startingPosition.PosY), DetermineZLocation(startingPosition.PosZ)),
                 Sector = startingPosition.SectorNumber
             },
-            Sprites = ExtractSprites(sprites, grpSectors),
+            Sprites = ExtractSprites(sprites, grpSectors, spriteToAngleFrames),
             Sectors = sectors
         };
 
@@ -667,8 +879,10 @@ internal static class GrpReader
         return (wall.XPanning, wall.YPanning >> 2);
     }
 
-    private static Sprite[] ExtractSprites(Span<SpriteType> spritesTypes, Span<SectorType> grpSectors)
+    private static Sprite[] ExtractSprites(Span<SpriteType> spritesTypes, Span<SectorType> grpSectors,
+        Dictionary<int, GrpReader.SpriteAngleRotation[]> spriteToAngleFrames)
     {
+        var lookup = ParseGameSpriteAnimation();
         Sprite[] sprites = new Sprite[spritesTypes.Length];
 
         for (int i = 0; i < spritesTypes.Length; i++)
@@ -742,6 +956,8 @@ internal static class GrpReader
             }
             else
             {
+                lookup.TryGetValue(sprite.PicNum, out GameSpriteAnimation? animationAngle);
+
                 sprites[i] = new Sprite
                 {
                     Id = i,
@@ -756,10 +972,11 @@ internal static class GrpReader
                         YScale = yScale,
                         Alpha = 1f,
                         XOffset = 0,
-                        YOffset = 0
+                        YOffset = 0,
                     },
                     SectorId = sprite.SectorNumber,
-                    Shade = sprite.Shade
+                    Shade = sprite.Shade,
+                    AnimationAngle = animationAngle
                 };
             }
         }
@@ -788,6 +1005,24 @@ internal static class GrpReader
             }
 
             return options;
+        }
+
+        Dictionary<int, GameSpriteAnimation> ParseGameSpriteAnimation()
+        {
+            Dictionary<int, GameSpriteAnimation> lookup = [];
+
+            foreach ((int key, var values) in spriteToAngleFrames)
+            {
+                var textureAngles = values.Select(x => new TextureAngle(x.Angle ?? 0f, TextureCache.GetTexture(ToTile((short)x.Sprite)), x.Flipped))
+                    .ToArray();
+
+                lookup[key] = new GameSpriteAnimation
+                {
+                    AnimationToAngleToTexture = [textureAngles]
+                };
+            }
+
+            return lookup;
         }
     }
 
