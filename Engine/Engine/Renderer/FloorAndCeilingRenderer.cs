@@ -243,7 +243,7 @@ namespace RenderingEngine.Engine
                 (textureHeightMask, textureWidthMask) = (textureWidthMask, textureHeightMask);
             }
 
-            ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(sector.CeilTexture.Palette, sector.CeilingShade, transform);
+            ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(sector.FloorTexture.Palette, sector.CeilingShade, transform);
             uint* screenPtr = (uint*)buffer;
 
             Unsafe.SkipInit(out Vector<float> rSinV);

@@ -630,6 +630,9 @@ namespace RenderingEngine.Engine
         {
             const float twoPi = 2 * MathF.PI;
 
+            Debug.Assert(angle > twoPi * -2f);
+            Debug.Assert(angle < twoPi * 2f);
+
             while (angle > twoPi)
             {
                 angle -= twoPi;
@@ -641,6 +644,53 @@ namespace RenderingEngine.Engine
             }
 
             return angle;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static Vector<float> ClampAngle(Vector<float> angles)
+        {
+            Vector<float> twoPi = Vector.Create(2 * MathF.PI);
+
+            Vector<int> ltMask = Vector.LessThan(angles, Vector<float>.Zero);
+            angles = Vector.ConditionalSelect(ltMask, angles + twoPi, angles);
+
+            Vector<int> gtMask = Vector.LessThan(angles, twoPi);
+            angles = Vector.ConditionalSelect(gtMask, angles - twoPi, angles);
+
+            for (int i = 0; i < Vector<float>.Count; i++)
+            {
+                float angle = angles[i];
+                Debug.Assert(angle > (2 * MathF.PI) * -2f);
+                Debug.Assert(angle < (2 * MathF.PI) * 2f);
+            }
+
+            return angles;
+
+            /*
+            // Copilot Assisted
+
+            Vector<float> twoPi = new Vector<float>(2 * MathF.PI);
+            Vector<float> zero = Vector<float>.Zero;
+
+            // Reduce angles to [0, 2π) range using modulo operation
+            // angle = angle - floor(angle / 2π) * 2π
+            Vector<float> quotient = angles / twoPi;
+            Vector<float> floor = Vector.ConditionalSelect(
+                Vector.LessThan(quotient, zero),
+                quotient - Vector<float>.One,
+                quotient);
+
+            // For negative remainders, add 2π
+            Vector<float> result = angles - floor * twoPi;
+
+            // Handle edge case where result might be slightly negative due to floating point precision
+            result = Vector.ConditionalSelect(
+                Vector.LessThan(result, zero),
+                result + twoPi,
+                result);
+
+            return result;
+            */
         }
 
         internal static bool CalculatePlaneIntersectionsForWall(int width, float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)

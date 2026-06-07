@@ -47,8 +47,6 @@ namespace RenderingEngine.Engine
             int textureWidth,
             int textureHeight)
         {
-            float* angleCache = stackalloc float[Vector<float>.Count];
-
             const float oneOverTwoPi = 1f / (2 * MathF.PI);
             float viewAngle = player.Angle;
             float textureWidth4 = textureWidth * 4f * oneOverTwoPi;
@@ -88,7 +86,17 @@ namespace RenderingEngine.Engine
 
                     (int min_t, int max_t, int min_b, int max_b) = CalculateLaneTopBottoms(wallStartY, wallEndY);
 
-                    RenderLine(x, wallEndY, wallStartY, min_t, max_t, min_b, max_b);
+                    if (min_b > max_t)
+                    {
+                        RenderLine(x, wallEndY, wallStartY, min_t, max_t, min_b, max_b);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < Vector<int>.Count; i++)
+                        {
+                            RenderColumn(player, wallStartY[i], wallEndY[i], x);
+                        }
+                    }
 
                     x += Vector<int>.Count;
                     count -= (ushort)Vector<int>.Count;
@@ -167,12 +175,7 @@ namespace RenderingEngine.Engine
                 int min_t, int max_t, int min_b, int max_b
                 )
             {
-                Vector<float> angleXV = Vector.Load(angleCachePtr + x) - viewAngleV;
-                for (int i = 0; i < Vector<float>.Count; i++)
-                {
-                    angleCache[i] = MathFormulas.ClampAngle(angleXV[i]);
-                }
-                angleXV = Vector.Load(angleCache);
+                Vector<float> angleXV = MathFormulas.ClampAngle(Vector.Load(angleCachePtr + x) - viewAngleV);
 
                 Vector<float> vScreenV = max_t * yTextureIncrV;
                 Vector<int> texXV = Vector.ConvertToInt32Native(textureWidth4V * angleXV) & widthMask;
