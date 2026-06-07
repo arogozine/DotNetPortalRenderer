@@ -159,7 +159,7 @@ namespace RenderingEngine.Engine
                 (textureHeightMask, textureWidthMask) = (textureWidthMask, textureHeightMask);
             }
 
-            ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(sector.CeilingShade, transform);
+            ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(sector.CeilTexture.Palette, sector.CeilingShade, transform);
             uint* screenPtr = (uint*)buffer;
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
@@ -243,7 +243,7 @@ namespace RenderingEngine.Engine
                 (textureHeightMask, textureWidthMask) = (textureWidthMask, textureHeightMask);
             }
 
-            ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(sector.CeilingShade, transform);
+            ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(sector.CeilTexture.Palette, sector.CeilingShade, transform);
             uint* screenPtr = (uint*)buffer;
 
             Unsafe.SkipInit(out Vector<float> rSinV);

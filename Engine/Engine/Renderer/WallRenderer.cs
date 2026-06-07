@@ -39,7 +39,7 @@ namespace RenderingEngine.Engine
             uint* textureXLocation = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureXLocation);
             uint* textureYIncrementPtr = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
 
-            ref uint wallTextureRef = ref textureInfo.Texture.GetBinaryRef<uint>(wall.Shade ?? default, transform);
+            ref uint wallTextureRef = ref textureInfo.Texture.GetBinaryRef<uint>(textureInfo.Palette, wall.Shade ?? default, transform);
             int textureWidth = textureInfo.Height;
 
             _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);

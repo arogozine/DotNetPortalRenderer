@@ -11,9 +11,9 @@ namespace RenderingEngine.Engine
         private unsafe void RenderSkyboxVector(PortalPlayerSnapshot player, RenderableSector sector)
         {
             GameTextureInfo textureInfo = sector.CeilTexture;
-            GameTexture texture = TextureCache.GetTexture(textureInfo.Name);
+            GameTexture texture = textureInfo.Texture;
 
-            ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(sector.CeilingShade, TextureTransform.Normal);
+            ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(textureInfo.Palette, sector.CeilingShade, TextureTransform.Normal);
 
             uint* screenPtr = (uint*)buffer;
 
@@ -330,9 +330,9 @@ namespace RenderingEngine.Engine
             RenderableSector sector)
         {
             GameTextureInfo textureInfo = sector.FloorTexture;
-            GameTexture texture = TextureCache.GetTexture(textureInfo.Name);
+            GameTexture texture = textureInfo.Texture;
 
-            ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(sector.CeilingShade, TextureTransform.Normal);
+            ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(textureInfo.Palette, sector.CeilingShade, TextureTransform.Normal);
 
             uint* screenPtr = (uint*)buffer;
 
@@ -385,7 +385,7 @@ namespace RenderingEngine.Engine
             int wallToX = renderableWall.XRight;
 
             GameTextureInfo textureInfo = wallTexture;
-            ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(renderableWall.Wall.Shade ?? byte.MaxValue, TextureTransform.Normal);
+            ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(wallTexture.Palette, renderableWall.Wall.Shade ?? byte.MaxValue, TextureTransform.Normal);
 
             uint* screenPtr = (uint*)buffer;
 

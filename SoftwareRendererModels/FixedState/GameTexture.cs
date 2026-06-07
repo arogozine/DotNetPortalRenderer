@@ -2,7 +2,7 @@
 
 public abstract class GameTexture : IFixedState, IUniqueName
 {
-    public Dictionary<int, BGRA[]>[] TransformToPallette { get; }
+    public Dictionary<int, Dictionary<int, BGRA[]>[]> PaletteToTransformToImage { get; }
 
     public string Name { get; }
     public int Width { get; }
@@ -16,10 +16,12 @@ public abstract class GameTexture : IFixedState, IUniqueName
         Width = width;
         Height = height;
 
-        TransformToPallette = new Dictionary<int, BGRA[]>[1 + (int)TextureTransform.All];
-        for (int i = 0; i < TransformToPallette.Length; i++)
+        PaletteToTransformToImage = [];
+        PaletteToTransformToImage[0] = new Dictionary<int, BGRA[]>[1 + (int)TextureTransform.All];
+
+        for (int i = 0; i < PaletteToTransformToImage[0].Length; i++)
         {
-            TransformToPallette[i] = [];
+            PaletteToTransformToImage[0][i] = [];
         }
     }
 }

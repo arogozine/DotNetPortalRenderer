@@ -11,20 +11,21 @@ namespace RenderingEngine.MapLoader;
 
 internal static class GrpReader
 {
-    public static Map LoadBuildMap(GrpFile grp, string mapName, Dictionary<int, GrpReader.SpriteAngleRotation[]> spriteToAngleFrames)
+    public static Map LoadBuildMap(GrpFile grp, string mapName, Dictionary<int, SpriteAngleRotation[]> spriteToAngleFrames)
     {
         var map = BuildFileParser.ExtractMapFiles(grp);
 
         return ExtractBuildMap(map.Single(x => x.MapName == mapName), spriteToAngleFrames);
     }
 
-    public static void ExtractAllTextures(GrpFile grp, PaletteFile paletteFile)
+    public static void ExtractAllTextures(GrpFile grp, PaletteFile paletteFile, LookupFile lookupFile)
     {
         List<ArtFile> artFiles = BuildFileParser.ExtractArtFiles(grp);
         Dictionary<string, TextureInfo> textures = ExtractTextures(artFiles);
 
         ReadOnlySpan<BGRA> pal = ToBGRA(MemoryMarshal.Cast<byte, RGB>(paletteFile.Palette));
 
+        // Shades for Palette 0
         for (int i = 0; i < paletteFile.PalLookups.Length; i++)
         {
             Span<byte> lookup = paletteFile.PalLookups[i];
@@ -46,7 +47,74 @@ internal static class GrpReader
                 }
             }
 
-            TextureCache.AddPallette(i, palette);
+            TextureCache.AddPallette(0, i, palette);
+        }
+
+        // Lookup Palettes
+        for (int s = 0; s < lookupFile.PaletteSwapTables.Length; s++)
+        {
+            // full black
+            if (s == 3)
+            {
+                Span<byte> lookup = paletteFile.PalLookups[0];
+
+                BGRA[] palette = new BGRA[lookup.Length];
+
+                for (int j = 0; j < lookup.Length; j++)
+                {
+                    byte palIndex = lookup[j];
+
+                    // 255th index is used for transparency
+                    if (palIndex == byte.MaxValue)
+                    {
+                        palette[j] = BGRA.Transparent;
+                    }
+                    else
+                    {
+                        palette[j] = BGRA.Black;
+                    }
+                }
+
+                for (int i = 0; i < paletteFile.PalLookups.Length; i++)
+                {
+                    TextureCache.AddPallette(s + 1, i, palette);
+                }
+
+                continue;
+            }
+
+            // Shades
+            for (int i = 0; i < paletteFile.PalLookups.Length; i++)
+            {
+                Span<byte> swapTable = lookupFile.PaletteSwapTables[s];
+                Span<byte> lookup0 = paletteFile.PalLookups[i];
+
+                Span<byte> lookup = new byte[swapTable.Length];
+
+                for (int x = 0; x < lookup.Length; x++)
+                {
+                    lookup[x] = swapTable[lookup0[x]];
+                }
+
+                BGRA[] palette = new BGRA[lookup.Length];
+
+                for (int j = 0; j < lookup.Length; j++)
+                {
+                    byte palIndex = lookup[j];
+
+                    // 255th index is used for transparency
+                    if (palIndex == byte.MaxValue)
+                    {
+                        palette[j] = BGRA.Transparent;
+                    }
+                    else
+                    {
+                        palette[j] = pal[palIndex];
+                    }
+                }
+
+                TextureCache.AddPallette(s + 1, i, palette);
+            }
         }
 
         foreach ((string name, var info) in textures)
@@ -115,6 +183,11 @@ internal static class GrpReader
             return false;
         }
 
+        if (actionCommand.Startframe is { } startFrame)
+        {
+            startSprite += startFrame;
+        }
+
         switch (actionCommand.ViewType)
         {
             case 0:
@@ -128,17 +201,24 @@ internal static class GrpReader
                 {
                     byte[] spriteNum = [1, 2, 1, 2, 1, 2, 1, 2];
 
-
                     angles = new SpriteAngleRotation[8];
                     float angle = 0f;
 
                     for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 4))
                     {
                         int sprite = spriteNum[i] + startSprite - 1;
+
+                        if (!TextureCache.HasTexture(ToTile(sprite)))
+                        {
+                            sprite += 2;
+                        }
+
                         angles[i] = new SpriteAngleRotation(sprite, false, angle);
                     }
                     return true;
                 }
+            // The sprite will have 16 angles built from only 4 art tiles.
+            // A new frame is drawn every 22.5 degrees in a clockwise pattern beginning with the front of the sprite.
             case 3:
             case 4:
                 {
@@ -151,15 +231,21 @@ internal static class GrpReader
                         bool mirrored = i < 4 || (i > 8 && i < 12);
                         int sprite = spriteNum[i] + startSprite - 1;
 
+                        if (!TextureCache.HasTexture(ToTile(sprite)))
+                        {
+                            sprite += 4;
+                        }
+
                         angles[i] = new SpriteAngleRotation(sprite, mirrored, angle);
                     }
 
                     return true;
                 }
+            // The sprite will have 8 angles constructed from 5 art tiles, three of which are mirrored.
+            // A new frame is drawn every 45 degrees in a clockwise pattern beginning with the front of the sprite.
             case 5:
                 {
                     byte[] spriteNum = [1, 2, 3, 4, 5, 4, 3, 2];
-
 
                     angles = new SpriteAngleRotation[8];
                     float angle = 0f;
@@ -167,8 +253,13 @@ internal static class GrpReader
                     for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 4))
                     {
                         bool mirrored = i > 4;
-
                         int sprite = spriteNum[i] + startSprite - 1;
+
+                        if (!TextureCache.HasTexture(ToTile(sprite)))
+                        {
+                            sprite += 5;
+                        }
+
                         angles[i] = new SpriteAngleRotation(sprite, mirrored, angle);
                     }
 
@@ -502,7 +593,8 @@ internal static class GrpReader
                 XScale = floorXScale,
                 YScale = floorYScale,
                 RenderingOptions = floorRenderingOptions,
-                Alpha = 1f
+                Alpha = 1f,
+                Palette = sector.FloorPal
             },
             CeilingTexture = new GameTextureInfo
             {
@@ -512,7 +604,8 @@ internal static class GrpReader
                 XScale = ceilXScale,
                 YScale = ceilYScale,
                 RenderingOptions = ceilingRenderingOptions,
-                Alpha = 1f
+                Alpha = 1f,
+                Palette = sector.CeilingPal
             },
             FloorShade = sector.FloorShade,
             CeilingShade = sector.CeilingShade,
@@ -558,7 +651,8 @@ internal static class GrpReader
             XScale = scaleX,
             YScale = scaleY,
             RenderingOptions = renderingOptions,
-            Alpha = alpha
+            Alpha = alpha,
+            Palette = wall.Pal
         };
     }
 
@@ -972,7 +1066,8 @@ internal static class GrpReader
                         YScale = yScale,
                         Alpha = 1f,
                         XOffset = 0,
-                        YOffset = 0
+                        YOffset = 0,
+                        Palette = sprite.Pal,
                     },
                     SectorId = sprite.SectorNumber,
                     Shade = sprite.Shade,
@@ -995,7 +1090,8 @@ internal static class GrpReader
                         YScale = yScale,
                         Alpha = 1f,
                         XOffset = 0,
-                        YOffset = 0
+                        YOffset = 0,
+                        Palette = sprite.Pal,
                     },
                     SectorId = sprite.SectorNumber,
                     Shade = sprite.Shade,
@@ -1021,6 +1117,7 @@ internal static class GrpReader
                         Alpha = 1f,
                         XOffset = 0,
                         YOffset = 0,
+                        Palette = sprite.Pal
                     },
                     SectorId = sprite.SectorNumber,
                     Shade = sprite.Shade,
@@ -1179,7 +1276,7 @@ internal static class GrpReader
         return bgra;
     }
 
-    private static string ToTile(short tileNumber) => $"TILE_{tileNumber}";
+    private static string ToTile(int tileNumber) => $"TILE_{tileNumber}";
 
     private static float DetermineYLocation(float coordinate)
     {

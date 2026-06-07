@@ -407,6 +407,7 @@ internal static class WadReader
                     XOffset = 0,
                     XScale = null,
                     YOffset = 0,
+                    Palette = 0,
                     YScale = null
                 },
                 CeilingTexture = new GameTextureInfo
@@ -417,6 +418,7 @@ internal static class WadReader
                     XOffset = 0,
                     XScale = null,
                     YOffset = 0,
+                    Palette = 0,
                     YScale = null
                 },
                 FloorShade = ClampSectorShade(sector.LightLevel),
@@ -654,7 +656,8 @@ internal static class WadReader
             XOffset = 0,
             XScale = null,
             YOffset = 0,
-            YScale = null
+            YScale = null,
+            Palette = 0
         };
 
         // This seems to be hard coded,
@@ -710,6 +713,7 @@ internal static class WadReader
                             YOffset = 0,
                             YScale = null,
                             RenderingOptions = TextureRenderingOptions.Skybox,
+                            Palette = 0,
                         };
                         wall.Shade = byte.MaxValue;
                     }
@@ -723,7 +727,8 @@ internal static class WadReader
                             XOffset = 0,
                             XScale = null,
                             YOffset = 0,
-                            YScale = null
+                            YScale = null,
+                            Palette = 0,
                         };
                         wall.Shade = byte.MaxValue;
                     }
@@ -738,7 +743,8 @@ internal static class WadReader
                         XOffset = 0,
                         XScale = null,
                         YOffset = 0,
-                        YScale = null
+                        YScale = null,
+                        Palette = 0
                     };
                     wall.Shade = byte.MaxValue;
                 }
@@ -799,7 +805,8 @@ internal static class WadReader
                     XOffset = 0,
                     XScale = null,
                     YOffset = 0,
-                    YScale = null
+                    YScale = null,
+                    Palette = 0
                 },
                 AnimationAngle = spriteAnimationAngle
             });
@@ -979,7 +986,8 @@ internal static class WadReader
                     XOffset = 0,
                     XScale = null,
                     YOffset = 0,
-                    YScale = null
+                    YScale = null,
+                    Palette = 0
                 },
                 AnimationAngle = spriteLookup[thing.Type]
             });
@@ -1105,7 +1113,8 @@ internal static class WadReader
                 Alpha = 0,
                 RenderingOptions = TextureRenderingOptions.None,
                 XScale = null,
-                YScale = null
+                YScale = null,
+                Palette = 0
             };
         }
 
@@ -1119,7 +1128,8 @@ internal static class WadReader
                 Alpha = 0,
                 RenderingOptions = TextureRenderingOptions.None,
                 XScale = null,
-                YScale = null
+                YScale = null,
+                Palette = 0
             };
         }
 
@@ -1317,7 +1327,8 @@ internal static class WadReader
             RenderingOptions = renderFromBottom ? TextureRenderingOptions.FromBottom : TextureRenderingOptions.FromTop,
             Alpha = 1f,
             XScale = null,
-            YScale = null
+            YScale = null,
+            Palette = 0,
         };
     }
 

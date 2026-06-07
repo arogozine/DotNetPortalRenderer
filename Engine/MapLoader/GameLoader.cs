@@ -32,17 +32,18 @@ namespace RenderingEngine.MapLoader
         {
             string grpPath = Path.Combine(rootPath, "DUKE3D.GRP");
             string palettePath = Path.Combine(rootPath, "PALETTE.DAT");
+            string lookupPath = Path.Combine(rootPath, "LOOKUP.DAT");
 
             string defsConPath = Path.Combine(rootPath, "DEFS.CON");
             string gameConPath = Path.Combine(rootPath, "GAME.CON");
 
-            Dictionary<int, GrpReader.SpriteAngleRotation[]> spriteToAngleFrames = GrpReader.ExtractSpriteAngleInfo(defsConPath, gameConPath);
-
-
             PaletteFile pal = BuildFileLoader.LoadPalFile(palettePath);
+            LookupFile lookups = BuildFileLoader.LoadLookupFile(lookupPath);
             GrpFile grp = BuildFileLoader.LoadGrpFile(grpPath);
 
-            GrpReader.ExtractAllTextures(grp, pal);
+            GrpReader.ExtractAllTextures(grp, pal, lookups);
+
+            Dictionary<int, GrpReader.SpriteAngleRotation[]> spriteToAngleFrames = GrpReader.ExtractSpriteAngleInfo(defsConPath, gameConPath);
 
             return GrpReader.LoadBuildMap(grp, mapName, spriteToAngleFrames);
         }

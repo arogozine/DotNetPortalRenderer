@@ -62,6 +62,35 @@ namespace BuildAssetLoader
             return new GrpFile(files);
         }
 
+        public static LookupFile LoadLookupFile(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                throw new ArgumentException("Not Found", nameof(filePath));
+            }
+
+            using FileStream fs = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+            int numberOfSwaps = fs.ReadByte();
+
+            var lookupFile = new LookupFile {
+                NumberOfSwaps = (byte)numberOfSwaps,
+                PaletteSwapTables = new byte[numberOfSwaps][]
+            };
+
+            for (int i = 0; i < numberOfSwaps; i++)
+            {
+                byte[] swapTable = new byte[256];
+
+                int palleteSwapIndex = fs.ReadByte() - 1;
+                fs.ReadExactly(swapTable);
+
+                lookupFile.PaletteSwapTables[palleteSwapIndex] = swapTable;
+            }
+
+            return lookupFile;
+        }
+
         public static PaletteFile LoadPalFile(string filePath)
         {
             if (!File.Exists(filePath))

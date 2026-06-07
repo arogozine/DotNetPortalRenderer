@@ -47,18 +47,20 @@ internal static class ModelExtensions
 
     extension(GameTexture gameTexture)
     {
-        public BGRA[] CalculateTexture(int palletteId)
+        public BGRA[] CalculateTexture(int id, int brightness)
         {
             if (gameTexture is BuildTexture buildTexture)
             {
-                return TextureCache.GetTexture(buildTexture.Lookup, palletteId);
+                brightness = Math.Clamp(brightness, 0, 31);
+
+                return TextureCache.GetTexture(buildTexture.Lookup, id, brightness);
             }
             else if (gameTexture is DoomTexture doomTexture)
             {
                 BGRA[] texture = new BGRA[doomTexture.Texture.Length];
                 doomTexture.Texture.AsSpan().CopyTo(texture);
 
-                TextureTransformHelper.ShadeInPlace(texture, palletteId);
+                TextureTransformHelper.ShadeInPlace(texture, brightness);
 
                 return texture;
             }
@@ -66,42 +68,63 @@ internal static class ModelExtensions
             throw new NotSupportedException();
         }
 
-        public ref T GetBinaryRef<T>(int shade, TextureTransform transform)
+        public ref T GetBinaryRef<T>(int id, int shade, TextureTransform transform)
             where T : unmanaged
         {
-            Span<T> span = MemoryMarshal.Cast<BGRA, T>(GetBinary(gameTexture, shade, transform));
+            Span<T> span = MemoryMarshal.Cast<BGRA, T>(GetBinary(gameTexture, id, shade, transform));
             return ref MemoryMarshal.GetReference(span);
         }
 
-        private BGRA[] GetOrAddNormal(int shade)
+        private Dictionary<int, BGRA[]>[] GetOrAddTransformToShade(int id)
         {
-            Dictionary<int, BGRA[]> pallette = gameTexture.TransformToPallette[(int)TextureTransform.Normal];
+            if (!gameTexture.PaletteToTransformToImage.TryGetValue(id, out Dictionary<int, BGRA[]>[]? transformToShade))
+            {
+                transformToShade = new Dictionary<int, BGRA[]>[1 + (int)TextureTransform.All];
 
-            if (pallette.TryGetValue(shade, out BGRA[]? value))
+                for (int i = 0; i < transformToShade.Length; i++)
+                {
+                    transformToShade[i] = [];
+                }
+
+                gameTexture.PaletteToTransformToImage[id] = transformToShade;
+            }
+
+            return transformToShade;
+        }
+
+        private BGRA[] GetOrAddNormal(int id, int shade)
+        {
+            Dictionary<int, BGRA[]>[] transformToShade = GetOrAddTransformToShade(gameTexture, id);
+
+            var shadeToTexture = transformToShade[(int)TextureTransform.Normal];
+
+            if (shadeToTexture.TryGetValue(shade, out BGRA[]? value))
             {
                 return value;
             }
 
-            value = CalculateTexture(gameTexture, shade);
-            pallette[shade] = value;
+            value = CalculateTexture(gameTexture, id, shade);
+            shadeToTexture[shade] = value;
 
             return value;
         }
 
-        private Span<BGRA> GetBinary(int shade, TextureTransform transform)
+        private Span<BGRA> GetBinary(int id, int shade, TextureTransform transform)
         {
-            Dictionary<int, BGRA[]> pallette = gameTexture.TransformToPallette[(int)transform];
+            Dictionary<int, BGRA[]>[] transformToPallette = GetOrAddTransformToShade(gameTexture, id);
 
-            if (pallette.TryGetValue(shade, out BGRA[]? texture))
+            Dictionary<int, BGRA[]> shadeToTexture = transformToPallette[(int)transform];
+
+            if (shadeToTexture.TryGetValue(shade, out BGRA[]? texture))
             {
                 return texture;
             }
 
-            texture = GetOrAddNormal(gameTexture, shade);
+            texture = GetOrAddNormal(gameTexture, id, shade);
 
             if (transform == TextureTransform.Normal)
             {
-                pallette[shade] = texture;
+                shadeToTexture[shade] = texture;
                 return texture;
             }
 
@@ -120,7 +143,7 @@ internal static class ModelExtensions
                 texture = TextureTransformHelper.RotateTexture(gameTexture.Height, gameTexture.Width, texture);
             }
 
-            pallette[shade] = texture;
+            shadeToTexture[shade] = texture;
             return texture;
         }
     }

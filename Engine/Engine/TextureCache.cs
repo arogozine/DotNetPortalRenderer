@@ -6,29 +6,41 @@ namespace RenderingEngine.Engine;
 internal static class TextureCache
 {
     private const string FallBack = "-";
-    private static readonly Dictionary<string, GameTexture> Cache = [];
-    private static readonly Dictionary<int, BGRA[]> PalletteLookup = [];
+    private static readonly Dictionary<string, GameTexture> TextureNameLookup = [];
+    private static readonly Dictionary<int, Dictionary<int, BGRA[]>> PaletteToShadeLookup = [];
 
-    public static IEnumerable<string> TextureNames => Cache.Keys;
+    public static IEnumerable<string> TextureNames => TextureNameLookup.Keys;
 
     static TextureCache()
     {
         var data = new BGRA[128 * 128];
         data.AsSpan().Fill(BGRA.Green);
 
-        Cache[FallBack] = new DoomTexture(FallBack, 128, 128, data);
+        TextureNameLookup[FallBack] = new DoomTexture(FallBack, 128, 128, data);
     }
 
     public static void Add(string name, GameTexture texture)
     {
         name = name.ToUpperInvariant();
-        Cache[name] = texture;
+        TextureNameLookup[name] = texture;
     }
 
     public static bool TextureExists(string name)
     {
         name = name.ToUpperInvariant();
-        return Cache.ContainsKey(name);
+        return TextureNameLookup.ContainsKey(name);
+    }
+
+    public static bool HasTexture(string? name)
+    {
+        if (name == null)
+        {
+            return false;
+        }
+
+        name = name.ToUpperInvariant();
+
+        return TextureNameLookup.ContainsKey(name);
     }
 
     public static GameTexture GetTexture(GameTextureInfo? textureInfo) => GetTexture(textureInfo?.Name);
@@ -37,14 +49,14 @@ internal static class TextureCache
     {
         if (name == null)
         {
-            return Cache[FallBack];
+            return TextureNameLookup[FallBack];
         }
 
         name = name.ToUpperInvariant();
 
-        if (!Cache.TryGetValue(name, out GameTexture? texture))
+        if (!TextureNameLookup.TryGetValue(name, out GameTexture? texture))
         {
-            texture = Cache[FallBack];
+            texture = TextureNameLookup[FallBack];
         }
 
         return texture;
@@ -52,17 +64,37 @@ internal static class TextureCache
 
     public static void AddPallette(int id, BGRA[] lookup)
     {
-        PalletteLookup[id] = lookup;
+        AddPallette(0, id, lookup);
     }
 
-    public static BGRA[] GetTexture(ReadOnlySpan<byte> lookup, int palletteId)
+    public static void AddPallette(int id, int shade, BGRA[] lookup)
     {
-        if (!PalletteLookup.ContainsKey(palletteId))
+        if (!PaletteToShadeLookup.TryGetValue(id, out Dictionary<int, BGRA[]>? shadeLookup))
+        {
+            shadeLookup = [];
+            PaletteToShadeLookup[id] = shadeLookup;
+        }
+
+        shadeLookup[shade] = lookup;
+    }
+
+    public static BGRA[] GetTexture(ReadOnlySpan<byte> lookup, int palletteId, int shade)
+    {
+        if (!PaletteToShadeLookup.ContainsKey(palletteId))
         {
             palletteId = 0;
         }
 
-        ReadOnlySpan<BGRA> pallette = PalletteLookup[palletteId];
+        Dictionary<int, BGRA[]>? shadeLookup = PaletteToShadeLookup[palletteId];
+
+
+        if (!shadeLookup.ContainsKey(shade))
+        {
+            shade = 0;
+        }
+
+        ReadOnlySpan <BGRA> pallette = shadeLookup[shade];
+
         BGRA[] texture = new BGRA[lookup.Length];
 
         for (int i = 0; i < lookup.Length; i++)

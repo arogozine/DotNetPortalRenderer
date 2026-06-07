@@ -424,7 +424,7 @@ namespace RenderingEngine.Engine
                     transform ^= TextureTransform.FlippedX;
                 }
 
-                return ref texture.Texture.GetBinaryRef<uint>(sprite.Shade ?? sector.FloorShade,
+                return ref texture.Texture.GetBinaryRef<uint>(texture.Palette, sprite.Shade ?? sector.FloorShade,
                     transform);
             }
         }
@@ -466,7 +466,7 @@ namespace RenderingEngine.Engine
 
             int textureWidth = texture.Width;
 
-            ref uint floorTexturePtr = ref texture.Texture.GetBinaryRef<uint>(sprite.Shade ?? sector.FloorShade,
+            ref uint floorTexturePtr = ref texture.Texture.GetBinaryRef<uint>(texture.Palette, sprite.Shade ?? sector.FloorShade,
                 TextureTransform.Normal | TextureTransform.FlippedX);
             uint* screenPtr = (uint*)buffer;
 
