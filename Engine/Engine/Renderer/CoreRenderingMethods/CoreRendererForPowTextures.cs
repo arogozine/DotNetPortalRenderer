@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using SoftwareRendererModels;
+using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -8,6 +9,235 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
     where T : IDrawPixel
 {
     private CoreRendererForPowTextures() { }
+
+    public static void RenderSkybox(PortalPlayerSnapshot player,
+        int repeatCount,
+        ushort* repeatedCount,
+        float* angleCachePtr,
+        uint* screenPtr,
+        uint* texturePtr,
+        int sectorFromX, int sectorToX,
+        int* fromYPtr, int* toYPtr,
+        int* ceilingStartPtr, int* floorEndPtr,
+        int width,
+        int textureWidth,
+        int textureHeight,
+        float yTextureIncr)
+    {
+        if (Sse.IsSupported)
+        {
+            Sse.Prefetch2(texturePtr);
+        }
+
+        const float oneOverTwoPi = 1f / (2 * MathF.PI);
+        float viewAngle = player.Angle;
+        float textureWidth4 = textureWidth * repeatCount * oneOverTwoPi;
+
+        Vector<float> textureWidth4V = Vector.Create(textureWidth4);
+        Vector<float> yTextureIncrV = Vector.Create(yTextureIncr);
+        Vector<float> viewAngleV = Vector.Create(viewAngle);
+        Vector<int> widthMask = Vector.Create(textureWidth - 1);
+
+        for (int x = sectorFromX; x < sectorToX;)
+        {
+            ushort count = repeatedCount[x - sectorFromX];
+
+            if (count == 0)
+            {
+                x++;
+                continue;
+            }
+
+            if (count >= Vector<int>.Count)
+            {
+                Vector<int> wallStartY = Vector.Load(fromYPtr + x);
+                Vector<int> wallEndY = Vector.Load(toYPtr + x);
+
+                Vector<int> ceilingStartY = Vector.Load(ceilingStartPtr + x);
+                Vector<int> floorEndY = Vector.Load(floorEndPtr + x);
+
+                wallStartY = Vector.ClampNative(wallStartY, ceilingStartY, floorEndY);
+                wallEndY = Vector.ClampNative(wallEndY, ceilingStartY, floorEndY);
+
+                (int min_t, int max_t, int min_b, int max_b) = ICoreRenderer.CalculateLaneTopBottoms(wallStartY, wallEndY);
+
+                if (min_b > max_t)
+                {
+                    RenderLine(x, wallEndY, wallStartY, min_t, max_t, min_b, max_b);
+                }
+                else
+                {
+                    for (int i = 0; i < Vector<int>.Count; i++)
+                    {
+                        RenderColumn(wallStartY[i], wallEndY[i], x);
+                    }
+                }
+
+                x += Vector<int>.Count;
+                count -= (ushort)Vector<int>.Count;
+
+                continue;
+            }
+
+            while (count-- > 0)
+            {
+                int wallStartY = fromYPtr[x];
+                int wallEndY = toYPtr[x];
+
+                int ceilingStartY = ceilingStartPtr[x];
+                int floorEndY = floorEndPtr[x];
+
+                wallStartY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
+                wallEndY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
+
+
+                RenderColumn(wallStartY, wallEndY, x);
+
+                x++;
+            }
+        }
+
+        return;
+
+
+        void RenderLine(
+            int x,
+            Vector<int> to, Vector<int> from,
+            int min_t, int max_t, int min_b, int max_b
+            )
+        {
+            Vector<float> angleXV = MathFormulas.ClampAngle(Vector.Load(angleCachePtr + x) - viewAngleV);
+
+            Vector<float> vScreenV = max_t * yTextureIncrV;
+            Vector<int> texXV = Vector.ConvertToInt32Native(textureWidth4V * angleXV) & widthMask;
+
+            // render tops where there is no shared window
+            if (min_t != max_t)
+            {
+                RenderColumnAngleTop(min_t, max_t, from, texXV, x);
+            }
+
+            uint* fromPtr = screenPtr + max_t * width + x;
+
+            if (Avx2.IsSupported && Vector<uint>.Count == Vector256<uint>.Count)
+            {
+                for (int y = max_t; y <= min_b; y++)
+                {
+                    Vector<int> textureIndex = texXV + textureWidth * Vector.ConvertToInt32Native(vScreenV);
+                    Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndex.AsVector256(), scale: sizeof(int));
+                    gathered.Store(fromPtr);
+
+                    fromPtr += width;
+                    vScreenV += yTextureIncrV;
+                }
+            }
+            else
+            {
+                for (int y = max_t; y <= min_b; y++)
+                {
+                    Vector<int> textureIndex = texXV + textureWidth * Vector.ConvertToInt32Native(vScreenV);
+
+                    for (int i = 0; i < Vector<float>.Count; i++)
+                    {
+                        *(fromPtr + i) = *(texturePtr + textureIndex[i]);
+                    }
+
+                    fromPtr += width;
+                    vScreenV += yTextureIncrV;
+                }
+            }
+
+            // render bottoms where there is no shared window
+            if (min_b != max_b)
+            {
+                RenderColumnAngleBottom(min_b, max_b, to, texXV, x);
+            }
+        }
+
+        void RenderColumnAngleBottom(
+            int min_b,
+            int max_b,
+            Vector<int> to,
+            Vector<int> texXV,
+            int xStart)
+        {
+            uint* screenTexPtr = screenPtr + min_b * width + xStart;
+
+            float vScreen = min_b * yTextureIncr;
+
+            for (int y = min_b; y < max_b; y++)
+            {
+                int yIndex = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
+
+                for (int i = 0; i < Vector<uint>.Count; i++)
+                {
+                    if (to[i] <= y)
+                    {
+                        continue;
+                    }
+
+                    int index = texXV[i] + yIndex;
+                    screenTexPtr[i] = texturePtr[index];
+
+                }
+
+                screenTexPtr += width;
+                vScreen += yTextureIncr;
+            }
+        }
+
+        void RenderColumnAngleTop(
+            int min_t,
+            int max_t,
+            Vector<int> from,
+            Vector<int> texXV,
+            int xStart)
+        {
+            uint* screenTexPtr = screenPtr + min_t * width + xStart;
+
+            float vScreen = min_t * yTextureIncr;
+
+            for (int y = min_t; y < max_t; y++)
+            {
+                int yIndex = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
+
+                for (int i = 0; i < Vector<uint>.Count; i++)
+                {
+                    if (from[i] >= y)
+                    {
+                        continue;
+                    }
+
+                    int index = texXV[i] + yIndex;
+                    screenTexPtr[i] = texturePtr[index];
+                }
+
+                screenTexPtr += width;
+                vScreen += yTextureIncr;
+            }
+        }
+
+        void RenderColumn(int fromY, int toY, int x)
+        {
+            uint* fromPtr = screenPtr + fromY * width + x;
+            uint* toPtr = screenPtr + toY * width + x;
+
+            float angleX = *(angleCachePtr + x) - viewAngle;
+            angleX = MathFormulas.ClampAngle(angleX);
+
+            int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
+
+            float vScreen = fromY * yTextureIncr;
+            uint* textureColumnPtr = texturePtr + texX;
+
+            for (; fromPtr < toPtr; vScreen += yTextureIncr, fromPtr += width)
+            {
+                int index = textureWidth * float.ConvertToIntegerNative<int>(vScreen);
+                uint tex = *(textureColumnPtr + index);
+                *fromPtr = tex;
+            }
+        }
+    }
 
     public static void RenderWall(
         int spriteFromX, int spriteToX,

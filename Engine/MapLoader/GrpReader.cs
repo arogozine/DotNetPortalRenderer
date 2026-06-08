@@ -520,6 +520,7 @@ internal static class GrpReader
         DetermineMirrors(sectors);
         RecalculateOffsets(sectors);
         DetermineSkyboxWalls(sectors);
+        GenerateSpecialSkyboxTextures(sectors);
 
         return new Map
         {
@@ -900,6 +901,122 @@ internal static class GrpReader
                 angle += MathF.PI * 2f;
 
             return angle - MathF.PI * 0.5f;
+        }
+    }
+
+    private static void GenerateSpecialSkyboxTextures(List<MapSector> sectorList)
+    {
+        // Parallaxing Issues
+        // https://infosuite.duke4.net/index.php?page=references_faq
+
+        var moonSky1 = (BuildTexture)TextureCache.GetTexture(ToTile(80));
+        var moonSky2 = (BuildTexture)TextureCache.GetTexture(ToTile(81));
+        var moonSky3 = (BuildTexture)TextureCache.GetTexture(ToTile(82));
+        var moonSky4 = (BuildTexture)TextureCache.GetTexture(ToTile(83));
+
+        var bigOrbit1 = (BuildTexture)TextureCache.GetTexture(ToTile(84));
+        var bigOrbit2 = (BuildTexture)TextureCache.GetTexture(ToTile(85));
+        var bigOrbit3 = (BuildTexture)TextureCache.GetTexture(ToTile(86));
+        var bigOrbit4 = (BuildTexture)TextureCache.GetTexture(ToTile(87));
+        var bigOrbit5 = (BuildTexture)TextureCache.GetTexture(ToTile(88));
+
+        var la1 = (BuildTexture)TextureCache.GetTexture(ToTile(89));
+        var la2 = (BuildTexture)TextureCache.GetTexture(ToTile(90));
+        var la3 = (BuildTexture)TextureCache.GetTexture(ToTile(91));
+        var la4 = (BuildTexture)TextureCache.GetTexture(ToTile(92));
+        var la5 = (BuildTexture)TextureCache.GetTexture(ToTile(93));
+
+        BuildTexture moonSky = Combine("MOONSKY", moonSky1, moonSky2, moonSky3, moonSky4);
+        BuildTexture bigOrbit = Combine("BIGORBIT", bigOrbit1, bigOrbit2, bigOrbit3, bigOrbit4, bigOrbit5);
+        BuildTexture la = Combine("LA", la1, la2, la3, la4, la5);
+
+        TextureCache.Add(moonSky.Name, moonSky);
+        TextureCache.Add(bigOrbit.Name, bigOrbit);
+        TextureCache.Add(la.Name, la);
+
+        foreach (var sector in sectorList)
+        {
+            bool ceilSkybox = sector.CeilingTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+            bool floorSkybox = sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
+
+            if (ceilSkybox)
+            {
+                ReplaceTexture(sector.CeilingTexture);
+            }
+
+            if (floorSkybox)
+            {
+                ReplaceTexture(sector.FloorTexture);
+            }
+
+            foreach (Line line in sector.Walls)
+            {
+                bool upperSkybox = line.UpperTexture?.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox) ?? false;
+                bool lowerSkybox = line.LowerTexture?.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox) ?? false;
+
+                if (upperSkybox)
+                {
+                    ReplaceTexture(line.UpperTexture!);
+                }
+
+                if (lowerSkybox)
+                {
+                    ReplaceTexture(line.LowerTexture!);
+                }
+            }
+        }
+
+        return;
+
+        void ReplaceTexture(GameTextureInfo gameTextureInfo)
+        {
+            switch (gameTextureInfo.Name)
+            {
+                case "TILE_80":
+                    gameTextureInfo.Texture = moonSky;
+                    break;
+                case "TILE_84":
+                    gameTextureInfo.Texture = bigOrbit;
+                    break;
+                case "TILE_89":
+                    gameTextureInfo.Texture = la;
+                    break;
+            }
+        }
+
+        static BuildTexture Combine(string textureName, params ReadOnlySpan<BuildTexture> textures)
+        {
+            int width = 0;
+            int lookupSize = 0;
+            for (int i = 0; i < textures.Length; i++)
+            {
+                BuildTexture texture = textures[i];
+                width += texture.Width;
+                lookupSize += texture.Lookup.Length;
+            }
+
+            byte[] combinedLookup = new byte[lookupSize];
+
+            int xOffset = 0;
+            for (int i = 0; i < textures.Length; i++)
+            {
+                BuildTexture texture = textures[i];
+
+                for (int x = 0; x < texture.Width; x++)
+                {
+                    for (int y = 0; y < texture.Height; y++)
+                    {
+                        int textureIndex = y * texture.Width + x;
+                        int combineTextureIndex = y * width + x + xOffset;
+
+                        combinedLookup[combineTextureIndex] = texture.Lookup[textureIndex];
+                    }
+                }
+
+                xOffset += texture.Width;
+            }
+
+            return new BuildTexture(textureName, width, textures[0].Height, combinedLookup);
         }
     }
 
