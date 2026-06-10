@@ -31,21 +31,40 @@ namespace RenderingEngine.MapLoader
         internal static Map LoadBuildEngineMap(string mapName, string rootPath)
         {
             string grpPath = Path.Combine(rootPath, "DUKE3D.GRP");
-            string palettePath = Path.Combine(rootPath, "PALETTE.DAT");
-            string lookupPath = Path.Combine(rootPath, "LOOKUP.DAT");
+            GrpFile grp = BuildFileLoader.LoadGrpFile(grpPath);
 
             string defsConPath = Path.Combine(rootPath, "DEFS.CON");
             string gameConPath = Path.Combine(rootPath, "GAME.CON");
 
-            PaletteFile pal = BuildFileLoader.LoadPalFile(palettePath);
-            LookupFile lookups = BuildFileLoader.LoadLookupFile(lookupPath);
-            GrpFile grp = BuildFileLoader.LoadGrpFile(grpPath);
+            PaletteFile pal = LoadPaletteFile();
+            LookupFile lookups = LoadLookupFile();
 
             GrpReader.ExtractAllTextures(grp, pal, lookups);
 
             Dictionary<int, GrpReader.SpriteAngleRotation[]> spriteToAngleFrames = GrpReader.ExtractSpriteAngleInfo(defsConPath, gameConPath);
 
             return GrpReader.LoadBuildMap(grp, mapName, spriteToAngleFrames);
+
+            LookupFile LoadLookupFile()
+            {
+                string lookupPath = Path.Combine(rootPath, "LOOKUP.DAT");
+
+                if (File.Exists(lookupPath))
+                {
+                    return BuildFileLoader.LoadLookupFile(lookupPath);
+                }
+                else
+                {
+                    byte[] lookupFile = grp.Files["LOOKUP.DAT"];
+                    return BuildFileLoader.LoadLookupFile(lookupFile);
+                }
+            }
+
+            PaletteFile LoadPaletteFile()
+            {
+                string palettePath = Path.Combine(rootPath, "PALETTE.DAT");
+                return BuildFileLoader.LoadPalFile(palettePath);
+            }
         }
 
         internal static FixedGameState LoadFixedGameState(Arguments arguments)

@@ -1,7 +1,5 @@
 ﻿using RenderingEngine.Tooling;
 using SoftwareRendererModels;
-using System.Numerics;
-using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
@@ -155,12 +153,9 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            GameTextureInfo textureInfo = wallTexture;
             ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(wallTexture.Palette, renderableWall.Wall.Shade ?? byte.MaxValue, TextureTransform.Normal);
 
             uint* screenPtr = (uint*)buffer;
-
-            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
             int* ceilingStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
             int* floorEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);

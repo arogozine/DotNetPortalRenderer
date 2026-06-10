@@ -95,19 +95,6 @@ namespace RenderingEngine.Engine
                 {
                     yCY2 = yRY2;
                 }
-
-                if (left && right)
-                {
-                    return CompareFurtherst(xCY1, xCY2, yCY1, yCY2);
-                }
-                else if (left)
-                {
-                    return Compare(xCY1, yCY1);
-                }
-                else if (right)
-                {
-                    return Compare(xCY2, yCY2);
-                }
             }
 
             if (Within(y.XLeft, x.XLeft, x.XRight) || Within(y.XRight, x.XLeft, x.XRight))
@@ -128,20 +115,6 @@ namespace RenderingEngine.Engine
                 {
                     xCY2 = xRY2;
                 }
-
-                if (left && right)
-                {
-                    return CompareFurtherst(xCY1, xCY2, yCY1, yCY2);
-                }
-                else if (left)
-                {
-                    return Compare(xCY1, yCY1);
-
-                }
-                else if (right)
-                {
-                    return Compare(xCY2, yCY2);
-                }
             }
 
             return CompareFurtherst(xCY1, xCY2, yCY1, yCY2);
@@ -150,8 +123,8 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static int CompareFurtherst(float xCY1, float xCY2, float yCY1, float yCY2)
         {
-            float xd = MathF.Max(xCY1, xCY2);
-            float yd = MathF.Max(yCY1, yCY2);
+            float xd = (xCY1 + xCY2) / 2f;
+            float yd = (yCY1 + yCY2) / 2f;
 
             return Compare(xd, yd);
         }

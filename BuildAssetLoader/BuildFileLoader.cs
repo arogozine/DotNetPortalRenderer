@@ -1,4 +1,5 @@
 ﻿using BuildAssetLoader.Texture;
+using System.Diagnostics;
 using System.Text;
 
 namespace BuildAssetLoader
@@ -62,6 +63,14 @@ namespace BuildAssetLoader
             return new GrpFile(files);
         }
 
+        public static LookupFile LoadLookupFile(byte[] file)
+        {
+            using MemoryStream ms = new(file, false);
+
+            return LoadLookupFile(ms);
+
+        }
+
         public static LookupFile LoadLookupFile(string filePath)
         {
             if (!File.Exists(filePath))
@@ -71,9 +80,15 @@ namespace BuildAssetLoader
 
             using FileStream fs = new(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-            int numberOfSwaps = fs.ReadByte();
+            return LoadLookupFile(fs);
+        }
 
-            var lookupFile = new LookupFile {
+        public static LookupFile LoadLookupFile(Stream stream)
+        {
+            int numberOfSwaps = stream.ReadByte();
+
+            var lookupFile = new LookupFile
+            {
                 NumberOfSwaps = (byte)numberOfSwaps,
                 PaletteSwapTables = new byte[numberOfSwaps][]
             };
@@ -82,8 +97,8 @@ namespace BuildAssetLoader
             {
                 byte[] swapTable = new byte[256];
 
-                int palleteSwapIndex = fs.ReadByte() - 1;
-                fs.ReadExactly(swapTable);
+                int palleteSwapIndex = stream.ReadByte() - 1;
+                stream.ReadExactly(swapTable);
 
                 lookupFile.PaletteSwapTables[palleteSwapIndex] = swapTable;
             }
