@@ -1,5 +1,4 @@
 ﻿using BuildAssetLoader.Map;
-using RenderingEngine.DoomMapLoader;
 using RenderingEngine.Engine;
 using RenderingEngine.MapLoader;
 using SoftwareRendererModels;
@@ -13,6 +12,14 @@ namespace Tests
         public void SlopeGetsCalculatedProperly()
         {
             (RenderableSector slopedSector, RenderableSector upperSector) = Setup();
+
+            var wallZero = slopedSector.Walls[0];
+            wallZero.C1 = wallZero.R1 = wallZero.PointA;
+            wallZero.C2 = wallZero.R2 = wallZero.PointB;
+
+            var wallZero2 = slopedSector.Walls[0];
+            wallZero2.C1 = wallZero2.R1 = wallZero2.PointA;
+            wallZero2.C2 = wallZero2.R2 = wallZero2.PointB;
 
             var lowerCeilHeight = slopedSector.Ceil;
             var lowerFloorHeight = slopedSector.Floor;
@@ -30,6 +37,8 @@ namespace Tests
 
                 touchingWall.C1 = touchingWall.PointA;
                 touchingWall.C2 = touchingWall.PointB;
+                touchingWall.R1 = touchingWall.PointA;
+                touchingWall.R2 = touchingWall.PointB;
                 touchingWall.XLeft = 10;
                 touchingWall.XRight = 110;
 
@@ -67,6 +76,8 @@ namespace Tests
 
                 touchingWall.C1 = touchingWall.PointA;
                 touchingWall.C2 = touchingWall.PointB;
+                touchingWall.R1 = touchingWall.PointA;
+                touchingWall.R2 = touchingWall.PointB;
                 touchingWall.XLeft = 10;
                 touchingWall.XRight = 110;
 
