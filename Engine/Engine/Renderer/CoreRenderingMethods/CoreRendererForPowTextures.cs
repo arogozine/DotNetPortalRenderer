@@ -702,35 +702,43 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
     {
         Vector256<uint> startYV = Vector256.Load(startY);
         Vector256<uint> endYV = Vector256.Load(endY);
-        Vector256<uint> textureXIncr_uV = Vector256.Load(textureYIncr_u);
+        Vector256<uint> textureYIncr_uV = Vector256.Load(textureYIncr_u);
 
         (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
         (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
+
+        uint textureHeightMask = (uint)(textureHeight - 1);
+        Vector256<uint> textureMaskV = Vector256.Create(textureHeightMask);
+
+        Vector256<uint> textureXPosV = Vector256.Load(texturePos);
+        Vector256<uint> textureYPos_uV = Vector256.Load(textureYPos_u);
 
         uint* screenIndexPtr = screenPtr + min_t * width + x;
 
         if (min_b <= max_t)
         {
-            for (int i = 0; i < Vector256<uint>.Count; i++, x++)
+            for (uint y = min_t; y < max_b; y++, screenIndexPtr += width)
             {
-                uint* textureYPos = textureYPos_u + i;
-                uint incr = textureXIncr_uV[i];
+                Vector256<uint> yV = Vector256.Create(y);
+                Vector256<uint> mask = Vector256.LessThan(startYV, yV) & Vector256.GreaterThan(endYV, yV);
 
-                uint top = startYV[i];
-                uint bottom = endYV[i];
+                Vector256<uint> texelIndexV = textureXPosV + ((textureYPos_uV >> 16) & textureMaskV);
 
-                RenderWallColumn(width, x, textureHeight, top, bottom, *textureYPos, incr, screenPtr,
-                    textureBuffer + *(texturePos + i));
+                for (int i = 0; i < Vector256<uint>.Count; i++)
+                {
+                    if (mask[i] == 0U)
+                        continue;
+
+                    uint texelIndex = texelIndexV[i];
+                    uint pixel = *(textureBuffer + texelIndex);
+                    T.Draw(screenIndexPtr + i, pixel);
+                }
+
+                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
             }
 
             return;
         }
-
-
-        uint textureHeightMask = (uint)(textureHeight - 1);
-        Vector256<uint> textureMaskV = Vector256.Create(textureHeightMask);
-        Vector256<uint> textureYPos_uV = Vector256.Load(textureYPos_u);
-        Vector256<uint> textureXPosV = Vector256.Load(texturePos);
 
         // render tops where there is no shared window
         if (min_t != max_t)
@@ -758,7 +766,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
 
                     T.DrawLine(screenIndexPtr, gathered);
 
-                    textureYPos_uV += textureXIncr_uV;
+                    textureYPos_uV += textureYIncr_uV;
                     screenIndexPtr += width;
                 }
             }
@@ -778,7 +786,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                         T.Draw(screenIndexPtr + i, pixel);
                     }
 
-                    textureYPos_uV += textureXIncr_uV;
+                    textureYPos_uV += textureYIncr_uV;
                     screenIndexPtr += width;
                 }
             }
@@ -823,7 +831,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                     }
                 }
 
-                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
                 screenIndexPtr += width;
             }
         }
@@ -859,7 +867,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                     }
                 }
 
-                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
                 screenIndexPtr += width;
             }
         }
@@ -880,27 +888,10 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
     {
         var startYV = Vector128.Load(startY);
         var endYV = Vector128.Load(endY);
-        var textureXIncr_uV = Vector128.Load(textureYIncr_u);
+        var textureYIncr_uV = Vector128.Load(textureYIncr_u);
 
         (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
         (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
-
-        if (min_b <= max_t)
-        {
-            for (int i = 0; i < Vector128<uint>.Count; i++, x++)
-            {
-                uint* textureYPos = textureYPos_u + i;
-                uint incr = textureXIncr_uV[i];
-
-                uint top = startYV[i];
-                uint bottom = endYV[i];
-
-                RenderWallColumn(width, x, textureHeight, top, bottom, *textureYPos, incr, screenPtr,
-                    textureBuffer + *(texturePos + i));
-            }
-
-            return;
-        }
 
         uint* screenIndexPtr = screenPtr + min_t * width + x;
 
@@ -908,6 +899,31 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
         Vector128<uint> textureMaskV = Vector128.Create(textureHeightMask);
         Vector128<uint> textureYPos_uV = Vector128.Load(textureYPos_u);
         Vector128<uint> textureXPosV = Vector128.Load(texturePos);
+
+        if (min_b <= max_t)
+        {
+            for (uint y = min_t; y < max_b; y++, screenIndexPtr += width)
+            {
+                Vector128<uint> yV = Vector128.Create(y);
+                Vector128<uint> mask = Vector128.LessThan(startYV, yV) & Vector128.GreaterThan(endYV, yV);
+
+                Vector128<uint> texelIndexV = textureXPosV + ((textureYPos_uV >> 16) & textureMaskV);
+
+                for (int i = 0; i < Vector128<uint>.Count; i++)
+                {
+                    if (mask[i] == 0U)
+                        continue;
+
+                    uint texelIndex = texelIndexV[i];
+                    uint pixel = *(textureBuffer + texelIndex);
+                    T.Draw(screenIndexPtr + i, pixel);
+                }
+
+                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+            }
+
+            return;
+        }
 
         // render tops where there is no shared window
         if (min_t != max_t)
@@ -935,7 +951,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
 
                     T.DrawLine(screenIndexPtr, gathered);
 
-                    textureYPos_uV += textureXIncr_uV;
+                    textureYPos_uV += textureYIncr_uV;
                     screenIndexPtr += width;
                 }
             }
@@ -955,7 +971,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                         T.Draw(screenIndexPtr + i, pixel);
                     }
 
-                    textureYPos_uV += textureXIncr_uV;
+                    textureYPos_uV += textureYIncr_uV;
                     screenIndexPtr += width;
                 }
             }
@@ -1000,7 +1016,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                     }
                 }
 
-                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
                 screenIndexPtr += width;
             }
         }
@@ -1036,7 +1052,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                     }
                 }
 
-                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
                 screenIndexPtr += width;
             }
         }

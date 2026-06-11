@@ -122,7 +122,7 @@ namespace RenderingEngine.Engine
 
         private void CalculateDistance(RenderablePortalWall renderableWall)
         {
-            Span<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
+            float* distance = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.Distance);
 
             RenderableWall wall = renderableWall.Wall;
 
@@ -194,16 +194,46 @@ namespace RenderingEngine.Engine
 
         private void CalculatePortalClamp(RenderablePortalWall renderableWall)
         {
-            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            RenderColumnStatus* status = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
 
-            Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
-            Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            int* wallStartClamped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
+            int* wallEndClamped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
 
-            Span<int> portalFromClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFromClamped);
-            Span<int> portalToClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalToClamped);
+            int* portalFromClamped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
+            int* portalToClamped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
 
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
+            int length = wallToX - wallFromX;
+
+            if (Vector.IsHardwareAccelerated && length > Vector<int>.Count)
+            {
+                int rem = length & (Vector<int>.Count - 1);
+                wallToX -= rem;
+
+                Vector<int> finishedFlag = Vector.Create((int)RenderColumnStatus.FinishedRendering);
+
+                for (int x = wallFromX; x < wallToX; x += Vector<int>.Count)
+                {
+                    Vector<int> statusV = Vector.Load((int*)(status + x));
+                    Vector<int> wallStartV = Vector.Load(wallStartClamped + x);
+                    Vector<int> wallEndV = Vector.Load(wallEndClamped + x);
+                    Vector<int> portalFromV = Vector.Load(portalFromClamped + x);
+                    Vector<int> portalToV = Vector.Load(portalToClamped + x);
+
+                    Vector<int> clampedFrom = Vector.ClampNative(portalFromV, wallStartV, wallEndV);
+                    Vector<int> clampedTo = Vector.ClampNative(portalToV, wallStartV, wallEndV);
+
+                    // keep original values for finished columns, use clamped elsewhere
+                    Vector<int> isFinished = Vector.Equals(statusV & finishedFlag, finishedFlag);
+
+                    Vector.Store(Vector.ConditionalSelect(isFinished, portalFromV, clampedFrom), portalFromClamped + x);
+                    Vector.Store(Vector.ConditionalSelect(isFinished, portalToV, clampedTo), portalToClamped + x);
+                }
+
+                wallFromX = wallToX;
+                wallToX += rem;
+            }
 
             for (int x = wallFromX; x <= wallToX; x++)
             {

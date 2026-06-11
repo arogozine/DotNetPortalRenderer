@@ -16,9 +16,12 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer
         float* angleCachePtr,
         uint* screenPtr,
         uint* texturePtr,
-        int sectorFromX, int sectorToX,
-        int* fromYPtr, int* toYPtr,
-        int* ceilingStartPtr, int* floorEndPtr,
+        int sectorFromX,
+        int sectorToX,
+        int* fromYPtr,
+        int* toYPtr,
+        int* ceilingStartPtr,
+        int* floorEndPtr,
         int width,
         int textureWidth,
         int textureHeight,
@@ -690,7 +693,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer
     {
         Vector256<uint> startYV = Vector256.Load(startY);
         Vector256<uint> endYV = Vector256.Load(endY);
-        Vector256<uint> textureXIncr_uV = Vector256.Load(textureYIncr_u);
+        Vector256<uint> textureYIncr_uV = Vector256.Load(textureYIncr_u);
 
         (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
         (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
@@ -699,24 +702,35 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer
 
         if (min_b <= max_t)
         {
-            for (int i = 0; i < Vector256<uint>.Count; i++, x++)
+            uint textureHeightU2 = (uint)textureHeight;
+            Vector256<uint> textureYPosUv2 = Vector256.Load(textureYPos_u);
+            Vector256<uint> textureXPosV2 = Vector256.Load(texturePos);
+
+            for (uint y = min_t; y < max_b; y++, screenIndexPtr += width)
             {
-                uint* textureYPos = textureYPos_u + i;
-                uint incr = textureXIncr_uV[i];
+                Vector256<uint> yV = Vector256.Create(y);
+                Vector256<uint> mask = Vector256.LessThan(startYV, yV) & Vector256.GreaterThan(endYV, yV);
 
-                uint top = startYV[i];
-                uint bottom = endYV[i];
+                Vector256<uint> textureYPos = textureYPosUv2 >> 16;
 
-                RenderWallColumn(width, x, textureHeight, top, bottom, *textureYPos, incr, screenPtr,
-                    textureBuffer + *(texturePos + i));
+                for (int i = 0; i < Vector256<uint>.Count; i++)
+                {
+                    if (mask[i] == 0U)
+                        continue;
+
+                    uint texelIndex = textureYPos[i] % textureHeightU2 + textureXPosV2[i];
+                    uint pixel = *(textureBuffer + texelIndex);
+                    T.Draw(screenIndexPtr + i, pixel);
+                }
+
+                textureYPosUv2 = Vector256.ConditionalSelect(mask, textureYPosUv2 + textureYIncr_uV, textureYPosUv2);
             }
 
             return;
         }
 
 
-        uint textureHeightMask = (uint)(textureHeight);
-        Vector256<uint> textureMaskV = Vector256.Create(textureHeightMask);
+        uint textureHeightU = (uint)(textureHeight);
         Vector256<uint> textureYPos_uV = Vector256.Load(textureYPos_u);
         Vector256<uint> textureXPosV = Vector256.Load(texturePos);
 
@@ -739,12 +753,12 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer
                 // horizontally draw the texture (keeps per-lane behavior)
                 for (int i = 0; i < Vector256<uint>.Count; i++)
                 {
-                    uint pixel = *(textureBuffer + textureXPosV[i] + (texelIndexV[i] % textureHeightMask));
+                    uint pixel = *(textureBuffer + textureXPosV[i] + (texelIndexV[i] % textureHeightU));
 
                     T.Draw(screenIndexPtr + i, pixel);
                 }
 
-                textureYPos_uV += textureXIncr_uV;
+                textureYPos_uV += textureYIncr_uV;
                 screenIndexPtr += width;
             }
         }
@@ -756,6 +770,8 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer
         }
 
         RenderBottoms();
+
+        return;
 
         void RenderTops()
         {
@@ -769,13 +785,13 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer
                     if (mask[i] == 0U)
                         continue;
 
-                    uint texelIndex = (textureYPos[i] % textureHeightMask) + textureXPosV[i];
+                    uint texelIndex = (textureYPos[i] % textureHeightU) + textureXPosV[i];
 
                     uint pixel = *(textureBuffer + texelIndex);
                     T.Draw((screenIndexPtr + i), pixel);
                 }
 
-                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
                 screenIndexPtr += width;
             }
         }
@@ -792,13 +808,13 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer
                     if (mask[i] == 0U)
                         continue;
 
-                    uint texelIndex = (textureYPos[i] % textureHeightMask) + textureXPosV[i];
+                    uint texelIndex = (textureYPos[i] % textureHeightU) + textureXPosV[i];
 
                     uint pixel = *(textureBuffer + texelIndex);
                     T.Draw((screenIndexPtr + i), pixel);
                 }
 
-                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
                 screenIndexPtr += width;
             }
         }
@@ -826,16 +842,29 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer
 
         if (min_b <= max_t)
         {
-            for (int i = 0; i < Vector128<uint>.Count; i++, x++)
+            uint textureHeightU2 = (uint)textureHeight;
+            Vector128<uint> textureYPosUv2 = Vector128.Load(textureYPos_u);
+            Vector128<uint> textureXPosV2 = Vector128.Load(texturePos);
+            uint* screenIndexPtr2 = screenPtr + min_t * width + x;
+
+            for (uint y = min_t; y < max_b; y++, screenIndexPtr2 += width)
             {
-                uint* textureYPos = textureYPos_u + i;
-                uint incr = textureXIncr_uV[i];
+                Vector128<uint> yV = Vector128.Create(y);
+                Vector128<uint> mask = Vector128.LessThan(startYV, yV) & Vector128.GreaterThan(endYV, yV);
 
-                uint top = startYV[i];
-                uint bottom = endYV[i];
+                Vector128<uint> textureYPos = textureYPosUv2 >> 16;
 
-                RenderWallColumn(width, x, textureHeight, top, bottom, *textureYPos, incr, screenPtr,
-                    textureBuffer + *(texturePos + i));
+                for (int i = 0; i < Vector128<uint>.Count; i++)
+                {
+                    if (mask[i] == 0U)
+                        continue;
+
+                    uint texelIndex = textureYPos[i] % textureHeightU2 + textureXPosV2[i];
+                    uint pixel = *(textureBuffer + texelIndex);
+                    T.Draw(screenIndexPtr2 + i, pixel);
+                }
+
+                textureYPosUv2 = Vector128.ConditionalSelect(mask, textureYPosUv2 + textureXIncr_uV, textureYPosUv2);
             }
 
             return;
@@ -844,7 +873,6 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer
         uint* screenIndexPtr = screenPtr + min_t * width + x;
 
         uint textureHeightMask = (uint)(textureHeight);
-        Vector128<uint> textureMaskV = Vector128.Create(textureHeightMask);
         Vector128<uint> textureYPos_uV = Vector128.Load(textureYPos_u);
         Vector128<uint> textureXPosV = Vector128.Load(texturePos);
 
