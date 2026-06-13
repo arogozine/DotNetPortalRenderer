@@ -1,6 +1,7 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using OpenTK.Windowing.GraphicsLibraryFramework;
 using RenderingEngine;
 using SoftwareRendererModels;
 using System.Diagnostics;
@@ -91,6 +92,8 @@ namespace SoftwareRenderer
         protected override void OnLoad()
         {
             base.OnLoad();
+
+            GL.LoadBindings(new GLFWBindingsContext());
 
             GL.ClearColor(0f, 0f, 0f, 1f);
 

@@ -113,7 +113,7 @@ namespace RenderingEngine.Engine
             return true;
         }
 
-        private unsafe void DrawTransparentWall(
+        private void DrawTransparentWall(
             ReadOnlySpan<RenderableSector> sectors,
             RenderWindowWallSnapshot renderableWall)
         {
@@ -199,7 +199,7 @@ namespace RenderingEngine.Engine
             return basicWall;
         }
 
-        private unsafe void DrawUpperSkyboxPortalWall(
+        private void DrawUpperSkyboxPortalWall(
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall)
         {
@@ -211,7 +211,7 @@ namespace RenderingEngine.Engine
             DrawBasicSkyboxWall(player, renderableWall, wallStartClampedPtr, wallEndClampedPtr, wall.UpperTexture);
         }
 
-        private unsafe void DrawLowerSkyboxPortalWall(
+        private void DrawLowerSkyboxPortalWall(
                 PortalPlayerSnapshot player,
                 RenderablePortalWall renderableWall)
         {
@@ -223,7 +223,7 @@ namespace RenderingEngine.Engine
             DrawBasicSkyboxWall(player, renderableWall, wallStartClampedPtr, wallEndClampedPtr, wall.LowerTexture);
         }
 
-        private unsafe void DrawUpperPortalWall(
+        private void DrawUpperPortalWall(
             RenderablePortalWall renderableWall)
         {
             RenderableWall wall = renderableWall.Wall;
@@ -239,7 +239,7 @@ namespace RenderingEngine.Engine
             DrawWallShared(renderableWall, upperTexture, repeatedCount, wallStartClamped, wallEndClamped);
         }
 
-        private unsafe void DrawLowerPortalWall(
+        private void DrawLowerPortalWall(
             RenderablePortalWall renderableWall)
         {
             RenderableWall wall = renderableWall.Wall;

@@ -12,7 +12,7 @@ namespace BuildAssetLoader.Con
             List<ConToken> tokens = [];
 
             var commandList = Enum.GetValues<CommandList>()
-                .ToFrozenDictionary(GetCommandName, x => x);
+                .ToFrozenDictionary(GetCommandName, static x => x);
 
             var test = commandList.GetAlternateLookup<ReadOnlySpan<char>>();
 

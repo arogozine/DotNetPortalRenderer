@@ -13,4 +13,4 @@ Requirements
 
 Code Guidelines
 - Use self-documenting code. Avoid redundant comments.
-- For any LLM written or assisted code, add "Copilot Assisted" comment.
+- For any LLM written or assisted code, add "AI Assisted" comment.

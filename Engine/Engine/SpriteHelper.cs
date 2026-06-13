@@ -132,12 +132,14 @@ namespace RenderingEngine.Engine
             return rotatedSprites;
         }
 
+        private static readonly List<RenderableSprite> sprites = [];
+
         public static List<RenderableSprite> FilterOutSpritesOutsideDepth(
             scoped Span<RenderableSprite> rotatedSprites,
             IReadOnlySet<int> sectors,
             Span<float> maxDepth, Span<float> minDepth)
         {
-            List<RenderableSprite> sprites = [];
+            sprites.Clear();
 
             for (int i = 0; i < rotatedSprites.Length; i++)
             {
@@ -307,7 +309,9 @@ namespace RenderingEngine.Engine
                 {
                     bool canRender = false;
 
-                    foreach (var wall in new FloorSpriteWallInfo[] { floorSprite.Wall1!, floorSprite.Wall2!, floorSprite.Wall3!, floorSprite.Wall4! })
+                    ReadOnlySpan<FloorSpriteWallInfo> walls = [floorSprite.Wall1!, floorSprite.Wall2!, floorSprite.Wall3!, floorSprite.Wall4!];
+
+                    foreach (var wall in walls)
                     {
                         if (wall.YLeftFloor < 0 && wall.YRightFloor < 0)
                         {
@@ -563,9 +567,18 @@ namespace RenderingEngine.Engine
             }
         }
 
+        private static RenderableSprite[] _rotatedSprites = new RenderableSprite[32];
+
         public static Span<RenderableSprite> RotateSprites(scoped ReadOnlySpan<RenderableSprite> sprites, PortalPlayerSnapshot player)
         {
-            var rotatedSprites = new RenderableSprite[sprites.Length];
+            if (_rotatedSprites.Length < sprites.Length)
+            {
+                Array.Resize(ref _rotatedSprites, sprites.Length);
+            }
+
+            Span<RenderableSprite> rotatedSprites = _rotatedSprites.AsSpan();
+            rotatedSprites.Clear();
+            rotatedSprites = rotatedSprites[..sprites.Length];
 
             float pSin = player.Sin;
             float pCos = player.Cos;

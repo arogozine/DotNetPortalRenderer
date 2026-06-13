@@ -131,17 +131,17 @@ internal static class GrpReader
         List<Command> commands = ParseOutCommands(defsTokens);
         commands.AddRange(ParseOutCommands(gameConTokens));
 
-        Dictionary<string, DefineCommand> defines = commands.Where(x => x is DefineCommand)
+        Dictionary<string, DefineCommand> defines = commands.Where(static x => x is DefineCommand)
             .Cast<DefineCommand>()
-            .ToDictionary(x => x.Name, x => x);
+            .ToDictionary(static x => x.Name, static x => x);
 
         IEnumerable<BaseActorCommand> actors = commands
-            .Where(x => x is BaseActorCommand)
+            .Where(static x => x is BaseActorCommand)
             .Cast<BaseActorCommand>();
 
-        var actions = commands.Where(x => x is ActionCommand)
+        var actions = commands.Where(static x => x is ActionCommand)
             .Cast<ActionCommand>()
-            .ToDictionary(x => x.Name, x => x);
+            .ToDictionary(static x => x.Name, static x => x);
 
         Dictionary<int, SpriteAngleRotation[]> spriteToActions = [];
 
@@ -1276,7 +1276,7 @@ internal static class GrpReader
 
             foreach ((int key, var values) in spriteToAngleFrames)
             {
-                var textureAngles = values.Select(x => new TextureAngle(x.Angle ?? 0f, TextureCache.GetTexture(ToTile((short)x.Sprite)), x.Flipped))
+                var textureAngles = values.Select(static x => new TextureAngle(x.Angle ?? 0f, TextureCache.GetTexture(ToTile((short)x.Sprite)), x.Flipped))
                     .ToArray();
 
                 lookup[key] = new GameSpriteAnimation

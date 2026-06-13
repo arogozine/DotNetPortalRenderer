@@ -435,6 +435,7 @@ namespace RenderingEngine.Engine
 
                 for (int v = 0; v < visible.Length; v++)
                 {
+                    visible[v].Bunch = s;
                     finalWalls[i++] = visible[v];
                 }
             }

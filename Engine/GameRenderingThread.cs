@@ -30,7 +30,7 @@ namespace RenderingEngine
 
             engineLoopTask = Task.Factory
                 .StartNew(TaskBody, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default)
-                .ContinueWith((Task t) =>
+                .ContinueWith(static (Task t) =>
                 {
                     Debug.WriteLine(t.Exception);
                     Debugger.Break();
@@ -40,6 +40,8 @@ namespace RenderingEngine
 
             void TaskBody() 
             {
+                Thread.CurrentThread.Priority = ThreadPriority.AboveNormal;
+
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     StartRenderingSemaphore.Wait(cancellationToken);

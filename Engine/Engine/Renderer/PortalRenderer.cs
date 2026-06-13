@@ -46,9 +46,9 @@ namespace RenderingEngine.Engine
         /// </summary>
         private void GenerateAngleCache()
         {
-            Span<float> angleCache = memoryPool.GetBucket<float>(MemoryPoolBucket.AngleCache);
+            float* angleCache = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.AngleCache);
 
-            int width = angleCache.Length;
+            int width = this.PixelWidth;
 
             float cameraWidthIncr = 2.0f / width;
             float cameraRay = -EngineConstants.CameraPlaneX;
@@ -61,8 +61,8 @@ namespace RenderingEngine.Engine
 
         private void GenerateCache()
         {
-            Span<float> xMapPosMultiplierCache = memoryPool.GetBucket<float>(MemoryPoolBucket.XMapPosMultiplierCache);
-            Span<float> cameraHeightToMapYPos = memoryPool.GetBucket<float>(MemoryPoolBucket.CameraHeightToMapYPos);
+            float* xMapPosMultiplierCache = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
+            float* cameraHeightToMapYPos = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
             int width = this.PixelWidth;
             int height = this.PixelHeight;

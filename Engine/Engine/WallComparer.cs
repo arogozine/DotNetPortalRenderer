@@ -117,12 +117,6 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            return CompareFurtherst(xCY1, xCY2, yCY1, yCY2);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int CompareFurtherst(float xCY1, float xCY2, float yCY1, float yCY2)
-        {
             float xd = (xCY1 + xCY2) / 2f;
             float yd = (yCY1 + yCY2) / 2f;
 

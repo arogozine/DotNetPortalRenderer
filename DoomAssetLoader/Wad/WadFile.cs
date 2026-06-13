@@ -44,7 +44,7 @@
             EnsureExist(LumpType.ColorMap);
             EnsureExist(LumpType.PlayPal);
 
-            Lumps.AddRange(wadFile.Lumps.Where(x => x.IsPatch));
+            Lumps.AddRange(wadFile.Lumps.Where(static x => x.IsPatch));
             return this;
 
             void EnsureExist(string lumpType)

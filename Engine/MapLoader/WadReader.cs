@@ -843,8 +843,8 @@ internal static class WadReader
 
             var animationFrames = foundTextures
                 .SelectMany(GetAnimFrameAndAngle)
-                .GroupBy(x => x.AnimationFrame)
-                .OrderBy(g => g.Key)
+                .GroupBy(static x => x.AnimationFrame)
+                .OrderBy(static g => g.Key)
                 .ToArray();
 
             TextureAngle[][] animationFramesA = new TextureAngle[animationFrames.Length][];
@@ -852,7 +852,7 @@ internal static class WadReader
             for (int a = 0; a < animationFrames.Length; a++)
             {
                 DoomTextureInfo[] frames = animationFrames[a]
-                    .OrderBy(x => x.Angle)
+                    .OrderBy(static x => x.Angle)
                     .ToArray();
 
                 animationFramesA[a] = new TextureAngle[frames.Length];
