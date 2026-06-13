@@ -369,7 +369,6 @@ namespace RenderingEngine.Engine
                         else
                         {
                             CoreRendererForOddTextures<DrawAlphaPixel>.RenderSpriteHorizontally(spriteFromX, spriteToX, width, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
-
                         }
                     }
                 }
@@ -383,7 +382,7 @@ namespace RenderingEngine.Engine
                         }
                         else
                         {
-                            CoreRendererForOddTextures<DrawTransparentPixel>.RenderWall(spriteFromX, spriteToX, width, textureHeight, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
+                            CoreRendererForUntiledTextures<DrawTransparentPixel>.RenderWall(spriteFromX, spriteToX, width, textureHeight, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
                         }
                     }
                     else
@@ -394,7 +393,7 @@ namespace RenderingEngine.Engine
                         }
                         else
                         {
-                            CoreRendererForOddTextures<DrawAlphaPixel>.RenderWall(spriteFromX, spriteToX, width, textureHeight, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
+                            CoreRendererForUntiledTextures<DrawAlphaPixel>.RenderWall(spriteFromX, spriteToX, width, textureHeight, repeatedCount, texturePtr, screenPtr, portalFromClampedPtr, portalToClampedPtr, textureXLocationPtr, textureYLocationPtr, textureYIncrementPtr);
                         }
                     }
                 }

@@ -303,13 +303,21 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
+        private static Range[] _bunches = new Range[32];
+
         public static Span<Range> BreakUpIntoBunches(scoped ReadOnlySpan<RenderableWall> rotatedWalls)
         {
             // a bunch is a set of connected walls
             // we figure out the range of each bunch here
 
             int bunchLength = rotatedWalls.Length > 0 ? rotatedWalls.Length : 1;
-            Span<Range> bunches = new Range[bunchLength];
+
+            if (_bunches.Length < rotatedWalls.Length)
+            {
+                Array.Resize(ref _bunches, rotatedWalls.Length);
+            }
+
+            Span<Range> bunches = _bunches.AsSpan()[..bunchLength];
 
             int bunchCount = 0;
             int subsetStart = 0;
@@ -421,10 +429,19 @@ namespace RenderingEngine.Engine
             return walls[..j];
         }
 
+        private RenderableWall[] _visible = new RenderableWall[8];
+
         public Span<RenderableWall> CullHiddenWallsAndCombineBunches(
             scoped Span<Range> bunches, scoped Span<RenderableWall> rotatedWalls, ReadOnlySpan<RenderableWall> parentPortalWallsToOcclude)
         {
-            Span<RenderableWall> finalWalls = new RenderableWall[rotatedWalls.Length];
+            
+            if (rotatedWalls.Length > _visible.Length)
+            {
+                Array.Resize(ref _visible, rotatedWalls.Length);
+            }
+
+            Span<RenderableWall> finalWalls = _visible.AsSpan();
+            finalWalls.Clear();
 
             int i = 0;
             for (int s = 0; s < bunches.Length; s++)

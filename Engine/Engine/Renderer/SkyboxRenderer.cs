@@ -23,8 +23,6 @@ namespace RenderingEngine.Engine
 
             fixed (uint* texturePtr = &ceilingTexturePtr)
             {
-                Sse.Prefetch2(texturePtr);
-
                 RenderSkyboxShared(player, RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderCeiling,
                     screenPtr, texturePtr, sectorFromX, sectorToX,
                     ceilingStartPtr, wallStartPtr,
@@ -162,8 +160,6 @@ namespace RenderingEngine.Engine
 
             fixed (uint* texturePtr = &wallTextureUintPtr)
             {
-                Sse.Prefetch2(texturePtr);
-
                 RenderSkyboxShared(player, RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall,
                     screenPtr, texturePtr, wallFromX, wallToX,
                     wallStartPtr, wallEndPtr,

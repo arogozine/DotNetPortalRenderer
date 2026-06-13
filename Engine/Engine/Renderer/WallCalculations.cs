@@ -769,6 +769,24 @@ namespace RenderingEngine.Engine
             CalculateTextureDistanceAndXPosition(renderableWall, renderableWall.Wall.MiddleTexture!);
         }
 
+        public static bool TextureIsUntiledY(RenderableSector sector,
+            GameTextureInfo wallTexture)
+        {
+            int textureHeight = wallTexture.Height;
+
+            if (wallTexture.YScale is float yScale)
+            {
+                yScale = (sector.Ceil - sector.Floor) * yScale;
+
+                return yScale <= 1f;
+            }
+            else
+            {
+                return textureHeight <= (sector.Ceil - sector.Floor);
+            }
+
+        }
+
         // TODO: Simplify
         private static (int Height, int Width, float XScale, float ScaledTextureHeight) CalculateScale(
             RenderableSector sector,

@@ -5,10 +5,10 @@ using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine;
 
-internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
+internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer
     where T : IDrawPixel
 {
-    private CoreRendererForPowTextures() { }
+    private CoreRendererForUntiledTextures() { }
 
     public static void RenderSkybox(PortalPlayerSnapshot player,
         int repeatCount,
@@ -708,7 +708,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
         (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
 
         uint textureHeightMask = (uint)(textureHeight - 1);
-        Vector256<uint> textureMaskV = Vector256.Create(textureHeightMask);
+        // Vector256<uint> textureMaskV = Vector256.Create(textureHeightMask);
 
         Vector256<uint> textureXPosV = Vector256.Load(texturePos);
         Vector256<uint> textureYPos_uV = Vector256.Load(textureYPos_u);
@@ -722,7 +722,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                 Vector256<uint> yV = Vector256.Create(y);
                 Vector256<uint> mask = Vector256.LessThan(startYV, yV) & Vector256.GreaterThan(endYV, yV);
 
-                Vector256<uint> texelIndexV = textureXPosV + ((textureYPos_uV >> 16) & textureMaskV);
+                Vector256<uint> texelIndexV = textureXPosV + (textureYPos_uV >> 16);// & textureMaskV);
 
                 for (int i = 0; i < Vector256<uint>.Count; i++)
                 {
@@ -755,7 +755,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
             {
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector256<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
+                    Vector256<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
                     texelIndexV += textureXPosV;
 
                     Vector256<uint> gathered = Avx2.GatherVector256(
@@ -775,7 +775,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                 // go down the column set
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector256<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
+                    Vector256<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
                     texelIndexV += textureXPosV;
 
                     // horizontally draw the texture
@@ -804,7 +804,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
         {
             for (uint y = min_t; y < max_t; y++)
             {
-                Vector256<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
+                Vector256<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
                 texelIndexV += textureXPosV;
 
                 Vector256<uint> mask = Vector256.LessThan(startYV, Vector256.Create(y));
@@ -840,7 +840,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
         {
             for (uint y = min_b; y < max_b; y++)
             {
-                Vector256<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
+                Vector256<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
                 texelIndexV += textureXPosV;
 
                 Vector256<uint> mask = Vector256.GreaterThan(endYV, Vector256.Create(y));
@@ -907,7 +907,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                 Vector128<uint> yV = Vector128.Create(y);
                 Vector128<uint> mask = Vector128.LessThan(startYV, yV) & Vector128.GreaterThan(endYV, yV);
 
-                Vector128<uint> texelIndexV = textureXPosV + ((textureYPos_uV >> 16) & textureMaskV);
+                Vector128<uint> texelIndexV = textureXPosV + ((textureYPos_uV >> 16));// & textureMaskV);
 
                 for (int i = 0; i < Vector128<uint>.Count; i++)
                 {
@@ -940,7 +940,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
             {
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector128<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
+                    Vector128<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
                     texelIndexV += textureXPosV;
 
                     Vector128<uint> gathered = Avx2.GatherVector128(
@@ -960,7 +960,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                 // go down the column set
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector128<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
+                    Vector128<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
                     texelIndexV += textureXPosV;
 
                     // horizontally draw the texture
@@ -989,7 +989,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
         {
             for (uint y = min_t; y < max_t; y++)
             {
-                Vector128<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
+                Vector128<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
                 texelIndexV += textureXPosV;
 
                 Vector128<uint> mask = Vector128.LessThan(startYV, Vector128.Create(y));
@@ -1025,7 +1025,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
         {
             for (uint y = min_b; y < max_b; y++)
             {
-                Vector128<uint> texelIndexV = (textureYPos_uV >> 16) & textureMaskV;
+                Vector128<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
                 texelIndexV += textureXPosV;
 
                 Vector128<uint> mask = Vector128.GreaterThan(endYV, Vector128.Create(y));
@@ -1273,7 +1273,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
             uint* screenIndexPtr = screenPtr + max_t * width + x;
             uint* screenIndexPtrEnd = screenPtr + min_b * width + x;
 
-            uint textureMask = (uint)(textureHeight - 1);
+            //uint textureMask = (uint)(textureHeight - 1);
 
             // go down the column set
             while (screenIndexPtr < screenIndexPtrEnd)
@@ -1282,7 +1282,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                 for (int i = 0; i < count; i++)
                 {
                     uint* textureXPos = textureYPos_u + i;
-                    uint texelIndex = (*textureXPos >> 16) & textureMask;
+                    uint texelIndex = (*textureXPos >> 16);// & textureMask;
                     texelIndex += *(texturePos + i);
 
                     uint pixel = *(textureBuffer + texelIndex);
@@ -1337,11 +1337,11 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
         uint* screenIndexPtr = screenPtr + startY * width + x;
         uint* screenIndexPtrEnd = screenPtr + endY * width + x;
 
-        uint textureHeightMask = (uint)(textureHeight - 1);
+        // uint textureHeightMask = (uint)(textureHeight - 1);
 
         while (screenIndexPtr != screenIndexPtrEnd)
         {
-            uint texelIndex = (textureYPos_u >> 16) & textureHeightMask;
+            uint texelIndex = (textureYPos_u >> 16);// & textureHeightMask;
             uint pixel = *(textureBuffer + texelIndex);
 
             T.Draw(screenIndexPtr, pixel);
@@ -1370,11 +1370,11 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
         uint* screenIndexPtr = screenPtr + startY * width + x;
         uint* screenIndexPtrEnd = screenPtr + endY * width + x;
 
-        uint textureHeightMask = (uint)(textureHeight - 1);
+        //uint textureHeightMask = (uint)(textureHeight - 1);
 
         while (screenIndexPtr < screenIndexPtrEnd)
         {
-            uint texelIndex = (textureYPos_u >> 16) & textureHeightMask;
+            uint texelIndex = (textureYPos_u >> 16);// & textureHeightMask;
             uint pixel = *(textureBuffer + texelIndex);
 
             T.Draw(screenIndexPtr, pixel);

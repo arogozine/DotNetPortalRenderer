@@ -385,8 +385,10 @@ namespace RenderingEngine.Engine
             Vector2 pointA = useNonRotatedCoordinates ? firstWall.PointA : firstWall.R1;
             Vector2 pointB = useNonRotatedCoordinates ? firstWall.PointB : firstWall.R2;
 
-            float dx = pointB.X - pointA.X;
-            float dy = pointB.Y - pointA.Y;
+            Vector2 dist = pointB - pointA;
+
+            float dx = dist.X;
+            float dy = dist.Y;
 
             float distance = MathF.Sqrt(dx * dx + dy * dy);
 

@@ -709,21 +709,21 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer
             for (uint y = min_t; y < max_b; y++, screenIndexPtr += width)
             {
                 Vector256<uint> yV = Vector256.Create(y);
-                Vector256<uint> mask = Vector256.LessThan(startYV, yV) & Vector256.GreaterThan(endYV, yV);
+                Vector256<uint> maskV = Vector256.LessThan(startYV, yV) & Vector256.GreaterThan(endYV, yV);
 
-                Vector256<uint> textureYPos = textureYPos_uV >> 16;
+                Vector256<uint> textureYPosV = textureYPos_uV >> 16;
 
                 for (int i = 0; i < Vector256<uint>.Count; i++)
                 {
-                    if (mask[i] == 0U)
+                    if (maskV[i] == 0U)
                         continue;
 
-                    uint texelIndex = textureYPos[i] % textureHeightU + textureXPosV[i];
+                    uint texelIndex = textureYPosV[i] % textureHeightU + textureXPosV[i];
                     uint pixel = *(textureBuffer + texelIndex);
                     T.Draw(screenIndexPtr + i, pixel);
                 }
 
-                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                textureYPos_uV = Vector256.ConditionalSelect(maskV, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
             }
 
             return;
