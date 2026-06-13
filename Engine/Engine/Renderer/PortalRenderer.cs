@@ -39,6 +39,12 @@ namespace RenderingEngine.Engine
 
             GenerateAngleCache();
             GenerateCache();
+
+            mirroredSectors = new HashSet<int>[EngineConstants.MaxRenderDepth];
+            for (int i = 0; i < EngineConstants.MaxRenderDepth; i++)
+            {
+                mirroredSectors[i] = new();
+            }
         }
 
         /// <summary>
@@ -95,7 +101,7 @@ namespace RenderingEngine.Engine
         private readonly List<RenderablePortalWall> neightbors = [];
         private readonly List<RenderablePortalWall> renderableWalls = [];
         private readonly HashSet<int> renderedSectors = [];
-        private readonly HashSet<int> mirroredSectors = [];
+        private readonly HashSet<int>[] mirroredSectors;
 
         public void DrawScreen(PortalPlayerSnapshot player)
         {
@@ -150,8 +156,8 @@ namespace RenderingEngine.Engine
 
                         Debug.Assert(renderableWall.MirrorWall.Neighbor != null);
 
-                        _ = mirroredSectors.Add(renderableWall.MirrorWall.Neighbor.Value);
-                        _ = mirroredSectors.Add(renderableWall.Wall.Neighbor.Value);
+                        _ = mirroredSectors[renderDepth].Add(renderableWall.MirrorWall.Neighbor.Value);
+                        _ = mirroredSectors[renderDepth].Add(renderableWall.Wall.Neighbor.Value);
                     }
 
                     if (renderableWall.IsPortalWithMiddleTexture)
@@ -170,14 +176,14 @@ namespace RenderingEngine.Engine
                 // 5. Enqueue all portal walls for next depth
                 foreach (RenderablePortalWall renderableWall in neighborsForDepth)
                 {
-                    RenderableWall neighbor = renderableWall.Wall;
+                    RenderableWall neightborWall = renderableWall.Wall;
 
-                    Debug.Assert(neighbor.Neighbor != null);
+                    Debug.Assert(neightborWall.Neighbor != null);
 
                     var neighborToRender = new NeighborsToRender(renderableWall, renderableWall.ParentWalls!)
                     {
-                        SectorId = neighbor.Neighbor.Value,
-                        MirrorWall = neighbor.IsMirror ? neighbor : renderableWall.MirrorWall
+                        SectorId = neightborWall.Neighbor.Value,
+                        MirrorWall = neightborWall.IsMirror ? neightborWall : renderableWall.MirrorWall
                     };
 
                     sectorRenderQueue.Add(neighborToRender);
@@ -195,7 +201,11 @@ namespace RenderingEngine.Engine
             transparentWalls.Clear();
             sectorRenderQueue.Clear();
             renderedSectors.Clear();
-            mirroredSectors.Clear();
+
+            for (int i = 0; i < renderDepth; i++)
+            {
+                mirroredSectors[i].Clear();
+            }
         }
 
         private readonly List<RenderablePortalWall> neighborsForDepth = [];
@@ -273,12 +283,19 @@ namespace RenderingEngine.Engine
                 {
                     int renderDepth = sectorSprites.RenderDepth;
                     Span<float> currentDistance = depthBuffer[(PixelWidth * renderDepth)..];
+                    HashSet<int> mirroredSectorsForDepth = mirroredSectors[renderDepth];
                     Span<float> nextDistance = (--renderDepth) >= 0 ? depthBuffer[(PixelWidth * renderDepth)..] : default;
 
                     List<RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
                         renderedSectors, currentDistance, nextDistance);
 
-                    sprites.AddRange(SpriteHelper.GetMirroredSprites(player, Sprites, Sectors, mirroredSectors, sectorSprites));
+                    foreach (RenderableSprite s in sprites)
+                    {
+                        DrawSprite(player, sectors, s, sectorSprites);
+                    }
+
+                    Span<RenderableSprite> mirroredSprites = SpriteHelper.GetMirroredSprites(player, Sprites, Sectors, mirroredSectorsForDepth, sectorSprites);
+                    sprites = SpriteHelper.FilterOutSpritesOutsideDepth(mirroredSprites, renderedSectors, currentDistance, nextDistance);
 
                     foreach (RenderableSprite s in sprites)
                     {

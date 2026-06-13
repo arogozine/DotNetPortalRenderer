@@ -156,8 +156,8 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                wall.R1 = MathFormulas.ReflectPoint(wall.PointA, mirroredWall.PointB, mirroredWall.PointA);
-                wall.R2 = MathFormulas.ReflectPoint(wall.PointB, mirroredWall.PointB, mirroredWall.PointA);
+                wall.R1 = MathFormulas.ReflectPoint(wall.PointA, mirroredWall.PointA, mirroredWall.PointB);
+                wall.R2 = MathFormulas.ReflectPoint(wall.PointB, mirroredWall.PointA, mirroredWall.PointB);
                 wall.Flipped = true;
             }
         }

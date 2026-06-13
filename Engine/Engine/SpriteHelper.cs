@@ -239,7 +239,8 @@ namespace RenderingEngine.Engine
                         continue;
                     }
 
-                    if ((sprite is RenderableWallSprite wallSprite) && wallSprite.TwoSided == false && x2 * y1 > y2 * x1)
+                    if ((sprite is RenderableWallSprite wallSprite) && wallSprite.TwoSided == false &&
+                        (sprite.Flipped ? (x2 * y1 < y2 * x1) : (x2 * y1 > y2 * x1)))
                     {
                         continue;
                     }
@@ -478,18 +479,30 @@ namespace RenderingEngine.Engine
             }
         }
 
+        private static RenderableSprite[] _mirrorSprites = new RenderableSprite[32];
+
         public static Span<RenderableSprite> RotateMirrorSprites(scoped ReadOnlySpan<RenderableSprite> sprites, PortalPlayerSnapshot player, RenderableWall flippedWall)
         {
-            Span<RenderableSprite> rotatedSprites = RotateSprites(sprites, player);
+            if (_mirrorSprites.Length < sprites.Length)
+            {
+                Array.Resize(ref _mirrorSprites, sprites.Length);
+            }
+
+            Span<RenderableSprite> rotatedSprites = _mirrorSprites.AsSpan();
+            rotatedSprites.Clear();
+            rotatedSprites = rotatedSprites[..sprites.Length];
 
             float pSin = player.Sin;
             float pCos = player.Cos;
             float px = player.X;
             float py = player.Y;
 
-            for (int i = 0; i < rotatedSprites.Length; i++)
+            for (int i = 0; i < sprites.Length; i++)
             {
-                rotatedSprites[i] = CreateMirroredRotatedCopy(rotatedSprites[i]);
+                RenderableSprite s = sprites[i];
+                DetermineAngle(s, player);
+
+                rotatedSprites[i] = CreateMirroredRotatedCopy(s);
             }
 
             return rotatedSprites;
@@ -519,7 +532,7 @@ namespace RenderingEngine.Engine
                         R2 = r2,
                         R3 = r3,
                         R4 = r4,
-                        Flipped = true
+                        Flipped = !s.Flipped
                     };
                 }
                 else if (s is RenderableWallSprite)
@@ -533,7 +546,7 @@ namespace RenderingEngine.Engine
                         Rotated = rotated,
                         R1 = r1,
                         R2 = r2,
-                        Flipped = true
+                        Flipped = !s.Flipped
                     };
                 }
                 else
@@ -554,7 +567,7 @@ namespace RenderingEngine.Engine
                         Rotated = rotated,
                         R1 = r1,
                         R2 = r2,
-                        Flipped = true
+                        Flipped = !s.Flipped
                     };
                 }
             }
@@ -600,51 +613,7 @@ namespace RenderingEngine.Engine
 
                 Vector2 rotated = RotateVertex(s.Location);
 
-                if (s.Sprite.AnimationAngle?.AnimationToAngleToTexture?[0] is { } animationAngle)
-                {
-                    (float mx, float my) = s.Location;
-                    float dx = px - mx;
-                    float dy = py - my;
-                    s.AngleToPlayer = MathFormulas.ClampAngle(MathF.Atan2(dy, dx) - 0.5f * MathF.PI);
-
-                    TextureAngle selectedAngle = animationAngle[0];
-                    float dist = float.MaxValue;
-                    float angleToPlayer = s.AngleToPlayer;
-
-                    for (int i = 0; i < animationAngle.Length; i++)
-                    {
-                        TextureAngle textureAngle = animationAngle[i];
-
-                        float dist2 = MathF.Abs(angleToPlayer - textureAngle.Angle);
-
-                        if (dist2 < dist)
-                        {
-                            dist = dist2;
-                            selectedAngle = textureAngle;
-                        }
-                    }
-
-                    if (s.Sprite.Texture.Texture != selectedAngle.Texture)
-                    {
-                        s.Flipped = selectedAngle.Flipped;
-                        s.Sprite.Texture.Texture = selectedAngle.Texture;
-
-                        (float width,  _) = texture.GetScaledDemensions();
-
-                        Sprite sprite = s.Sprite;
-
-                        (float x, float y) = s.Sprite.Location;
-
-                        float rx1 = x - width * 0.5f;
-                        float rx2 = x + width * 0.5f;
-                        float ry1 = y;
-                        float ry2 = y;
-
-                        sprite.Length = width;
-                        sprite.PointA = new Vector2(rx1, ry1);
-                        sprite.PointB = new Vector2(rx2, ry2);
-                    }
-                }
+                DetermineAngle(s, player);
 
                 if (s is RenderableFloorSprite floorSprite)
                 {
@@ -693,6 +662,60 @@ namespace RenderingEngine.Engine
                 // offset by player coordinates for easier calculations
                 // rotate vertex points to face 'up' from player at (0, 0)
                 return SharedHelpers.RotateVertex(p.X, p.Y, pSin, pCos, px, py);
+            }
+        }
+
+        private static void DetermineAngle(RenderableSprite s, PortalPlayerSnapshot player)
+        {
+            if (s.Sprite.AnimationAngle?.AnimationToAngleToTexture?[0] is { } animationAngle)
+            {
+                GameTextureInfo texture = s.Texture;
+
+                float px = player.X;
+                float py = player.Y;
+
+                (float mx, float my) = s.Location;
+                float dx = px - mx;
+                float dy = py - my;
+                s.AngleToPlayer = MathFormulas.ClampAngle(MathF.Atan2(dy, dx) - 0.5f * MathF.PI);
+
+                TextureAngle selectedAngle = animationAngle[0];
+                float dist = float.MaxValue;
+                float angleToPlayer = s.AngleToPlayer;
+
+                for (int i = 0; i < animationAngle.Length; i++)
+                {
+                    TextureAngle textureAngle = animationAngle[i];
+
+                    float dist2 = MathF.Abs(angleToPlayer - textureAngle.Angle);
+
+                    if (dist2 < dist)
+                    {
+                        dist = dist2;
+                        selectedAngle = textureAngle;
+                    }
+                }
+
+                if (s.Sprite.Texture.Texture != selectedAngle.Texture)
+                {
+                    s.Flipped = selectedAngle.Flipped;
+                    s.Sprite.Texture.Texture = selectedAngle.Texture;
+
+                    (float width, _) = texture.GetScaledDemensions();
+
+                    Sprite sprite = s.Sprite;
+
+                    (float x, float y) = s.Sprite.Location;
+
+                    float rx1 = x - width * 0.5f;
+                    float rx2 = x + width * 0.5f;
+                    float ry1 = y;
+                    float ry2 = y;
+
+                    sprite.Length = width;
+                    sprite.PointA = new Vector2(rx1, ry1);
+                    sprite.PointB = new Vector2(rx2, ry2);
+                }
             }
         }
 

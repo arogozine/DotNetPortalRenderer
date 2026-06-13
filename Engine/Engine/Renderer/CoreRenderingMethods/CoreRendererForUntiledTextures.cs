@@ -755,7 +755,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer
             {
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector256<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
+                    Vector256<uint> texelIndexV = (textureYPos_uV >> 16);
                     texelIndexV += textureXPosV;
 
                     Vector256<uint> gathered = Avx2.GatherVector256(
@@ -775,7 +775,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer
                 // go down the column set
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector256<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
+                    Vector256<uint> texelIndexV = (textureYPos_uV >> 16);
                     texelIndexV += textureXPosV;
 
                     // horizontally draw the texture
@@ -804,7 +804,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer
         {
             for (uint y = min_t; y < max_t; y++)
             {
-                Vector256<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
+                Vector256<uint> texelIndexV = (textureYPos_uV >> 16);
                 texelIndexV += textureXPosV;
 
                 Vector256<uint> mask = Vector256.LessThan(startYV, Vector256.Create(y));
@@ -840,7 +840,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer
         {
             for (uint y = min_b; y < max_b; y++)
             {
-                Vector256<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
+                Vector256<uint> texelIndexV = (textureYPos_uV >> 16);
                 texelIndexV += textureXPosV;
 
                 Vector256<uint> mask = Vector256.GreaterThan(endYV, Vector256.Create(y));
@@ -940,7 +940,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer
             {
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector128<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
+                    Vector128<uint> texelIndexV = (textureYPos_uV >> 16);
                     texelIndexV += textureXPosV;
 
                     Vector128<uint> gathered = Avx2.GatherVector128(
@@ -960,7 +960,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer
                 // go down the column set
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector128<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
+                    Vector128<uint> texelIndexV = (textureYPos_uV >> 16);
                     texelIndexV += textureXPosV;
 
                     // horizontally draw the texture
@@ -989,7 +989,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer
         {
             for (uint y = min_t; y < max_t; y++)
             {
-                Vector128<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
+                Vector128<uint> texelIndexV = (textureYPos_uV >> 16);
                 texelIndexV += textureXPosV;
 
                 Vector128<uint> mask = Vector128.LessThan(startYV, Vector128.Create(y));
@@ -1025,7 +1025,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer
         {
             for (uint y = min_b; y < max_b; y++)
             {
-                Vector128<uint> texelIndexV = (textureYPos_uV >> 16);// & textureMaskV;
+                Vector128<uint> texelIndexV = (textureYPos_uV >> 16);
                 texelIndexV += textureXPosV;
 
                 Vector128<uint> mask = Vector128.GreaterThan(endYV, Vector128.Create(y));
