@@ -626,7 +626,7 @@ namespace RenderingEngine.Engine
             return repeatedCountPtr;
         }
 
-        private unsafe ushort* CalculateTransparentWallBuild(
+        private ushort* CalculateTransparentWallBuild(
             ReadOnlySpan<RenderableSector> sectors,
             RenderWindowWallSnapshot renderableWall)
         {

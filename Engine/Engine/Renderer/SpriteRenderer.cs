@@ -1,6 +1,7 @@
 ﻿using RenderingEngine.Tooling;
 using SoftwareRendererModels;
 using System.Numerics;
+using System.Runtime.Intrinsics;
 
 namespace RenderingEngine.Engine
 {
@@ -457,8 +458,8 @@ namespace RenderingEngine.Engine
             Span<int> wallStartSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[bufferOffset..];
             Span<int> wallEndSpan = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[bufferOffset..];
 
-            spriteWindowTop[from..to].Fill(int.MaxValue);
-            spriteWindowBottom[from..to].Fill(int.MinValue);
+            spriteWindowTop[from..(to + 1)].Fill(int.MaxValue);
+            spriteWindowBottom[from..(to + 1)].Fill(int.MinValue);
 
             GameTextureInfo texture = sprite.Texture;
             bool translucent = texture.RenderingOptions.HasFlag(TextureRenderingOptions.Translucent);
@@ -505,7 +506,7 @@ namespace RenderingEngine.Engine
             int* portalToClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
             ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.Temp);
 
-            for (int x = from; x < to; x++)
+            for (int x = from; x <= to; x++)
             {
                 int wallStart = wallStartSpan[x];
                 int wallEnd = wallEndSpan[x];
@@ -545,7 +546,7 @@ namespace RenderingEngine.Engine
 
                 if (translucent)
                 {
-                    CoreRendererForPowTextures<DrawAlphaPixel>.RenderFloorOrCeilingSprite(xMapPosMultiplierCachePtr, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
+                    ICoreRenderer<DrawAlphaPixel>.RenderFloorOrCeilingSprite(xMapPosMultiplierCachePtr, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,
@@ -554,7 +555,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    CoreRendererForPowTextures<DrawTransparentPixel>.RenderFloorOrCeilingSprite(xMapPosMultiplierCachePtr, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
+                    ICoreRenderer<DrawTransparentPixel>.RenderFloorOrCeilingSprite(xMapPosMultiplierCachePtr, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,
@@ -565,7 +566,7 @@ namespace RenderingEngine.Engine
         }
 
         private unsafe void LimitToDepth(
-            Vector<float> yCeilV,
+            Vector<float> yOffsetV,
             RenderableFloorSprite sprite,
             Span<int> spriteWindowTop,
             Span<int> spriteWindowBottom,
@@ -573,10 +574,8 @@ namespace RenderingEngine.Engine
         {
             float* incrVectorCache = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
-            for (int x = sprite.XLeft; x < sprite.XRight; x++)
+            for (int x = sprite.XLeft; x <= sprite.XRight; x++)
             {
-                bool next = false;
-
                 int spriteFromY = spriteWindowTop[x];
                 int spriteToY = spriteWindowBottom[x];
 
@@ -585,35 +584,52 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                float y = depth[x];
-
+                Vector<float> yV = Vector.Create(depth[x]);
                 Vector<float> incrementVector = Vector.Load(incrVectorCache + spriteFromY);
 
                 // compare Y position of pixel to depth
                 while (spriteFromY < spriteToY)
                 {
-                    Vector<float> yMapPosR = yCeilV * incrementVector;
+                    Vector<float> yMapPosR = yOffsetV * incrementVector;
+                    Vector<int> mask = Vector.LessThan(yMapPosR, yV);
 
-                    for (int i = 0; i < Vector<float>.Count; i++)
+                    if (mask != Vector<int>.Zero)
                     {
-                        if (yMapPosR[i] < y)
-                        {
-                            next = true;
-                            break;
-                        }
-
-                        spriteFromY++;
-                    }
-
-                    if (next)
-                    {
+                        int lane = ExtractMostSignificantBits(mask);  // first set bit
+                        spriteFromY += lane;
                         break;
                     }
 
+                    spriteFromY += Vector<float>.Count;
                     incrementVector = Vector.Load(incrVectorCache + spriteFromY);
                 }
 
                 spriteWindowTop[x] = spriteFromY;
+            }
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static int ExtractMostSignificantBits(Vector<int> vector)
+            {
+                if (Vector<int>.Count == Vector512<int>.Count)
+                {
+                    ulong msb = vector.AsVector512().ExtractMostSignificantBits();
+                    return BitOperations.TrailingZeroCount(msb);
+                }
+
+                if (Vector<int>.Count == Vector256<int>.Count)
+                {
+                    uint msb = vector.AsVector256().ExtractMostSignificantBits();
+                    return BitOperations.TrailingZeroCount(msb);
+                }
+
+                if (Vector<int>.Count == Vector128<int>.Count)
+                {
+                    uint msb = vector.AsVector128().ExtractMostSignificantBits();
+                    return BitOperations.TrailingZeroCount(msb);
+                }
+
+                Debugger.Break();
+                throw new Exception("Vector<int>.Count is no 128, 256, or 512");
             }
         }
 
@@ -646,7 +662,7 @@ namespace RenderingEngine.Engine
                 float bottomWallIncr = (spriteBound.YRightFloor - spriteBound.YLeftFloor) / (float)(spriteBound.XRight - spriteBound.XLeft);
                 float bottomLoc = spriteBound.YLeftFloor;
 
-                for (int i = spriteBound.XLeft; i < spriteBound.XRight; i++, bottomLoc += bottomWallIncr)
+                for (int i = spriteBound.XLeft; i <= spriteBound.XRight; i++, bottomLoc += bottomWallIncr)
                 {
                     int yBottom = spriteWindowBottom[i];
                     int yTop = spriteWindowTop[i];

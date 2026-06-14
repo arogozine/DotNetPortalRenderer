@@ -17,7 +17,7 @@ namespace RenderingEngine.Engine
 
         private readonly RenderWindowHelper RenderWindowHelper;
 
-        private PortalPlayerSnapshot? Snapshot = null;
+        private PortalPlayerSnapshot? Snapshot;
 
         private readonly AlignedMemoryPool memoryPool;
 

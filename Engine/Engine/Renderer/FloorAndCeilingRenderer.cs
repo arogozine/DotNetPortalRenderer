@@ -385,7 +385,7 @@ namespace RenderingEngine.Engine
                             min_t, max_t, min_b, max_b);
 
                         x += Vector<int>.Count;
-                        count -= (ushort)Vector<int>.Count;
+                        // count -= (ushort)Vector<int>.Count;
                         continue;
                     }
                 }
