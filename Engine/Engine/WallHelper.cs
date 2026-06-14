@@ -99,7 +99,8 @@ namespace RenderingEngine.Engine
                 int xLeft = wall.XLeft;
                 int xRight = wall.XRight;
 
-                Span<bool> subspan = visibility[xLeft..xRight];
+                int xRightExclusive = Math.Min(xRight + 1, width);
+                Span<bool> subspan = visibility[xLeft..xRightExclusive];
                 bool visible = subspan.Contains(true);
                 subspan.Clear();
 
@@ -303,9 +304,9 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        private static Range[] _bunches = new Range[32];
+        private Range[] _bunches = new Range[32];
 
-        public static Span<Range> BreakUpIntoBunches(scoped ReadOnlySpan<RenderableWall> rotatedWalls)
+        public Span<Range> BreakUpIntoBunches(scoped ReadOnlySpan<RenderableWall> rotatedWalls)
         {
             // a bunch is a set of connected walls
             // we figure out the range of each bunch here
@@ -335,8 +336,15 @@ namespace RenderingEngine.Engine
 
                 if (b + 1 == rotatedWalls.Length)
                 {
-                    bunches[bunchCount] = subsetStart..rotatedWalls.Length;
-                    bunchCount++;
+                    if (current.Bunch != next.Bunch)
+                    {
+                        bunches[bunchCount++] = subsetStart..b;
+                        bunches[bunchCount++] = b..rotatedWalls.Length;
+                    }
+                    else
+                    {
+                        bunches[bunchCount++] = subsetStart..rotatedWalls.Length;
+                    }
                 }
                 // New Bunch = Not Connected to Previous Wall
                 else if (current.Bunch != next.Bunch)
@@ -493,6 +501,8 @@ namespace RenderingEngine.Engine
             float xLeft = halfWidth - rx1 / ry1 * scale;
             float xRight = halfWidth - rx2 / ry2 * scale;
 
+            wall.IntersectsView = false;
+
             /*
             // order left to right
             if (xLeft > xRight)
@@ -564,13 +574,13 @@ namespace RenderingEngine.Engine
                 }
             }
 
-            if (xLeft == xRight)
+            Clamp(ref xLeft, ref xRight);
+
+            if (xLeft >= xRight)
             {
                 wall.IntersectsView = false;
                 return;
             }
-
-            Clamp(ref xLeft, ref xRight);
 
             // order left to right
             if (xLeft > xRight)

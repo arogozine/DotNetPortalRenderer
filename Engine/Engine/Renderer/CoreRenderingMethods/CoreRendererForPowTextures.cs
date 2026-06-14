@@ -5,7 +5,11 @@ using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine;
 
-internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
+/// <summary>
+/// For rendering textures that are Power of 2.
+/// </summary>
+/// <typeparam name="T">How each pixel, or pixel line, is drawn</typeparam>
+internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
     where T : IDrawPixel
 {
     private CoreRendererForPowTextures() { }
@@ -59,7 +63,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                 wallStartY = Vector.ClampNative(wallStartY, ceilingStartY, floorEndY);
                 wallEndY = Vector.ClampNative(wallEndY, ceilingStartY, floorEndY);
 
-                (int min_t, int max_t, int min_b, int max_b) = ICoreRenderer.CalculateLaneTopBottoms(wallStartY, wallEndY);
+                (int min_t, int max_t, int min_b, int max_b) = ICoreRenderer<T>.CalculateLaneTopBottoms(wallStartY, wallEndY);
 
                 if (min_b > max_t)
                 {
@@ -398,7 +402,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
             // Attempt horizontal rendering
             if (count >= Vector<int>.Count)
             {
-                (int min_t, int max_t, int min_b, int max_b) = ICoreRenderer.CalculateLaneTopBottoms(x, fromYPtr, toYPtr);
+                (int min_t, int max_t, int min_b, int max_b) = ICoreRenderer<T>.CalculateLaneTopBottoms(x, fromYPtr, toYPtr);
 
                 if (min_b > max_t + 16)
                 {
@@ -681,7 +685,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
             (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(clampedFromY, count);
             (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(clampedToY, count);
 
-            RenderMultipleHorizontalLines(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
+            ICoreRenderer<T>.RenderMultipleHorizontalLines(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
 
             x += count;
         }
@@ -1053,147 +1057,6 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer
                 }
 
                 textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
-                screenIndexPtr += width;
-            }
-        }
-    }
-
-    public static void RenderMultipleHorizontalLines(
-        uint count,
-        uint width,
-        uint x,
-        uint* startY,
-        uint* endY,
-        uint min_t, uint max_t,
-        uint min_b, uint max_b,
-        uint* textureYPos_u,
-        uint* textureYIncr_u,
-        uint* screenPtr,
-        uint* texturePos,
-        uint* textureBuffer
-        )
-    {
-        RenderTops();
-        RenderHorizontal();
-        RenderBottoms();
-
-        return;
-
-        void RenderHorizontal()
-        {
-            uint* screenIndexPtr = screenPtr + max_t * width + x;
-            uint* screenIndexPtrEnd = screenPtr + min_b * width + x;
-
-            uint countLocal = count;
-            uint rem = countLocal & ((uint)Vector<uint>.Count - 1U);
-            uint vecCount = countLocal - rem;
-
-            while (screenIndexPtr < screenIndexPtrEnd)
-            {
-                int i = 0;
-
-                for (; i < vecCount; i += Vector<uint>.Count)
-                {
-                    uint* textureYPos = textureYPos_u + i;
-
-                    Vector<uint> textureYPosV = Vector.Load(textureYPos);
-                    Vector<uint> texturePosV = Vector.Load(texturePos + i);
-                    Vector<uint> texelIndexV = (textureYPosV >> 16) + texturePosV;
-
-                    if (Avx2.IsSupported && Vector<uint>.Count == Vector256<uint>.Count)
-                    {
-                        Vector256<uint> gathered = Avx2.GatherVector256(
-                            textureBuffer,
-                            texelIndexV.AsVector256().AsInt32(),
-                            scale: sizeof(uint)
-                        );
-
-                        T.DrawLine(screenIndexPtr, gathered);
-                    }
-                    else
-                    {
-                        for (int j = 0; j < Vector<uint>.Count; j++)
-                        {
-                            uint pixel = *(textureBuffer + texelIndexV[j]);
-                            T.Draw(screenIndexPtr + j, pixel);
-                        }
-                    }
-
-                    textureYPosV += Vector.Load(textureYIncr_u + i);
-                    textureYPosV.Store(textureYPos);
-                    screenIndexPtr += Vector<uint>.Count;
-                }
-
-                for (; i < countLocal; i++)
-                {
-                    uint* textureYPos = textureYPos_u + i;
-                    uint texelIndex = (*textureYPos >> 16);
-                    texelIndex += *(texturePos + i);
-
-                    uint pixel = *(textureBuffer + texelIndex);
-
-                    T.Draw(screenIndexPtr, pixel);
-
-                    *textureYPos += *(textureYIncr_u + i);
-                    screenIndexPtr++;
-                }
-
-                screenIndexPtr += width - countLocal;
-            }
-        }
-
-        void RenderTops()
-        {
-            uint* screenIndexPtr = screenPtr + min_t * width + x;
-
-            for (uint y = min_t; y < max_t; y++)
-            {
-                for (int i = 0; i < count; i++)
-                {
-                    uint start = *(startY + i);
-
-                    if (y <= start)
-                        continue;
-
-                    uint* textureXPos = textureYPos_u + i;
-                    uint texelIndex = (*textureXPos >> 16);
-                    texelIndex += *(texturePos + i);
-
-                    uint pixel = *(textureBuffer + texelIndex);
-
-                    T.Draw((screenIndexPtr + i), pixel);
-
-                    *textureXPos += *(textureYIncr_u + i);
-                }
-
-                screenIndexPtr += width;
-            }
-        }
-
-        void RenderBottoms()
-        {
-            uint* screenIndexPtr = screenPtr + min_b * width + x;
-
-            for (uint y = min_b; y < max_b; y++)
-            {
-                for (int i = 0; i < count; i++)
-                {
-                    uint end = *(endY + i);
-
-                    if (end <= y)
-                        continue;
-
-                    uint* textureXPos = textureYPos_u + i;
-                    uint texelIndex = (*textureXPos >> 16);
-                    texelIndex += *(texturePos + i);
-
-                    uint pixel = *(textureBuffer + texelIndex);
-
-                    T.Draw((screenIndexPtr + i), pixel);
-
-                    *textureXPos += *(textureYIncr_u + i);
-                }
-
                 screenIndexPtr += width;
             }
         }

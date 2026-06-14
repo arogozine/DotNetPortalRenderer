@@ -2,25 +2,7 @@
 
 ## Our Commitment
 
-DotNetPortalRenderer is committed to providing a welcoming and inclusive community for all contributors and participants, regardless of background, experience level, or identity.
-
-## Our Standards
-
-### Expected Behavior
-
-- **Be Respectful** - Treat all contributors with respect and professionalism
-- **Be Collaborative** - Work together constructively; welcome diverse perspectives
-- **Be Helpful** - Assist others in learning and growing
-- **Be Professional** - Keep discussions focused on the project and technical matters
-- **Be Inclusive** - Welcome contributions from people of all backgrounds
-
-### Unacceptable Behavior
-
-- Harassment or discrimination of any kind
-- Disrespectful or inflammatory comments
-- Personal attacks or derogatory language
-- Violation of others' privacy or intellectual property rights
-- Any conduct that creates an unsafe or unwelcoming environment
+Everyone can contribute to DotNetPortalRenderer - just be helpful, professional, and have fun! We welcome contributors of all backgrounds and experience levels.
 
 ## Contribution Principles
 
@@ -46,31 +28,11 @@ This ensures we maintain code quality while benefiting from AI-assisted developm
 
 ## Scope
 
-This Code of Conduct applies to:
-- All project discussions (issues, pull requests, discussions)
-- All project spaces (repositories, wikis, forums)
-- Community interactions with project maintainers and contributors
+This Code of Conduct applies to all project discussions and interactions.
 
 ## Enforcement
 
-Violations of this Code of Conduct may result in:
-- Request for clarification or removal of problematic content
-- Temporary or permanent ban from project participation
-- Report to GitHub or platform authorities if necessary
-
-## Reporting
-
-If you witness or experience conduct that violates this Code of Conduct:
-1. Report it to the project maintainers
-2. Provide as much detail as possible
-3. All reports will be taken seriously and handled confidentially
-
-## Our Pledge
-
-Project maintainers are committed to:
-- Enforcing this Code of Conduct fairly and consistently
-- Protecting the privacy of reporters
-- Creating a safe and welcoming environment for all
+The project owner can ban anyone from contributing for being unhelpful or rude.
 
 ## Attribution
 
