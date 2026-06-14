@@ -21,6 +21,9 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void DrawLine(uint* surface, Vector256<uint> pixels)
         {
+            if (pixels == Vector256<uint>.Zero)
+                return;
+
             pixels = BlendBGRA(Vector256.Load(surface), pixels);
             Vector256.Store(pixels, surface);
         }
@@ -28,6 +31,9 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void DrawLine(uint* surface, Vector128<uint> pixels)
         {
+            if (pixels == Vector128<uint>.Zero)
+                return;
+
             pixels = BlendBGRA(Vector128.Load(surface), pixels);
             Vector128.Store(pixels, surface);
         }
@@ -35,6 +41,9 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void DrawLine(uint* surface, Vector<uint> pixels)
         {
+            if (pixels == Vector<uint>.Zero)
+                return;
+
             pixels = BlendBGRA(Vector.Load(surface), pixels);
             Vector.Store(pixels, surface);
         }
@@ -42,23 +51,24 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void DrawLine(uint* surface, Vector256<uint> pixels, Vector256<uint> mask)
         {
+            if (pixels == Vector256<uint>.Zero)
+                return;
+
+            Vector256<uint> dst = Vector256.Load(surface);
+            Vector256<uint> blended = BlendBGRA(dst, pixels);
+
             if (Avx2.IsSupported)
             {
-                Vector256<uint> dst = Vector256.Load(surface);
-                Vector256<uint> blended = BlendBGRA(dst, pixels);
                 Vector256<uint> result = Vector256.ConditionalSelect(mask, blended, dst);
                 Vector256.Store(result, surface);
                 return;
             }
 
-            Vector256<uint> dstLoaded = Vector256.Load(surface);
-            Vector256<uint> blendedFull = BlendBGRA(dstLoaded, pixels);
-
             for (int i = 0; i < Vector256<uint>.Count; i++)
             {
                 if (mask[i] != 0U)
                 {
-                    *surface = blendedFull[i];
+                    *surface = blended[i];
                 }
 
                 surface++;
@@ -68,23 +78,24 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void DrawLine(uint* surface, Vector128<uint> pixels, Vector128<uint> mask)
         {
+            if (pixels == Vector128<uint>.Zero)
+                return;
+
+            Vector128<uint> dst = Vector128.Load(surface);
+            Vector128<uint> blended = BlendBGRA(dst, pixels);
+
             if (Avx2.IsSupported)
             {
-                Vector128<uint> dst = Vector128.Load(surface);
-                Vector128<uint> blended = BlendBGRA(dst, pixels);
                 Vector128<uint> result = Vector128.ConditionalSelect(mask, blended, dst);
                 Vector128.Store(result, surface);
                 return;
             }
 
-            Vector128<uint> dstLoaded = Vector128.Load(surface);
-            Vector128<uint> blendedFull = BlendBGRA(dstLoaded, pixels);
-
             for (int i = 0; i < Vector128<uint>.Count; i++)
             {
                 if (mask[i] != 0U)
                 {
-                    *surface = blendedFull[i];
+                    *surface = blended[i];
                 }
 
                 surface++;
@@ -94,6 +105,9 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void DrawLine(uint* surface, Vector<uint> pixels, Vector<uint> mask)
         {
+            if (pixels == Vector<uint>.Zero)
+                return;
+
             Vector<uint> dstLoaded = Vector.Load(surface);
             Vector<uint> blendedFull = BlendBGRA(dstLoaded, pixels);
 
@@ -131,9 +145,6 @@ namespace RenderingEngine.Engine
 
         static Vector128<uint> BlendBGRA(Vector128<uint> bgraDst, Vector128<uint> bgraSrc)
         {
-            Vector128<uint> gMask = Vector128.GreaterThan(bgraSrc, Vector128<uint>.Zero);
-            bgraSrc = Vector128.ConditionalSelect(gMask, bgraSrc, bgraDst);
-
             Vector128<uint> a = Vector128.Create((uint)127);
             Vector128<uint> byteMask = Vector128.Create((uint)0xFF);
             Vector128<uint> alpha = Vector128.Create((uint)byte.MaxValue << 24);
@@ -151,14 +162,14 @@ namespace RenderingEngine.Engine
             Vector128<uint> gOut = ((gSrc * a) + (gDst * a)) >> 8;
             Vector128<uint> rOut = ((rSrc * a) + (rDst * a)) >> 8;
 
-            return alpha | (rOut << 16) | (gOut << 8) | bOut;
+            Vector128<uint> blended = alpha | (rOut << 16) | (gOut << 8) | bOut;
+
+            Vector128<uint> gMask = Vector128.GreaterThan(bgraSrc, Vector128<uint>.Zero);
+            return Vector128.ConditionalSelect(gMask, blended, bgraDst);
         }
 
         static Vector256<uint> BlendBGRA(Vector256<uint> bgraDst, Vector256<uint> bgraSrc)
         {
-            Vector256<uint> gMask = Vector256.GreaterThan(bgraSrc, Vector256<uint>.Zero);
-            bgraSrc = Vector256.ConditionalSelect(gMask, bgraSrc, bgraDst);
-
             Vector256<uint> a = Vector256.Create((uint)127);
             Vector256<uint> byteMask = Vector256.Create((uint)0xFF);
             Vector256<uint> alpha = Vector256.Create((uint)byte.MaxValue << 24);
@@ -176,14 +187,14 @@ namespace RenderingEngine.Engine
             Vector256<uint> gOut = ((gSrc * a) + (gDst * a)) >> 8;
             Vector256<uint> rOut = ((rSrc * a) + (rDst * a)) >> 8;
 
-            return alpha | (rOut << 16) | (gOut << 8) | bOut;
+            Vector256<uint> blended = alpha | (rOut << 16) | (gOut << 8) | bOut;
+
+            Vector256<uint> gMask = Vector256.GreaterThan(bgraSrc, Vector256<uint>.Zero);
+            return Vector256.ConditionalSelect(gMask, blended, bgraDst);
         }
 
         static Vector<uint> BlendBGRA(Vector<uint> bgraDst, Vector<uint> bgraSrc)
         {
-            Vector<uint> gMask = Vector.GreaterThan(bgraSrc, Vector<uint>.Zero);
-            bgraSrc = Vector.ConditionalSelect(gMask, bgraSrc, bgraDst);
-
             Vector<uint> a = Vector.Create((uint)127);
             Vector<uint> byteMask = Vector.Create((uint)0xFF);
             Vector<uint> alpha = Vector.Create((uint)byte.MaxValue << 24);
@@ -201,7 +212,10 @@ namespace RenderingEngine.Engine
             Vector<uint> gOut = ((gSrc * a) + (gDst * a)) >> 8;
             Vector<uint> rOut = ((rSrc * a) + (rDst * a)) >> 8;
 
-            return alpha | (rOut << 16) | (gOut << 8) | bOut;
+            Vector<uint> blended = alpha | (rOut << 16) | (gOut << 8) | bOut;
+
+            Vector<uint> gMask = Vector.GreaterThan(bgraSrc, Vector<uint>.Zero);
+            return Vector.ConditionalSelect(gMask, blended, bgraDst);
         }
     }
 }

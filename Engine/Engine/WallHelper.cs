@@ -576,7 +576,7 @@ namespace RenderingEngine.Engine
 
             Clamp(ref xLeft, ref xRight);
 
-            if (xLeft >= xRight)
+            if (wall.Flipped ? xLeft <= xRight : xLeft >= xRight)
             {
                 wall.IntersectsView = false;
                 return;

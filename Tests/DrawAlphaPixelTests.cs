@@ -20,8 +20,8 @@ public class DrawAlphaPixelTests
         return Alpha | (rOut << 16) | (gOut << 8) | bOut;
     }
 
-    // Vector overloads substitute zero src with dst before blending.
-    static uint BlendBGRAVector(uint dst, uint src) => BlendBGRA(dst, src == 0u ? dst : src);
+    // Vector overloads return dst unchanged when src is zero, else blend.
+    static uint BlendBGRAVector(uint dst, uint src) => src == 0u ? dst : BlendBGRA(dst, src);
 
     // --- Draw ---
 
@@ -81,10 +81,9 @@ public class DrawAlphaPixelTests
     }
 
     [Fact]
-    public unsafe void DrawLine_Vector256_ZeroSrcBlendsWithItself()
+    public unsafe void DrawLine_Vector256_ZeroSrcLeavesUnchanged()
     {
-        // Unlike Draw(), the vector overload has no zero-pixel early-exit:
-        // zero src is substituted with dst, so dst gets blended with itself.
+        // With the refactored logic, zero src means dst is returned unchanged.
         int count = Vector256<uint>.Count;
         uint[] surface = new uint[count];
         uint dst = 0x00808080u;
@@ -93,9 +92,8 @@ public class DrawAlphaPixelTests
         fixed (uint* ptr = surface)
             DrawAlphaPixel.DrawLine(ptr, Vector256<uint>.Zero);
 
-        uint expected = BlendBGRAVector(dst, 0u);
         for (int i = 0; i < count; i++)
-            Assert.Equal(expected, surface[i]);
+            Assert.Equal(dst, surface[i]);
     }
 
     // --- Vector128 (no mask) ---
@@ -117,7 +115,7 @@ public class DrawAlphaPixelTests
     }
 
     [Fact]
-    public unsafe void DrawLine_Vector128_ZeroSrcBlendsWithItself()
+    public unsafe void DrawLine_Vector128_ZeroSrcLeavesUnchanged()
     {
         uint[] surface = new uint[Vector128<uint>.Count];
         uint dst = 0x00606060u;
@@ -126,9 +124,8 @@ public class DrawAlphaPixelTests
         fixed (uint* ptr = surface)
             DrawAlphaPixel.DrawLine(ptr, Vector128<uint>.Zero);
 
-        uint expected = BlendBGRAVector(dst, 0u);
         for (int i = 0; i < Vector128<uint>.Count; i++)
-            Assert.Equal(expected, surface[i]);
+            Assert.Equal(dst, surface[i]);
     }
 
     // --- Vector<uint> (no mask) ---
@@ -151,7 +148,7 @@ public class DrawAlphaPixelTests
     }
 
     [Fact]
-    public unsafe void DrawLine_Vector_ZeroSrcBlendsWithItself()
+    public unsafe void DrawLine_Vector_ZeroSrcLeavesUnchanged()
     {
         int count = Vector<uint>.Count;
         uint[] surface = new uint[count];
@@ -161,9 +158,8 @@ public class DrawAlphaPixelTests
         fixed (uint* ptr = surface)
             DrawAlphaPixel.DrawLine(ptr, Vector<uint>.Zero);
 
-        uint expected = BlendBGRAVector(dst, 0u);
         for (int i = 0; i < count; i++)
-            Assert.Equal(expected, surface[i]);
+            Assert.Equal(dst, surface[i]);
     }
 
     // --- Vector256 with mask ---
