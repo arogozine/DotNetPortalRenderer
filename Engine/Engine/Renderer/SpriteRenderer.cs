@@ -495,7 +495,7 @@ namespace RenderingEngine.Engine
                 rotated = true;
             }
 
-            PopulateFloorTextureBounds(spriteWindowTop, spriteWindowBottom, sprite);
+            PopulateFloorTextureBounds(spriteWindowTop, spriteWindowBottom, sprite, yFloor);
             LimitToDepth(yFloorV, sprite, spriteWindowTop, spriteWindowBottom, distance);
 
             Vector<float> xScaleV = Vector.Create(1f / xScale);
@@ -583,60 +583,39 @@ namespace RenderingEngine.Engine
                 {
                     continue;
                 }
+                float depthAtX = depth[x];
 
-                Vector<float> yV = Vector.Create(depth[x]);
-                Vector<float> incrementVector = Vector.Load(incrVectorCache + spriteFromY);
+                float yOffset = yOffsetV[0];
+                float incrFromCache = *(incrVectorCache + spriteFromY);
+                float incrToCache = *(incrVectorCache + spriteToY);
+                float fromDepth = incrFromCache * yOffset;
+                float toDepth = incrToCache * yOffset;
 
-                // compare Y position of pixel to depth
-                while (spriteFromY < spriteToY)
+                while (fromDepth > depthAtX && spriteFromY < spriteToY)
                 {
-                    Vector<float> yMapPosR = yOffsetV * incrementVector;
-                    Vector<int> mask = Vector.LessThan(yMapPosR, yV);
+                    spriteFromY++;
+                    incrFromCache = *(incrVectorCache + spriteFromY);
+                    fromDepth = incrFromCache * yOffset;
+                }
 
-                    if (mask != Vector<int>.Zero)
-                    {
-                        int lane = ExtractMostSignificantBits(mask);  // first set bit
-                        spriteFromY += lane;
-                        break;
-                    }
-
-                    spriteFromY += Vector<float>.Count;
-                    incrementVector = Vector.Load(incrVectorCache + spriteFromY);
+                while (toDepth > depthAtX && spriteToY > spriteFromY)
+                {
+                    spriteToY--;
+                    incrToCache = *(incrVectorCache + spriteToY);
+                    toDepth = incrToCache * yOffset;
                 }
 
                 spriteWindowTop[x] = spriteFromY;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static int ExtractMostSignificantBits(Vector<int> vector)
-            {
-                if (Vector<int>.Count == Vector512<int>.Count)
-                {
-                    ulong msb = vector.AsVector512().ExtractMostSignificantBits();
-                    return BitOperations.TrailingZeroCount(msb);
-                }
-
-                if (Vector<int>.Count == Vector256<int>.Count)
-                {
-                    uint msb = vector.AsVector256().ExtractMostSignificantBits();
-                    return BitOperations.TrailingZeroCount(msb);
-                }
-
-                if (Vector<int>.Count == Vector128<int>.Count)
-                {
-                    uint msb = vector.AsVector128().ExtractMostSignificantBits();
-                    return BitOperations.TrailingZeroCount(msb);
-                }
-
-                Debugger.Break();
-                throw new Exception("Vector<int>.Count is no 128, 256, or 512");
+                spriteWindowBottom[x] = spriteToY;
             }
         }
 
+        // AI Assisted
         private void PopulateFloorTextureBounds(
             Span<int> spriteWindowTop,
             Span<int> spriteWindowBottom,
-            RenderableFloorSprite sprite)
+            RenderableFloorSprite sprite,
+            float yFloor)
         {
             int maxHeight = PixelHeight - 1;
 
@@ -680,17 +659,29 @@ namespace RenderingEngine.Engine
 
             if (sprite.R1.Y < 0f || sprite.R2.Y < 0f || sprite.R3.Y < 0f || sprite.R4.Y < 0f)
             {
-                for (int i = 0; i < spriteWindowBottom.Length; i++)
+                // The near plane cuts through the quad, creating an implicit boundary that
+                // projects to ±infinity. Columns where only one edge wrote (top == bottom)
+                // are on that cut; open them toward whichever screen edge yFloor projects to.
+                bool nearPlaneAtTop = yFloor > 0f;
+
+                for (int i = sprite.XLeft; i <= sprite.XRight; i++)
                 {
-                    int yBottom = spriteWindowBottom[i];
                     int yTop = spriteWindowTop[i];
+                    int yBottom = spriteWindowBottom[i];
 
                     if (yTop != yBottom)
                     {
                         continue;
                     }
 
-                    spriteWindowBottom[i] = PixelHeight - 1;
+                    if (nearPlaneAtTop)
+                    {
+                        spriteWindowTop[i] = 0;
+                    }
+                    else
+                    {
+                        spriteWindowBottom[i] = maxHeight;
+                    }
                 }
             }
         }
