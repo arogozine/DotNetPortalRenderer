@@ -651,15 +651,17 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static Vector<float> ClampAngle(Vector<float> angles)
         {
-            Vector<float> twoPi = Vector.Create(2 * MathF.PI);
+            // AI Assisted
 
-            Vector<int> ltMask = Vector.LessThan(angles, Vector<float>.Zero);
-            angles = Vector.ConditionalSelect(ltMask, angles + twoPi, angles);
+            const float twoPi = 2 * MathF.PI;
+            Vector<float> twoPiVec = Vector.Create(twoPi);
 
-            Vector<int> gtMask = Vector.GreaterThan(angles, twoPi);
-            angles = Vector.ConditionalSelect(gtMask, angles - twoPi, angles);
+            // angle mod twoPi, floored so the result is always in [0, twoPi)
+            Vector<float> quotient = angles / twoPiVec;
+            Vector<float> flooredQuotient = Vector.Floor(quotient);
+            Vector<float> result = angles - twoPiVec * flooredQuotient;
 
-            return angles;
+            return result;
         }
 
         internal static bool CalculatePlaneIntersectionsForWall(int width, float xLeft, float xRight, ref float rx1, ref float ry1, ref float rx2, ref float ry2)
