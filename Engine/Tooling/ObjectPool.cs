@@ -3,6 +3,10 @@ using SoftwareRendererModels;
 
 namespace RenderingEngine.Tooling;
 
+/// <summary>
+/// PortalRender needs a lot of temporary objects.
+/// Object Pool is used to prevent GC pauses by re-using temporary objects.
+/// </summary>
 internal static class ObjectPool
 {
     public static readonly SimpleObjectPool<RenderWindowSpriteSnapshot> RenderWindowSpriteSnapshot
@@ -18,12 +22,21 @@ internal static class ObjectPool
     public static readonly DynamicObjectPool<RenderWindowWallSnapshot> RenderWindowWallSnapshot
         = new(ClearSnapshot);
 
+    public static readonly DynamicObjectPool<NeighborsToRender> NeighborsToRender
+        = new(static n => n.Reset());
+
+    // AI Assisted
+    public static readonly DynamicObjectPool<RenderablePortalWall> RenderablePortalWall
+        = new(static r => r.Reset());
+
     internal static void Clear()
     {
         HashSet.Clear();
         RenderWindowSpriteSnapshot.Reset();
         FloorSpriteWallInfo.Reset();
         RenderWindowWallSnapshot.Reset();
+        NeighborsToRender.Reset();
+        RenderablePortalWall.Reset();
     }
 
     static void ClearSnapshot(FloorSpriteWallInfo floorSpriteWallInfo)

@@ -1,21 +1,68 @@
-﻿namespace SoftwareRendererModels;
+using System.Buffers;
+using System.Diagnostics.CodeAnalysis;
 
-public sealed class NeighborsToRender : IRenderState
+namespace SoftwareRendererModels;
+
+public sealed class NeighborsToRender : IRenderState, IDisposable
 {
-    public NeighborsToRender() {
-        ParentWalls = [];
-    }
-
-    public NeighborsToRender(RenderablePortalWall renderableWall, scoped ReadOnlySpan<RenderableWall> walls)
-    {
-        this.RenderableWall = renderableWall;
-        ParentWalls = new RenderableWall[walls.Length + 1];
-        walls.CopyTo(ParentWalls);
-        ParentWalls[^1] = renderableWall.Wall;
-    }
+    private int _length;
+    private RenderableWall[]? _parentWalls;
 
     public RenderableWall? MirrorWall { get; set; }
-    public required int SectorId { get; init; }
-    public RenderablePortalWall? RenderableWall { get; init; }
-    public RenderableWall[] ParentWalls { get; }
+    public int SectorId { get; set; }
+    public RenderablePortalWall? RenderableWall { get; private set; }
+    public ReadOnlySpan<RenderableWall> ParentWalls => _parentWalls.AsSpan()[.._length];
+
+    [MemberNotNull(nameof(_parentWalls))]
+    public void Initialize(int sectorId)
+    {
+        _length = 0;
+
+        SectorId = sectorId;
+        RenderableWall = null;
+        MirrorWall = null;
+        _parentWalls = [];
+    }
+
+    public (RenderableWall[]? ParentWalls, int Lenth) GetParentWallsArray() => (_parentWalls, _length);
+
+    [MemberNotNull(nameof(_parentWalls))]
+    public void Initialize(RenderablePortalWall renderableWall, scoped ReadOnlySpan<RenderableWall> walls, int sectorId)
+    {
+        _length = walls.Length + 1;
+
+        _parentWalls = ArrayPool<RenderableWall>.Shared.Rent(_length);
+        walls.CopyTo(_parentWalls);
+        _parentWalls[walls.Length] = renderableWall.Wall;
+
+        SectorId = sectorId;
+        RenderableWall = renderableWall;
+        MirrorWall = null;
+    }
+
+    public void Reset()
+    {
+        if (_parentWalls is { })
+        {
+            ArrayPool<RenderableWall>.Shared.Return(_parentWalls);
+        }
+
+        _length = 0;
+
+        SectorId = 0;
+        RenderableWall = null;
+        MirrorWall = null;
+        _parentWalls = [];
+    }
+
+    public void Dispose()
+    {
+        if (_parentWalls is { })
+        {
+            ArrayPool<RenderableWall>.Shared.Return(_parentWalls);
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
 }

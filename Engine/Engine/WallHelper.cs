@@ -31,7 +31,7 @@ namespace RenderingEngine.Engine
             _player = player;
         }
 
-        public Span<RenderableWall> DetermineWallsToRender(RenderableSector sector, Span<RenderableWall> portalWallsToOcclude, NeighborsToRender sectorInfo, PortalPlayerSnapshot player)
+        public Span<RenderableWall> DetermineWallsToRender(RenderableSector sector, ReadOnlySpan<RenderableWall> portalWallsToOcclude, NeighborsToRender sectorInfo, PortalPlayerSnapshot player)
         {
             Span<RenderableWall> rotatedWalls = CalculateRotatedWallsRelativeToPlayer(sector, player, sectorInfo);
 

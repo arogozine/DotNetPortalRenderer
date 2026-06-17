@@ -112,10 +112,9 @@ namespace RenderingEngine.Engine
 
             RenderWindowHelper.NewRender();
 
-            sectorRenderQueue.Add(new NeighborsToRender
-            {
-                SectorId = player.Sector
-            });
+            var initialNeighbor = ObjectPool.NeighborsToRender.GetOrCreate();
+            initialNeighbor.Initialize(player.Sector);
+            sectorRenderQueue.Add(initialNeighbor);
 
             _ = renderedSectors.Add(player.Sector);
 
@@ -179,12 +178,9 @@ namespace RenderingEngine.Engine
 
                     Debug.Assert(neightborWall.Neighbor != null);
 
-                    var neighborToRender = new NeighborsToRender(renderableWall, renderableWall.ParentWalls!)
-                    {
-                        SectorId = neightborWall.Neighbor.Value,
-                        MirrorWall = neightborWall.IsMirror ? neightborWall : renderableWall.MirrorWall
-                    };
-
+                    var neighborToRender = ObjectPool.NeighborsToRender.GetOrCreate();
+                    neighborToRender.Initialize(renderableWall, renderableWall.ParentWalls!, neightborWall.Neighbor.Value);
+                    neighborToRender.MirrorWall = neightborWall.IsMirror ? neightborWall : renderableWall.MirrorWall;
                     sectorRenderQueue.Add(neighborToRender);
                 }
 
@@ -229,7 +225,7 @@ namespace RenderingEngine.Engine
                 NeighborsToRender sectorInfo = renderQueueSpan[s];
 
                 RenderableSector sector = sectors[sectorInfo.SectorId];
-                RenderableWall[] parentWalls = sectorInfo.ParentWalls;
+                ReadOnlySpan<RenderableWall> parentWalls = sectorInfo.ParentWalls;
 
                 // 1. Filter out walls outside the player's view and sort them closest to furthest
                 Span<RenderableWall> walls = WallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player);
@@ -251,7 +247,9 @@ namespace RenderingEngine.Engine
                 Span<RenderablePortalWall> neighborsSpan = CollectionsMarshal.AsSpan(neighbors);
                 for (int i = 0; i < neighborsSpan.Length; i++)
                 {
-                    neighborsSpan[i].ParentWalls = parentWalls;
+                    (var parentWallsArray, var length) = sectorInfo.GetParentWallsArray();
+
+                    neighborsSpan[i].SetParentWalls(parentWallsArray, length);
                     neighborsSpan[i].MirrorWall = sectorInfo.MirrorWall;
                 }
 
@@ -469,14 +467,10 @@ namespace RenderingEngine.Engine
                     {
                         offset = wallFromX > wall.XLeft ? wallFromX - wall.XLeft : 0;
 
-                        renderableWalls.Add(new RenderablePortalWall
-                        {
-                            Wall = wall,
-                            XLeft = renderableFromX,
-                            XRight = x,
-                            Offset = offset,
-                            RenderColumnStatus = status
-                        });
+                        // AI Assisted
+                    var rw = ObjectPool.RenderablePortalWall.GetOrCreate();
+                    rw.Initialize(wall, renderableFromX, x, offset, status);
+                    renderableWalls.Add(rw);
                     }
 
                     renderableFromX = x;
@@ -545,13 +539,10 @@ namespace RenderingEngine.Engine
             {
                 offset = renderableFromX > wall.XLeft ? renderableFromX - wall.XLeft : 0;
 
-                renderableWalls.Add(new RenderablePortalWall {
-                    Wall = wall,
-                    XLeft = renderableFromX,
-                    XRight = renderableToX,
-                    Offset = offset,
-                    RenderColumnStatus = status
-                });
+                // AI Assisted
+            var rw = ObjectPool.RenderablePortalWall.GetOrCreate();
+            rw.Initialize(wall, renderableFromX, renderableToX, offset, status);
+            renderableWalls.Add(rw);
             }
 
             return wallStatus;
