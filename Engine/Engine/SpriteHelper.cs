@@ -6,6 +6,8 @@ namespace RenderingEngine.Engine
 {
     internal sealed class SectorInSectorComparer : IComparer<RenderableSector>
     {
+        public static readonly SectorInSectorComparer Default = new();
+
         public int Compare(RenderableSector? x, RenderableSector? y)
         {
             ArgumentNullException.ThrowIfNull(x);
@@ -128,7 +130,7 @@ namespace RenderingEngine.Engine
             FilterOutNonIntersectingSprites(ref rotatedSprites);
             AssignDistance(rotatedSprites);
 
-            rotatedSprites.Sort(SpriteComparer.Instance);
+            ArraySortHelper.Sort(rotatedSprites, SpriteComparer.Instance);
 
             return rotatedSprites;
         }
@@ -373,7 +375,8 @@ namespace RenderingEngine.Engine
                     //throw new Exception();
                 }
 
-                potentialSectors.Sort(new SectorInSectorComparer());
+                ArraySortHelper.Sort(CollectionsMarshal.AsSpan(potentialSectors), SectorInSectorComparer.Default);
+
                 sprite.Sprite.SectorId = potentialSectors[0].Id;
             }
 

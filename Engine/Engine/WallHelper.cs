@@ -1,4 +1,5 @@
-﻿using SoftwareRendererModels;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 using System.Numerics;
 using static RenderingEngine.Engine.SharedHelpers;
 
@@ -47,7 +48,8 @@ namespace RenderingEngine.Engine
                 return result;
             }
 
-            result.Sort(wallComparer);
+            ArraySortHelper.Sort(result, wallComparer); ;
+
             result = CullWallsBasedOnVisibility(result);
 
             return result;
@@ -229,7 +231,7 @@ namespace RenderingEngine.Engine
                 // sort lines by group
                 if (currentGroupId > 1)
                 {
-                    walls.Sort(BunchComparer.Default);
+                    ArraySortHelper.Sort(walls, BunchComparer.Default); ;
                 }
             }
 
@@ -480,7 +482,7 @@ namespace RenderingEngine.Engine
                 return walls;
             }
 
-            walls.Sort(wallComparer);
+            ArraySortHelper.Sort(walls, wallComparer);
 
             return CullWallsBasedOnVisibility(walls);
         }
