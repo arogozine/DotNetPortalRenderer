@@ -2,6 +2,7 @@
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using RenderingEngine.Engine;
 using RenderingEngine.MapLoader;
+using RenderingEngine.Tooling;
 using SoftwareRendererModels;
 
 namespace RenderingEngine
@@ -89,13 +90,22 @@ namespace RenderingEngine
 
         internal PortalPlayerSnapshot PortalPlayerSnapshot()
         {
-            return new PortalPlayerSnapshot(
-                PlayerLocation.Where,
-                PlayerLocation.Velocity,
-                PlayerLocation.Angle,
-                PlayerLocation.Yaw,
-                PlayerLocation.Sector
-            );
+            (float x, float y, float z) = PlayerLocation.Where;
+            (float sin, float cos) = MathF.SinCos(PlayerLocation.Angle);
+
+            PortalPlayerSnapshot snapShot = ObjectPool.PortalPlayerSnapshot;
+
+            snapShot.Sin = sin;
+            snapShot.Cos = cos;
+            snapShot.X = x;
+            snapShot.Y = y;
+            snapShot.Z = z;
+            snapShot.Velocity = PlayerLocation.Velocity;
+            snapShot.Angle = PlayerLocation.Angle;
+            snapShot.Sector = PlayerLocation.Sector;
+            snapShot.Yaw = PlayerLocation.Yaw;
+
+            return snapShot;
         }
 
         public void StopRenderingThread()

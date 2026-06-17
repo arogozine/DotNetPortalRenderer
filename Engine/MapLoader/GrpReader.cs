@@ -1187,8 +1187,7 @@ internal static class GrpReader
                         Palette = sprite.Pal,
                     },
                     SectorId = sprite.SectorNumber,
-                    Shade = sprite.Shade,
-                    AdditionalInfo = additionalInfo
+                    Shade = sprite.Shade
                 };
             }
             else if (sprite.CStat.HasFlag(SpriteCStat.Floor))
@@ -1211,8 +1210,7 @@ internal static class GrpReader
                         Palette = sprite.Pal,
                     },
                     SectorId = sprite.SectorNumber,
-                    Shade = sprite.Shade,
-                    AdditionalInfo = additionalInfo
+                    Shade = sprite.Shade
                 };
             }
             else
@@ -1238,8 +1236,7 @@ internal static class GrpReader
                     },
                     SectorId = sprite.SectorNumber,
                     Shade = sprite.Shade,
-                    AnimationAngle = animationAngle,
-                    AdditionalInfo = additionalInfo
+                    AnimationAngle = animationAngle
                 };
             }
         }

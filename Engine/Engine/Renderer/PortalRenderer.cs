@@ -130,15 +130,13 @@ namespace RenderingEngine.Engine
                 CacheDepthAndStartEndBoundsForSpriteRendering(renderDepth);
 
                 // 3. We render sprites after all the walls were rendered
-                var renderedSectorsCopy = new HashSet<int>(this.renderedSectors);
-                var spriteSnapShot = new RenderWindowSpriteSnapshot
+                var spriteSnapShot = ObjectPool.RenderWindowSpriteSnapshot.GetOrCreate(renderDepth);
                 {
-                    Depth = renderDepth,
-                    XLeft = 0,
-                    XRight = PixelWidth,
-                    RenderDepth = renderDepth,
-                    RenderedSectors = renderedSectorsCopy
-                };
+                    spriteSnapShot.Depth = renderDepth;
+                    spriteSnapShot.XLeft = 0;
+                    spriteSnapShot.XRight = PixelWidth;
+                    spriteSnapShot.RenderDepth = renderDepth;
+                }
                 transparentWalls.Add(spriteSnapShot);
 
                 // 4. We render transparent walls after all the walls were rendered
@@ -151,7 +149,6 @@ namespace RenderingEngine.Engine
                     // Keep track of mirrored wall for sprite rendering later on
                     if (renderableWall.MirrorWall is not null)
                     {
-                        spriteSnapShot.MirroredWalls ??= [];
                         _ = spriteSnapShot.MirroredWalls.Add(renderableWall.MirrorWall);
 
                         Debug.Assert(renderableWall.MirrorWall.Neighbor != null);
@@ -162,14 +159,16 @@ namespace RenderingEngine.Engine
 
                     if (renderableWall.IsPortalWithMiddleTexture)
                     {
-                        transparentWalls.Add(new RenderWindowWallSnapshot
+                        var snapShot = ObjectPool.RenderWindowWallSnapshot.GetOrCreate();
                         {
-                            Depth = renderDepth,
-                            Offset = renderableWall.Offset,
-                            XLeft = renderableWall.XLeft,
-                            XRight = renderableWall.XRight,
-                            Wall = renderableWall.Wall
-                        });
+                            snapShot.Depth = renderDepth;
+                            snapShot.Offset = renderableWall.Offset;
+                            snapShot.XLeft = renderableWall.XLeft;
+                            snapShot.XRight = renderableWall.XRight;
+                            snapShot.Wall = renderableWall.Wall;
+                        }
+
+                        transparentWalls.Add(snapShot);
                     }
                 }
 
@@ -206,6 +205,8 @@ namespace RenderingEngine.Engine
             {
                 mirroredSectors[i].Clear();
             }
+
+            ObjectPool.Clear();
         }
 
         private readonly List<RenderablePortalWall> neighborsForDepth = [];

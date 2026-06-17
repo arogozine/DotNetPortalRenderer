@@ -146,6 +146,8 @@ namespace SoftwareRenderer
             try
             {
                 using var skiaWindow = SoftwareRendererWindow.CreateNew(parsedArgs);
+                // Collect after parsing map, we don't need those objects anymore
+                GC.Collect();
                 skiaWindow.Run();
             }
             catch (Exception ex)

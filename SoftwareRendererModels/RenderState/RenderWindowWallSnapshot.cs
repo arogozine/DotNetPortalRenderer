@@ -5,6 +5,6 @@
 /// </summary>
 public sealed class RenderWindowWallSnapshot : RenderableSpriteSnapshot
 {
-    public required int Offset { get; init; }
-    public required RenderableWall Wall { get; init; }
+    public int Offset { get; set; }
+    public RenderableWall Wall { get; set; } = null!;
 }

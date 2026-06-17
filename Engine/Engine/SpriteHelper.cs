@@ -1,4 +1,5 @@
-﻿using SoftwareRendererModels;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 using System.Numerics;
 
 namespace RenderingEngine.Engine
@@ -1072,7 +1073,7 @@ namespace RenderingEngine.Engine
                 // (wall.R1, wall.R2) = (wall.R2, wall.R1);
             }
 
-            var spriteWallInfo = new FloorSpriteWallInfo { IntersectsView = false };
+            FloorSpriteWallInfo spriteWallInfo = ObjectPool.FloorSpriteWallInfo.GetOrCreate();
 
             // part of the wall is in the back
             if (ry1 <= 0f || ry2 <= 0f)

@@ -2,7 +2,7 @@
 
 public abstract class RenderableSpriteSnapshot : IRenderState
 {
-    public required int XLeft { get; init; }
-    public required int XRight { get; init; }
-    public required int Depth { get; init; }
+    public int XLeft { get; set; }
+    public int XRight { get; set; }
+    public int Depth { get; set; }
 }

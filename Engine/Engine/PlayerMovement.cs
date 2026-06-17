@@ -1,4 +1,5 @@
-﻿using SoftwareRendererModels;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 using System.Numerics;
 
 namespace RenderingEngine.Engine
@@ -56,7 +57,10 @@ namespace RenderingEngine.Engine
             RenderableSector playerSector = sectors[player.Sector];
 
             // only look at adjacent sectors
-            var childSectors = new HashSet<int> { player.Sector };
+
+            var childSectors = ObjectPool.HashSet;
+            childSectors.Clear();
+            _ = childSectors.Add(player.Sector);
 
             for (int i = 0; i < playerSector.Walls.Length; i++)
             {
