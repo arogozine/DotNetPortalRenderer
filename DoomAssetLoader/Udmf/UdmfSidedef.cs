@@ -1,6 +1,6 @@
 ﻿namespace DoomAssetLoader.Udmf
 {
-    public class UdmfSidedef : UdmfObject
+    public sealed class UdmfSidedef : UdmfObject
     {
         public const string OFFSET_X = "offsetx";
         public const string OFFSET_Y = "offsety";

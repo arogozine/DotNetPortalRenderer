@@ -1,6 +1,4 @@
-﻿using BuildAssetLoader.Con;
-
-namespace BuildAssetLoader.ConParser
+﻿namespace BuildAssetLoader.Con
 {
     public abstract record Command(CommandList Start);
 

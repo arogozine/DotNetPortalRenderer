@@ -1,6 +1,6 @@
 ﻿namespace DoomAssetLoader.Udmf
 {
-    public class UdmfVertex : UdmfObject
+    public sealed class UdmfVertex : UdmfObject
     {
         public const string POSITION_X = "x";
         public const string POSITION_Y = "y";

@@ -1,6 +1,6 @@
 ﻿namespace DoomAssetLoader.Udmf
 {
-    public class UdmfLinedef : UdmfObject
+    public sealed class UdmfLinedef : UdmfObject
     {
         public const string FLAG_BLOCKING = "blocking";
         public const string FLAG_BLOCK_MONSTERS = "blockmonsters";

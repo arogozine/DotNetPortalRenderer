@@ -1,5 +1,6 @@
 ﻿using BuildAssetLoader.Map;
 using BuildAssetLoader.Texture;
+using System.Diagnostics;
 
 namespace BuildAssetLoader
 {
@@ -81,6 +82,8 @@ namespace BuildAssetLoader
                 uint artVersion = BitConverter.ToUInt32(binary[offset..]);
                 uint localTileStart = BitConverter.ToUInt32(binary[(offset + 8)..]);
                 uint localTileEnd = BitConverter.ToUInt32(binary[(offset + 12)..]);
+
+                Debug.Assert(artVersion == 1);
 
                 offset += 16;
                 int numberOfTiles = unchecked((int)(localTileEnd - localTileStart + 1));

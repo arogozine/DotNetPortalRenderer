@@ -45,6 +45,7 @@ namespace DoomAssetLoader.Udmf
             {
                 ReadOnlySpan<char> line = textmapContent[lineRange];
 
+                // TODO: Is "x = /* foo */ 1" handled?
                 if (commentBlock)
                 {
                     int commentBlockEndIndex = line.IndexOf(commentBlockEnd);

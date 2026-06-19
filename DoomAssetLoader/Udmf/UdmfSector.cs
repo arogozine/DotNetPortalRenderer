@@ -1,6 +1,6 @@
 ﻿namespace DoomAssetLoader.Udmf
 {
-    public class UdmfSector : UdmfObject
+    public sealed class UdmfSector : UdmfObject
     {
         public const string HEIGHT_FLOOR = "heightfloor";
         public const string HEIGHT_CEILING = "heightceiling";

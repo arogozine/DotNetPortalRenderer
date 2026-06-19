@@ -358,7 +358,7 @@ namespace RenderingEngine.Engine
             float px = pxV[0];
             float py = pyV[0];
             Vector3 linePoint = new(0f, 0f, pzV[0]);
-            
+
             float* xMapPosMultiplierCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
             float* incrCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
@@ -382,7 +382,7 @@ namespace RenderingEngine.Engine
 
                     if (min_b > max_t + 16)
                     {
-                        RenderLine(x, from, to,
+                        RenderLine(x, to, from,
                             min_t, max_t, min_b, max_b);
 
                         x += Vector<int>.Count;
@@ -439,7 +439,7 @@ namespace RenderingEngine.Engine
                         }
                     }
                 }
-                
+
                 // render bottoms where there is no shared window
                 if (min_b != max_b)
                 {
@@ -575,8 +575,8 @@ namespace RenderingEngine.Engine
                 if (slopeFloor is not null)
                 {
                     // direction vector
-                    Vector<float> dir_x = - xMapPosR;
-                    Vector<float> dir_y = - yMapPosR;
+                    Vector<float> dir_x = -xMapPosR;
+                    Vector<float> dir_y = -yMapPosR;
 
                     // Vectorized intersection for the whole vector lane
                     MathFormulas.FindIntersectionVectorZero(nX, nY, nZ, pX, pY, pZ, pzV,

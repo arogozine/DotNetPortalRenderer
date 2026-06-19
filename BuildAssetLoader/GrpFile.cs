@@ -1,6 +1,6 @@
 ﻿namespace BuildAssetLoader
 {
-    public class GrpFile
+    public sealed class GrpFile
     {
         public Dictionary<string, byte[]> Files { get; }
 

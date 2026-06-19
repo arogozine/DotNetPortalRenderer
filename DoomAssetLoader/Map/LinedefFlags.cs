@@ -41,6 +41,6 @@
         /// <summary>
         /// Drawn on the automap at the beginning of the level.
         /// </summary>
-        AlreadyOnMap = 126
+        AlreadyOnMap = 256
     }
 }

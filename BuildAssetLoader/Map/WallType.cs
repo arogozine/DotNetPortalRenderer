@@ -3,6 +3,7 @@
     /// <summary>
     /// 32 bytes
     /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
     public readonly struct WallType
     {
         /// <summary>
@@ -18,7 +19,7 @@
         /// <summary>
         /// Index to next wall on the right (always in the same sector)
         /// </summary>
-        public readonly ushort Point2;
+        public readonly short Point2;
 
         /// <summary>
         /// Index to wall on other side of wall (-1 if there is no sector there)
@@ -87,7 +88,7 @@
         /// </summary>
         public readonly short Extra;
 
-        public WallType(int x, int y, ushort point2, short nextWall, short nextSector, WallCStat cStat, short picNum, short overPicNum, sbyte shade, byte pal, byte xRepeat, byte yRepeat, byte xPanning, byte yPanning, short loTag, short hiTag, short extra)
+        public WallType(int x, int y, short point2, short nextWall, short nextSector, WallCStat cStat, short picNum, short overPicNum, sbyte shade, byte pal, byte xRepeat, byte yRepeat, byte xPanning, byte yPanning, short loTag, short hiTag, short extra)
         {
             X = x;
             Y = y;

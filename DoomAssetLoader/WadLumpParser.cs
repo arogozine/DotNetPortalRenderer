@@ -48,6 +48,7 @@ namespace DoomAssetLoader
 
             const byte EndOfColumn = 0xFF;
 
+            // TODO: Can List be moved to Array?
             List<Post>[] columns = new List<Post>[width];
 
             for (int i = 0; i < width; i++)
@@ -143,7 +144,7 @@ namespace DoomAssetLoader
 
             for (int i = 0; i < bytes.Length; i += setSize)
             {
-                colorSets[i] = bytes[i..(i + setSize)].ToArray();
+                colorSets[i >> 8] = bytes[i..(i + setSize)].ToArray();
             }
 
             return colorSets;
@@ -162,7 +163,7 @@ namespace DoomAssetLoader
 
             for (int i = 0; i < bytes.Length; i += setSize)
             {
-                colorSets[i >> 8] = bytes[0..(i + setSize)].ToArray();
+                colorSets[i >> 8] = bytes[i..(i + setSize)].ToArray();
             }
 
             return colorSets;
@@ -294,7 +295,7 @@ namespace DoomAssetLoader
         {
             int index = asciiBytes.IndexOf((byte)0);
 
-            if (index > 0)
+            if (index >= 0)
             {
                 asciiBytes = asciiBytes[..index];
             }

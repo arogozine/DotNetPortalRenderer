@@ -87,6 +87,8 @@ namespace BuildAssetLoader
         {
             int numberOfSwaps = stream.ReadByte();
 
+            Debug.Assert(numberOfSwaps != -1);
+
             var lookupFile = new LookupFile
             {
                 NumberOfSwaps = (byte)numberOfSwaps,
@@ -97,7 +99,9 @@ namespace BuildAssetLoader
             {
                 byte[] swapTable = new byte[256];
 
-                int palleteSwapIndex = stream.ReadByte() - 1;
+                int palleteSwapIndex = stream.ReadByte();
+                Debug.Assert(palleteSwapIndex != -1);
+                palleteSwapIndex--;
                 stream.ReadExactly(swapTable);
 
                 lookupFile.PaletteSwapTables[palleteSwapIndex] = swapTable;
@@ -158,7 +162,7 @@ namespace BuildAssetLoader
         {
             int index = asciiBytes.IndexOf((byte)0);
 
-            if (index > 0)
+            if (index >= 0)
             {
                 asciiBytes = asciiBytes[..index];
             }

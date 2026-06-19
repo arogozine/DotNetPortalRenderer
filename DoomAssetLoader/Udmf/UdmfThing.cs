@@ -2,7 +2,7 @@
 
 namespace DoomAssetLoader.Udmf
 {
-    public class UdmfThing : UdmfObject
+    public sealed class UdmfThing : UdmfObject
     {
         public const string ID = "id";
         public const string POSITION_X = "x";
@@ -24,7 +24,7 @@ namespace DoomAssetLoader.Udmf
         ///  Thing ID. Default = 0.
         /// </summary>
         [DefaultValue(0)]
-        public int Id => GetValue<int>(ANGLE) ?? 0;
+        public int Id => GetValue<int>(ID) ?? 0;
 
         /// <summary>
         /// X coordinate.

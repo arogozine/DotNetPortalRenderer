@@ -149,6 +149,14 @@ namespace DoomAssetLoader
 
                 if (lumpName.StartsWith("MAP"))
                 {
+                    // DOOM2
+                    mapName = lumpName;
+                    isMap = true;
+                }
+                else if (lumpName.Length == 4 && lumpName[0] == 'E' && lumpName[2] == 'M'
+                    && char.IsDigit(lumpName[1]) && char.IsDigit(lumpName[3]))
+                {
+                    // DOOM1
                     mapName = lumpName;
                     isMap = true;
                 }
@@ -253,7 +261,7 @@ namespace DoomAssetLoader
         {
             int index = asciiBytes.IndexOf((byte)0);
 
-            if (index > 0)
+            if (index >= 0)
             {
                 asciiBytes = asciiBytes[..index];
             }

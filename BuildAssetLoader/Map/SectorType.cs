@@ -3,6 +3,7 @@
     /// <summary>
     /// 40 byte structure
     /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
     public readonly struct SectorType
     {
         /// <summary>
@@ -44,17 +45,17 @@
         public readonly sbyte CeilingShade;
 
         /// <summary>
-        /// Shade offset
+        /// Palette lookup table number (0 = standard colours)
         /// </summary>
         public readonly byte CeilingPal;
 
         /// <summary>
-        /// Palette lookup table number (0 = standard colours)
+        /// Texture coordinate X-offset for ceiling
         /// </summary>
         public readonly byte CeilingXPanning;
 
         /// <summary>
-        /// Texture coordinate X-offset for ceiling
+        /// Texture coordinate Y-offset for ceiling
         /// </summary>
         public readonly byte CeilingYPanning;
 

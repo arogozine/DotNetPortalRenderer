@@ -13,7 +13,7 @@
         public const string Other = "OTHER";
         public const string Reject = "REJECT";
         public const string Nodes = "NODES";
-        public const string BlockMap = "NODES";
+        public const string BlockMap = "BLOCKMAP";
         /// <summary>
         /// Lists of wall texture names used in SIDEDEFS lumps
         /// </summary>

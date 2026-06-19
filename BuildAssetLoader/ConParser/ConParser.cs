@@ -27,17 +27,6 @@ namespace BuildAssetLoader.Con
 
                 ReadOnlySpan<char> word = ReadNextWord(ref i, str);
 
-                if (i >= str.Length)
-                {
-                    break;
-                }
-
-                if (word.StartsWith("\r\n"))
-                {
-                    tokens.Add(ConToken.NewLine);
-                    continue;
-                }
-
                 if (word.StartsWith("//"))
                 {
                     SkipToNextLine(ref i, str);
@@ -111,12 +100,12 @@ namespace BuildAssetLoader.Con
             char c;
             int start, end;
 
-            for (c = str[i]; i < str.Length && char.IsWhiteSpace(c); i++, c = str[i])
+            for (; i < str.Length && char.IsWhiteSpace(str[i]); i++)
                 ;
-
+            
             start = i;
 
-            for (c = str[i]; i < str.Length && !char.IsWhiteSpace(c); i++, c = str[i])
+            for (; i < str.Length && !char.IsWhiteSpace(str[i]); i++)
                 ;
 
             end = i;
