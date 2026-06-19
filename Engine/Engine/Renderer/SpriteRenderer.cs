@@ -1,7 +1,6 @@
 ﻿using RenderingEngine.Tooling;
 using SoftwareRendererModels;
 using System.Numerics;
-using System.Runtime.Intrinsics;
 
 namespace RenderingEngine.Engine
 {

@@ -10,7 +10,7 @@ namespace RenderingEngine.Tooling;
 internal static class ArraySortHelper
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void Sort<T, C>(Span<T> keys, C comparer)
+    public static void Sort<T, C>(this Span<T> keys, C comparer)
         where C : IComparer<T>
     {
         ArraySortHelper<T, C>.Sort(keys, comparer);
@@ -20,11 +20,9 @@ internal static class ArraySortHelper
 internal static class ArraySortHelper<T, C>
     where C : IComparer<T>
 {
-    private static int IntrosortSizeThreshold = 16;
+    private const int IntrosortSizeThreshold = 16;
 
-    #region IArraySortHelper<T> Members
-
-    public static void Sort(Span<T> keys, IComparer<T> comparer)
+    public static void Sort(Span<T> keys, C comparer)
     {
         if (keys.Length > 1)
         {
@@ -32,9 +30,7 @@ internal static class ArraySortHelper<T, C>
         }
     }
 
-    #endregion
-
-    private static void SwapIfGreater(Span<T> keys, IComparer<T> comparer, int i, int j)
+    private static void SwapIfGreater(Span<T> keys, C comparer, int i, int j)
     {
         Debug.Assert(i != j);
 
@@ -55,7 +51,7 @@ internal static class ArraySortHelper<T, C>
     // IntroSort is recursive; block it from being inlined into itself as
     // this is currenly not profitable.
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void IntroSort(Span<T> keys, int depthLimit, IComparer<T> comparer)
+    private static void IntroSort(Span<T> keys, int depthLimit, C comparer)
     {
         Debug.Assert(!keys.IsEmpty);
         Debug.Assert(depthLimit >= 0);
@@ -100,7 +96,7 @@ internal static class ArraySortHelper<T, C>
         }
     }
 
-    private static int PickPivotAndPartition(Span<T> keys, IComparer<T> comparer)
+    private static int PickPivotAndPartition(Span<T> keys, C comparer)
     {
         Debug.Assert(keys.Length >= IntrosortSizeThreshold);
         Debug.Assert(comparer != null);
@@ -138,7 +134,7 @@ internal static class ArraySortHelper<T, C>
         return left;
     }
 
-    private static void HeapSort(Span<T> keys, IComparer<T> comparer)
+    private static void HeapSort(Span<T> keys, C comparer)
     {
         Debug.Assert(comparer != null);
         Debug.Assert(!keys.IsEmpty);
@@ -156,7 +152,7 @@ internal static class ArraySortHelper<T, C>
         }
     }
 
-    private static void DownHeap(Span<T> keys, int i, int n, IComparer<T> comparer)
+    private static void DownHeap(Span<T> keys, int i, int n, C comparer)
     {
         Debug.Assert(comparer != null);
 
@@ -179,7 +175,7 @@ internal static class ArraySortHelper<T, C>
         keys[i - 1] = d;
     }
 
-    private static void InsertionSort(Span<T> keys, IComparer<T> comparer)
+    private static void InsertionSort(Span<T> keys, C comparer)
     {
         for (int i = 0; i < keys.Length - 1; i++)
         {

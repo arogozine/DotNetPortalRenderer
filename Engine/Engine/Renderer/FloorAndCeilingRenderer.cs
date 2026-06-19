@@ -377,15 +377,16 @@ namespace RenderingEngine.Engine
                 // Attempt horizontal rendering
                 if (count >= Vector<int>.Count)
                 {
-                    (int min_t, int max_t, int min_b, int max_b) = CalculateLaneTopBottoms(x - sectorFrom, floorFrom, floorTo);
+                    (int min_t, int max_t, int min_b, int max_b) = CalculateLaneTopBottoms(x - sectorFrom, floorFrom, floorTo,
+                        out Vector<int> from, out Vector<int> to);
 
                     if (min_b > max_t + 16)
                     {
-                        RenderLine(x, floorTo + (x - sectorFrom), floorFrom + (x - sectorFrom),
+                        RenderLine(x, from, to,
                             min_t, max_t, min_b, max_b);
 
                         x += Vector<int>.Count;
-                        // count -= (ushort)Vector<int>.Count;
+
                         continue;
                     }
                 }
@@ -404,7 +405,7 @@ namespace RenderingEngine.Engine
 
             void RenderLine(
                 int x,
-                int* to, int* from,
+                Vector<int> to, Vector<int> from,
                 int min_t, int max_t, int min_b, int max_b
                 )
             {
@@ -413,7 +414,7 @@ namespace RenderingEngine.Engine
                 // render tops where there is no shared window
                 if (min_t != max_t)
                 {
-                    RenderColumnAngleTop(min_t, max_t, from, x);
+                    RenderColumnAngleTop(min_t, max_t, from, x, xMapPosMultiplierCacheV);
                 }
 
                 for (int y = max_t, screenIndex = y * width + x; y <= min_b; y++, screenIndex += width)
@@ -442,18 +443,18 @@ namespace RenderingEngine.Engine
                 // render bottoms where there is no shared window
                 if (min_b != max_b)
                 {
-                    RenderColumnAngleBottom(min_b, max_b, to, x);
+                    RenderColumnAngleBottom(min_b, max_b, to, x, xMapPosMultiplierCacheV);
                 }
             }
 
             void RenderColumnAngleBottom(
                 int floorFromY,
                 int floorToY,
-                int* to,
-                int xStart)
+                Vector<int> to,
+                int xStart,
+                Vector<float> xMapPosMultV)
             {
                 uint* screenTexPtr = screenPtr + floorFromY * width + xStart;
-                Vector<float> xMapPosMultV = Vector.Load(xMapPosMultiplierCachePtr + xStart);
                 float* incr = incrCachePtr + floorFromY;
 
                 for (int y = floorFromY; y < floorToY; y++)
@@ -476,11 +477,11 @@ namespace RenderingEngine.Engine
             void RenderColumnAngleTop(
                 int min_t,
                 int max_t,
-                int* from,
-                int xStart)
+                Vector<int> from,
+                int xStart,
+                Vector<float> xMapPosMultV)
             {
                 uint* screenTexPtr = screenPtr + min_t * width + xStart;
-                Vector<float> xMapPosMultV = Vector.Load(xMapPosMultiplierCachePtr + xStart);
                 float* incr = incrCachePtr + min_t;
 
                 for (int y = min_t; y < max_t; y++)
@@ -701,12 +702,13 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static unsafe (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(int x, int* from, int* to)
+        private static unsafe (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(
+            int x, int* from, int* to, out Vector<int> fromVec, out Vector<int> toVec)
         {
             from += x;
             to += x;
 
-            if (Vector<int>.Count == 8)
+            if (Vector<int>.Count == Vector256<int>.Count)
             {
                 Vector256<int> fromV = Vector256.Load(from);
                 Vector256<int> toV = Vector256.Load(to);
@@ -714,15 +716,21 @@ namespace RenderingEngine.Engine
                 (int min_t, int max_t) = MathFormulas.GetMinMaxValue(fromV);
                 (int min_b, int max_b) = MathFormulas.GetMinMaxValue(toV);
 
+                fromVec = fromV.AsVector();
+                toVec = toV.AsVector();
+
                 return (min_t, max_t, min_b, max_b);
             }
-            else if (Vector<int>.Count == 4)
+            else if (Vector<int>.Count == Vector128<int>.Count)
             {
                 Vector128<int> fromV = Vector128.Load(from);
                 Vector128<int> toV = Vector128.Load(to);
 
                 (int min_t, int max_t) = MathFormulas.GetMinMaxValue(fromV);
                 (int min_b, int max_b) = MathFormulas.GetMinMaxValue(toV);
+
+                fromVec = fromV.AsVector();
+                toVec = toV.AsVector();
 
                 return (min_t, max_t, min_b, max_b);
             }
@@ -742,6 +750,9 @@ namespace RenderingEngine.Engine
                     min_b = MathFormulas.Min(min_b, bottom);
                     max_b = MathFormulas.Max(max_b, bottom);
                 }
+
+                fromVec = Vector.Load(from);
+                toVec = Vector.Load(to);
 
                 return (min_t, max_t, min_b, max_b);
             }

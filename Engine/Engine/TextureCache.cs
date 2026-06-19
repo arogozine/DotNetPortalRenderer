@@ -85,8 +85,7 @@ internal static class TextureCache
             palletteId = 0;
         }
 
-        Dictionary<int, BGRA[]>? shadeLookup = PaletteToShadeLookup[palletteId];
-
+        Dictionary<int, BGRA[]> shadeLookup = PaletteToShadeLookup[palletteId];
 
         if (!shadeLookup.ContainsKey(shade))
         {

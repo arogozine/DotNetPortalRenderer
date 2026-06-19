@@ -76,13 +76,13 @@ internal sealed class SimpleObjectPool<T>
         _reset = reset;
     }
 
-    public T GetOrCreate(int index, Func<T>? init = null)
+    public T GetOrCreate(int index)
     {
         T? obj = _objects[index];
 
         if (obj == null)
         {
-            obj = init == null ? new() : init();
+            obj = new();
             _objects[index] = obj;
         }
 
@@ -112,22 +112,6 @@ internal sealed class DynamicObjectPool<T>
     {
         _objects = new T[32];
         _reset = reset;
-    }
-
-    public T this[int index]
-    {
-        get
-        {
-            T? obj = _objects[index];
-
-            if (obj == null)
-            {
-                obj = new();
-                _objects[index] = obj;
-            }
-
-            return obj;
-        }
     }
 
     public void Clear() => _objects.AsSpan().Clear();

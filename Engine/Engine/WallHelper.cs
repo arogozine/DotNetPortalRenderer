@@ -231,7 +231,7 @@ namespace RenderingEngine.Engine
                 // sort lines by group
                 if (currentGroupId > 1)
                 {
-                    ArraySortHelper.Sort(walls, BunchComparer.Default); ;
+                    ArraySortHelper.Sort(walls, BunchComparer.Default);
                 }
             }
 
