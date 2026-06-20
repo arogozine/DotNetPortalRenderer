@@ -7,7 +7,7 @@ namespace RenderingEngine
     {
         private readonly PortalEngine Engine;
         private CancellationTokenSource EngineLoopCancellationToken;
-        private void* currentFrame = null;
+        private nint* currentFrame = null;
         private Task? engineLoopTask = null;
 
         private readonly SemaphoreSlim StartRenderingSemaphore = new(0, 1);
@@ -19,8 +19,8 @@ namespace RenderingEngine
             EngineLoopCancellationToken = new();
         }
 
-        [MemberNotNull(nameof(engineLoopTask))]
-        private nint MainEngineLoop(RenderableMap map, int width, int height, CancellationToken cancellationToken)
+        [MemberNotNull(nameof(engineLoopTask), nameof(currentFrame))]
+        private void MainEngineLoop(RenderableMap map, int width, int height, CancellationToken cancellationToken)
         {
             var renderer = new PortalRenderer(width, height)
             {
@@ -35,8 +35,10 @@ namespace RenderingEngine
                     Debug.WriteLine(t.Exception);
                     Debugger.Break();
                 }, TaskContinuationOptions.OnlyOnFaulted);
-            
-            return (nint)renderer.Buffer;
+
+            currentFrame = (nint*)renderer.Buffer;
+
+            return;
 
             void TaskBody() 
             {
@@ -45,7 +47,7 @@ namespace RenderingEngine
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     StartRenderingSemaphore.Wait(cancellationToken);
-                    currentFrame = renderer.DrawFrame(Engine.PortalPlayerSnapshot());
+                    _ = renderer.DrawFrame(Engine.PortalPlayerSnapshot());
                     _ = RenderedFrameSemaphore.Release();
                 }
             }
@@ -61,20 +63,27 @@ namespace RenderingEngine
         public nint StartTheGameLoop(RenderableMap map, int width, int height)
         {
             EngineLoopCancellationToken = new CancellationTokenSource();
-            return MainEngineLoop(map, width, height, EngineLoopCancellationToken.Token);
+            MainEngineLoop(map, width, height, EngineLoopCancellationToken.Token);
+            _ = StartRenderingSemaphore.Release();
+
+            return (nint)currentFrame;
         }
 
-        public nint RenderFrame()
+        public nint WaitForRenderedFrame()
         {
+            RenderedFrameSemaphore.Wait();
+
             if (engineLoopTask == null)
             {
                 return nint.Zero;
             }
 
-            _ = StartRenderingSemaphore.Release();
-            RenderedFrameSemaphore.Wait();
-
             return (nint)currentFrame;
+        }
+
+        public void RequestNextFrame()
+        {
+            _ = StartRenderingSemaphore.Release();
         }
 
         public void Dispose()

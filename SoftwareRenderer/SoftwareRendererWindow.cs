@@ -9,6 +9,9 @@ using System.Runtime.InteropServices;
 
 namespace SoftwareRenderer
 {
+    // AI Disclosure,
+    // Code to render BGRA to Screen via OpenGL was AI generated.
+
     public class SoftwareRendererWindow : GameWindow
     {
         private const int _defaultWidth = 1280;
@@ -145,7 +148,7 @@ namespace SoftwareRenderer
 
             Debug.Assert(Engine.Renderer != null);
 
-            nint bgraPtr = Engine.Renderer.RenderFrame();
+            nint bgraPtr = Engine.Renderer.WaitForRenderedFrame();
 
             if (bgraPtr == nint.Zero)
             {
@@ -176,6 +179,8 @@ namespace SoftwareRenderer
             GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
 
             SwapBuffers();
+
+            Engine.Renderer.RequestNextFrame();
         }
 
         protected override void OnKeyDown(KeyboardKeyEventArgs e)
