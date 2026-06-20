@@ -188,7 +188,7 @@ namespace RenderingEngine.Engine
 
                 if (upperTexture.RenderingOptions.IsSkybox)
                 {
-                    CalculateDistance(renderableWall);
+                    if (!renderLower) { CalculateDistance(renderableWall); }
                     DrawUpperSkyboxPortalWall(player, renderableWall);
                 }
                 else

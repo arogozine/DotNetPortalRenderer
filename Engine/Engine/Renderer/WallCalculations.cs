@@ -11,12 +11,12 @@ namespace RenderingEngine.Engine
 
             int textureStart = textureInfo.YOffset << 16;
 
-            Span<int> textureYIncrement = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureYIncrement);
-            Span<int> startingYTexturePosition = memoryPool.GetBucket<int>(MemoryPoolBucket.StartingYTexturePosition);
-            Span<int> ceil = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> wallStartSloped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
+            int* textureYIncrement = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureYIncrement);
+            int* startingYTexturePosition = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.StartingYTexturePosition);
+            int* ceil = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
+            int* wallStartSloped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
 
-            (int textureHeight, _, _, float scaledTextureHeight) = CalculateScale(wall.Sector, wall, textureInfo);
+            (int textureHeight, float scaledTextureHeight) = CalculateScale(wall.Sector, textureInfo);
 
             int offset = portalWall.Offset;
             int wallFromX = portalWall.XLeft;
@@ -53,7 +53,7 @@ namespace RenderingEngine.Engine
                 int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + topOffset * textureYIncr);
                 textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeight << 16, textureYPosY);
 
-                Debug.Assert(textureYPosY <= textureHeight << 16);
+                Debug.Assert(textureYPosY < textureHeight << 16);
 
                 startingYTexturePosition[x] = textureYPosY;
                 textureYIncrement[x] = float.ConvertToIntegerNative<int>(textureYIncr);
@@ -69,14 +69,13 @@ namespace RenderingEngine.Engine
 
             int textureStart = textureInfo.YOffset << 16;
 
-            Span<int> portalTo = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalTo);
-            Span<int> portalToClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalToClamped);
-            Span<int> startingYTexturePosition = memoryPool.GetBucket<int>(MemoryPoolBucket.StartingYTexturePosition);
-            Span<int> ceil = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
+            int* portalTo = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalTo);
+            int* portalToClamped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
+            int* startingYTexturePosition = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.StartingYTexturePosition);
+            int* ceil = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
+            int* textureYIncrement = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureYIncrement);
 
-            Span<int> textureYIncrement = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureYIncrement);
-
-            (int textureHeight, _, _, float scaledTextureHeight) = CalculateScale(wall.Sector, wall, textureInfo);
+            (int textureHeight, float scaledTextureHeight) = CalculateScale(wall.Sector, textureInfo);
 
             int offset = portalWall.Offset;
             int wallFromX = portalWall.XLeft;
@@ -110,7 +109,7 @@ namespace RenderingEngine.Engine
 
                 textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeight << 16, textureYPosY);
 
-                Debug.Assert(textureYPosY <= textureHeight << 16);
+                Debug.Assert(textureYPosY < textureHeight << 16);
 
                 startingYTexturePosition[x] = textureYPosY;
                 textureYIncrement[x] = float.ConvertToIntegerNative<int>(textureYIncr);
@@ -131,21 +130,55 @@ namespace RenderingEngine.Engine
 
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, PixelWidth, wallFromX);
 
+            int length = wallToX - wallFromX;
+
+            if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
+            {
+                float* cameraRaySpan = stackalloc float[Vector<float>.Count];
+
+                int vCount = Vector<float>.Count;
+                int rem = length & (vCount - 1);
+                wallToX -= rem;
+
+                Vector<float> t1V = Vector.Create(t1);
+                Vector<float> d2yV = Vector.Create(d2y);
+                Vector<float> negD2xV = Vector.Create(-d2x);
+
+                for (int x = wallFromX; x < wallToX; x += vCount)
+                {
+                    // precision seems critical here
+                    // so we fall back to scalar math here
+                    // Vector.CreateSequence and cameraRayV + strideV produce
+                    // a slightly different result
+                    for (int i = 0; i < Vector<float>.Count; i++)
+                    {
+                        cameraRaySpan[i] = cameraRay;
+                        cameraRay += cameraWidthIncr;
+                    }
+
+                    Vector<float> cameraRayV = Vector.Load(cameraRaySpan);
+                    Vector<float> denominatorV = Vector.FusedMultiplyAdd(cameraRayV, d2yV, negD2xV);
+                    Vector<float> resultV = t1V / denominatorV;
+                    Vector.Store(resultV, distance + x);
+                }
+
+                wallFromX = wallToX;
+                wallToX += rem;
+            }
+
             for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
             {
-                float fromToYdist = MathFormulas.CalculateDistance2(cameraRay, t1, d2y, d2x);
-
-                distance[x] = fromToYdist;
+                distance[x] = MathFormulas.CalculateDistance2(cameraRay, t1, d2y, d2x);
             }
         }
 
         private void CalculateTextureDistanceAndXPosition(RenderablePortalWall renderableWall, GameTextureInfo textureInfo)
         {
-            Span<int> xLocation = memoryPool.GetBucket<int>(MemoryPoolBucket.TextureXLocation);
+            float* cameraRaySpan = stackalloc float[Vector<float>.Count];
+            int* xLocation = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureXLocation);
+            float* distance = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.Distance);
 
             int width = PixelWidth;
-
-            Span<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
 
             RenderableWall wall = renderableWall.Wall;
 
@@ -173,22 +206,151 @@ namespace RenderingEngine.Engine
             float rX = flipX ? wall.R2.X : wall.R1.X;
             float rY = flipX ? wall.R2.Y : wall.R1.Y;
 
-
-            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
+            if (SharedHelpers.IsPowerOfTwo(textureWidth))
             {
-                (float fromToXdist, float fromToYdist) = MathFormulas.CalculateRayIntersection(cameraRay, t1, d2y, d2x);
+                PowerOfTwo();
+            }
+            else
+            {
+                OddTextureWidth();
+            }
 
-                float distX = rX - fromToXdist;
-                float distY = rY - fromToYdist;
+            return;
 
-                float textureDist = MathF.Sqrt(distX * distX + distY * distY);
+            void PowerOfTwo()
+            {
+                int textureWidthMask = textureWidth - 1;
+                int length = wallToX - wallFromX;
 
-                xLocation[x] = float.ConvertToIntegerNative<int>(MathF.FusedMultiplyAdd(textureDist, xScale, xOffset));
-                xLocation[x] = (xLocation[x] % textureWidth) * textureHeight;
+                if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
+                {
+                    int vCount = Vector<float>.Count;
+                    int rem = length & (vCount - 1);
+                    wallToX -= rem;
 
-                Debug.Assert(xLocation[x] >= 0);
+                    Vector<float> t1V = Vector.Create(t1);
+                    Vector<float> d2yV = Vector.Create(d2y);
+                    Vector<float> d2xV = Vector.Create(d2x);
+                    Vector<float> rXV = Vector.Create(rX);
+                    Vector<float> rYV = Vector.Create(rY);
+                    Vector<float> xScaleV = Vector.Create(xScale);
+                    Vector<float> xOffsetV = Vector.Create(xOffset);
+                    Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
+                    Vector<int> textureHeightV = Vector.Create(textureHeight);
 
-                distance[x] = fromToYdist;
+                    for (int x = wallFromX; x < wallToX; x += vCount)
+                    {
+                        // precision seems critical here
+                        // so we fall back to scalar math here
+                        // Vector.CreateSequence and cameraRayV + strideV produce
+                        // a slightly different result
+                        for (int i = 0; i < Vector<float>.Count; i++)
+                        {
+                            cameraRaySpan[i] = cameraRay;
+                            cameraRay += cameraWidthIncr;
+                        }
+                        Vector<float> cameraRayV = Vector.Load(cameraRaySpan);
+
+                        (Vector<float> fromToXdistV, Vector<float> fromToYdistV) = MathFormulas.CalculateRayIntersection(cameraRayV, t1V, d2yV, d2xV);
+
+                        Vector<float> distXV = rXV - fromToXdistV;
+                        Vector<float> distYV = rYV - fromToYdistV;
+
+                        Vector<float> textureDistV = Vector.SquareRoot(distXV * distXV + distYV * distYV);
+                        Vector<int> textureDistIntV = Vector.ConvertToInt32Native(Vector.FusedMultiplyAdd(textureDistV, xScaleV, xOffsetV));
+                        Vector<int> xLocationV = (textureDistIntV & textureWidthMaskV) * textureHeightV;
+
+                        Vector.Store(xLocationV, xLocation + x);
+                        Vector.Store(fromToYdistV, distance + x);
+                    }
+
+                    wallFromX = wallToX;
+                    wallToX += rem;
+                }
+
+                for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
+                {
+                    (float fromToXdist, float fromToYdist) = MathFormulas.CalculateRayIntersection(cameraRay, t1, d2y, d2x);
+
+                    float distX = rX - fromToXdist;
+                    float distY = rY - fromToYdist;
+
+                    float textureDist = MathF.Sqrt(distX * distX + distY * distY);
+                    int textureDistInt = float.ConvertToIntegerNative<int>(MathF.FusedMultiplyAdd(textureDist, xScale, xOffset));
+                    xLocation[x] = (textureDistInt & textureWidthMask) * textureHeight;
+
+                    Debug.Assert(xLocation[x] >= 0);
+
+                    distance[x] = fromToYdist;
+                }
+            }
+
+            void OddTextureWidth()
+            {
+                int length = wallToX - wallFromX;
+
+                if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
+                {
+                    int vCount = Vector<float>.Count;
+                    int rem = length & (vCount - 1);
+                    wallToX -= rem;
+
+                    Vector<float> t1V = Vector.Create(t1);
+                    Vector<float> d2yV = Vector.Create(d2y);
+                    Vector<float> d2xV = Vector.Create(d2x);
+                    Vector<float> rXV = Vector.Create(rX);
+                    Vector<float> rYV = Vector.Create(rY);
+                    Vector<float> xScaleV = Vector.Create(xScale);
+                    Vector<float> xOffsetV = Vector.Create(xOffset);
+
+                    for (int x = wallFromX; x < wallToX; x += vCount)
+                    {
+                        // precision seems critical here
+                        // so we fall back to scalar math here
+                        // Vector.CreateSequence and cameraRayV + strideV produce
+                        // a slightly different result
+                        for (int i = 0; i < Vector<float>.Count; i++)
+                        {
+                            cameraRaySpan[i] = cameraRay;
+                            cameraRay += cameraWidthIncr;
+                        }
+                        Vector<float> cameraRayV = Vector.Load(cameraRaySpan);
+
+                        (Vector<float> fromToXdistV, Vector<float> fromToYdistV) = MathFormulas.CalculateRayIntersection(cameraRayV, t1V, d2yV, d2xV);
+
+                        Vector<float> distXV = rXV - fromToXdistV;
+                        Vector<float> distYV = rYV - fromToYdistV;
+
+                        Vector<float> textureDistV = Vector.SquareRoot(distXV * distXV + distYV * distYV);
+                        Vector<int> textureDistIntV = Vector.ConvertToInt32Native(Vector.FusedMultiplyAdd(textureDistV, xScaleV, xOffsetV));
+
+                        for (int i = 0; i < Vector<float>.Count; i++)
+                        {
+                            xLocation[x + i] = (textureDistIntV[i] % textureWidth) * textureHeight;
+                        }
+
+                        Vector.Store(fromToYdistV, distance + x);
+                    }
+
+                    wallFromX = wallToX;
+                    wallToX += rem;
+                }
+
+                for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
+                {
+                    (float fromToXdist, float fromToYdist) = MathFormulas.CalculateRayIntersection(cameraRay, t1, d2y, d2x);
+
+                    float distX = rX - fromToXdist;
+                    float distY = rY - fromToYdist;
+
+                    float textureDist = MathF.Sqrt(distX * distX + distY * distY);
+                    int textureDistInt = float.ConvertToIntegerNative<int>(MathF.FusedMultiplyAdd(textureDist, xScale, xOffset));
+                    xLocation[x] = (textureDistInt % textureWidth) * textureHeight;
+
+                    Debug.Assert(xLocation[x] >= 0);
+
+                    distance[x] = fromToYdist;
+                }
             }
         }
 
@@ -274,6 +436,8 @@ namespace RenderingEngine.Engine
                 int rem = length & (Vector<int>.Count - 1);
                 wallToX -= rem;
 
+                Vector<int> wallMask = Vector.Create((int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall));
+
                 for (int x = wallFromX; x < wallToX; x += Vector<int>.Count)
                 {
                     Vector<int> statusV = Vector.Load((int*)(statusPtr + x));
@@ -290,12 +454,9 @@ namespace RenderingEngine.Engine
                     Vector.Store(clamptedFromY, wallStartClampedPtr + x);
                     Vector.Store(clamptedToY, wallEndClampedPtr + x);
 
-                    // limit to Calculated CanRenderWall Mask
-                    statusV &= Vector.Create((int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall));
-                    // check where can render wall is false
-                    statusV = Vector.LessThan(statusV, Vector<int>.Zero);
-                    // OR where fromY >= toY
-                    statusV |= Vector.GreaterThanOrEqual(clamptedFromY, clamptedToY);
+                    statusV &= wallMask;
+                    Vector<int> notRenderable = ~Vector.Equals(statusV, wallMask);
+                    statusV = notRenderable | Vector.GreaterThanOrEqual(clamptedFromY, clamptedToY);
 
                     for (int i = 0; i < Vector<int>.Count; i++)
                     {
@@ -336,13 +497,45 @@ namespace RenderingEngine.Engine
 
         private void CalculateNewFloorCeiling(int from, int to)
         {
-            Span<int> portalFromClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalFromClamped);
-            Span<int> portalToClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.PortalToClamped);
+            int* portalFromClamped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
+            int* portalToClamped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
 
-            Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
-            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            int* ceilingStart = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
+            int* floorEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
 
-            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            RenderColumnStatus* status = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+
+            int length = to - from;
+
+            if (Vector.IsHardwareAccelerated && length > Vector<int>.Count)
+            {
+                int rem = length & (Vector<int>.Count - 1);
+                to -= rem;
+
+                Vector<int> wallRenderableMask = Vector.Create((int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall));
+                Vector<int> canRenderWallV = Vector.Create((int)RenderColumnStatus.CanRenderWall);
+                Vector<int> finishedFlagV = Vector.Create((int)RenderColumnStatus.FinishedRendering);
+
+                for (int x = from; x < to; x += Vector<int>.Count)
+                {
+                    Vector<int> statusV = Vector.Load((int*)(status + x));
+                    Vector<int> portalFromV = Vector.Load(portalFromClamped + x);
+                    Vector<int> portalToV = Vector.Load(portalToClamped + x);
+
+                    Vector<int> isRenderable = Vector.Equals(Vector.BitwiseAnd(statusV, wallRenderableMask), wallRenderableMask);
+                    Vector<int> isNotRenderable = ~isRenderable;
+
+                    // no need for conditional select to match scalar option,
+                    Vector.Store(portalFromV, ceilingStart + x);
+                    Vector.Store(portalToV, floorEnd + x);
+
+                    Vector<int> newStatusV = Vector.ConditionalSelect(isNotRenderable, finishedFlagV, statusV ^ canRenderWallV);
+                    Vector.Store(newStatusV, (int*)(status + x));
+                }
+
+                from = to;
+                to += rem;
+            }
 
             for (int x = from; x <= to; x++)
             {
@@ -355,7 +548,6 @@ namespace RenderingEngine.Engine
                 ceilingStart[x] = portalFromClamped[x];
                 floorEnd[x] = portalToClamped[x];
                 status[x] ^= RenderColumnStatus.CanRenderWall;
-
             }
         }
 
@@ -416,6 +608,8 @@ namespace RenderingEngine.Engine
             bool canRenderFloor = windowExists && wallEndY < floorEndY;
             bool canRenderWall = windowExists && wallStartY < wallEndY && ceilingStartY < floorEndY;
             bool canRenderPortal = windowExists && floorEndY < ceilingStartY && wallStartY < floorEndY;
+
+            Debug.Assert(!canRenderPortal);
 
             RenderColumnStatus startingStatus = calculated ? RenderColumnStatus.Calculated : default;
 
@@ -561,8 +755,6 @@ namespace RenderingEngine.Engine
                 if (fromToYdist > dist)
                 {
                     repeatedCountPtr[x - wallFromX] = 0;
-                    wallStartY += ceilDistIncr;
-                    wallEndY += floorDistIncr;
                     continue;
                 }
 
@@ -787,24 +979,11 @@ namespace RenderingEngine.Engine
 
         }
 
-        // TODO: Simplify
-        private static (int Height, int Width, float XScale, float ScaledTextureHeight) CalculateScale(
+        private static (int Height, float ScaledTextureHeight) CalculateScale(
             RenderableSector sector,
-            RenderableWall wall,
             GameTextureInfo wallTexture)
         {
             int textureHeight = wallTexture.Height;
-            int textureWidth = wallTexture.Width;
-
-            if (wallTexture.XScale is float xScale)
-            {
-                float wallLength = wall.Length;
-                xScale = xScale / wallLength * textureWidth;
-            }
-            else
-            {
-                xScale = 1f;
-            }
 
             float scaledTextureHeight;
 
@@ -818,7 +997,7 @@ namespace RenderingEngine.Engine
                 scaledTextureHeight = (sector.Ceil - sector.Floor) << 16;
             }
 
-            return (textureHeight, textureWidth, xScale, scaledTextureHeight);
+            return (textureHeight, scaledTextureHeight);
         }
 
         #endregion

@@ -7,7 +7,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <PublishTrimmed>true</PublishTrimmed>
-    <PublishAot>true</PublishAot>
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
 
