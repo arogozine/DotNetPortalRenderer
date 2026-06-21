@@ -3,6 +3,7 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using RenderingEngine;
+using RenderingEngine.Tooling;
 using SoftwareRendererModels;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -107,13 +108,35 @@ namespace SoftwareRenderer
             BuildTexture(StartTheGameLoop());
         }
 
-        [Conditional("DEBUG")]
         private static void EnableDebugOutput()
         {
             GL.Enable(EnableCap.DebugOutput);
+
             GL.DebugMessageCallback((source, type, id, severity, len, msg, ptr) =>
             {
-                Debug.WriteLine($"GL: {Marshal.PtrToStringAnsi(msg)}");
+                LogSeverity logSeverity;
+
+                switch (severity)
+                {
+                    case DebugSeverity.DebugSeverityLow:
+                    case DebugSeverity.DontCare:
+                        logSeverity = LogSeverity.Debug;
+                        break;
+                    case DebugSeverity.DebugSeverityNotification:
+                        logSeverity = LogSeverity.Info;
+                        break;
+                    case DebugSeverity.DebugSeverityMedium:
+                        logSeverity = LogSeverity.Warning;
+                        break;
+                    case DebugSeverity.DebugSeverityHigh:
+                        logSeverity = LogSeverity.Error;
+                        break;
+                    default:
+                        logSeverity = LogSeverity.Info;
+                        break;
+                }
+
+                AsyncLogger.Default.AddLog(logSeverity, $"GL: {Marshal.PtrToStringAnsi(msg)}");
             }, nint.Zero);
         }
 

@@ -1,4 +1,5 @@
-﻿using SoftwareRendererModels;
+﻿using RenderingEngine.Tooling;
+using SoftwareRendererModels;
 using System.CommandLine;
 using System.Diagnostics;
 
@@ -9,6 +10,8 @@ namespace SoftwareRenderer
         [STAThread]
         static int Main(string[] args)
         {
+            AsyncLogger.Default.AddLog(LogSeverity.Info, "Software Renderer Started");
+
             var iwadOption = new Option<string?>("--iwad")
             {
                 Description = "Doom IWAD file path"
@@ -36,7 +39,11 @@ namespace SoftwareRenderer
 
                 if (!IsValidMapName(map))
                 {
-                    result.AddError("Error: Invalid map value. Must be 1..32 characters and contain only letters, digits, '_' or '-'.");
+                    const string error = "Invalid map value. Must be 1..32 characters and contain only letters, digits, '_' or '-'.";
+
+                    AsyncLogger.Default.AddLog(LogSeverity.Warning, error);
+
+                    result.AddError($"Error: {error}");
                 }
             });
 
@@ -48,7 +55,11 @@ namespace SoftwareRenderer
 
                 if (string.IsNullOrEmpty(iwad))
                 {
-                    result.AddError("Error: Missing required argument: --iwad");
+                    const string error = "Missing required argument: --iwad";
+
+                    AsyncLogger.Default.AddLog(LogSeverity.Warning, error);
+
+                    result.AddError($"Error: {error}");
                 }
             });
 
@@ -93,7 +104,9 @@ namespace SoftwareRenderer
 
                     if (usingPaletteGrp && usingWads)
                     {
-                        result.AddError("Cannot mix iwad/pwad with palette/grp. Choose one set of arguments.");
+                        const string error = "Cannot mix iwad/pwad with palette/grp. Choose one set of arguments.";
+                        AsyncLogger.Default.AddLog(LogSeverity.Warning, error);
+                        result.AddError(error);
                     }
                 });
             }
@@ -106,7 +119,9 @@ namespace SoftwareRenderer
 
                     if (path != null && !File.Exists(path))
                     {
-                        result.AddError($"File '{path}' doesn't exist");
+                        string error = $"File '{path}' doesn't exist";
+                        AsyncLogger.Default.AddLog(LogSeverity.Warning, error);
+                        result.AddError(error);
                     }
                 });
             }
@@ -119,7 +134,9 @@ namespace SoftwareRenderer
 
                     if (path != null && !Path.Exists(path))
                     {
-                        result.AddError($"Path '{path}' doesn't exist");
+                        string error = $"File '{path}' doesn't exist";
+                        AsyncLogger.Default.AddLog(LogSeverity.Warning, error);
+                        result.AddError(error);
                     }
                 });
             }
@@ -143,18 +160,28 @@ namespace SoftwareRenderer
                 DukePath = dukePath
             };
 
+            AsyncLogger.Default.AddLog(LogSeverity.Info, $"IWAD: {iwad}, PWAD: {pwad}, Duke Path: {dukePath}, Map: {map}");
+
             try
             {
                 using var skiaWindow = SoftwareRendererWindow.CreateNew(parsedArgs);
                 // Collect after parsing map, we don't need those objects anymore
                 GC.Collect();
+
+                AsyncLogger.Default.AddLog(LogSeverity.Info, "Skia Render Window Loaded");
                 skiaWindow.Run();
             }
             catch (Exception ex)
             {
                 Debugger.Break();
-                throw;
+
+                AsyncLogger.Default.AddLog(LogSeverity.Error, $"Critical Application Failure", ex);
+
             }
+
+            AsyncLogger.Default.AddLog(LogSeverity.Info, "Application Exited");
+            AsyncLogger.Default.WaitSync();
+            AsyncLogger.Default.Dispose();
         }
     }
 }
