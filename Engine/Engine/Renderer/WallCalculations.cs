@@ -9,7 +9,7 @@ namespace RenderingEngine.Engine
         {
             RenderableWall wall = portalWall.Wall;
 
-            int textureStart = textureInfo.YOffset << 16;
+            float textureStart = textureInfo.YOffset << 16;
 
             int* textureYIncrement = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureYIncrement);
             int* startingYTexturePosition = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.StartingYTexturePosition);
@@ -28,6 +28,8 @@ namespace RenderingEngine.Engine
             float wallEndY = yPlaneInfo.WallEndY;
             float floorDistIncr = yPlaneInfo.FloorDistIncr;
 
+            bool noRepat = TextureIsUntiledY(portalWall.Wall.Sector, textureInfo);
+
             for (int x = wallFromX; x <= wallToX; x++)
             {
                 float textureYIncr = scaledTextureHeight / (wallEndY - wallStartY);
@@ -38,6 +40,14 @@ namespace RenderingEngine.Engine
                 Debug.Assert(ceilingY >= 0);
 
                 float topOffset = 0f;
+
+                if (noRepat)
+                {
+                    if (wallSlopedStartY < wallStartY && (wallStartY - wallSlopedStartY) < 1f)
+                    {
+                        wallSlopedStartY++;
+                    }
+                }
 
                 // ceiling (render start) is lower than sloped wall start
                 // increment texture start to accomodate
@@ -52,8 +62,6 @@ namespace RenderingEngine.Engine
 
                 int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + topOffset * textureYIncr);
                 textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeight << 16, textureYPosY);
-
-                Debug.Assert(textureYPosY < textureHeight << 16);
 
                 startingYTexturePosition[x] = textureYPosY;
                 textureYIncrement[x] = float.ConvertToIntegerNative<int>(textureYIncr);
@@ -964,6 +972,11 @@ namespace RenderingEngine.Engine
         public static bool TextureIsUntiledY(RenderableSector sector,
             GameTextureInfo wallTexture)
         {
+            if (wallTexture.YOffset != 0)
+            {
+                return false;
+            }
+
             int textureHeight = wallTexture.Height;
 
             if (wallTexture.YScale is float yScale)

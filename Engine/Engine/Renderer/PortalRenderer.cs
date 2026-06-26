@@ -468,9 +468,9 @@ namespace RenderingEngine.Engine
                         offset = wallFromX > wall.XLeft ? wallFromX - wall.XLeft : 0;
 
                         // AI Assisted
-                    var rw = ObjectPool.RenderablePortalWall.GetOrCreate();
-                    rw.Initialize(wall, renderableFromX, x, offset, status);
-                    renderableWalls.Add(rw);
+                        var rw = ObjectPool.RenderablePortalWall.GetOrCreate();
+                        rw.Initialize(wall, renderableFromX, x, offset, status);
+                        renderableWalls.Add(rw);
                     }
 
                     renderableFromX = x;

@@ -7,7 +7,6 @@ namespace SoftwareRenderer
 {
     internal partial class Program
     {
-        [STAThread]
         static int Main(string[] args)
         {
             AsyncLogger.Default.AddLog(LogSeverity.Info, "Software Renderer Started");
@@ -146,7 +145,7 @@ namespace SoftwareRenderer
                 if (string.IsNullOrEmpty(map) || map.Length > 32)
                     return false;
 
-                return map.All(c => char.IsLetterOrDigit(c) || c == '_' || c == '-');
+                return map.All(static (c) => char.IsLetterOrDigit(c) || c == '_' || c == '-');
             }
         }
 
