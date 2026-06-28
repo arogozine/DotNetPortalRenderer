@@ -798,21 +798,25 @@ internal static class GrpReader
                     if (lowerTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
                     {
                         float remainder = lowerYScale * windowEndY;
-                        remainder = remainder - MathF.Floor(remainder);
+                        remainder -= MathF.Floor(remainder);
 
                         float potentialYOffset = upperTexture.Height - upperTexture.Height * remainder;
 
                         lowerTextureInfo.YOffset -= (int)potentialYOffset;
+                        lowerTextureInfo.YOffset = SharedHelpers.EnsureOffsetIsPositive(lowerTextureInfo.Height, lowerTextureInfo.YOffset);
+                        Debug.Assert(lowerTextureInfo.YOffset >= 0);
                     }
 
                     if (!upperTextureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromSectorBottom))
                     {
                         float remainder = upperYScale * ceilOffset;
-                        remainder = remainder - MathF.Floor(remainder);
+                        remainder -= MathF.Floor(remainder);
 
                         float potentialYOffset = upperTexture.Height - upperTexture.Height * remainder;
 
                         upperTextureInfo.YOffset -= (int)potentialYOffset;
+                        upperTextureInfo.YOffset = SharedHelpers.EnsureOffsetIsPositive(upperTexture.Height, upperTextureInfo.YOffset);
+                        Debug.Assert(upperTextureInfo.YOffset >= 0);
                     }
 
                     if (line.MiddleTexture is GameTextureInfo middleTextureInfo)
@@ -850,10 +854,16 @@ internal static class GrpReader
                             {
                                 float potentialYOffset = middleTexture.Height - middleTexture.Height * remainder;
                                 middleTexture.YOffset += float.ConvertToIntegerNative<int>(potentialYOffset);
+                                middleTexture.YOffset = SharedHelpers.EnsureOffsetIsPositive(middleTexture.Height, middleTexture.YOffset);
+
+                                Debug.Assert(middleTexture.YOffset >= 0);
                             }
                             else if (middleTexture.YOffset != 0)
                             {
                                 middleTexture.YOffset = middleTexture.Height - middleTexture.YOffset;
+                                middleTexture.YOffset = SharedHelpers.EnsureOffsetIsPositive(middleTexture.Height, middleTexture.YOffset);
+
+                                Debug.Assert(middleTexture.YOffset >= 0);
                             }
                         }
                     }
