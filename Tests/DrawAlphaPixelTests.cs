@@ -1,48 +1,49 @@
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using RenderingEngine.Engine;
+using SoftwareRendererModels;
 
 namespace Tests;
 
 public class DrawAlphaPixelTests
 {
     // Mirrors the scalar BlendBGRA in DrawAlphaPixel (same constants).
-    static uint BlendBGRA(uint dst, uint src)
+    static uint BlendBGRA(BGRA dst, BGRA src)
     {
         const uint a = 127;
-        const uint ByteMask = 0xFF;
         const uint Alpha = (uint)byte.MaxValue << 24;
 
-        uint bOut = ((src & ByteMask) * a + (dst & ByteMask) * a) >> 8;
-        uint gOut = (((src >> 8) & ByteMask) * a + ((dst >> 8) & ByteMask) * a) >> 8;
-        uint rOut = (((src >> 16) & ByteMask) * a + ((dst >> 16) & ByteMask) * a) >> 8;
+        uint bOut = (src.B * a + dst.B * a) >> 8;
+        uint gOut = (src.G * a + dst.G * a) >> 8;
+        uint rOut = (src.R * a + dst.R * a) >> 8;
 
         return Alpha | (rOut << 16) | (gOut << 8) | bOut;
     }
 
-    // Vector overloads return dst unchanged when src is zero, else blend.
-    static uint BlendBGRAVector(uint dst, uint src) => src == 0u ? dst : BlendBGRA(dst, src);
+    // Vector overloads return dst unchanged when src is transparent, else blend.
+    static uint BlendBGRAVector(BGRA dst, BGRA src) =>
+        src.Value == 0u ? dst.Value : BlendBGRA(dst, src);
 
     // --- Draw ---
 
     [Fact]
-    public unsafe void Draw_ZeroPixel_LeaveSurfaceUnchanged()
+    public unsafe void Draw_TransparentPixel_LeaveSurfaceUnchanged()
     {
-        uint[] surface = [0xDEADBEEFu];
+        uint[] surface = [BGRA.White.Value];
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.Draw(ptr, 0u);
-        Assert.Equal(0xDEADBEEFu, surface[0]);
+            DrawAlphaPixel.Draw(ptr, BGRA.Transparent.Value);
+        Assert.Equal(BGRA.White.Value, surface[0]);
     }
 
     [Fact]
-    public unsafe void Draw_NonZeroPixel_StoresBlendedResult()
+    public unsafe void Draw_OpaquePixel_StoresBlendedResult()
     {
-        uint dst = 0x00808080u;
-        uint src = 0x00404040u;
-        uint[] surface = [dst];
+        BGRA dst = BGRA.White;
+        BGRA src = BGRA.Red;
+        uint[] surface = [dst.Value];
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.Draw(ptr, src);
+            DrawAlphaPixel.Draw(ptr, src.Value);
 
         Assert.Equal(BlendBGRA(dst, src), surface[0]);
     }
@@ -50,116 +51,107 @@ public class DrawAlphaPixelTests
     [Fact]
     public unsafe void Draw_DoesNotWriteAdjacentPixels()
     {
-        uint[] surface = [0x00111111u, 0x00222222u, 0x00333333u];
-        uint src = 0x00808080u;
+        BGRA dst = BGRA.Blue;
+        BGRA src = BGRA.Green;
+        uint[] surface = [BGRA.White.Value, dst.Value, BGRA.Red.Value];
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.Draw(ptr + 1, src);
+            DrawAlphaPixel.Draw(ptr + 1, src.Value);
 
-        Assert.Equal(0x00111111u, surface[0]);
-        Assert.Equal(BlendBGRA(0x00222222u, src), surface[1]);
-        Assert.Equal(0x00333333u, surface[2]);
+        Assert.Equal(BGRA.White.Value, surface[0]);
+        Assert.Equal(BlendBGRA(dst, src), surface[1]);
+        Assert.Equal(BGRA.Red.Value, surface[2]);
     }
 
     // --- Vector256 (no mask) ---
 
     [Fact]
-    public unsafe void DrawLine_Vector256_StoresBlendedResult()
+    public unsafe void DrawLine_Vector256_OpaquePixels_StoresBlendedResult()
     {
         int count = Vector256<uint>.Count;
         uint[] surface = new uint[count];
-        uint dst = 0x00404040u;
-        uint src = 0x00808080u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.White.Value);
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.DrawLine(ptr, Vector256.Create(src));
+            DrawAlphaPixel.DrawLine(ptr, Vector256.Create(BGRA.Blue.Value));
 
-        uint expected = BlendBGRAVector(dst, src);
+        uint expected = BlendBGRAVector(BGRA.White, BGRA.Blue);
         for (int i = 0; i < count; i++)
             Assert.Equal(expected, surface[i]);
     }
 
     [Fact]
-    public unsafe void DrawLine_Vector256_ZeroSrcLeavesUnchanged()
+    public unsafe void DrawLine_Vector256_TransparentPixels_LeaveSurfaceUnchanged()
     {
-        // With the refactored logic, zero src means dst is returned unchanged.
         int count = Vector256<uint>.Count;
         uint[] surface = new uint[count];
-        uint dst = 0x00808080u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.White.Value);
 
         fixed (uint* ptr = surface)
             DrawAlphaPixel.DrawLine(ptr, Vector256<uint>.Zero);
 
         for (int i = 0; i < count; i++)
-            Assert.Equal(dst, surface[i]);
+            Assert.Equal(BGRA.White.Value, surface[i]);
     }
 
     // --- Vector128 (no mask) ---
 
     [Fact]
-    public unsafe void DrawLine_Vector128_StoresBlendedResult()
+    public unsafe void DrawLine_Vector128_OpaquePixels_StoresBlendedResult()
     {
         uint[] surface = new uint[Vector128<uint>.Count];
-        uint dst = 0x00204080u;
-        uint src = 0x00101010u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.Red.Value);
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.DrawLine(ptr, Vector128.Create(src));
+            DrawAlphaPixel.DrawLine(ptr, Vector128.Create(BGRA.Blue.Value));
 
-        uint expected = BlendBGRAVector(dst, src);
+        uint expected = BlendBGRAVector(BGRA.Red, BGRA.Blue);
         for (int i = 0; i < Vector128<uint>.Count; i++)
             Assert.Equal(expected, surface[i]);
     }
 
     [Fact]
-    public unsafe void DrawLine_Vector128_ZeroSrcLeavesUnchanged()
+    public unsafe void DrawLine_Vector128_TransparentPixels_LeaveSurfaceUnchanged()
     {
         uint[] surface = new uint[Vector128<uint>.Count];
-        uint dst = 0x00606060u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.Green.Value);
 
         fixed (uint* ptr = surface)
             DrawAlphaPixel.DrawLine(ptr, Vector128<uint>.Zero);
 
         for (int i = 0; i < Vector128<uint>.Count; i++)
-            Assert.Equal(dst, surface[i]);
+            Assert.Equal(BGRA.Green.Value, surface[i]);
     }
 
     // --- Vector<uint> (no mask) ---
 
     [Fact]
-    public unsafe void DrawLine_Vector_StoresBlendedResult()
+    public unsafe void DrawLine_Vector_OpaquePixels_StoresBlendedResult()
     {
         int count = Vector<uint>.Count;
         uint[] surface = new uint[count];
-        uint dst = 0x00202020u;
-        uint src = 0x00404040u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.Yellow.Value);
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.DrawLine(ptr, new Vector<uint>(src));
+            DrawAlphaPixel.DrawLine(ptr, new Vector<uint>(BGRA.Red.Value));
 
-        uint expected = BlendBGRAVector(dst, src);
+        uint expected = BlendBGRAVector(BGRA.Yellow, BGRA.Red);
         for (int i = 0; i < count; i++)
             Assert.Equal(expected, surface[i]);
     }
 
     [Fact]
-    public unsafe void DrawLine_Vector_ZeroSrcLeavesUnchanged()
+    public unsafe void DrawLine_Vector_TransparentPixels_LeaveSurfaceUnchanged()
     {
         int count = Vector<uint>.Count;
         uint[] surface = new uint[count];
-        uint dst = 0x00808080u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.Blue.Value);
 
         fixed (uint* ptr = surface)
             DrawAlphaPixel.DrawLine(ptr, Vector<uint>.Zero);
 
         for (int i = 0; i < count; i++)
-            Assert.Equal(dst, surface[i]);
+            Assert.Equal(BGRA.Blue.Value, surface[i]);
     }
 
     // --- Vector256 with mask ---
@@ -169,14 +161,13 @@ public class DrawAlphaPixelTests
     {
         int count = Vector256<uint>.Count;
         uint[] surface = new uint[count];
-        uint dst = 0x00ABCD12u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.White.Value);
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.DrawLine(ptr, Vector256.Create(0x00808080u), Vector256<uint>.Zero);
+            DrawAlphaPixel.DrawLine(ptr, Vector256.Create(BGRA.Red.Value), Vector256<uint>.Zero);
 
         for (int i = 0; i < count; i++)
-            Assert.Equal(dst, surface[i]);
+            Assert.Equal(BGRA.White.Value, surface[i]);
     }
 
     [Fact]
@@ -184,38 +175,34 @@ public class DrawAlphaPixelTests
     {
         int count = Vector256<uint>.Count;
         uint[] surface = new uint[count];
-        uint dst = 0x00404040u;
-        uint src = 0x00808080u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.White.Value);
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.DrawLine(ptr, Vector256.Create(src), Vector256.Create(uint.MaxValue));
+            DrawAlphaPixel.DrawLine(ptr, Vector256.Create(BGRA.Blue.Value), Vector256.Create(uint.MaxValue));
 
-        uint expected = BlendBGRAVector(dst, src);
+        uint expected = BlendBGRAVector(BGRA.White, BGRA.Blue);
         for (int i = 0; i < count; i++)
             Assert.Equal(expected, surface[i]);
     }
 
     [Fact]
-    public unsafe void DrawLine_Vector256_WithAlternatingMask_OnlyMaskedLanesUpdated()
+    public unsafe void DrawLine_Vector256_WithAlternatingMask_OnlyMaskedLanesBlended()
     {
         int count = Vector256<uint>.Count;
         uint[] surface = new uint[count];
-        uint dst = 0x00101010u;
-        uint src = 0x00808080u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.White.Value);
         var mask = Vector256.Create(uint.MaxValue, 0u, uint.MaxValue, 0u, uint.MaxValue, 0u, uint.MaxValue, 0u);
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.DrawLine(ptr, Vector256.Create(src), mask);
+            DrawAlphaPixel.DrawLine(ptr, Vector256.Create(BGRA.Green.Value), mask);
 
-        uint expected = BlendBGRAVector(dst, src);
+        uint expected = BlendBGRAVector(BGRA.White, BGRA.Green);
         for (int i = 0; i < count; i++)
         {
             if (i % 2 == 0)
                 Assert.Equal(expected, surface[i]);
             else
-                Assert.Equal(dst, surface[i]);
+                Assert.Equal(BGRA.White.Value, surface[i]);
         }
     }
 
@@ -225,33 +212,30 @@ public class DrawAlphaPixelTests
     public unsafe void DrawLine_Vector128_WithAllZeroMask_LeaveSurfaceUnchanged()
     {
         uint[] surface = new uint[Vector128<uint>.Count];
-        uint dst = 0x00123456u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.Red.Value);
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.DrawLine(ptr, Vector128.Create(0x00808080u), Vector128<uint>.Zero);
+            DrawAlphaPixel.DrawLine(ptr, Vector128.Create(BGRA.Blue.Value), Vector128<uint>.Zero);
 
         for (int i = 0; i < Vector128<uint>.Count; i++)
-            Assert.Equal(dst, surface[i]);
+            Assert.Equal(BGRA.Red.Value, surface[i]);
     }
 
     [Fact]
-    public unsafe void DrawLine_Vector128_WithAlternatingMask_OnlyMaskedLanesUpdated()
+    public unsafe void DrawLine_Vector128_WithAlternatingMask_OnlyMaskedLanesBlended()
     {
         uint[] surface = new uint[Vector128<uint>.Count];
-        uint dst = 0x00202020u;
-        uint src = 0x00606060u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.Red.Value);
         var mask = Vector128.Create(uint.MaxValue, 0u, uint.MaxValue, 0u);
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.DrawLine(ptr, Vector128.Create(src), mask);
+            DrawAlphaPixel.DrawLine(ptr, Vector128.Create(BGRA.Blue.Value), mask);
 
-        uint expected = BlendBGRAVector(dst, src);
+        uint expected = BlendBGRAVector(BGRA.Red, BGRA.Blue);
         Assert.Equal(expected, surface[0]);
-        Assert.Equal(dst, surface[1]);
+        Assert.Equal(BGRA.Red.Value, surface[1]);
         Assert.Equal(expected, surface[2]);
-        Assert.Equal(dst, surface[3]);
+        Assert.Equal(BGRA.Red.Value, surface[3]);
     }
 
     // --- Vector<uint> with mask ---
@@ -261,39 +245,35 @@ public class DrawAlphaPixelTests
     {
         int count = Vector<uint>.Count;
         uint[] surface = new uint[count];
-        uint dst = 0x00101020u;
-        Array.Fill(surface, dst);
-        uint[] maskValues = new uint[count]; // all zero
+        Array.Fill(surface, BGRA.Green.Value);
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.DrawLine(ptr, new Vector<uint>(0x00808080u), new Vector<uint>(maskValues));
+            DrawAlphaPixel.DrawLine(ptr, new Vector<uint>(BGRA.Red.Value), Vector<uint>.Zero);
 
         for (int i = 0; i < count; i++)
-            Assert.Equal(dst, surface[i]);
+            Assert.Equal(BGRA.Green.Value, surface[i]);
     }
 
     [Fact]
-    public unsafe void DrawLine_VectorWithAlternatingMask_OnlyMaskedLanesUpdated()
+    public unsafe void DrawLine_VectorWithAlternatingMask_OnlyMaskedLanesBlended()
     {
         int count = Vector<uint>.Count;
         uint[] surface = new uint[count];
-        uint dst = 0x00303030u;
-        uint src = 0x00909090u;
-        Array.Fill(surface, dst);
+        Array.Fill(surface, BGRA.Green.Value);
         uint[] maskValues = new uint[count];
         for (int i = 0; i < count; i++)
             maskValues[i] = i % 2 == 0 ? uint.MaxValue : 0u;
 
         fixed (uint* ptr = surface)
-            DrawAlphaPixel.DrawLine(ptr, new Vector<uint>(src), new Vector<uint>(maskValues));
+            DrawAlphaPixel.DrawLine(ptr, new Vector<uint>(BGRA.Yellow.Value), new Vector<uint>(maskValues));
 
-        uint expected = BlendBGRAVector(dst, src);
+        uint expected = BlendBGRAVector(BGRA.Green, BGRA.Yellow);
         for (int i = 0; i < count; i++)
         {
             if (i % 2 == 0)
                 Assert.Equal(expected, surface[i]);
             else
-                Assert.Equal(dst, surface[i]);
+                Assert.Equal(BGRA.Green.Value, surface[i]);
         }
     }
 }

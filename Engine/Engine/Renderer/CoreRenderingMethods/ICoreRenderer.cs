@@ -460,12 +460,8 @@ internal unsafe interface ICoreRenderer<T>
         uint* textureYLocationPtr,
         uint* textureYIncrementPtr
         );
-    static abstract void RenderMultipleWallLines(uint count, uint width, uint x, int textureHeight, uint* startY, uint* endY, uint* textureYPos_u, uint* textureYIncr_u, uint* screenPtr, uint* texturePos, uint* textureBuffer);
-    static abstract void RenderMultipleWallLinesV128(uint width, uint x, int textureHeight, uint* startY, uint* endY, uint* textureYPos_u, uint* textureYIncr_u, uint* screenPtr, uint* texturePos, uint* textureBuffer);
-    static abstract void RenderMultipleWallLinesV256(uint width, uint x, int textureHeight, uint* startY, uint* endY, uint* textureYPos_u, uint* textureYIncr_u, uint* screenPtr, uint* texturePos, uint* textureBuffer);
+
     static abstract void RenderWall(int spriteFromX, int spriteToX, uint width, int textureHeight, ushort* repeatedCount, uint* texturePtr, uint* screenPtr, uint* portalFromClampedPtr, uint* portalToClampedPtr, uint* textureXLocationPtr, uint* textureYLocationPtr, uint* textureYIncrementPtr);
-    static abstract void RenderWallColumn(uint width, uint x, int textureHeight, uint startY, uint endY, uint textureYPos_u, uint textureYIncr_u, uint* screenPtr, uint* textureBuffer);
-    static abstract uint RenderWallColumn2(uint width, uint x, int textureHeight, uint startY, uint endY, uint textureYPos_u, uint textureYIncr_u, uint* screenPtr, uint* textureBuffer);
 
     static abstract void RenderSkybox(PortalPlayerSnapshot player,
            int repeatCount,

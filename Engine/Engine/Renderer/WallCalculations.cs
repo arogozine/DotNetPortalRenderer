@@ -664,20 +664,20 @@ namespace RenderingEngine.Engine
             repeatedCount.Fill(length);
 
             // set repeat count to 0 where there is nothing to draw
-            ref RenderColumnStatus statusRef = ref memoryPool.GetBucketRef<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-            statusRef = ref Unsafe.Add(ref statusRef, wallFromX);
+            RenderColumnStatus* statusPtr = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            statusPtr += wallFromX;
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
                 uint wallStart = wallStartPtr[x];
                 uint wallEnd = wallEndPtr[x];
 
-                if (!statusRef.WallRenderable || wallStart >= wallEnd)
+                if (!(*statusPtr).WallRenderable || wallStart >= wallEnd)
                 {
                     repeatedCount[x - wallFromX] = 0;
                 }
 
-                statusRef = ref Unsafe.Add(ref statusRef, 1);
+                statusPtr++;
             }
 
             return repeatedCount;
@@ -836,11 +836,6 @@ namespace RenderingEngine.Engine
 
             Span<float> spriteDistance = spriteCacheMemoryPool.GetBucket<float>(SpriteCachePoolBucket.Distance)[offset..];
             Span<RenderColumnStatus> columnStatus = spriteCacheMemoryPool.GetBucket<RenderColumnStatus>(SpriteCachePoolBucket.RenderStatus)[offset..];
-
-            if (renderableWall.Depth > 1)
-            {
-                offset = PixelWidth * (renderableWall.Depth - 1);
-            }
 
             Span<int> wallStart = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallStart)[offset..];
             Span<int> wallEnd = spriteCacheMemoryPool.GetBucket<int>(SpriteCachePoolBucket.WallEnd)[offset..];

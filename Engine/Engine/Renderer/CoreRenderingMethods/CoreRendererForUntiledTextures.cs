@@ -284,7 +284,6 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 RenderMultipleWallLinesV256(
                     width,
                     (uint)x,
-                    textureHeight,
                     clampedFromY,
                     clampedToY,
                     textureYPos,
@@ -303,7 +302,6 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 RenderMultipleWallLinesV128(
                     width,
                     (uint)x,
-                    textureHeight,
                     clampedFromY,
                     clampedToY,
                     textureYPos,
@@ -321,7 +319,6 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 count,
                 width,
                 (uint)x,
-                textureHeight,
                 clampedFromY,
                 clampedToY,
                 textureYPos,
@@ -381,7 +378,6 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
     public static void RenderMultipleWallLinesV256(
         uint width,
         uint x,
-        int textureHeight,
         uint* startY,
         uint* endY,
         uint* textureYPos_u,
@@ -397,9 +393,6 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
 
         (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
         (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
-
-        uint textureHeightMask = (uint)(textureHeight - 1);
-        // Vector256<uint> textureMaskV = Vector256.Create(textureHeightMask);
 
         Vector256<uint> textureXPosV = Vector256.Load(texturePos);
         Vector256<uint> textureYPos_uV = Vector256.Load(textureYPos_u);
@@ -567,7 +560,6 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
     public static void RenderMultipleWallLinesV128(
         uint width,
         uint x,
-        int textureHeight,
         uint* startY,
         uint* endY,
         uint* textureYPos_u,
@@ -586,8 +578,6 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
 
         uint* screenIndexPtr = screenPtr + min_t * width + x;
 
-        uint textureHeightMask = (uint)(textureHeight - 1);
-        Vector128<uint> textureMaskV = Vector128.Create(textureHeightMask);
         Vector128<uint> textureYPos_uV = Vector128.Load(textureYPos_u);
         Vector128<uint> textureXPosV = Vector128.Load(texturePos);
 
@@ -753,7 +743,6 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
         uint count,
         uint width,
         uint x,
-        int textureHeight,
         uint* startY,
         uint* endY,
         uint* textureYPos_u,
@@ -788,7 +777,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 uint top = *(startY + i);
                 uint bottom = *(endY + i);
 
-                RenderWallColumn(width, x, textureHeight, top, bottom, textureYPos, incr, screenPtr,
+                RenderWallColumn(width, x, top, bottom, textureYPos, incr, screenPtr,
                     textureBuffer + *(texturePos + i));
             }
 
@@ -812,7 +801,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
 
                 uint xi = x + i;
 
-                *textureYPos = RenderWallColumn2(width, xi, textureHeight, top, max_t, *textureYPos, incr, screenPtr,
+                *textureYPos = RenderWallColumn2(width, xi, top, max_t, *textureYPos, incr, screenPtr,
                     textureBuffer + *(texturePos + i));
             }
         }
@@ -865,7 +854,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
             uint textureYPos = *(textureYPos_u + i);
             uint incr = *(textureYIncr_u + i);
 
-            RenderWallColumn(width, x, textureHeight, min_b, bottom, textureYPos, incr, screenPtr,
+            RenderWallColumn(width, x, min_b, bottom, textureYPos, incr, screenPtr,
                 textureBuffer + *(texturePos + i));
         }
     }
@@ -874,7 +863,6 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
     public static uint RenderWallColumn2(
         uint width,
         uint x,
-        int textureHeight,
         uint startY,
         uint endY,
         uint textureYPos_u,
@@ -907,7 +895,6 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
     public static void RenderWallColumn(
         uint width,
         uint x,
-        int textureHeight,
         uint startY,
         uint endY,
         uint textureYPos_u,

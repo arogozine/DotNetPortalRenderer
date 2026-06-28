@@ -6,6 +6,7 @@ namespace RenderingEngine
     public sealed unsafe class GameRenderingThread : IDisposable
     {
         private readonly PortalEngine Engine;
+        private readonly GameResourceType _gameResourceType;
         private CancellationTokenSource EngineLoopCancellationToken;
         private nint* currentFrame = null;
         private Task? engineLoopTask = null;
@@ -13,7 +14,7 @@ namespace RenderingEngine
         private readonly SemaphoreSlim StartRenderingSemaphore = new(0, 1);
         private readonly SemaphoreSlim RenderedFrameSemaphore = new(0, 1);
 
-        public GameRenderingThread(PortalEngine engine)
+        public GameRenderingThread(PortalEngine engine, GameResourceType _gameResourceType)
         {
             Engine = engine;
             EngineLoopCancellationToken = new();
