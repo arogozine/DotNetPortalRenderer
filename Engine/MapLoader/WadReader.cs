@@ -441,7 +441,8 @@ internal static class WadReader
                     UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, !linedef.Flags.HasFlag(LinedefFlags.DontPegTop)),
                     MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffsetMid, lineInfo.YOffsetMid, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom)),
                     LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom)),
-                    Shade = sector.LightLevel
+                    UpperShade = sector.LightLevel,
+                    LowerShade = sector.LightLevel
                 };
 
                 mapSector.Walls.Add(line);
@@ -715,7 +716,7 @@ internal static class WadReader
                             RenderingOptions = TextureRenderingOptions.Skybox,
                             Palette = 0,
                         };
-                        wall.Shade = byte.MaxValue;
+                        wall.UpperShade = byte.MaxValue;
                     }
                     else
                     {
@@ -730,7 +731,7 @@ internal static class WadReader
                             YScale = null,
                             Palette = 0,
                         };
-                        wall.Shade = byte.MaxValue;
+                        wall.UpperShade = byte.MaxValue;
                     }
                 }
                 else
@@ -746,7 +747,7 @@ internal static class WadReader
                         YScale = null,
                         Palette = 0
                     };
-                    wall.Shade = byte.MaxValue;
+                    wall.UpperShade = byte.MaxValue;
                 }
             }
         }
@@ -1078,7 +1079,8 @@ internal static class WadReader
                     UpperTexture = ToTextureInfo(lineInfo.UpperTexture, lineInfo.XOffsetTop, lineInfo.YOffsetTop, !lineInfo.LowerUnpegged),
                     MiddleTexture = middleTexture,
                     LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, lineInfo.UpperUnpegged),
-                    Shade = sector.LightLevel,
+                    UpperShade = sector.LightLevel,
+                    LowerShade = sector.LightLevel,
                     TwoSided = twoSided
                 };
 

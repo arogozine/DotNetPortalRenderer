@@ -1025,11 +1025,11 @@ namespace RenderingEngine.Engine
 
             if (wallSloped)
             {
-                (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, wall.C2);
-                (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, wall.C1);
+                (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, wall.R1);
+                (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, wall.R2);
 
-                (float p_floorZ_a, float p_ceilingZ_a) = CalculateZAtPoint(neighborSector, wall.C1);
-                (float p_floorZ_b, float p_ceilingZ_b) = CalculateZAtPoint(neighborSector, wall.C2);
+                (float p_floorZ_a, float p_ceilingZ_a) = CalculateZAtPoint(neighborSector, wall.R1);
+                (float p_floorZ_b, float p_ceilingZ_b) = CalculateZAtPoint(neighborSector, wall.R2);
 
                 (sectorHeight, ceilOffset, floorOffset) = CalculatePortalOffsets(floorZ_a, ceilingZ_a, p_floorZ_a, p_ceilingZ_a);
 
@@ -1041,7 +1041,7 @@ namespace RenderingEngine.Engine
 
                 renderLower |= floorOffset != 0;
                 renderUpper |= ceilOffset != 0;
-                basicWall &= !(floorOffset == sectorHeight || sectorHeight == -ceilOffset);
+                basicWall |= (floorOffset == sectorHeight || sectorHeight == -ceilOffset);
 
                 return (renderLower, renderUpper, basicWall);
             }

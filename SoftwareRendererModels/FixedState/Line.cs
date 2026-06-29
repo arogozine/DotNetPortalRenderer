@@ -14,5 +14,7 @@ public sealed class Line : IFixedState
     public bool TwoSided { get; set; }
     public bool IsMirror { get; set; }
 
-    public required short Shade { get; set; }
+    public required short UpperShade { get; set; }
+    public required short LowerShade { get; set; }
+
 }

@@ -464,7 +464,7 @@ internal static class GrpReader
         return options;
     }
 
-    private static Map ExtractBuildMap(MapFile mapFile, Dictionary<int, GrpReader.SpriteAngleRotation[]> spriteToAngleFrames)
+    private static Map ExtractBuildMap(MapFile mapFile, Dictionary<int, SpriteAngleRotation[]> spriteToAngleFrames)
     {
         StartingPosition startingPosition = mapFile.StartingPosition;
         Span<SectorType> grpSectors = mapFile.Sectors;
@@ -505,7 +505,8 @@ internal static class GrpReader
                     UpperTexture = GetTextureInfo(in wall, in wall, false),
                     MiddleTexture = GetTextureInfo(in wall, in wall, true),
                     LowerTexture = GetTextureInfo(in wall, in nextWall, false),
-                    Shade = wall.Shade
+                    UpperShade = wall.Shade,
+                    LowerShade = nextWall.Shade
                 };
 
                 ij++;

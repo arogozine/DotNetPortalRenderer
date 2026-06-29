@@ -483,7 +483,7 @@ namespace Tests
                 UpperTexture = GrpReader.GetTextureInfo(in wall, in wall, false),
                 MiddleTexture = GrpReader.GetTextureInfo(in wall, in wall, true),
                 LowerTexture = GrpReader.GetTextureInfo(in wall, in nextWall, false),
-                Shade = wall.Shade
+                UpperShade = wall.Shade
             };
         }
     }

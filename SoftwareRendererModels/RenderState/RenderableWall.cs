@@ -18,7 +18,8 @@ public sealed class RenderableWall : IRenderState, IWallLike
     public Vector2 PointA => Line.PointA;
     public Vector2 PointB => Line.PointB;
     public int? SectorTo => Line.SectorTo;
-    public short? Shade => Line.Shade;
+    public short? Shade => Line.UpperShade;
+    public short? LowerShade => Line.LowerShade;
     public bool TwoSided => Line.TwoSided;
     public bool IsMirror => Line.IsMirror;
     public bool IsPortal => Neighbor.HasValue;

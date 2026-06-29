@@ -9,6 +9,7 @@ namespace RenderingEngine.Engine
             RenderablePortalWall renderableWall,
             GameTextureInfo textureInfo,
             scoped Span<ushort> repeatedCount,
+            short? shade,
             uint* fromYClamped,
             uint* toYClamped)
         {
@@ -39,7 +40,7 @@ namespace RenderingEngine.Engine
             uint* textureXLocation = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureXLocation);
             uint* textureYIncrementPtr = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
 
-            ref uint wallTextureRef = ref textureInfo.Texture.GetBinaryRef<uint>(textureInfo.Palette, wall.Shade ?? default, transform);
+            ref uint wallTextureRef = ref textureInfo.Texture.GetBinaryRef<uint>(textureInfo.Palette, shade ?? default, transform);
             int textureWidth = textureInfo.Height;
 
             _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
@@ -114,7 +115,7 @@ namespace RenderingEngine.Engine
             uint* wallStartClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.WallStartClamped);
             uint* wallEndClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.WallEndClamped);
 
-            DrawWallShared(renderableWall, wall.MiddleTexture!, repeatedCount, wallStartClamped, wallEndClamped);
+            DrawWallShared(renderableWall, wall.MiddleTexture!, repeatedCount, wall.Shade, wallStartClamped, wallEndClamped);
 
             return true;
         }
@@ -242,7 +243,7 @@ namespace RenderingEngine.Engine
 
             Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall, wallStartClamped, wallEndClamped);
 
-            DrawWallShared(renderableWall, upperTexture, repeatedCount, wallStartClamped, wallEndClamped);
+            DrawWallShared(renderableWall, upperTexture, repeatedCount, wall.Shade, wallStartClamped, wallEndClamped);
         }
 
         private void DrawLowerPortalWall(
@@ -258,7 +259,7 @@ namespace RenderingEngine.Engine
 
             Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall, wallStartClamped, wallEndClamped);
 
-            DrawWallShared(renderableWall, lowerTexture, repeatedCount, wallStartClamped, wallEndClamped);
+            DrawWallShared(renderableWall, lowerTexture, repeatedCount, wall.LowerShade, wallStartClamped, wallEndClamped);
         }
     }
 }
