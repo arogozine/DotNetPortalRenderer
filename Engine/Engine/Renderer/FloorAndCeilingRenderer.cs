@@ -459,12 +459,14 @@ namespace RenderingEngine.Engine
 
                 for (int y = floorFromY; y < floorToY; y++)
                 {
+                    Vector<float> incrementVector = Vector.Create(*(incrCachePtr + y));
+                    Vector<int> textureIndexV = GetXyFromScreenSpace(incrementVector, xMapPosMultV);
+
                     for (int i = 0; i < Vector<uint>.Count; i++)
                     {
                         if (to[i] > y)
                         {
-                            float xMult = xMapPosMultV[i];
-                            int textureIndex = GetXyFromScreenSpaceScalar(*incr, xMult);
+                            int textureIndex = textureIndexV[i];
                             screenTexPtr[i] = texturePtr[textureIndex];
                         }
                     }
@@ -486,6 +488,9 @@ namespace RenderingEngine.Engine
 
                 for (int y = min_t; y < max_t; y++)
                 {
+                    Vector<float> incrementVector = Vector.Create(*(incrCachePtr + y));
+                    Vector<int> textureIndexV = GetXyFromScreenSpace(incrementVector, xMapPosMultV);
+
                     for (int i = 0; i < Vector<uint>.Count; i++)
                     {
                         if (from[i] >= y)
@@ -493,8 +498,7 @@ namespace RenderingEngine.Engine
                             continue;
                         }
 
-                        float xMult = xMapPosMultV[i];
-                        int textureIndex = GetXyFromScreenSpaceScalar(*incr, xMult);
+                        int textureIndex = textureIndexV[i];
                         screenTexPtr[i] = texturePtr[textureIndex];
                     }
 
@@ -554,12 +558,16 @@ namespace RenderingEngine.Engine
                     screenTexPtr = cur;
                 }
 
-                for (int i = 0; i < rem; i++)
+                if (rem != 0)
                 {
-                    int textureIndex = GetXyFromScreenSpaceScalar(incrementVector[i], xMapPosMultiplier);
+                    Vector<int> textureIndexV = GetXyFromScreenSpace(incrementVector, xMapPosMultiplierV);
 
-                    *screenTexPtr = texturePtr[textureIndex];
-                    screenTexPtr += width;
+                    for (int i = 0; i < rem; i++)
+                    {
+                        int textureIndex = textureIndexV[i];
+                        * screenTexPtr = texturePtr[textureIndex];
+                        screenTexPtr += width;
+                    }
                 }
             }
 
@@ -611,50 +619,6 @@ namespace RenderingEngine.Engine
                 _x1 = (_x1 + xOffSetV) & textureWidthMaskV;
 
                 return _y1 * textureWidthV + _x1;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            int GetXyFromScreenSpaceScalar(float incrament, float xMapPosMultiplier)
-            {
-                float yMapPosR = cameraPosition * incrament;
-                float xMapPosR = yMapPosR * xMapPosMultiplier;
-
-                if (slopeFloor is not null)
-                {
-                    Vector3 lineDir = new(-xMapPosR, -yMapPosR, dir_z_scalar);
-
-                    MathFormulas.FindIntersection(planePoint, planeNormal, linePoint, lineDir, out Vector3 intersection);
-                    xMapPosR = intersection.X;
-                    yMapPosR = intersection.Y;
-                }
-
-                (float xMapPos, float yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSin, pCos, px, py);
-
-                if (rotated)
-                {
-                    xMapPos -= alignX;
-                    yMapPos -= alignY;
-
-                    float xMapPosSR = MathF.FusedMultiplyAdd(xMapPos, rCos, -yMapPos * rSin);
-                    float yMapPosSR = MathF.FusedMultiplyAdd(xMapPos, rSin, yMapPos * rCos);
-
-                    xMapPos = xMapPosSR;
-                    yMapPos = yMapPosSR;
-                }
-
-                int _y1 = float.ConvertToIntegerNative<int>(yMapPos);
-                int _x1 = float.ConvertToIntegerNative<int>(xMapPos);
-
-                if (xyOpts.HasFlag(XyOpts.DoubleSize))
-                {
-                    _y1 >>= 1;
-                    _x1 >>= 1;
-                }
-
-                _y1 = (_y1 + yOffset) & textureHeightMask;
-                _x1 = (_x1 + xOffset) & textureWidthMask;
-
-                return _y1 * textureWidth + _x1;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
