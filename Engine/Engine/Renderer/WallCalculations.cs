@@ -482,6 +482,11 @@ namespace RenderingEngine.Engine
 
             for (int x = wallFromX; x <= wallToX; x++)
             {
+                if (statusPtr[x].IsFinished)
+                {
+                    continue;
+                }
+
                 int ceilingStartY = ceilingStartPtr[x];
                 int floorEndY = floorEndPtr[x];
 

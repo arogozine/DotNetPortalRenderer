@@ -275,5 +275,46 @@ namespace RenderingEngine.Engine
 
             return inside;
         }
+
+        public static bool IsPointInPolygon(RenderableFloorSprite sprite, Vector2 point)
+        {
+            float x = point.X;
+            float y = point.Y;
+            bool inside = false;
+
+            ReadOnlySpan<(Vector2 PointA, Vector2 PointB)> sides = [
+                (sprite.PointA, sprite.PointB),
+                (sprite.PointB, sprite.PointD),
+                (sprite.PointD, sprite.PointC),
+                (sprite.PointC, sprite.PointA),
+            ];
+
+            for (int i = 0; i < sides.Length; i++)
+            {
+                (var pointA, var pointB) = sides[i];
+
+                float x1 = pointA.X;
+                float y1 = pointA.Y;
+                float x2 = pointB.X;
+                float y2 = pointB.Y;
+
+                if (MathF.Min(y1, y2) <= y && y < MathF.Max(y1, y2) && x <= MathF.Max(x1, x2))
+                {
+                    float xinters = default;
+
+                    if (y1 != y2)
+                    {
+                        xinters = (y - y1) * (x2 - x1) / (y2 - y1) + x1;
+                    }
+
+                    if (x1 == x2 || x <= xinters)
+                    {
+                        inside = !inside;
+                    }
+                }
+            }
+
+            return inside;
+        }
     }
 }
