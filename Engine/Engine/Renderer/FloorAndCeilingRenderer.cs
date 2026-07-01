@@ -6,7 +6,7 @@ using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
 {
-    internal sealed partial class PortalRenderer
+    internal partial class PortalRenderer
     {
         #region Shared Precalculated Vectors
 
@@ -35,63 +35,8 @@ namespace RenderingEngine.Engine
 
         #endregion
 
-        private static (int xOffset, int yOffset, XyOpts Opts) DetermineOffsets(
-            GameTextureInfo textureInfo)
-        {
-            int textureWidth = textureInfo.Width;
-            int textureHeight = textureInfo.Height;
-
-            XyOpts xyOpts = XyOpts.None;
-            int xOffset = textureInfo.XOffset;
-            int yOffset = textureInfo.YOffset;
-
-            bool doubleSize = textureInfo.XScale == 2 && textureInfo.YScale == 2;
-
-            const TextureRenderingOptions mask = TextureRenderingOptions.FlipX | TextureRenderingOptions.FlipY | TextureRenderingOptions.SwapXY;
-
-            switch (textureInfo.RenderingOptions & mask)
-            {
-                case TextureRenderingOptions.FlipX:
-                    xOffset = textureWidth - xOffset;
-                    xyOpts = XyOpts.FlipX;
-                    break;
-                case TextureRenderingOptions.FlipX | TextureRenderingOptions.FlipY:
-                    yOffset = textureHeight - yOffset;
-                    break;
-                case TextureRenderingOptions.FlipX | TextureRenderingOptions.SwapXY:
-                    xyOpts = XyOpts.SwapXY | XyOpts.FlipY;
-                    break;
-                case TextureRenderingOptions.FlipY:
-                    xyOpts = XyOpts.FlipY;
-                    break;
-                case TextureRenderingOptions.FlipY | TextureRenderingOptions.SwapXY:
-                    xOffset = textureWidth - xOffset;
-                    xyOpts = XyOpts.SwapXY | XyOpts.FlipX;
-                    break;
-                case TextureRenderingOptions.SwapXY:
-                    yOffset = textureHeight - yOffset;
-                    xyOpts = XyOpts.SwapXY | XyOpts.FlipY;
-                    break;
-                case TextureRenderingOptions.FlipX | TextureRenderingOptions.FlipY | TextureRenderingOptions.SwapXY:
-                    xyOpts = XyOpts.SwapXY;
-                    break;
-                case TextureRenderingOptions.None:
-                    xOffset = textureWidth - xOffset;
-                    yOffset = textureHeight - yOffset;
-                    break;
-                default:
-                    throw new NotImplementedException();
-            }
-
-            if (doubleSize)
-            {
-                xOffset <<= 1;
-                yOffset <<= 1;
-                xyOpts |= XyOpts.DoubleSize;
-            }
-
-            return (xOffset, yOffset, xyOpts);
-        }
+        protected abstract (int xOffset, int yOffset, XyOpts Opts) DetermineOffsets(
+            GameTextureInfo textureInfo);
 
         [SkipLocalsInit]
         private unsafe void RenderCeilingVector(

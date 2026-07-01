@@ -4,9 +4,9 @@ using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
 {
-    internal sealed partial class PortalRenderer
+    internal unsafe partial class PortalRenderer
     {
-        private unsafe void RenderSkyboxVector(PortalPlayerSnapshot player, RenderableSector sector)
+        private void RenderSkyboxVector(PortalPlayerSnapshot player, RenderableSector sector)
         {
             GameTextureInfo textureInfo = sector.CeilTexture;
             GameTexture texture = textureInfo.Texture;
@@ -32,7 +32,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private unsafe void RenderSkyboxShared(PortalPlayerSnapshot player,
+        protected abstract void RenderSkyboxShared(PortalPlayerSnapshot player,
             RenderColumnStatus renderColumnStatus,
             uint* screenPtr,
             uint* texturePtr,
@@ -41,58 +41,9 @@ namespace RenderingEngine.Engine
             int* ceilingStartPtr, int* floorEndPtr,
             int width,
             int textureWidth,
-            int textureHeight)
-        {
-            float yTextureIncr = ((float)textureHeight) / PixelHeight;
+            int textureHeight);
 
-            float* angleCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.AngleCache);
-
-            Span<ushort> repeatedCount = CaclulateRepeatedCount();
-            _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
-
-            bool isPowerOfTwo = SharedHelpers.IsPowerOfTwo(textureHeight);
-
-            fixed (ushort* repeatedCountPtr = &repeatedCount[0])
-            {
-
-                if (isPowerOfTwo)
-                {
-                    CoreRendererForPowTextures<DrawSimplePixel>.RenderSkybox(player, 1, repeatedCountPtr, angleCachePtr, screenPtr, texturePtr, sectorFromX, sectorToX, fromYPtr, toYPtr, ceilingStartPtr, floorEndPtr, width, textureWidth, textureHeight, yTextureIncr);
-                }
-                else
-                {
-                    CoreRendererForOddTextures<DrawSimplePixel>.RenderSkybox(player, 1, repeatedCountPtr, angleCachePtr, screenPtr, texturePtr, sectorFromX, sectorToX, fromYPtr, toYPtr, ceilingStartPtr, floorEndPtr, width, textureWidth, textureHeight, yTextureIncr);
-                }
-            }
-
-            return;
-
-            Span<ushort> CaclulateRepeatedCount()
-            {
-                RenderColumnStatus* status = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
-
-                int length = sectorToX - sectorFromX;
-
-                Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[..(length + 1)];
-
-                for (int x = sectorFromX; x <= sectorToX; x++)
-                {
-                    RenderColumnStatus columnStatus = status[x];
-
-                    if (!columnStatus.HasFlag(renderColumnStatus))
-                    {
-                        repeatedCount[x - sectorFromX] = 0;
-                        continue;
-                    }
-
-                    repeatedCount[x - sectorFromX] = (ushort)length;
-                }
-
-                return repeatedCount;
-            }
-        }
-
-        private unsafe void RenderSkyboxFloorVector(
+        private void RenderSkyboxFloorVector(
             PortalPlayerSnapshot player,
             RenderableSector sector)
         {
@@ -122,7 +73,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private unsafe bool DrawBasicSkyboxWall(
+        private bool DrawBasicSkyboxWall(
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall)
         {
@@ -142,7 +93,7 @@ namespace RenderingEngine.Engine
             return true;
         }
 
-        private unsafe void DrawBasicSkyboxWall(
+        private void DrawBasicSkyboxWall(
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall,
             int* wallStartPtr, int* wallEndPtr,

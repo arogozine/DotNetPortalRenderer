@@ -16,11 +16,13 @@ public sealed class AsyncLogger : IDisposable
     public static readonly AsyncLogger Default = new();
 
     private readonly CancellationTokenSource _cancellationTokenSource;
+    private int _disposed;
 
     private readonly StringBuilder _stringBuilder = new();
     private readonly Channel<string> _channel = Channel.CreateUnbounded<string>();
 
     private FileStream? _loggerStream;
+    private Task? _loggerTask;
 
     private AsyncLogger()
     {
@@ -29,14 +31,14 @@ public sealed class AsyncLogger : IDisposable
         InitializeTask();
     }
 
-    public void InitializeTask()
+    private void InitializeTask()
     {
         if (_loggerStream is null)
         {
             return;
         }
 
-        _ = Task.Run(LoggingThread, _cancellationTokenSource.Token);
+        _loggerTask = Task.Run(LoggingThread, _cancellationTokenSource.Token);
     }
 
     private async Task LoggingThread()
@@ -45,7 +47,8 @@ public sealed class AsyncLogger : IDisposable
 
         try
         {
-            using var writer = new StreamWriter(_loggerStream!) { AutoFlush = true };
+            await using var writer = new StreamWriter(_loggerStream!);
+            writer.AutoFlush = true;
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -57,38 +60,50 @@ public sealed class AsyncLogger : IDisposable
                 }
             }
         }
+        catch (OperationCanceledException)
+        {
+        }
         catch (ObjectDisposedException)
         {
-            return;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex.Message);
+            Debugger.Break();
         }
     }
 
+    private readonly Lock _lock = new();
+
     public void AddLog(LogSeverity logSeverity, string message, Exception? ex = null)
     {
-        if (_loggerStream is null)
+        lock (_lock)
         {
-            return;
-        }
+            if (_loggerStream is null)
+            {
+                return;
+            }
 
-        _ = _stringBuilder.Clear();
-        _ = _stringBuilder
-            .Append(DateTime.Now.ToString("HH:mm tt"))
-            .Append(": ")
-            .Append(logSeverity.ToString())
-            .Append(" - ")
-            .Append(message)
-            .Append('.');
-
-        for (Exception? exp = ex; exp != null; exp = exp.InnerException)
-        {
+            _ = _stringBuilder.Clear();
             _ = _stringBuilder
-                .AppendLine()
-                .Append(exp.Message)
-                .AppendLine()
-                .Append(exp.StackTrace);
-        }
+                .Append(DateTime.Now.ToString("HH:mm:ss"))
+                .Append(": ")
+                .Append(logSeverity.ToString())
+                .Append(" - ")
+                .Append(message)
+                .Append('.');
 
-        _ = _channel.Writer.TryWrite(_stringBuilder.ToString());
+            for (Exception? exp = ex; exp != null; exp = exp.InnerException)
+            {
+                _ = _stringBuilder
+                    .AppendLine()
+                    .Append(exp.Message)
+                    .AppendLine()
+                    .Append(exp.StackTrace);
+            }
+
+            _ = _channel.Writer.TryWrite(_stringBuilder.ToString());
+        }
     }
 
     public void WaitSync()
@@ -119,17 +134,24 @@ public sealed class AsyncLogger : IDisposable
 
         string filePath = Path.Combine(runDir, LogName);
 
-        return new FileStream(filePath, FileMode.OpenOrCreate | FileMode.Append, FileAccess.Write, FileShare.Read, 4096, true);
+        return new FileStream(filePath, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, true);
     }
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+
+        _ = _channel.Writer.TryComplete();
         _cancellationTokenSource.Cancel();
+
+        try {
+            _ = _loggerTask?.Wait(TimeSpan.FromSeconds(2));
+        }
+        catch (AggregateException) { }
+
         _loggerStream?.Dispose();
         _loggerStream = null;
 
-        GC.SuppressFinalize(this);
+        _cancellationTokenSource.Dispose();
     }
-
-    ~AsyncLogger() => Dispose();
 }

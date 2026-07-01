@@ -3,7 +3,7 @@ using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine
 {
-    internal sealed partial class PortalRenderer
+    internal partial class PortalRenderer
     {
         [Conditional("DEBUG")]
         private void ProperlyClamped(scoped ReadOnlySpan<int> span)

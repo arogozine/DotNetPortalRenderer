@@ -14,20 +14,19 @@ namespace RenderingEngine
         private readonly SemaphoreSlim StartRenderingSemaphore = new(0, 1);
         private readonly SemaphoreSlim RenderedFrameSemaphore = new(0, 1);
 
-        public GameRenderingThread(PortalEngine engine, GameResourceType _gameResourceType)
+        public GameRenderingThread(PortalEngine engine, GameResourceType gameResourceType)
         {
             Engine = engine;
             EngineLoopCancellationToken = new();
+            _gameResourceType = gameResourceType;
         }
 
         [MemberNotNull(nameof(engineLoopTask), nameof(currentFrame))]
         private void MainEngineLoop(RenderableMap map, int width, int height, CancellationToken cancellationToken)
         {
-            var renderer = new PortalRenderer(width, height)
-            {
-                Sprites = map.Sprites,
-                Sectors = map.Sectors
-            };
+            PortalRenderer renderer = _gameResourceType == GameResourceType.Doom ?
+                new DoomRenderer(width, height) { Sprites = map.Sprites, Sectors = map.Sectors } :
+                new BuildRenderer(width, height) { Sprites = map.Sprites, Sectors = map.Sectors };
 
             engineLoopTask = Task.Factory
                 .StartNew(TaskBody, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default)

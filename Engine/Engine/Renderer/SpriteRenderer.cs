@@ -4,9 +4,9 @@ using System.Numerics;
 
 namespace RenderingEngine.Engine
 {
-    internal sealed partial class PortalRenderer
+    internal partial class PortalRenderer
     {
-        private readonly DynamicAlignedMemoryPool spriteCacheMemoryPool;
+        protected readonly DynamicAlignedMemoryPool spriteCacheMemoryPool;
 
         private void FillDepthZero()
         {
@@ -609,7 +609,6 @@ namespace RenderingEngine.Engine
             }
         }
 
-        // AI Assisted
         private void PopulateFloorTextureBounds(
             Span<int> spriteWindowTop,
             Span<int> spriteWindowBottom,
@@ -656,6 +655,7 @@ namespace RenderingEngine.Engine
                 return;
             }
 
+            // AI Assisted
             if (sprite.R1.Y < 0f || sprite.R2.Y < 0f || sprite.R3.Y < 0f || sprite.R4.Y < 0f)
             {
                 // The near plane cuts through the quad, creating an implicit boundary that

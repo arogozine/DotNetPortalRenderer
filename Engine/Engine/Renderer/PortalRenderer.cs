@@ -3,7 +3,7 @@ using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine
 {
-    internal sealed unsafe partial class PortalRenderer
+    internal unsafe partial class PortalRenderer
     {
         public readonly int PixelWidth;
         public readonly int PixelHeight;
@@ -19,7 +19,7 @@ namespace RenderingEngine.Engine
 
         private PortalPlayerSnapshot? Snapshot;
 
-        private readonly AlignedMemoryPool memoryPool;
+        protected readonly AlignedMemoryPool memoryPool;
 
         // BGRA screen buffer
         private readonly void* buffer;

@@ -3,7 +3,7 @@ using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine
 {
-    internal sealed unsafe partial class PortalRenderer
+    internal unsafe partial class PortalRenderer
     {
         private void DrawWallShared(
             RenderablePortalWall renderableWall,
@@ -50,17 +50,17 @@ namespace RenderingEngine.Engine
             fixed (uint* wallTexturePtr = &wallTextureRef)
             fixed (ushort* repeatedCountPtr = &repeatedCount[0])
             {
-                if (isPowerOfTwo)
-                {
-                    CoreRendererForPowTextures<DrawSimplePixel>.RenderWall(wallFromX, wallToX, (uint)width, textureWidth, repeatedCountPtr,
-                        wallTexturePtr, screenPtr,
-                        fromYClamped, toYClamped, textureXLocation, textureYPosPtr, textureYIncrementPtr);
-                }
-                else if (TextureIsUntiledY(wall.Sector, textureInfo))
+                if (textureInfo.YUntiled)
                 {
                     CoreRendererForUntiledTextures<DrawSimplePixel>.RenderWall(wallFromX, wallToX, (uint)width, textureWidth, repeatedCountPtr,
                          wallTexturePtr, screenPtr,
                          fromYClamped, toYClamped, textureXLocation, textureYPosPtr, textureYIncrementPtr);
+                }
+                else if (isPowerOfTwo)
+                {
+                    CoreRendererForPowTextures<DrawSimplePixel>.RenderWall(wallFromX, wallToX, (uint)width, textureWidth, repeatedCountPtr,
+                        wallTexturePtr, screenPtr,
+                        fromYClamped, toYClamped, textureXLocation, textureYPosPtr, textureYIncrementPtr);
                 }
                 else
                 {
@@ -129,15 +129,7 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            ushort* repeatedCount;
-            if (textureInfo.XScale is not null)
-            {
-                repeatedCount = CalculateTransparentWallBuild(sectors, renderableWall);
-            }
-            else
-            {
-                repeatedCount = CalculateTransparentWallDoom(sectors, renderableWall);
-            }
+            ushort* repeatedCount = CalculateTransparentWall(sectors, renderableWall);
 
             _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount, wallToX - wallFromX + 1);
 

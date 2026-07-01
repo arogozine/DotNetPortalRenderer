@@ -76,7 +76,7 @@ namespace RenderingEngine
             PlayerLocation.Angle += rotSpeed;
             PlayerLocation.Angle = MathFormulas.ClampAngle(PlayerLocation.Angle);
 
-            PlayerMovement.MovePlayer(PlayerLocation, RenderableState.Sectors, 0, 0);
+            PlayerMovement.MovePlayer(PlayerLocation, RenderableState, 0, 0);
         }
 
         private void MoveUpDown(float acceleration)
@@ -85,7 +85,7 @@ namespace RenderingEngine
             float moveX = cos * 5.5f * acceleration;
             float moveY = sin * 5.5f * acceleration;
 
-            PlayerMovement.MovePlayer(PlayerLocation, RenderableState.Sectors, moveX, moveY);
+            PlayerMovement.MovePlayer(PlayerLocation, RenderableState, moveX, moveY);
         }
 
         internal PortalPlayerSnapshot PortalPlayerSnapshot()
