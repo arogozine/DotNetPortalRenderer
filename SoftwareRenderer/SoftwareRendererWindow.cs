@@ -142,6 +142,12 @@ namespace SoftwareRenderer
 
         protected override void OnResize(ResizeEventArgs e)
         {
+            // Window Minimized
+            if (e.Width == 0 || e.Height == 0)
+            {
+                return;
+            }
+
             GL.Viewport(0, 0, e.Width, e.Height);
             base.OnResize(e);
         }

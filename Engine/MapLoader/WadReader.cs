@@ -1093,11 +1093,13 @@ internal static class WadReader
         DetermineSkybox(sectors, mapName);
         RecalculateOffsets(sectors);
 
+        float viewAngle = MathF.PI * (player1Start.Angle / 180f);
+
         return new Map
         {
             Player = new PlayerStart
             {
-                ViewAngle = player1Start.Angle,
+                ViewAngle = viewAngle,
                 Where = (player1Start.X, player1Start.Y, 0f),
                 Sector = 0 // TODO
             },
