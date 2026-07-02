@@ -44,5 +44,6 @@ public sealed class RenderableWall : IRenderState, IWallLike
     public int YRightCeilSloped { get; set; }
     public int YRightFloorSloped { get; set; }
     public float Length { get; set; }
+    public float AvgDepth { get; set; }
     public int? Bunch { get; set; }
 }

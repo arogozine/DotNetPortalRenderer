@@ -606,6 +606,7 @@ namespace RenderingEngine.Engine
             {
                 wall.C1 = new(rx1, ry1);
                 wall.C2 = new(rx2, ry2);
+                wall.AvgDepth = (ry1 + ry2) * 0.5f; // AI Assisted
 
                 float sectorCeil = wall.Sector.Ceil;
                 float sectorFloor = wall.Sector.Floor;

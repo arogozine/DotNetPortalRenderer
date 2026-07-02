@@ -16,10 +16,12 @@ namespace Tests
             var wallZero = slopedSector.Walls[0];
             wallZero.C1 = wallZero.R1 = wallZero.PointA;
             wallZero.C2 = wallZero.R2 = wallZero.PointB;
+            wallZero.AvgDepth = (wallZero.C1.Y + wallZero.C2.Y) * 0.5f;
 
             var wallZero2 = slopedSector.Walls[0];
             wallZero2.C1 = wallZero2.R1 = wallZero2.PointA;
             wallZero2.C2 = wallZero2.R2 = wallZero2.PointB;
+            wallZero2.AvgDepth = (wallZero2.C1.Y + wallZero2.C2.Y) * 0.5f;
 
             var lowerCeilHeight = slopedSector.Ceil;
             var lowerFloorHeight = slopedSector.Floor;
@@ -39,6 +41,7 @@ namespace Tests
                 touchingWall.C2 = touchingWall.PointB;
                 touchingWall.R1 = touchingWall.PointA;
                 touchingWall.R2 = touchingWall.PointB;
+                touchingWall.AvgDepth = (touchingWall.C1.Y + touchingWall.C2.Y) * 0.5f;
                 touchingWall.XLeft = 10;
                 touchingWall.XRight = 110;
 
@@ -78,6 +81,7 @@ namespace Tests
                 touchingWall.C2 = touchingWall.PointB;
                 touchingWall.R1 = touchingWall.PointA;
                 touchingWall.R2 = touchingWall.PointB;
+                touchingWall.AvgDepth = (touchingWall.C1.Y + touchingWall.C2.Y) * 0.5f;
                 touchingWall.XLeft = 10;
                 touchingWall.XRight = 110;
 
@@ -110,6 +114,7 @@ namespace Tests
 
                 slopedWall.C1 = slopedWall.PointA;
                 slopedWall.C2 = slopedWall.PointB;
+                slopedWall.AvgDepth = (slopedWall.C1.Y + slopedWall.C2.Y) * 0.5f;
                 slopedWall.XLeft = 10;
                 slopedWall.XRight = 110;
 
@@ -483,7 +488,8 @@ namespace Tests
                 UpperTexture = GrpReader.GetTextureInfo(in wall, in wall, false),
                 MiddleTexture = GrpReader.GetTextureInfo(in wall, in wall, true),
                 LowerTexture = GrpReader.GetTextureInfo(in wall, in nextWall, false),
-                UpperShade = wall.Shade
+                UpperShade = wall.Shade,
+                LowerShade = nextWall.Shade
             };
         }
     }

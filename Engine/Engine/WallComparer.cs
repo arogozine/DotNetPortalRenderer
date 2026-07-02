@@ -1,5 +1,4 @@
 ﻿using SoftwareRendererModels;
-using System.Numerics;
 using static RenderingEngine.Engine.SharedHelpers;
 
 namespace RenderingEngine.Engine
@@ -34,9 +33,10 @@ namespace RenderingEngine.Engine
 
         public int Compare(RenderableWall? x, RenderableWall? y)
         {
-            ArgumentNullException.ThrowIfNull(x);
-            ArgumentNullException.ThrowIfNull(y);
+            Debug.Assert(x != null);
+            Debug.Assert(y != null);
 
+            // AI Assisted
             bool r1eqr1 = x.R1 == y.R1;
             bool r2eqr2 = x.R2 == y.R2;
             bool r1eqr2 = x.R1 == y.R2;
@@ -48,17 +48,12 @@ namespace RenderingEngine.Engine
                 return 0;
             }
 
-            Vector2 xC1 = x.C1;
-            Vector2 xC2 = x.C2;
-            Vector2 yC1 = y.C1;
-            Vector2 yC2 = y.C2;
+            float xCY1 = x.C1.Y;
+            float xCY2 = x.C2.Y;
+            float yCY1 = y.C1.Y;
+            float yCY2 = y.C2.Y;
 
-            float xCY1 = xC1.Y;
-            float xCY2 = xC2.Y;
-            float yCY1 = yC1.Y;
-            float yCY2 = yC2.Y;
-
-            // the two line share a point, compare the other point
+            // the two lines share a point; compare the other point
             if (r1eqr1)
             {
                 return Compare(xCY2, yCY2);
@@ -76,13 +71,15 @@ namespace RenderingEngine.Engine
                 return Compare(xCY1, yCY2);
             }
 
+            bool intersects = false;
+
             // if the walls overlap, find the the distance at the overlapping point
             if (Within(x.XLeft, y.XLeft, y.XRight) || Within(x.XRight, y.XLeft, y.XRight))
             {
-                float yRX1 = y.R1.X;
-                float yRX2 = y.R2.X;
-                float yRY1 = y.R1.Y;
-                float yRY2 = y.R2.Y;
+                float yRX1 = y.C1.X;
+                float yRX2 = y.C2.X;
+                float yRY1 = y.C1.Y;
+                float yRY2 = y.C2.Y;
 
                 (bool left, bool right) = CalculatePlaneIntersectionsForWall(x.XLeft, x.XRight, ref yRX1, ref yRY1, ref yRX2, ref yRY2);
 
@@ -95,14 +92,16 @@ namespace RenderingEngine.Engine
                 {
                     yCY2 = yRY2;
                 }
+
+                intersects |= left || right;
             }
 
             if (Within(y.XLeft, x.XLeft, x.XRight) || Within(y.XRight, x.XLeft, x.XRight))
             {
-                float xRX1 = x.R1.X;
-                float xRX2 = x.R2.X;
-                float xRY1 = x.R1.Y;
-                float xRY2 = x.R2.Y;
+                float xRX1 = x.C1.X;
+                float xRX2 = x.C2.X;
+                float xRY1 = x.C1.Y;
+                float xRY2 = x.C2.Y;
 
                 (bool left, bool right) = CalculatePlaneIntersectionsForWall(y.XLeft, y.XRight, ref xRX1, ref xRY1, ref xRX2, ref xRY2);
 
@@ -115,12 +114,45 @@ namespace RenderingEngine.Engine
                 {
                     xCY2 = xRY2;
                 }
+
+                intersects |= left || right;
             }
 
-            float xd = (xCY1 + xCY2) / 2f;
-            float yd = (yCY1 + yCY2) / 2f;
+            if (intersects)
+            {
+                float xd = (xCY1 + xCY2) / 2f;
+                float yd = (yCY1 + yCY2) / 2f;
 
-            return Compare(xd, yd);
+                return Compare(xd, yd);
+            }
+
+            return Compare(x.AvgDepth, y.AvgDepth);
+
+            /*
+            // clip both walls to the overlap region so each is measured at identical screen columns
+            int overlapLeft  = Math.Max(x.XLeft, y.XLeft);
+            int overlapRight = Math.Min(x.XRight, y.XRight);
+
+            if (overlapLeft > overlapRight)
+            {
+                return Compare(x.AvgDepth, y.AvgDepth);
+            }
+
+            // AI Assisted: use C1/C2 (clipped, always Y>0) instead of R1/R2 which can be behind the camera
+            float yCx1 = y.C1.X, yCy1 = y.C1.Y;
+            float yCx2 = y.C2.X, yCy2 = y.C2.Y;
+            (bool yL, bool yR) = CalculatePlaneIntersectionsForWall(overlapLeft, overlapRight, ref yCx1, ref yCy1, ref yCx2, ref yCy2);
+            if (yL) yCY1 = yCy1;
+            if (yR) yCY2 = yCy2;
+
+            float xCx1 = x.C1.X, xCy1 = x.C1.Y;
+            float xCx2 = x.C2.X, xCy2 = x.C2.Y;
+            (bool xL, bool xR) = CalculatePlaneIntersectionsForWall(overlapLeft, overlapRight, ref xCx1, ref xCy1, ref xCx2, ref xCy2);
+            if (xL) xCY1 = xCy1;
+            if (xR) xCY2 = xCy2;
+
+            return Compare((xCY1 + xCY2) * 0.5f, (yCY1 + yCY2) * 0.5f);
+            */
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
