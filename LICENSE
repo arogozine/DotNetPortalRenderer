@@ -1,4 +1,4 @@
-MIT License
+MIT License (with AI Training Restriction)
 
 Copyright (c) 2025 Alexandre Rogozine
 
@@ -11,6 +11,17 @@ furnished to do so, subject to the following conditions:
 
 The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
+
+AI TRAINING RESTRICTION: Notwithstanding the foregoing, no permission is
+granted, and use is expressly prohibited, for the purpose of training,
+fine-tuning, or otherwise developing any machine learning or artificial
+intelligence model, including but not limited to large language models,
+code-generation models, and any other model intended to generate, complete,
+transform, or analyze source code or other content. This includes, without
+limitation, use of the Software as training data, fine-tuning data,
+evaluation data, or as input to any automated process for building or
+improving such a model. This restriction applies regardless of whether the
+model is used for commercial or non-commercial purposes.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
