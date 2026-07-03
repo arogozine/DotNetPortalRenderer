@@ -3,6 +3,7 @@
     public sealed class UdmfLinedef : UdmfObject
     {
         public const string FLAG_BLOCKING = "blocking";
+        public const string BLOCK_PLAYERS = "blockplayers";
         public const string FLAG_BLOCK_MONSTERS = "blockmonsters";
         public const string FLAG_TWO_SIDED = "twosided";
         public const string FLAG_UNPEG_TOP = "dontpegtop";
@@ -35,5 +36,9 @@
         public bool? DontDraw => GetValue<bool>(FLAG_DONT_DRAW);
 
         public bool? TwoSided => GetValue<bool>(FLAG_TWO_SIDED);
+
+        public bool? Blocking => GetValue<bool>(FLAG_BLOCKING);
+
+        public bool? BlockPlayers => GetValue<bool>(BLOCK_PLAYERS);
     }
 }

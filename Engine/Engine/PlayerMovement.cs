@@ -100,16 +100,19 @@ namespace RenderingEngine.Engine
             RenderableSector startSector = sectors[player.Sector];
 
             // prevent moving across solid lines
-            foreach (RenderableWall w in startSector.Walls)
+            if (dx != 0 || dy != 0)
             {
-                if (w.IsPortal)
+                foreach (RenderableWall w in startSector.Walls)
                 {
-                    continue;
-                }
+                    if (w.IsPortal && (w.Traversable && !w.IsMirror))
+                    {
+                        continue;
+                    }
 
-                if (SharedHelpers.DoSegmentsIntersect(oldLocation, newLocation, w.PointA, w.PointB))
-                {
-                    return null;
+                    if (SharedHelpers.DoSegmentsIntersect(oldLocation, newLocation, w.PointA, w.PointB))
+                    {
+                        return null;
+                    }
                 }
             }
 

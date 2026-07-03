@@ -148,7 +148,7 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        public static void MirrorWalls(Span<RenderableWall> rotatedWalls, RenderableWall mirroredWall)
+        public static void MirrorWalls(ReadOnlySpan<RenderableWall> rotatedWalls, RenderableWall mirroredWall)
         {
             for (int i = 0; i < rotatedWalls.Length; i++)
             {
@@ -654,6 +654,9 @@ namespace RenderingEngine.Engine
 
         public static RenderableWall RotateWall(RenderableWall wall, float psin, float pcos, float px, float py)
         {
+            Debug.Assert(wall.Flipped || wall.R1 == wall.PointA);
+            Debug.Assert(wall.Flipped || wall.R2 == wall.PointB);
+
             // Vertex Points (Wall)
             // point 1 (vx1, vy1), point 2 (vx2, vy2)
             float vx1 = wall.R1.X;

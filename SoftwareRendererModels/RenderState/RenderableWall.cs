@@ -1,6 +1,4 @@
-﻿
-
-using System.Numerics;
+﻿using System.Numerics;
 
 namespace SoftwareRendererModels;
 
@@ -23,16 +21,32 @@ public sealed class RenderableWall : IRenderState, IWallLike
     public bool TwoSided => Line.TwoSided;
     public bool IsMirror => Line.IsMirror;
     public bool IsPortal => Neighbor.HasValue;
+    public bool Traversable => Line.Traversable;
 
 
     public bool IntersectsView { get; set; }
     public bool Flipped { get; set; }
 
+    /// <summary>
+    /// Rotated PointA
+    /// </summary>
     public Vector2 R1 { get; set; }
+
+    /// <summary>
+    /// Rotated PointB
+    /// </summary>
     public Vector2 R2 { get; set; }
 
+    /// <summary>
+    /// Rotated & Clipped PointA
+    /// </summary>
     public Vector2 C1 { get; set; }
+
+    /// <summary>
+    /// Rotated & Clipped PointB
+    /// </summary>
     public Vector2 C2 { get; set; }
+
     public int XLeft { get; set; }
     public int XRight { get; set; }
     public int YLeftCeil { get; set; }

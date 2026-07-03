@@ -242,6 +242,40 @@ namespace RenderingEngine.Engine
             return value >= from && value <= to;
         }
 
+        public static bool IsPointInPolygon(scoped ReadOnlySpan<Line> lines, Vector2 point)
+        {
+            float x = point.X;
+            float y = point.Y;
+            bool inside = false;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                Line wall = lines[i];
+
+                float x1 = wall.PointA.X;
+                float y1 = wall.PointA.Y;
+                float x2 = wall.PointB.X;
+                float y2 = wall.PointB.Y;
+
+                if (MathF.Min(y1, y2) <= y && y < MathF.Max(y1, y2) && x <= MathF.Max(x1, x2))
+                {
+                    float xinters = default;
+
+                    if (y1 != y2)
+                    {
+                        xinters = (y - y1) * (x2 - x1) / (y2 - y1) + x1;
+                    }
+
+                    if (x1 == x2 || x <= xinters)
+                    {
+                        inside = !inside;
+                    }
+                }
+            }
+
+            return inside;
+        }
+
         public static bool IsPointInPolygon(scoped ReadOnlySpan<RenderableWall> walls, Vector2 point)
         {
             float x = point.X;
@@ -319,7 +353,6 @@ namespace RenderingEngine.Engine
                 return MathF.Min(p.X, q.X) <= r.X && r.X <= MathF.Max(p.X, q.X)
                     && MathF.Min(p.Y, q.Y) <= r.Y && r.Y <= MathF.Max(p.Y, q.Y);
             }
-
         }
 
         public static bool IsPointInPolygon(RenderableFloorSprite sprite, Vector2 point)

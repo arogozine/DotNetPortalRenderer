@@ -5,6 +5,7 @@ using DoomAssetLoader.Udmf;
 using DoomAssetLoader.Wad;
 using RenderingEngine.Engine;
 using RenderingEngine.MapLoader;
+using RenderingEngine.Tooling;
 using SkiaSharp;
 using SoftwareRendererModels;
 using System.ComponentModel;
@@ -442,7 +443,8 @@ internal static class WadReader
                     MiddleTexture = ToTextureInfo(lineInfo.MiddleTexture, lineInfo.XOffsetMid, lineInfo.YOffsetMid, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom)),
                     LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, linedef.Flags.HasFlag(LinedefFlags.DontPegBottom)),
                     UpperShade = sector.LightLevel,
-                    LowerShade = sector.LightLevel
+                    LowerShade = sector.LightLevel,
+                    Traversable = !linedef.Flags.HasFlag(LinedefFlags.Blocking)
                 };
 
                 mapSector.Walls.Add(line);
@@ -463,11 +465,49 @@ internal static class WadReader
             {
                 ViewAngle = radians,
                 Where = (player1Start.Value.X, player1Start.Value.Y, 0f),
-                Sector = 0 // TODO
+                Sector = GetNewSector(CollectionsMarshal.AsSpan(sectors), player1Start.Value.X, player1Start.Value.Y)
             },
             Sprites = sprites.ToArray(),
             Sectors = sectors
         };
+    }
+
+    public static int GetNewSector(ReadOnlySpan<MapSector> sectors, float x, float y)
+    {
+        Vector2 location = new(x, y);
+
+        // BFS Search
+        HashSet<int> checkedSectors = ObjectPool.HashSet.GetOrCreate();
+        Queue<int> uncheckedSectors = ObjectPool.Queue.GetOrCreate();
+
+        checkedSectors.Clear();
+        uncheckedSectors.Clear();
+        uncheckedSectors.Enqueue(0);
+
+        while (uncheckedSectors.TryDequeue(out int i))
+        {
+            _ = checkedSectors.Add(i);
+
+            MapSector currentSector = sectors[i];
+
+            if (SharedHelpers.IsPointInPolygon(CollectionsMarshal.AsSpan(currentSector.Walls), location))
+            {
+                return i;
+            }
+
+            foreach (Line w in currentSector.Walls)
+            {
+                if (w.SectorTo is { } sectorTo)
+                {
+                    if (!checkedSectors.Contains(sectorTo))
+                    {
+                        uncheckedSectors.Enqueue(sectorTo);
+                    }
+                }
+            }
+        }
+
+        return 0;
     }
 
     #region Re-Calculate Offsets
@@ -1081,7 +1121,8 @@ internal static class WadReader
                     LowerTexture = ToTextureInfo(lineInfo.LowerTexture, lineInfo.XOffsetBottom, lineInfo.YOffsetBottom, lineInfo.UpperUnpegged),
                     UpperShade = sector.LightLevel,
                     LowerShade = sector.LightLevel,
-                    TwoSided = twoSided
+                    TwoSided = twoSided,
+                    Traversable = (linedef.Blocking ?? linedef.BlockPlayers) != true
                 };
 
                 mapSector.Walls.Add(line);
@@ -1101,7 +1142,7 @@ internal static class WadReader
             {
                 ViewAngle = viewAngle,
                 Where = (player1Start.X, player1Start.Y, 0f),
-                Sector = 0 // TODO
+                Sector = GetNewSector(CollectionsMarshal.AsSpan(sectors), player1Start.X, player1Start.Y)
             },
             Sprites = sprites.ToArray(),
             Sectors = sectors

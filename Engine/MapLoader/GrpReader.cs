@@ -170,7 +170,7 @@ internal static class GrpReader
         return spriteToActions;
     }
 
-    public record class SpriteAngleRotation(int Sprite, bool Flipped, float? Angle);
+    internal record class SpriteAngleRotation(int Sprite, bool Flipped, float? Angle);
 
     private static bool DetermineSpriteAngles(int startSprite, ActionCommand actionCommand,
         [NotNullWhen(true)] out SpriteAngleRotation[]? angles)
@@ -198,7 +198,7 @@ internal static class GrpReader
             // A new frame is drawn every 45 degrees in a clockwise pattern beginning with the front of the sprite.
             case 2:
                 {
-                    byte[] spriteNum = [1, 2, 1, 2, 1, 2, 1, 2];
+                    Span<byte> spriteNum = [1, 2, 1, 2, 1, 2, 1, 2];
 
                     angles = new SpriteAngleRotation[8];
                     float angle = 0f;
@@ -221,7 +221,7 @@ internal static class GrpReader
             case 3:
             case 4:
                 {
-                    byte[] spriteNum = [1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4, 4, 3, 2, 1];
+                    Span<byte> spriteNum = [1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4, 4, 3, 2, 1];
 
                     angles = new SpriteAngleRotation[16];
                     float angle = 0f;
@@ -244,7 +244,7 @@ internal static class GrpReader
             // A new frame is drawn every 45 degrees in a clockwise pattern beginning with the front of the sprite.
             case 5:
                 {
-                    byte[] spriteNum = [1, 2, 3, 4, 5, 4, 3, 2];
+                    Span<byte> spriteNum = [1, 2, 3, 4, 5, 4, 3, 2];
 
                     angles = new SpriteAngleRotation[8];
                     float angle = 0f;
@@ -506,7 +506,8 @@ internal static class GrpReader
                     MiddleTexture = GetTextureInfo(in wall, in wall, true),
                     LowerTexture = GetTextureInfo(in wall, in nextWall, false),
                     UpperShade = wall.Shade,
-                    LowerShade = nextWall.Shade
+                    LowerShade = nextWall.Shade,
+                    Traversable = !wall.CStat.HasFlag(WallCStat.BlockingWallClipmove)
                 };
 
                 ij++;
