@@ -118,16 +118,14 @@ namespace RenderingEngine.Engine
 
             // BFS Search
             HashSet<int> checkedSectors = ObjectPool.HashSet.GetOrCreate();
-            Queue<int> uncheckedSectors = ObjectPool.Queue.GetOrCreate();
+            Queue<int> uncheckedSectorsQueue = ObjectPool.Queue.GetOrCreate();
 
             checkedSectors.Clear();
-            uncheckedSectors.Clear();
-            uncheckedSectors.Enqueue(player.Sector);
+            uncheckedSectorsQueue.Clear();
+            uncheckedSectorsQueue.Enqueue(player.Sector);
 
-            while (uncheckedSectors.TryDequeue(out int i))
+            while (uncheckedSectorsQueue.TryDequeue(out int i))
             {
-                _ = checkedSectors.Add(i);
-
                 RenderableSector currentSector = sectors[i];
 
                 if (SharedHelpers.IsPointInPolygon(currentSector.Walls, newLocation))
@@ -142,9 +140,9 @@ namespace RenderingEngine.Engine
                         continue;
                     }
 
-                    if (!checkedSectors.Contains(w.Neighbor!.Value))
+                    if (checkedSectors.Add(w.Neighbor!.Value))
                     {
-                        uncheckedSectors.Enqueue(w.Neighbor.Value);
+                        uncheckedSectorsQueue.Enqueue(w.Neighbor.Value);
                     }
                 }
             }

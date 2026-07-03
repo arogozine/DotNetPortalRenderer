@@ -5,7 +5,6 @@ using DoomAssetLoader.Udmf;
 using DoomAssetLoader.Wad;
 using RenderingEngine.Engine;
 using RenderingEngine.MapLoader;
-using RenderingEngine.Tooling;
 using SkiaSharp;
 using SoftwareRendererModels;
 using System.ComponentModel;
@@ -459,55 +458,36 @@ internal static class WadReader
 
         float radians = MathF.PI * (player1Start.Value.Angle / 180f);
 
+        (int sectorId, int z) = GetNewSector(CollectionsMarshal.AsSpan(sectors), player1Start.Value.X, player1Start.Value.Y);
+
         return new Map
         {
             Player = new PlayerStart
             {
                 ViewAngle = radians,
-                Where = (player1Start.Value.X, player1Start.Value.Y, 0f),
-                Sector = GetNewSector(CollectionsMarshal.AsSpan(sectors), player1Start.Value.X, player1Start.Value.Y)
+                Where = (player1Start.Value.X, player1Start.Value.Y, z),
+                Sector = sectorId
             },
             Sprites = sprites.ToArray(),
             Sectors = sectors
         };
     }
 
-    public static int GetNewSector(ReadOnlySpan<MapSector> sectors, float x, float y)
+    public static (int Sector, int Floor) GetNewSector(ReadOnlySpan<MapSector> sectors, float x, float y)
     {
         Vector2 location = new(x, y);
 
-        // BFS Search
-        HashSet<int> checkedSectors = ObjectPool.HashSet.GetOrCreate();
-        Queue<int> uncheckedSectors = ObjectPool.Queue.GetOrCreate();
-
-        checkedSectors.Clear();
-        uncheckedSectors.Clear();
-        uncheckedSectors.Enqueue(0);
-
-        while (uncheckedSectors.TryDequeue(out int i))
+        for (int i = 0; i < sectors.Length; i++)
         {
-            _ = checkedSectors.Add(i);
+            MapSector sector = sectors[i];
 
-            MapSector currentSector = sectors[i];
-
-            if (SharedHelpers.IsPointInPolygon(CollectionsMarshal.AsSpan(currentSector.Walls), location))
+            if (SharedHelpers.IsPointInPolygon(CollectionsMarshal.AsSpan(sector.Walls), location))
             {
-                return i;
-            }
-
-            foreach (Line w in currentSector.Walls)
-            {
-                if (w.SectorTo is { } sectorTo)
-                {
-                    if (!checkedSectors.Contains(sectorTo))
-                    {
-                        uncheckedSectors.Enqueue(sectorTo);
-                    }
-                }
+                return (i, sector.Floor + EngineConstants.PlayerHeight);
             }
         }
 
-        return 0;
+        return (0, 0);
     }
 
     #region Re-Calculate Offsets
@@ -1135,14 +1115,15 @@ internal static class WadReader
         RecalculateOffsets(sectors);
 
         float viewAngle = MathF.PI * (player1Start.Angle / 180f);
+        (int sectorId, int z) = GetNewSector(CollectionsMarshal.AsSpan(sectors), player1Start.X, player1Start.Y);
 
         return new Map
         {
             Player = new PlayerStart
             {
                 ViewAngle = viewAngle,
-                Where = (player1Start.X, player1Start.Y, 0f),
-                Sector = GetNewSector(CollectionsMarshal.AsSpan(sectors), player1Start.X, player1Start.Y)
+                Where = (player1Start.X, player1Start.Y, z),
+                Sector = sectorId
             },
             Sprites = sprites.ToArray(),
             Sectors = sectors
