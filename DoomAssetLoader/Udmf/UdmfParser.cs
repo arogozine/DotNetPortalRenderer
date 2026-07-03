@@ -1,8 +1,10 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
 using static System.MemoryExtensions;
 
 namespace DoomAssetLoader.Udmf
 {
+    // partial requried for GeneratedRegex
     internal static partial class UdmfParser
     {
         public static UdmfMapData Parse(ReadOnlySpan<char> textmapContent)
@@ -176,6 +178,8 @@ namespace DoomAssetLoader.Udmf
                             token = token[1..^1];
                         }
 
+                        Debug.Assert(udmfObject != null);
+                        Debug.Assert(identifierName != null);
                         udmfObject.Add(identifierName, new string(token));
 
                         expectValue = false;

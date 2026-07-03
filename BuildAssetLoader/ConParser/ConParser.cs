@@ -97,7 +97,6 @@ namespace BuildAssetLoader.Con
 
         private static ReadOnlySpan<char> ReadNextWord(ref int i, ReadOnlySpan<char> str)
         {
-            char c;
             int start, end;
 
             for (; i < str.Length && char.IsWhiteSpace(str[i]); i++)

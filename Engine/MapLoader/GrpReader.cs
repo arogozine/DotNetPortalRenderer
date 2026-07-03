@@ -138,6 +138,11 @@ internal static class GrpReader
             .Where(static x => x is BaseActorCommand)
             .Cast<BaseActorCommand>();
 
+        var aiCommandToAction = commands
+            .Where(static x => x is AiCommand)
+            .Cast<AiCommand>()
+            .ToDictionary(static x => x.Name, static x => x.Action);
+
         var actions = commands.Where(static x => x is ActionCommand)
             .Cast<ActionCommand>()
             .ToDictionary(static x => x.Name, static x => x);
@@ -146,17 +151,28 @@ internal static class GrpReader
 
         foreach (var actor in actors)
         {
-            if (actor.Action == null)
+            string? action = actor.Action;
+
+            if (action == null)
             {
-                continue;
+                if (actor.Body.Count > 0 && actor.Body[0] is AiCommand aiCommand && aiCommandToAction.TryGetValue(aiCommand.Name, out string? actionName))
+                {
+                    action = actionName;
+                }
+                else
+                {
+                    continue;
+                }
             }
+
+            Debug.Assert(action != null);
 
             if (!defines.TryGetValue(actor.PicNum, out DefineCommand? defineCommand))
             {
                 continue;
             }
 
-            if (!actions.TryGetValue(actor.Action, out ActionCommand? actionCommand))
+            if (!actions.TryGetValue(action, out ActionCommand? actionCommand))
             {
                 continue;
             }
@@ -272,6 +288,8 @@ internal static class GrpReader
 
     private static List<Command> ParseOutCommands(List<ConToken> tokens)
     {
+        // Dictionary<string, string>
+
         List<Command> commands = [];
 
         for (int i = 0; i < tokens.Count; i++)
@@ -282,6 +300,19 @@ internal static class GrpReader
             {
                 switch (commandToken.Command)
                 {
+                    case CommandList.ai:
+                        {
+                            string name = ((ValueToken)tokens[++i]).Value;
+                            ValueToken? action, move = null;
+
+                            bool found =
+                                GetNextIf(ref i, out action) &&
+                                GetNextIf(ref i, out move);
+
+                            Debug.Assert(found);
+                            commands.Add(new AiCommand(name, action?.Value, move?.Value, []));
+                        }
+                        break;
                     case CommandList.define:
                         {
                             string name = ((ValueToken)tokens[++i]).Value;
@@ -299,7 +330,14 @@ internal static class GrpReader
                                 GetNextIf(ref i, out action) &&
                                 GetNextIf(ref i, out move);
 
-                            commands.Add(new ActorCommand(picNum, strength?.Value, action?.Value, move?.Value, []));
+                            var actor = new ActorCommand(picNum, strength?.Value, action?.Value, move?.Value, []);
+
+                            if (TryGetAICommandFromBody(ref i, out AiCommand? ai))
+                            {
+                                actor.Body.Add(ai);
+                            }
+
+                            commands.Add(actor);
 
                             SkipUntil(ref i, CommandList.enda);
                         }
@@ -315,7 +353,14 @@ internal static class GrpReader
                                 GetNextIf(ref i, out action) &&
                                 GetNextIf(ref i, out move);
 
-                            commands.Add(new UserActorCommand(type, picNum, strength?.Value, action?.Value, move?.Value, []));
+                            var userActor = new UserActorCommand(type, picNum, strength?.Value, action?.Value, move?.Value, []);
+
+                            if (TryGetAICommandFromBody(ref i, out AiCommand? ai))
+                            {
+                                userActor.Body.Add(ai);
+                            }
+
+                            commands.Add(userActor);
 
                             SkipUntil(ref i, CommandList.enda);
                         }
@@ -383,6 +428,35 @@ internal static class GrpReader
                 return true;
             }
 
+            return false;
+        }
+
+        bool TryGetAICommandFromBody(ref int i, [NotNullWhen(true)] out AiCommand? aiCommand)
+        {
+            for (i++; i < tokens.Count; i++)
+            {
+                ConToken token = tokens[i];
+
+                if (token is CommandToken commandToken)
+                {
+                    if (commandToken.Command == CommandList.enda)
+                    {
+                        aiCommand = null;
+                        return false;
+                    }
+
+                    if (commandToken.Command == CommandList.ai)
+                    {
+                        if (GetNextIf(ref i, out ValueToken? name))
+                        {
+                            aiCommand = new AiCommand(name.Value, null, null, null);
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            aiCommand = null;
             return false;
         }
     }

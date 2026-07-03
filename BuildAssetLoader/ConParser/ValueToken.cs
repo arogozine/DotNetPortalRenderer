@@ -1,4 +1,4 @@
 ﻿namespace BuildAssetLoader.Con
 {
-    public record ValueToken(string Value) : ConToken(ConTokenType.Value);
+    public sealed record ValueToken(string Value) : ConToken(ConTokenType.Value);
 }

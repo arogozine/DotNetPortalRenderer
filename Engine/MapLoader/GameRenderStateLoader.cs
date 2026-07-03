@@ -106,6 +106,11 @@ public static class GameRenderStateLoader
 
     internal static void PrecomputeTextureProperties(ReadOnlySpan<RenderableSector> sectors)
     {
+        // there are some bugs with calculations
+        // ideally we should be able to stretch a scale 1 texture
+        // without reading incorrect memory, but I'm stupid
+        const float maxScale = 0.9f;
+
         for (int s = 0; s < sectors.Length; s++)
         {
             RenderableSector sector = sectors[s];
@@ -125,7 +130,7 @@ public static class GameRenderStateLoader
                         {
                             yScale = (sector.Ceil - sector.Floor) * yScale;
 
-                            texture.YUntiled = yScale <= 1f;
+                            texture.YUntiled = yScale <= maxScale;
                         }
                         else
                         {
@@ -136,7 +141,7 @@ public static class GameRenderStateLoader
                     continue;
                 }
 
-
+                
 
                 Debug.Assert(wall.Neighbor != null);
                 RenderableSector neighborSector = sectors[wall.Neighbor.Value];
@@ -147,7 +152,7 @@ public static class GameRenderStateLoader
                     continue;
                 }
 
-                (float sectorHeight, float ceilingOffset, float floorOffset) = CalculatePortalOffsets(sector.Floor, sector.Ceil, neighborSector.Floor, neighborSector.Ceil);
+                (_, float ceilingOffset, float floorOffset) = CalculatePortalOffsets(sector.Floor, sector.Ceil, neighborSector!.Floor, neighborSector.Ceil);
 
                 if (wall.UpperTexture is { } upperTexture && (upperTexture.YOffset == 0 || upperTexture.YOffset == ceilingOffset))
                 {
@@ -159,7 +164,7 @@ public static class GameRenderStateLoader
                     {
                         yScale = ceilingOffset * yScale;
 
-                        upperTexture.YUntiled = yScale <= 1f;
+                        upperTexture.YUntiled = yScale <= maxScale;
                     }
                     else
                     {
@@ -181,7 +186,7 @@ public static class GameRenderStateLoader
                     {
                         yScale = floorOffset * yScale;
 
-                        lowerTexture.YUntiled = yScale <= 1f;
+                        lowerTexture.YUntiled = yScale <= maxScale;
                     }
                     else
                     {
