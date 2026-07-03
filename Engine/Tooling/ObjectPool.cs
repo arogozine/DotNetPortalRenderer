@@ -12,7 +12,9 @@ internal static class ObjectPool
     public static readonly SimpleObjectPool<RenderWindowSpriteSnapshot> RenderWindowSpriteSnapshot
         = new(EngineConstants.MaxRenderDepth, ClearSnapshot);
 
-    public static readonly HashSet<int> HashSet = [];
+    public static readonly DynamicObjectPool<HashSet<int>> HashSet = new(static (x) => x.Clear());
+
+    public static readonly DynamicObjectPool<Queue<int>> Queue = new(static (x) => x.Clear());
 
     public static readonly PortalPlayerSnapshot PortalPlayerSnapshot = new();
 

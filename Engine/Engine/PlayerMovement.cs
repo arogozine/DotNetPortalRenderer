@@ -94,45 +94,55 @@ namespace RenderingEngine.Engine
 
         public static int? GetNewSector(PlayerLocation player, ReadOnlySpan<RenderableSector> sectors, float dx, float dy)
         {
-            Vector2 location = new (player.Where.X + dx, player.Where.Y + dy);
+            Vector2 oldLocation = new(player.Where.X, player.Where.Y);
+            Vector2 newLocation = new(player.Where.X + dx, player.Where.Y + dy);
 
-            RenderableSector playerSector = sectors[player.Sector];
+            RenderableSector startSector = sectors[player.Sector];
 
-            // only look at adjacent sectors
-
-            HashSet<int> childSectors = ObjectPool.HashSet;
-            childSectors.Clear();
-            _ = childSectors.Add(player.Sector);
-
-            for (int i = 0; i < playerSector.Walls.Length; i++)
+            // prevent moving across solid lines
+            foreach (RenderableWall w in startSector.Walls)
             {
-                RenderableWall wall = playerSector.Walls[i];
-
-                if (wall.IsPortal)
+                if (w.IsPortal)
                 {
-                    Debug.Assert(wall.Neighbor != null);
-                    _ = childSectors.Add(wall.Neighbor.Value);
+                    continue;
+                }
+
+                if (SharedHelpers.DoSegmentsIntersect(oldLocation, newLocation, w.PointA, w.PointB))
+                {
+                    return null;
                 }
             }
 
-            foreach (int s in childSectors)
+            // BFS Search
+            HashSet<int> checkedSectors = ObjectPool.HashSet.GetOrCreate();
+            Queue<int> uncheckedSectors = ObjectPool.Queue.GetOrCreate();
+
+            checkedSectors.Clear();
+            uncheckedSectors.Clear();
+            uncheckedSectors.Enqueue(player.Sector);
+
+            while (uncheckedSectors.TryDequeue(out int i))
             {
-                RenderableSector sector = sectors[s];
-                if (!childSectors.Contains(sector.Id) && SharedHelpers.IsPointInPolygon(sector.Walls, location))
+                _ = checkedSectors.Add(i);
+
+                RenderableSector currentSector = sectors[i];
+
+                if (SharedHelpers.IsPointInPolygon(currentSector.Walls, newLocation))
                 {
-                    return s;
+                    return i;
                 }
-            }
 
-            // expand search
-            for (int s = 0; s < sectors.Length; s++)
-            {
-                RenderableSector sector = sectors[s];
-                RenderableWall[] walls = sector.Walls;
-
-                if (SharedHelpers.IsPointInPolygon(walls, location))
+                foreach (RenderableWall w in currentSector.Walls)
                 {
-                    return s;
+                    if (!w.IsPortal)
+                    {
+                        continue;
+                    }
+
+                    if (!checkedSectors.Contains(w.Neighbor!.Value))
+                    {
+                        uncheckedSectors.Enqueue(w.Neighbor.Value);
+                    }
                 }
             }
 

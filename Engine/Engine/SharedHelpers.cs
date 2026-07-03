@@ -276,6 +276,52 @@ namespace RenderingEngine.Engine
             return inside;
         }
 
+        // AI Assisted
+        public static bool DoSegmentsIntersect(Vector2 p1, Vector2 p2, Vector2 p3, Vector2 p4)
+        {
+            float d1 = Cross(p4 - p3, p1 - p3);
+            float d2 = Cross(p4 - p3, p2 - p3);
+            float d3 = Cross(p2 - p1, p3 - p1);
+            float d4 = Cross(p2 - p1, p4 - p1);
+
+            if (((d1 > 0f && d2 < 0f) || (d1 < 0f && d2 > 0f))
+                && ((d3 > 0f && d4 < 0f) || (d3 < 0f && d4 > 0f)))
+            {
+                return true;
+            }
+
+            if (d1 == 0f && OnSegment(p3, p4, p1))
+            {
+                return true;
+            }
+
+            if (d2 == 0f && OnSegment(p3, p4, p2))
+            {
+                return true;
+            }
+
+            if (d3 == 0f && OnSegment(p1, p2, p3))
+            {
+                return true;
+            }
+
+            if (d4 == 0f && OnSegment(p1, p2, p4))
+            {
+                return true;
+            }
+
+            return false;
+
+            static float Cross(Vector2 a, Vector2 b) => a.X * b.Y - a.Y * b.X;
+
+            static bool OnSegment(Vector2 p, Vector2 q, Vector2 r)
+            {
+                return MathF.Min(p.X, q.X) <= r.X && r.X <= MathF.Max(p.X, q.X)
+                    && MathF.Min(p.Y, q.Y) <= r.Y && r.Y <= MathF.Max(p.Y, q.Y);
+            }
+
+        }
+
         public static bool IsPointInPolygon(RenderableFloorSprite sprite, Vector2 point)
         {
             float x = point.X;
