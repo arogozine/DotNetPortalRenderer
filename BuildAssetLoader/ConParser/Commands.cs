@@ -23,4 +23,6 @@
 
     public sealed record AiCommand(string Name, string? Action, string? Move, string[]? MoveFlag)
         : Command(CommandList.action);
+
+    public sealed record CActor(string Name) : Command(CommandList.cactor);
 }

@@ -134,28 +134,41 @@ internal static class GrpReader
             .Cast<DefineCommand>()
             .ToDictionary(static x => x.Name, static x => x);
 
-        IEnumerable<BaseActorCommand> actors = commands
+        var actors = commands
             .Where(static x => x is BaseActorCommand)
-            .Cast<BaseActorCommand>();
+            .Cast<BaseActorCommand>()
+            .ToDictionary(static x => x.PicNum, static x => x);
 
         var aiCommandToAction = commands
             .Where(static x => x is AiCommand)
             .Cast<AiCommand>()
             .ToDictionary(static x => x.Name, static x => x.Action);
 
-        var actions = commands.Where(static x => x is ActionCommand)
+        var actions = commands
+            .Where(static x => x is ActionCommand)
             .Cast<ActionCommand>()
             .ToDictionary(static x => x.Name, static x => x);
 
         Dictionary<int, SpriteAngleRotation[]> spriteToActions = [];
 
-        foreach (var actor in actors)
+        foreach (var actor in actors.Values)
         {
             string? action = actor.Action;
+            string picNum = actor.PicNum;
+            string cActorPicNum = picNum;
 
             if (action == null)
             {
-                if (actor.Body.Count > 0 && actor.Body[0] is AiCommand aiCommand && aiCommandToAction.TryGetValue(aiCommand.Name, out string? actionName))
+                if (actor.Body.Count == 0)
+                {
+                    continue;
+                }
+
+                if (TryGet(actor, out ActionCommand? actionCommandBody))
+                {
+                    action = actionCommandBody.Name;
+                }
+                else if (TryGet(actor, out AiCommand? aiCommand) && aiCommandToAction.TryGetValue(aiCommand.Name, out string? actionName))
                 {
                     action = actionName;
                 }
@@ -167,23 +180,49 @@ internal static class GrpReader
 
             Debug.Assert(action != null);
 
-            if (!defines.TryGetValue(actor.PicNum, out DefineCommand? defineCommand))
-            {
-                continue;
-            }
-
             if (!actions.TryGetValue(action, out ActionCommand? actionCommand))
             {
                 continue;
             }
 
-            if (DetermineSpriteAngles(defineCommand.Number, actionCommand, out SpriteAngleRotation[]? spriteAngleInfo))
+            if (TryGet(actor, out CActor? cActor) && actors.TryGetValue(cActor.Name, out BaseActorCommand? command))
+            {
+                cActorPicNum = command.PicNum;
+            }
+
+            if (!defines.TryGetValue(picNum, out DefineCommand? defineCommand))
+            {
+                continue;
+            }
+
+            if (!defines.TryGetValue(cActorPicNum, out DefineCommand? cActorDefineCommand))
+            {
+                continue;
+            }
+
+            Debug.Assert(TextureCache.HasTexture(ToTile(defineCommand.Number)));
+            Debug.Assert(TextureCache.HasTexture(ToTile(cActorDefineCommand.Number)));
+
+            if (DetermineSpriteAngles(cActorDefineCommand.Number, actionCommand, out SpriteAngleRotation[]? spriteAngleInfo))
             {
                 spriteToActions.Add(defineCommand.Number, spriteAngleInfo);
             }
         }
 
         return spriteToActions;
+
+        static bool TryGet<C>(Structure action, [NotNullWhen(true)] out C? command)
+            where C : Command
+        {
+            if (action.Body.Count > 0)
+            {
+                command = (C?)action.Body.FirstOrDefault(static (x) => x is C);
+                return command != null;
+    }
+
+            command = null;
+            return false;
+        }
     }
 
     internal record class SpriteAngleRotation(int Sprite, bool Flipped, float? Angle);
@@ -216,7 +255,7 @@ internal static class GrpReader
                 {
                     Span<byte> spriteNum = [1, 2, 1, 2, 1, 2, 1, 2];
 
-                    angles = new SpriteAngleRotation[8];
+                    angles = new SpriteAngleRotation[spriteNum.Length];
                     float angle = 0f;
 
                     for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 4))
@@ -227,6 +266,8 @@ internal static class GrpReader
                         {
                             sprite += 2;
                         }
+
+                        Debug.Assert(TextureCache.HasTexture(ToTile(sprite)));
 
                         angles[i] = new SpriteAngleRotation(sprite, false, angle);
                     }
@@ -239,7 +280,7 @@ internal static class GrpReader
                 {
                     Span<byte> spriteNum = [1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4, 4, 3, 2, 1];
 
-                    angles = new SpriteAngleRotation[16];
+                    angles = new SpriteAngleRotation[spriteNum.Length];
                     float angle = 0f;
                     for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 8))
                     {
@@ -250,6 +291,8 @@ internal static class GrpReader
                         {
                             sprite += 4;
                         }
+
+                        Debug.Assert(TextureCache.HasTexture(ToTile(sprite)));
 
                         angles[i] = new SpriteAngleRotation(sprite, mirrored, angle);
                     }
@@ -262,7 +305,7 @@ internal static class GrpReader
                 {
                     Span<byte> spriteNum = [1, 2, 3, 4, 5, 4, 3, 2];
 
-                    angles = new SpriteAngleRotation[8];
+                    angles = new SpriteAngleRotation[spriteNum.Length];
                     float angle = 0f;
 
                     for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 4))
@@ -274,6 +317,39 @@ internal static class GrpReader
                         {
                             sprite += 5;
                         }
+
+                        // can't figure this out
+                        if (!TextureCache.HasTexture(ToTile(sprite)))
+                        {
+                            return false;
+                        }
+
+                        Debug.Assert(TextureCache.HasTexture(ToTile(sprite)));
+
+                        angles[i] = new SpriteAngleRotation(sprite, mirrored, angle);
+                    }
+
+                    return true;
+                }
+            //  The sprite will have 12 angles constructed from 7 art tiles, five of which are mirrored. A new frame is drawn every 30 degrees in a clockwise pattern beginning with the front of the sprite.
+            case 7:
+                {
+                    Span<byte> spriteNum = [1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2];
+
+                    angles = new SpriteAngleRotation[spriteNum.Length];
+                    float angle = 0f;
+
+                    for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 6))
+                    {
+                        bool mirrored = i > 5;
+                        int sprite = spriteNum[i] + startSprite - 1;
+
+                        if (!TextureCache.HasTexture(ToTile(sprite)))
+                        {
+                            sprite += 7;
+                        }
+
+                        Debug.Assert(TextureCache.HasTexture(ToTile(sprite)));
 
                         angles[i] = new SpriteAngleRotation(sprite, mirrored, angle);
                     }
@@ -332,7 +408,17 @@ internal static class GrpReader
 
                             var actor = new ActorCommand(picNum, strength?.Value, action?.Value, move?.Value, []);
 
-                            if (TryGetAICommandFromBody(ref i, out AiCommand? ai))
+                            if (TryGetAction(i, out ActionCommand? actionCommand))
+                            {
+                                actor.Body.Add(actionCommand);
+                            }
+
+                            if (TryGetCActor(i, out CActor? cActor))
+                            {
+                                actor.Body.Add(cActor);
+                            }
+
+                            if (TryGetAICommandFromBody(i, out AiCommand? ai))
                             {
                                 actor.Body.Add(ai);
                             }
@@ -355,7 +441,17 @@ internal static class GrpReader
 
                             var userActor = new UserActorCommand(type, picNum, strength?.Value, action?.Value, move?.Value, []);
 
-                            if (TryGetAICommandFromBody(ref i, out AiCommand? ai))
+                            if (TryGetAction(i, out ActionCommand? actionCommand))
+                            {
+                                userActor.Body.Add(actionCommand);
+                            }
+
+                            if (TryGetCActor(i, out CActor? cActor))
+                            {
+                                userActor.Body.Add(cActor);
+                            }
+
+                            if (TryGetAICommandFromBody(i, out AiCommand? ai))
                             {
                                 userActor.Body.Add(ai);
                             }
@@ -431,7 +527,103 @@ internal static class GrpReader
             return false;
         }
 
-        bool TryGetAICommandFromBody(ref int i, [NotNullWhen(true)] out AiCommand? aiCommand)
+        bool TryGetAction(int i, [NotNullWhen(true)] out ActionCommand? actionCommand)
+        {
+            int depth = 0;
+
+            for (i++; i < tokens.Count; i++)
+            {
+                ConToken token = tokens[i];
+
+                if (token.ConTokenType == ConTokenType.BlockStart)
+                {
+                    depth++;
+                    continue;
+                }
+
+                if (token.ConTokenType == ConTokenType.BlockEnd)
+                {
+                    depth--;
+                    continue;
+                }
+
+                if (depth != 0)
+                {
+                    continue;
+                }
+
+                if (token is CommandToken commandToken)
+                {
+                    if (commandToken.Command == CommandList.enda)
+                    {
+                        actionCommand = null;
+                        return false;
+                    }
+
+                    if (commandToken.Command == CommandList.action)
+                    {
+                        if (GetNextIf(ref i, out ValueToken? name))
+                        {
+                            actionCommand = new ActionCommand(name.Value, null, null, null, null, null);
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            actionCommand = null;
+            return false;
+        }
+
+        bool TryGetCActor(int i, [NotNullWhen(true)] out CActor? cActor)
+        {
+            int depth = 0;
+
+            for (i++; i < tokens.Count; i++)
+            {
+                ConToken token = tokens[i];
+
+                if (token.ConTokenType == ConTokenType.BlockStart)
+                {
+                    depth++;
+                    continue;
+                }
+
+                if (token.ConTokenType == ConTokenType.BlockEnd)
+                {
+                    depth--;
+                    continue;
+                }
+
+                if (depth != 0)
+                {
+                    continue;
+                }
+
+                if (token is CommandToken commandToken)
+                {
+                    if (commandToken.Command == CommandList.enda)
+                    {
+                        cActor = null;
+                        return false;
+                    }
+
+                    if (commandToken.Command == CommandList.cactor)
+                    {
+                        if (GetNextIf(ref i, out ValueToken? name))
+                        {
+                            cActor = new CActor(name.Value);
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            cActor = null;
+            return false;
+        }
+
+        bool TryGetAICommandFromBody(int i, [NotNullWhen(true)] out AiCommand? aiCommand)
         {
             for (i++; i < tokens.Count; i++)
             {
