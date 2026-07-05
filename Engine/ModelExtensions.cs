@@ -18,7 +18,7 @@ internal static class ModelExtensions
 
     extension (MapSectorSettings sectorSettings)
     {
-        public bool Sloped => (sectorSettings & MapSectorSettings.SlopeCeiling | MapSectorSettings.SlopeFloor) != MapSectorSettings.None;
+        public bool Sloped => (sectorSettings & (MapSectorSettings.SlopeCeiling | MapSectorSettings.SlopeFloor)) != MapSectorSettings.None; // AI Assisted: fixed operator-precedence bug (& binds tighter than |)
     }
 
     extension(TextureRenderingOptions options)

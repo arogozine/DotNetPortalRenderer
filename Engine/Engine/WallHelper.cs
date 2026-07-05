@@ -1,6 +1,7 @@
 ﻿using RenderingEngine.Tooling;
 using SoftwareRendererModels;
 using System.Numerics;
+using System.Runtime.Intrinsics;
 using static RenderingEngine.Engine.SharedHelpers;
 
 namespace RenderingEngine.Engine
@@ -12,9 +13,13 @@ namespace RenderingEngine.Engine
     {
         private readonly int width;
         private readonly int height;
+        private readonly float _scale;
+        private readonly float _halfWidth;
+        private readonly float _halfHeight;
         private readonly bool[] visibility;
         private readonly WallComparer wallComparer;
         private PortalPlayerSnapshot? _player;
+        private int _frame = -1;
 
         public WallHelper(
             int width,
@@ -22,6 +27,9 @@ namespace RenderingEngine.Engine
         {
             this.width = width;
             this.height = height;
+            _scale = width * -EngineConstants.HeightToWidthRatio;
+            _halfWidth = width / 2f;
+            _halfHeight = height / 2f;
             this.visibility = new bool[width];
             wallComparer = new WallComparer(width);
         }
@@ -30,6 +38,8 @@ namespace RenderingEngine.Engine
         public void SetSnapShot(PortalPlayerSnapshot player)
         {
             _player = player;
+            // keep track of current frame
+            _frame++;
         }
 
         public Span<RenderableWall> DetermineWallsToRender(RenderableSector sector, ReadOnlySpan<RenderableWall> portalWallsToOcclude, NeighborsToRender sectorInfo, PortalPlayerSnapshot player)
@@ -48,7 +58,7 @@ namespace RenderingEngine.Engine
                 return result;
             }
 
-            ArraySortHelper.Sort(result, wallComparer); ;
+            ArraySortHelper.Sort(result, wallComparer);
 
             result = CullWallsBasedOnVisibility(result);
 
@@ -118,51 +128,66 @@ namespace RenderingEngine.Engine
 
         public Span<RenderableWall> CalculateRotatedWallsRelativeToPlayer(RenderableSector sector, PortalPlayerSnapshot player, NeighborsToRender sectorInfo)
         {
-            float pSin = player.Sin;
-            float pCos = player.Cos;
-            float px = player.X;
-            float py = player.Y;
-
-            for (int i = 0; i < sector.Walls.Length; i++)
-            {
-                RenderableWall wall = sector.Walls[i];
-
-                wall.R1 = wall.PointA;
-                wall.R2 = wall.PointB;
-                wall.Flipped = false;
-            }
-
             bool flipped = sectorInfo.MirrorWall is not null && sectorInfo.ParentWalls.Contains(sectorInfo.MirrorWall);
+            int mirrorKey = flipped ? sectorInfo.MirrorWall!.Id : -1;
 
-            if (flipped)
-            {
-                MirrorWalls(sector.Walls, sectorInfo.MirrorWall!);
-            }
+            Span<RenderableWall> rotatedWalls = RotateSectorWallsRelativeToPlayer(sector, player, sectorInfo, flipped);
 
-            Span<RenderableWall> rotatedWalls = RotateSectorWallsRelativeToPlayer(sector, pSin, pCos, px, py);
-
-            rotatedWalls = FilterOutWallsBehindPlayer(rotatedWalls, flipped);
-            CalculateWallPlanes(rotatedWalls, player);
+            rotatedWalls = FilterOutWallsBehindPlayer(rotatedWalls, sectorInfo, flipped);
+            CalculateWallPlanes(rotatedWalls, player, mirrorKey);
             rotatedWalls = FilterOutWallsOutsideView(rotatedWalls);
 
             return rotatedWalls;
         }
 
-        public static void MirrorWalls(ReadOnlySpan<RenderableWall> rotatedWalls, RenderableWall mirroredWall)
+        private RenderableWall[] _rotatedWalls = new RenderableWall[32];
+
+        public Span<RenderableWall> RotateSectorWallsRelativeToPlayer(RenderableSector sector, PortalPlayerSnapshot player, NeighborsToRender sectorInfo, bool flipped)
         {
-            for (int i = 0; i < rotatedWalls.Length; i++)
+            ReadOnlySpan<RenderableWall> walls = sector.Walls;
+            if (_rotatedWalls.Length < walls.Length)
             {
-                RenderableWall wall = rotatedWalls[i];
-
-                if (wall.Id == mirroredWall.Id)
-                {
-                    continue;
-                }
-
-                wall.R1 = MathFormulas.ReflectPoint(wall.PointA, mirroredWall.PointA, mirroredWall.PointB);
-                wall.R2 = MathFormulas.ReflectPoint(wall.PointB, mirroredWall.PointA, mirroredWall.PointB);
-                wall.Flipped = true;
+                Array.Resize(ref _rotatedWalls, walls.Length);
             }
+            Span<RenderableWall> rotatedWalls = _rotatedWalls.AsSpan()[..walls.Length];
+
+            int lastComputedFrame = _frame;
+            int mirrorKey = flipped ? sectorInfo.MirrorWall!.Id : -1;
+
+            float pSin = player.Sin;
+            float pCos = player.Cos;
+            float px = player.X;
+            float py = player.Y;
+            RenderableWall? mirroredWall = sectorInfo.MirrorWall;
+
+            // Rotate relative to player
+            for (int i = 0; i < walls.Length; i++)
+            {
+                RenderableWall wall = walls[i];
+
+                if (lastComputedFrame != wall.LastComputedFrame || (mirrorKey != wall.LastComputedMirrorKey))
+                {
+                    wall.R1 = wall.PointA;
+                    wall.R2 = wall.PointB;
+
+                    bool wallFlipped = flipped && wall.Id != mirroredWall!.Id;
+
+                    if (wallFlipped)
+                    {
+                        wall.R1 = MathFormulas.ReflectPoint(wall.PointA, mirroredWall!.PointA, mirroredWall.PointB);
+                        wall.R2 = MathFormulas.ReflectPoint(wall.PointB, mirroredWall.PointA, mirroredWall.PointB);
+                    }
+
+                    wall.Flipped = wallFlipped;
+                    rotatedWalls[i] = RotateWall(wall, pSin, pCos, px, py);
+                }
+                else
+                {
+                    rotatedWalls[i] = wall;
+                }
+            }
+
+            return rotatedWalls;
         }
 
         private readonly HashSet<RenderableSector> connectingSectors = [];
@@ -175,6 +200,7 @@ namespace RenderingEngine.Engine
             float py = player.Y;
 
             connectingSectors.Clear();
+            bool sectorIsSloped = sector.Settings.Sloped;
 
             for (int i = 0; i < sector.Walls.Length; i++)
             {
@@ -182,9 +208,9 @@ namespace RenderingEngine.Engine
 
                 if (wall.IsPortal && wall.Neighbor != sector.Id)
                 {
-                    var n = sectors[wall.Neighbor!.Value];
+                    RenderableSector n = sectors[wall.Neighbor!.Value];
 
-                    if (connectingSectors.Add(n))
+                    if ((sectorIsSloped || n.Settings.Sloped) && connectingSectors.Add(n))
                     {
                         RenderableWall firstWall = n.Walls[0];
 
@@ -192,6 +218,8 @@ namespace RenderingEngine.Engine
                         firstWall.R2 = firstWall.PointB;
 
                         _ = RotateWall(firstWall, pSin, pCos, px, py);
+                        firstWall.LastComputedFrame = -1;
+                        firstWall.LastComputedMirrorKey = -1;
                     }
                 }
             }
@@ -284,27 +312,6 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        private RenderableWall[] _rotatedWalls = new RenderableWall[32];
-
-        public Span<RenderableWall> RotateSectorWallsRelativeToPlayer(RenderableSector sector, float pSin, float pCos, float px, float py)
-        {
-            ReadOnlySpan<RenderableWall> walls = sector.Walls;
-
-            if (_rotatedWalls.Length < walls.Length)
-            {
-                Array.Resize(ref _rotatedWalls, walls.Length);
-            }
-
-            Span<RenderableWall> rotatedWalls = _rotatedWalls.AsSpan()[..walls.Length];
-
-            // Rotate relative to player
-            for (int i = 0; i < walls.Length; i++)
-            {
-                rotatedWalls[i] = RotateWall(walls[i], pSin, pCos, px, py);
-            }
-
-            return rotatedWalls;
-        }
 
         private Range[] _bunches = new Range[32];
 
@@ -360,8 +367,11 @@ namespace RenderingEngine.Engine
             return bunches[..bunchCount];
         }
 
-        public static Span<RenderableWall> FilterOutWallsBehindPlayer(Span<RenderableWall> walls, bool flipped)
+        public Span<RenderableWall> FilterOutWallsBehindPlayer(Span<RenderableWall> walls, NeighborsToRender sectorInfo, bool flipped)
         {
+            int lastComputedFrame = _frame;
+            int mirrorKey = flipped ? sectorInfo.MirrorWall!.Id : -1;
+
             int j = 0;
 
             for (int i = 0; i < walls.Length; i++)
@@ -388,9 +398,19 @@ namespace RenderingEngine.Engine
                     continue;
                 }
 
-                if (!wall.TwoSided && (flipped ? x2 * y1 > y2 * x1 : x2 * y1 < y2 * x1))
+                if (!wall.TwoSided)
                 {
-                    continue;
+                    if (flipped) // mirrored logic
+                    {
+                        if ((wall.LastComputedFrame != lastComputedFrame || mirrorKey != wall.LastComputedMirrorKey) && x2 * y1 > y2 * x1)
+                        {
+                            continue;
+                        }
+                    }
+                    else if (x2 * y1 < y2 * x1)
+                    {
+                        continue;
+                    }
                 }
 
                 walls[j] = wall;
@@ -400,15 +420,23 @@ namespace RenderingEngine.Engine
             return walls[..j];
         }
 
-        public void CalculateWallPlanes(scoped ReadOnlySpan<RenderableWall> walls, PortalPlayerSnapshot player)
+        public void CalculateWallPlanes(scoped ReadOnlySpan<RenderableWall> walls, PortalPlayerSnapshot player, int mirrorKey)
         {
             float pz = player.Z;
             float yaw = player.Yaw;
+            int lastComputedFrame = _frame;
 
             for (int i = 0; i < walls.Length; i++)
             {
                 RenderableWall wall = walls[i];
-                CalculateWallPlane(wall, pz, yaw);
+
+                if (lastComputedFrame != wall.LastComputedFrame || (mirrorKey != wall.LastComputedMirrorKey))
+                {
+                    CalculateWallPlane(wall, pz, yaw);
+
+                    wall.LastComputedFrame = lastComputedFrame;
+                    wall.LastComputedMirrorKey = mirrorKey;
+                }
             }
         }
 
@@ -495,30 +523,11 @@ namespace RenderingEngine.Engine
             float rx2 = wall.R2.X;
             float ry2 = wall.R2.Y;
 
-            float yLeftCeil, yLeftFloor, yRightCeil, yRightFloor;
-            float scale = width * -EngineConstants.HeightToWidthRatio;
-            float halfWidth = width / 2f;
-            float halfHeight = height / 2f;
-
-            float xLeft = halfWidth - rx1 / ry1 * scale;
-            float xRight = halfWidth - rx2 / ry2 * scale;
+            Vector2 xProjV = new Vector2(_halfWidth) - new Vector2(rx1, rx2) / new Vector2(ry1, ry2) * _scale; // AI Assisted
+            float xLeft = xProjV.X;
+            float xRight = xProjV.Y;
 
             wall.IntersectsView = false;
-
-            /*
-            // order left to right
-            if (xLeft > xRight)
-            {
-                (xLeft, xRight) = (xRight, xLeft);
-
-                (rx1, rx2) = (rx2, rx1);
-                (ry1, ry2) = (ry2, ry1);
-
-                (wall.R1, wall.R2) = (wall.R2, wall.R1);
-
-                wall.Flipped = true;
-            }
-            */
 
             // part of the wall is in the back
             if (ry1 <= 0f || ry2 <= 0f)
@@ -555,13 +564,13 @@ namespace RenderingEngine.Engine
                     {
                         rx1 = xDistance;
                         ry1 = yDistance;
-                        xLeft = halfWidth - rx1 / ry1 * scale;
+                        xLeft = _halfWidth - rx1 / ry1 * _scale;
                     }
                     else
                     {
                         rx2 = xDistance;
                         ry2 = yDistance;
-                        xRight = halfWidth - rx2 / ry2 * scale;
+                        xRight = _halfWidth - rx2 / ry2 * _scale;
                     }
 
                     //wall.Flipped = true;
@@ -593,11 +602,6 @@ namespace RenderingEngine.Engine
                 (ry1, ry2) = (ry2, ry1);
 
                 (wall.R1, wall.R2) = (wall.R2, wall.R1);
-
-                //(yCeilA, yCeilB) = (yCeilB, yCeilA);
-                //(yFloorA, yFloorB) = (yFloorB, yFloorA);
-
-                //wall.Flipped = !wall.Flipped;
             }
 
             wall.IntersectsView |= MathFormulas.CalculatePlaneIntersectionsForWall(width, xLeft, xRight, ref rx1, ref ry1, ref rx2, ref ry2);
@@ -608,40 +612,52 @@ namespace RenderingEngine.Engine
                 wall.C2 = new(rx2, ry2);
                 wall.AvgDepth = (ry1 + ry2) * 0.5f; // AI Assisted
 
-                float sectorCeil = wall.Sector.Ceil;
-                float sectorFloor = wall.Sector.Floor;
-
-                sectorFloor -= pz;
-                sectorCeil -= pz;
-
-                yLeftCeil = halfHeight - (sectorCeil / ry1 - yaw) * height;
-                yLeftFloor = halfHeight - (sectorFloor / ry1 - yaw) * height;
-                yRightCeil = halfHeight - (sectorCeil / ry2 - yaw) * height;
-                yRightFloor = halfHeight - (sectorFloor / ry2 - yaw) * height;
-
                 wall.XLeft = float.ConvertToIntegerNative<int>(xLeft);
                 wall.XRight = float.ConvertToIntegerNative<int>(xRight);
-                wall.YLeftCeil = float.ConvertToIntegerNative<int>(yLeftCeil);
-                wall.YLeftFloor = float.ConvertToIntegerNative<int>(yLeftFloor);
-                wall.YRightCeil = float.ConvertToIntegerNative<int>(yRightCeil);
-                wall.YRightFloor = float.ConvertToIntegerNative<int>(yRightFloor);
 
+                float sectorCeil = wall.Sector.Ceil - pz;
+                float sectorFloor = wall.Sector.Floor - pz;
+
+                // AI Assisted: pack (ceil/ry1, floor/ry1, ceil/ry2, floor/ry2) into one SIMD divide
+                Vector4 denomV = new(ry1, ry1, ry2, ry2);
+                Vector4 halfHeightV = new(_halfHeight);
+                Vector4 heightV = new(height);
+                Vector4 yawV = new(yaw);
+
+                Vector4 flatNumeratorV = new(sectorCeil, sectorFloor, sectorCeil, sectorFloor);
+                Vector4 flatPlaneV = halfHeightV - (flatNumeratorV / denomV - yawV) * heightV; // AI Assisted
+
+                Vector128<int> xyzwV = Vector128.ConvertToInt32Native(flatPlaneV.AsVector128());
+
+                wall.YLeftCeil = xyzwV[0];
+                wall.YLeftFloor = xyzwV[1];
+                wall.YRightCeil = xyzwV[2];
+                wall.YRightFloor = xyzwV[3];
+
+                // a sector with no floor/ceiling slope produces a sloped plane identical to the flat one. AI Assisted
+                bool sectorSloped = wall.Sector.FloorSlope.HasValue || wall.Sector.CeilingSlope.HasValue;
+
+                if (sectorSloped)
+                {
                 (float yFloorA, float yCeilA, float yFloorB, float yCeilB) = MathFormulas.CalculateSlopedFloorCeiling(wall.Sector, wall, false);
 
-                yFloorA -= pz;
-                yCeilA -= pz;
-                yFloorB -= pz;
-                yCeilB -= pz;
+                    Vector4 slopedNumeratorV = new(yCeilA - pz, yFloorA - pz, yCeilB - pz, yFloorB - pz);
+                    Vector4 slopedPlaneV = halfHeightV - (slopedNumeratorV / denomV - yawV) * heightV; // AI Assisted
 
-                yLeftCeil = halfHeight - (yCeilA / ry1 - yaw) * height;
-                yLeftFloor = halfHeight - (yFloorA / ry1 - yaw) * height;
-                yRightCeil = halfHeight - (yCeilB / ry2 - yaw) * height;
-                yRightFloor = halfHeight - (yFloorB / ry2 - yaw) * height;
+                    xyzwV = Vector128.ConvertToInt32Native(slopedPlaneV.AsVector128());
 
-                wall.YLeftCeilSloped = float.ConvertToIntegerNative<int>(yLeftCeil);
-                wall.YLeftFloorSloped = float.ConvertToIntegerNative<int>(yLeftFloor);
-                wall.YRightCeilSloped = float.ConvertToIntegerNative<int>(yRightCeil);
-                wall.YRightFloorSloped = float.ConvertToIntegerNative<int>(yRightFloor);
+                    wall.YLeftCeilSloped = xyzwV[0];
+                    wall.YLeftFloorSloped = xyzwV[1];
+                    wall.YRightCeilSloped = xyzwV[2];
+                    wall.YRightFloorSloped = xyzwV[3];
+                }
+                else
+                {
+                    wall.YLeftCeilSloped = wall.YLeftCeil;
+                    wall.YLeftFloorSloped = wall.YLeftFloor;
+                    wall.YRightCeilSloped = wall.YRightCeil;
+                    wall.YRightFloorSloped = wall.YRightFloor;
+                }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -60,4 +60,8 @@ public sealed class RenderableWall : IRenderState, IWallLike
     public float Length { get; set; }
     public float AvgDepth { get; set; }
     public int? Bunch { get; set; }
+
+
+    public int LastComputedFrame { get; set; } = -1;
+    public int LastComputedMirrorKey { get; set; } = int.MinValue;
 }
