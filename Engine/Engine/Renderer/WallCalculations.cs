@@ -39,14 +39,6 @@ namespace RenderingEngine.Engine
 
                 float topOffset = 0f;
 
-                if (textureInfo.YUntiled)
-                {
-                    if (wallSlopedStartY < wallStartY && (wallStartY - wallSlopedStartY) < 1f)
-                    {
-                        wallSlopedStartY++;
-                    }
-                }
-
                 // ceiling (render start) is lower than sloped wall start
                 // increment texture start to accomodate
                 if (ceilingY > wallSlopedStartY)

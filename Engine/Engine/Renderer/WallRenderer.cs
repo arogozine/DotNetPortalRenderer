@@ -50,13 +50,7 @@ namespace RenderingEngine.Engine
             fixed (uint* wallTexturePtr = &wallTextureRef)
             fixed (ushort* repeatedCountPtr = &repeatedCount[0])
             {
-                if (textureInfo.YUntiled)
-                {
-                    CoreRendererForUntiledTextures<DrawSimplePixel>.RenderWall(wallFromX, wallToX, (uint)width, textureWidth, repeatedCountPtr,
-                         wallTexturePtr, screenPtr,
-                         fromYClamped, toYClamped, textureXLocation, textureYPosPtr, textureYIncrementPtr);
-                }
-                else if (isPowerOfTwo)
+                if (isPowerOfTwo)
                 {
                     CoreRendererForPowTextures<DrawSimplePixel>.RenderWall(wallFromX, wallToX, (uint)width, textureWidth, repeatedCountPtr,
                         wallTexturePtr, screenPtr,

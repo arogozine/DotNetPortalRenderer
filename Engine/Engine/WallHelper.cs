@@ -639,7 +639,7 @@ namespace RenderingEngine.Engine
 
                 if (sectorSloped)
                 {
-                (float yFloorA, float yCeilA, float yFloorB, float yCeilB) = MathFormulas.CalculateSlopedFloorCeiling(wall.Sector, wall, false);
+                    (float yFloorA, float yCeilA, float yFloorB, float yCeilB) = MathFormulas.CalculateSlopedFloorCeiling(wall.Sector, wall, false);
 
                     Vector4 slopedNumeratorV = new(yCeilA - pz, yFloorA - pz, yCeilB - pz, yFloorB - pz);
                     Vector4 slopedPlaneV = halfHeightV - (slopedNumeratorV / denomV - yawV) * heightV; // AI Assisted
