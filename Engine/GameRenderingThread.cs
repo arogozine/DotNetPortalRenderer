@@ -1,4 +1,5 @@
 ﻿using RenderingEngine.Engine;
+using RenderingEngine.Tooling;
 using SoftwareRendererModels;
 
 namespace RenderingEngine
@@ -32,6 +33,7 @@ namespace RenderingEngine
                 .StartNew(TaskBody, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default)
                 .ContinueWith(static (Task t) =>
                 {
+                    AsyncLogger.Default.AddLog(LogSeverity.Error, "Engine Loop Thread Faulted", t.Exception);
                     Debug.WriteLine(t.Exception);
                     Debugger.Break();
                 }, TaskContinuationOptions.OnlyOnFaulted);
