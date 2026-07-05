@@ -20,6 +20,11 @@ namespace SoftwareRenderer
 
         private readonly PortalEngine Engine;
 
+        // Set true while the window has a 0×0 client area (minimized), pausing
+        // updates/rendering so we never rebuild GPU resources or the engine's
+        // frame buffers at zero size. (AI Assisted)
+        private bool _isMinimized;
+
         // ── OpenGL objects ───────────────────────────────────────────────────────
         private int _vao;        // vertex array object
         private int _vbo;        // vertex buffer (positions + UVs)
@@ -142,8 +147,10 @@ namespace SoftwareRenderer
 
         protected override void OnResize(ResizeEventArgs e)
         {
+            _isMinimized = e.Width == 0 || e.Height == 0;
+
             // Window Minimized
-            if (e.Width == 0 || e.Height == 0)
+            if (_isMinimized)
             {
                 return;
             }
@@ -154,6 +161,12 @@ namespace SoftwareRenderer
 
         protected override void OnFramebufferResize(FramebufferResizeEventArgs e)
         {
+            // Window Minimized: skip rebuilding the render thread/texture at 0×0.
+            if (e.Width == 0 || e.Height == 0)
+            {
+                return;
+            }
+
             StopTheGameLoop();
             nint texturePtr = StartTheGameLoop();
 
@@ -174,6 +187,11 @@ namespace SoftwareRenderer
         protected override void OnRenderFrame(FrameEventArgs e)
         {
             base.OnRenderFrame(e);
+
+            if (_isMinimized)
+            {
+                return;
+            }
 
             Debug.Assert(Engine.Renderer != null);
 
