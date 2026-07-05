@@ -3,6 +3,7 @@ using RenderingEngine.Engine;
 using RenderingEngine.MapLoader;
 using SoftwareRendererModels;
 using System.Numerics;
+using static RenderingEngine.Engine.MathFormulas;
 
 namespace Tests
 {
@@ -54,7 +55,7 @@ namespace Tests
                 Assert.Equal(upperFloorHeight, float.Ceiling(FloorZB));
 
 
-                MathFormulas.FloorCeilSlope test = MathFormulas.CalculateFloorCeilingSlope(slopedSector, touchingWall, 0, false);
+                MathFormulas.FloorCeilSlope test = CalculateFloorCeilingSlope(slopedSector, touchingWall, 0, false);
                 Assert.Equal(0, test.CeilZIncrament);
                 Assert.Equal(0, test.FloorZIncrament);
                 Assert.Equal(upperFloorHeight, float.Ceiling(test.FloorZ));
@@ -93,7 +94,7 @@ namespace Tests
                 Assert.Equal(float.Ceiling(FloorZA), float.Ceiling(FloorZB));
                 Assert.Equal(lowerFloorHeight, float.Ceiling(FloorZB));
 
-                MathFormulas.FloorCeilSlope test = MathFormulas.CalculateFloorCeilingSlope(slopedSector, touchingWall, 0, false);
+                MathFormulas.FloorCeilSlope test = CalculateFloorCeilingSlope(slopedSector, touchingWall, 0, false);
                 Assert.Equal(0, test.CeilZIncrament);
                 Assert.Equal(0, test.FloorZIncrament);
                 Assert.Equal(lowerFloorHeight, float.Ceiling(test.FloorZ));
@@ -127,7 +128,7 @@ namespace Tests
                 Assert.Equal(upperFloorHeight, float.Ceiling(FloorZB));
                 Assert.Equal(lowerFloorHeight, float.Ceiling(FloorZA));
 
-                var test = MathFormulas.CalculateFloorCeilingSlope(slopedSector, slopedWall, 0, false);
+                var test = CalculateFloorCeilingSlope(slopedSector, slopedWall, 0, false);
                 Assert.Equal(0, test.CeilZIncrament);
                 Assert.NotEqual(0, test.FloorZIncrament);
                 Assert.Equal(lowerFloorHeight, float.Ceiling(test.FloorZ));
@@ -490,6 +491,42 @@ namespace Tests
                 LowerTexture = GrpReader.GetTextureInfo(in wall, in nextWall, false),
                 UpperShade = wall.Shade,
                 LowerShade = nextWall.Shade
+            };
+        }
+
+        internal static FloorCeilSlope CalculateFloorCeilingSlope(RenderableSector sector, RenderableWall parentWall, int wallFromXOffset, bool flipped)
+        {
+
+            flipped = flipped ? !parentWall.Flipped : parentWall.Flipped;
+
+            (float floorZ_a, float ceilingZ_a) = CalculateZAtPoint(sector, flipped ? parentWall.C2 : parentWall.C1);
+            (float floorZ_b, float ceilingZ_b) = CalculateZAtPoint(sector, flipped ? parentWall.C1 : parentWall.C2);
+
+            float wallLengthX = parentWall.XRight - parentWall.XLeft;
+
+            float floorSlopeIncr = (floorZ_b - floorZ_a) / wallLengthX;
+            float ceilingSlopeIncr = (ceilingZ_b - ceilingZ_a) / wallLengthX;
+
+            if (wallFromXOffset != 0f)
+            {
+                if (!flipped)
+                {
+                    floorZ_a -= wallFromXOffset * floorSlopeIncr;
+                    ceilingZ_a -= wallFromXOffset * ceilingSlopeIncr;
+                }
+                else
+                {
+                    floorZ_a += wallFromXOffset * floorSlopeIncr;
+                    ceilingZ_a += wallFromXOffset * ceilingSlopeIncr;
+                }
+            }
+
+            return new FloorCeilSlope
+            {
+                CeilZ = ceilingZ_a,
+                FloorZ = floorZ_a,
+                CeilZIncrament = ceilingSlopeIncr,
+                FloorZIncrament = floorSlopeIncr
             };
         }
     }

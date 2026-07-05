@@ -218,7 +218,7 @@ internal static class GrpReader
             {
                 command = (C?)action.Body.FirstOrDefault(static (x) => x is C);
                 return command != null;
-    }
+            }
 
             command = null;
             return false;
@@ -699,7 +699,7 @@ internal static class GrpReader
         return (options, xScale, yScale);
     }
 
-    private static TextureRenderingOptions ToTextureRenderingOptions(WallCStat stat)
+    private static TextureRenderingOptions ToTextureRenderingOptions(WallCStat stat, bool bottomsSwapped)
     {
         TextureRenderingOptions options = default;
 
@@ -720,6 +720,11 @@ internal static class GrpReader
         if (stat.HasFlag(WallCStat.YFlipped))
         {
             options |= TextureRenderingOptions.FlipY;
+        }
+
+        if (bottomsSwapped)
+        {
+            options |= TextureRenderingOptions.FromLower;
         }
 
         if (stat.HasFlag(WallCStat.Rotate90))
@@ -902,11 +907,23 @@ internal static class GrpReader
         }
 
         string textureName = ToTile(picNum);
-        (int xOffset, int yOffset) = CalculateOffset(in wall, textureName);
 
-        TextureRenderingOptions renderingOptions = ToTextureRenderingOptions(textureWall.CStat);
+        TextureRenderingOptions renderingOptions = ToTextureRenderingOptions(textureWall.CStat, !Unsafe.AreSame(in wall, in textureWall));
 
+        (int xOffset, int yOffset) = CalculateOffset(in textureWall, textureName);
         float alpha = textureWall.CStat.HasFlag(WallCStat.Transluscence) ? 0.5f : 1.0f;
+
+        // Lower Texture Specific
+        if (!Unsafe.AreSame(in wall, in textureWall))
+        {
+            if ((textureWall.CStat ^ wall.CStat).HasFlag(WallCStat.XFlipped))
+            {
+                renderingOptions ^= TextureRenderingOptions.FlipX;
+
+                if (xOffset != 0)
+                    xOffset = byte.MaxValue - xOffset;
+            }
+        }
 
         int scaleX = wall.XRepeat;
         int scaleY = wall.YRepeat;
@@ -1058,8 +1075,8 @@ internal static class GrpReader
 
                     upperTextureInfo.YScale = upperYScale;
                     upperTextureInfo.XScale = upperXScale;
-                    lowerTextureInfo.YScale = lowerYScale;
-                    lowerTextureInfo.XScale = lowerXScale;
+                    lowerTextureInfo.YScale = lowerYScale; // 0.0078125
+                    lowerTextureInfo.XScale = lowerXScale; // 1
 
                     float windowEndY = sectorHeight - floorOffset;
 
@@ -1400,7 +1417,7 @@ internal static class GrpReader
     }
 
     private static Sprite[] ExtractSprites(Span<SpriteType> spritesTypes, Span<SectorType> grpSectors,
-        Dictionary<int, GrpReader.SpriteAngleRotation[]> spriteToAngleFrames)
+        Dictionary<int, SpriteAngleRotation[]> spriteToAngleFrames)
     {
         var lookup = ParseGameSpriteAnimation();
         Sprite[] sprites = new Sprite[spritesTypes.Length];

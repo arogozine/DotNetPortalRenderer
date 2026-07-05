@@ -14,5 +14,6 @@ public enum TextureRenderingOptions
     SwapXY = 128,
     AlignWithFirstWall = 256,
     Sloped = 512,
-    Translucent = 1024
+    Translucent = 1024,
+    FromLower = 2048
 }

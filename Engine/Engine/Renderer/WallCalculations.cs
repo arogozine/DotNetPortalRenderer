@@ -61,8 +61,14 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private void CalculateLowerTextureYIncrement(RenderablePortalWall portalWall, GameTextureInfo textureInfo)
+        private void CalculateLowerTextureYIncrement(RenderablePortalWall portalWall, GameTextureInfo textureInfo, ReadOnlySpan<RenderableSector> sectors)
         {
+            if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.FromLower))
+            {
+                CalculateLowerTextureYIncrementForSwappedWalls(portalWall, textureInfo, sectors);
+                return;
+            }
+
             RenderableWall wall = portalWall.Wall;
 
             int textureStart = textureInfo.YOffset << 16;
@@ -114,6 +120,86 @@ namespace RenderingEngine.Engine
 
                 wallStartY += ceilDistIncr;
                 wallEndY += floorDistIncr;
+            }
+        }
+
+        private void CalculateLowerTextureYIncrementForSwappedWalls(RenderablePortalWall portalWall, GameTextureInfo textureInfo, ReadOnlySpan<RenderableSector> sectors)
+        {
+            RenderableWall wall = portalWall.Wall;
+
+            int textureStart = textureInfo.YOffset << 16;
+
+            int* portalTo = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalTo);
+            int* portalToClamped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
+            int* startingYTexturePosition = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.StartingYTexturePosition);
+            int* ceil = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
+            int* textureYIncrement = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureYIncrement);
+
+            Debug.Assert(wall.Neighbor.HasValue);
+            RenderableSector sector = wall.Sector;
+            RenderableSector neightbor = sectors[wall.Neighbor.Value];
+            int lowerSectorHeight = neightbor.Floor - sector.Floor;
+            int sectorHeight = sector.Ceil - sector.Floor;
+            int wallFromXOffset = portalWall.Offset;
+            int wallFromX = portalWall.XLeft;
+            int wallToX = portalWall.XRight;
+
+            (int textureHeight, float scaledTextureHeight) = CalculateScale();
+
+            float scale = lowerSectorHeight / (float)sectorHeight;
+            RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo(wall, wallFromXOffset, scale);
+            float wallStartY = yPlaneInfo.WallStartY;
+            float ceilDistIncr = yPlaneInfo.CeilDistIncr;
+            float wallEndY = yPlaneInfo.WallEndY;
+            float floorDistIncr = yPlaneInfo.FloorDistIncr;
+
+            for (int x = wallFromX; x <= wallToX; x++)
+            {
+                float textureYIncr = scaledTextureHeight / (wallEndY - wallStartY);
+
+                int portalToY = portalTo[x];
+                int portalToSlopedY = portalToClamped[x];
+                int ceilY = ceil[x];
+
+                float topOffset = 0;
+
+                if (portalToSlopedY < ceilY)
+                {
+                    topOffset -= portalToSlopedY - ceilY;
+                }
+
+                topOffset += portalToSlopedY - portalToY;
+                topOffset *= textureYIncr;
+
+                int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + topOffset);
+                textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeight << 16, textureYPosY);
+
+                Debug.Assert(textureYPosY < textureHeight << 16);
+
+                startingYTexturePosition[x] = textureYPosY;
+                textureYIncrement[x] = float.ConvertToIntegerNative<int>(textureYIncr);
+
+                wallStartY += ceilDistIncr;
+                wallEndY += floorDistIncr;
+            }
+
+            (int Height, float ScaledTextureHeight) CalculateScale()
+            {
+                int textureHeight = textureInfo.Height;
+
+                float scaledTextureHeight;
+
+                if (textureInfo.YScale is float yScale)
+                {
+                    yScale = lowerSectorHeight * yScale;
+                    scaledTextureHeight = (textureHeight << 16) * yScale;
+                }
+                else
+                {
+                    scaledTextureHeight =lowerSectorHeight << 16;
+                }
+
+                return (textureHeight, scaledTextureHeight);
             }
         }
 

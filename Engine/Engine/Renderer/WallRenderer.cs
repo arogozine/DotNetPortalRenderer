@@ -163,7 +163,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    CalculateLowerTextureYIncrement(renderableWall, lowerTexture);
+                    CalculateLowerTextureYIncrement(renderableWall, lowerTexture, sectors);
                     CalculateTextureDistanceAndXPosition(renderableWall, lowerTexture);
                     DrawLowerPortalWall(renderableWall);
                 }
