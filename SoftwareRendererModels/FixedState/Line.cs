@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("Id = {Id}, SectorTo = {SectorTo}")]
 public sealed class Line : IFixedState
 {
     public required int Id { get; init; }

@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("Id = {Id}")]
 public sealed class RenderableSector : IRenderState
 {
     public required MapSector MapSector { get; init; }

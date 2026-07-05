@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("Animations = {AnimationToAngleToTexture.Length}")]
 public sealed class GameSpriteAnimation : IFixedState
 {
     public required TextureAngle[][] AnimationToAngleToTexture { get; init; }

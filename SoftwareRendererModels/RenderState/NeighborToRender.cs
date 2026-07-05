@@ -1,8 +1,10 @@
 using System.Buffers;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace SoftwareRendererModels;
 
+[DebuggerDisplay("SectorId = {SectorId}")]
 public sealed class NeighborsToRender : IRenderState, IDisposable
 {
     private int _length;

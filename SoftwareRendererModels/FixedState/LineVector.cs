@@ -1,7 +1,9 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics;
+using System.Numerics;
 
 namespace SoftwareRendererModels;
 
+[DebuggerDisplay("Id = {Id}, X = {X}, Y = {Y}")]
 public sealed record LineVector(int Id, Vector2 Point) : IFixedState
 {
     public float X => Point.X;

@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("Sector = {Sector}")]
 public sealed class PlayerStart : IFixedState
 {
     public required XyzTuple Where { get; init; }

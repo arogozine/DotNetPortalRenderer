@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("XLeft = {XLeft}, XRight = {XRight}")]
 public sealed class FloorSpriteWallInfo : IRenderState
 {
     public bool IntersectsView { get; set; }

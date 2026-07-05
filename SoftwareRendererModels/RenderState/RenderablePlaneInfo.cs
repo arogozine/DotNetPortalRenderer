@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("WallStartY = {WallStartY}, WallEndY = {WallEndY}")]
 public readonly ref struct RenderablePlaneInfo
 {
     public required float WallStartY { get; init; }

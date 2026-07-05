@@ -1,10 +1,12 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace SoftwareRendererModels;
 
 [SkipLocalsInit]
 [StructLayout(LayoutKind.Explicit)]
+[DebuggerDisplay("R = {R}, G = {G}, B = {B}, A = {A}")]
 public readonly struct BGRA : IFixedState
 {
     public static readonly BGRA Blue = new(byte.MaxValue, 0, 0);

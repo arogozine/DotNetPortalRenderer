@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("Sector = {Sector}, X = {X}, Y = {Y}")]
 public sealed class PortalPlayerSnapshot : IFixedState
 {
     public int Sector { get; set; }

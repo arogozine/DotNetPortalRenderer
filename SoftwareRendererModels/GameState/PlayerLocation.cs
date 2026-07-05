@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("Sector = {Sector}")]
 public class PlayerLocation : IGameState
 {
     public XyzTuple Where { get; set; }

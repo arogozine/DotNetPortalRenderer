@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("Name = {Name}, Palette = {Palette}")]
 public sealed class GameTextureInfo : IFixedState
 {
     public required GameTexture Texture { get; set; }

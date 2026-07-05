@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("XLeft = {XLeft}, XRight = {XRight}, Depth = {Depth}")]
 public abstract class RenderableSpriteSnapshot : IRenderState
 {
     public int XLeft { get; set; }

@@ -1,10 +1,14 @@
+using System.Diagnostics;
+
 namespace SoftwareRendererModels;
 
+[DebuggerDisplay("Id = {Id}, XLeft = {XLeft}, XRight = {XRight}")]
 public sealed class RenderablePortalWall
 {
     private int _length;
     private RenderableWall[]? _parentWalls;
 
+    public int Id => Wall.Id;
     public RenderableWall Wall { get; set; } = null!;
     public int XLeft { get; set; }
     public int XRight { get; set; }

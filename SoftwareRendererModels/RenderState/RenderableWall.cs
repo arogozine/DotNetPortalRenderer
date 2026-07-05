@@ -1,7 +1,9 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics;
+using System.Numerics;
 
 namespace SoftwareRendererModels;
 
+[DebuggerDisplay("Id = {Id}")]
 public sealed class RenderableWall : IRenderState, IWallLike
 {
     public required Line Line { get; init; }

@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("Map = {Map}")]
 public sealed class Arguments : IFixedState
 {
     public required string? IWad { get; init; }

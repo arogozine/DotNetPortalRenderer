@@ -1,7 +1,9 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics;
+using System.Numerics;
 
 namespace SoftwareRendererModels;
 
+[DebuggerDisplay("Id = {Id}, Texture = {Texture.Name}")]
 public abstract class RenderableSprite : IRenderState
 {
     public required Sprite Sprite { get; set; }

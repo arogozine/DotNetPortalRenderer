@@ -1,5 +1,8 @@
-﻿namespace SoftwareRendererModels;
+﻿using System.Diagnostics;
 
+namespace SoftwareRendererModels;
+
+[DebuggerDisplay("Name = {Name}, {Width}x{Height}")]
 public abstract class GameTexture : IFixedState, IUniqueName
 {
     public Dictionary<int, Dictionary<int, BGRA[]>[]> PaletteToTransformToImage { get; }
