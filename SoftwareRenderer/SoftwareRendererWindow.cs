@@ -119,7 +119,7 @@ namespace SoftwareRenderer
         {
             GL.Enable(EnableCap.DebugOutput);
 
-            GL.DebugMessageCallback((source, type, id, severity, len, msg, ptr) =>
+            GL.DebugMessageCallback(static (source, type, id, severity, len, msg, ptr) =>
             {
                 LogSeverity logSeverity;
 

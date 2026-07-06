@@ -25,50 +25,41 @@ namespace RenderingEngine
 
         public void Update(float scale)
         {
-            foreach (Keys key in PressedKeys)
+            const float moveSpeed = 0.5f;
+            const float rotSpeed = 0.08f;
+
+            bool shiftHeld = PressedKeys.Contains(Keys.LeftShift) || PressedKeys.Contains(Keys.RightShift);
+            float speedMultiplier = shiftHeld ? 2f : 1f;
+
+            if (PressedKeys.Contains(Keys.Up) || PressedKeys.Contains(Keys.W))
             {
-                OnKey(key, scale);
+                MoveUpDown(moveSpeed * scale * speedMultiplier);
+            }
+
+            if (PressedKeys.Contains(Keys.Down) || PressedKeys.Contains(Keys.S))
+            {
+                MoveUpDown(-moveSpeed * scale * speedMultiplier);
+            }
+
+            if (PressedKeys.Contains(Keys.Right) || PressedKeys.Contains(Keys.D))
+            {
+                Rotate(-rotSpeed * scale * speedMultiplier);
+            }
+
+            if (PressedKeys.Contains(Keys.Left) || PressedKeys.Contains(Keys.A))
+            {
+                Rotate(rotSpeed * scale * speedMultiplier);
             }
         }
 
         public void OnKeyDown(KeyboardKeyEventArgs keyArg)
         {
-            if (!PressedKeys.Add(keyArg.Key))
-            {
-                _ = PressedKeys.Remove(keyArg.Key);
-                return;
-            }
+            _ = PressedKeys.Add(keyArg.Key);
         }
 
         public void OnKeyUp(KeyboardKeyEventArgs keyArg)
         {
             _ = PressedKeys.Remove(keyArg.Key);
-        }
-
-        private void OnKey(Keys key, float scale)
-        {
-            const float moveSpeed = 0.5f;
-            const float rotSpeed = 0.08f;
-
-            switch (key)
-            {
-                case Keys.Up:
-                case Keys.W:
-                    MoveUpDown(moveSpeed * scale);
-                    break;
-                case Keys.Down:
-                case Keys.S:
-                    MoveUpDown(-moveSpeed * scale);
-                    break;
-                case Keys.Right:
-                case Keys.D:
-                    Rotate(-rotSpeed * scale);
-                    break;
-                case Keys.Left:
-                case Keys.A:
-                    Rotate(rotSpeed * scale);
-                    break;
-            }
         }
 
         private void Rotate(float rotSpeed)
