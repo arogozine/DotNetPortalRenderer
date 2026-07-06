@@ -115,10 +115,10 @@ namespace RenderingEngine
         }
 
         [MemberNotNull(nameof(Renderer))]
-        public nint StartRenderingThread(int width, int height)
+        public void StartRenderingThread(int width, int height)
         {
             Renderer = new GameRenderingThread(this, LoadedGameState.ResourceType);
-            return Renderer.StartTheGameLoop(RenderableState, width, height);
+            Renderer.StartTheGameLoop(RenderableState, width, height);
         }
     }
 }

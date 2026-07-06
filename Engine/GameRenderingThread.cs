@@ -62,13 +62,11 @@ namespace RenderingEngine
             currentFrame = null;
         }
 
-        public nint StartTheGameLoop(RenderableMap map, int width, int height)
+        public void StartTheGameLoop(RenderableMap map, int width, int height)
         {
             EngineLoopCancellationToken = new CancellationTokenSource();
             MainEngineLoop(map, width, height, EngineLoopCancellationToken.Token);
             _ = StartRenderingSemaphore.Release();
-
-            return (nint)currentFrame;
         }
 
         public nint WaitForRenderedFrame()

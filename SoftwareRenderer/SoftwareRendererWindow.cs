@@ -110,7 +110,9 @@ namespace SoftwareRenderer
 
             BuildShader();
             BuildQuad();
-            BuildTexture(StartTheGameLoop());
+            BuildTexture();
+
+            StartTheGameLoop();
         }
 
         private static void EnableDebugOutput()
@@ -149,7 +151,6 @@ namespace SoftwareRenderer
         {
             _isMinimized = e.Width == 0 || e.Height == 0;
 
-            // Window Minimized
             if (_isMinimized)
             {
                 return;
@@ -161,17 +162,16 @@ namespace SoftwareRenderer
 
         protected override void OnFramebufferResize(FramebufferResizeEventArgs e)
         {
-            // Window Minimized: skip rebuilding the render thread/texture at 0×0.
             if (e.Width == 0 || e.Height == 0)
             {
                 return;
             }
 
             StopTheGameLoop();
-            nint texturePtr = StartTheGameLoop();
+            StartTheGameLoop();
 
             GL.DeleteTexture(_texture);
-            BuildTexture(texturePtr);
+            BuildTexture();
 
             base.OnFramebufferResize(e);
         }
@@ -240,9 +240,9 @@ namespace SoftwareRenderer
             Engine.OnKeyUp(e);
         }
 
-        private nint StartTheGameLoop()
+        private void StartTheGameLoop()
         {
-            return Engine.StartRenderingThread(ClientSize.X, ClientSize.Y);
+            Engine.StartRenderingThread(ClientSize.X, ClientSize.Y);
         }
 
         private void StopTheGameLoop()
@@ -276,11 +276,9 @@ namespace SoftwareRenderer
             if (ok == 0)
                 throw new Exception($"Shader link error:\n{GL.GetProgramInfoLog(_shader)}");
 
-            // Shaders are baked into the program; individual objects can be freed.
             GL.DeleteShader(vert);
             GL.DeleteShader(frag);
 
-            // Bind the texture unit once — it never changes.
             GL.UseProgram(_shader);
             GL.Uniform1(GL.GetUniformLocation(_shader, "uTex"), 0);
         }
@@ -322,7 +320,7 @@ namespace SoftwareRenderer
                 normalized: false, stride, offset: 2 * sizeof(float));
         }
 
-        private void BuildTexture(nint ptr)
+        private void BuildTexture()
         {
             _texture = GL.GenTexture();
             GL.ActiveTexture(TextureUnit.Texture0);
@@ -338,17 +336,13 @@ namespace SoftwareRenderer
             GL.TexParameter(TextureTarget.Texture2D,
                 TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
 
-            // Allocate GPU storage with the initial pixel data.
-            GL.TexImage2D(
-                TextureTarget.Texture2D,
-                level: 0,
-                internalformat: PixelInternalFormat.Rgba8,  // GPU stores RGBA8
+            // Allocate immutable GPU storage
+            GL.TexStorage2D(
+                TextureTarget2d.Texture2D,
+                levels: 1,
+                internalformat: SizedInternalFormat.Rgba8,  // GPU stores RGBA8
                 width: ClientSize.X,
-                height: ClientSize.Y,
-                border: 0,
-                format: PixelFormat.Bgra,           // CPU supplies BGRA
-                type: PixelType.UnsignedByte,
-                pixels: ptr);
+                height: ClientSize.Y);
         }
     }
 }
