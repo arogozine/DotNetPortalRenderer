@@ -78,7 +78,6 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
                 }
 
                 x += Vector<int>.Count;
-                count -= (ushort)Vector<int>.Count;
 
                 continue;
             }
@@ -229,7 +228,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
             float angleX = *(angleCachePtr + x) - viewAngle;
             angleX = MathFormulas.ClampAngle(angleX);
 
-            int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
+            int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) & (textureWidth - 1);
 
             float vScreen = fromY * yTextureIncr;
             uint* textureColumnPtr = texturePtr + texX;

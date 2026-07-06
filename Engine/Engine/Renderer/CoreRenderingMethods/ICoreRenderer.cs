@@ -148,8 +148,6 @@ internal unsafe interface ICoreRenderer<T>
             int xStart)
         {
             uint* screenTexPtr = screenPtr + floorFromY * width + xStart;
-            Vector<float> xMapPosMultV = Vector.Load(xMapPosMultiplierCachePtr + xStart);
-
             Vector<float> xMapPosMultiplierCacheV = Vector.Load(xMapPosMultiplierCachePtr + xStart);
 
             for (int y = floorFromY; y < floorToY; y++)
@@ -169,7 +167,6 @@ internal unsafe interface ICoreRenderer<T>
                     {
                         if (maskV[i] != 0U)
                         {
-                            float xMult = xMapPosMultV[i];
                             int textureIndex = textureIndexV[i];
                             T.Draw(screenTexPtr + i, texturePtr[textureIndex]);
                         }
@@ -187,7 +184,6 @@ internal unsafe interface ICoreRenderer<T>
             int xStart)
         {
             uint* screenTexPtr = screenPtr + min_t * width + xStart;
-            Vector<float> xMapPosMultV = Vector.Load(xMapPosMultiplierCachePtr + xStart);
             Vector<float> xMapPosMultiplierCacheV = Vector.Load(xMapPosMultiplierCachePtr + xStart);
 
             for (int y = min_t; y < max_t; y++)
@@ -207,7 +203,6 @@ internal unsafe interface ICoreRenderer<T>
                     {
                         if (maskV[i] != 0U)
                         {
-                            float xMult = xMapPosMultV[i];
                             int textureIndex = textureIndexV[i];
                             T.Draw(screenTexPtr + i, texturePtr[textureIndex]);
                         }

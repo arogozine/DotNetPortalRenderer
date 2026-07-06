@@ -82,7 +82,6 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
                 }
 
                 x += Vector<int>.Count;
-                count -= (ushort)Vector<int>.Count;
 
                 continue;
             }
@@ -264,6 +263,11 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
         uint* textureYIncrementPtr
         )
     {
+        if (Sse.IsSupported)
+        {
+            Sse.Prefetch2(texturePtr);
+        }
+
         for (int x = spriteFromX; x <= spriteToX;)
         {
             ushort count = repeatedCount[x - spriteFromX];
@@ -351,6 +355,11 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
         uint* textureYIncrementPtr
     )
     {
+        if (Sse.IsSupported)
+        {
+            Sse.Prefetch2(texturePtr);
+        }
+
         for (int x = spriteFromX; x <= spriteToX;)
         {
             ushort count = repeatedCount[x - spriteFromX];
@@ -771,6 +780,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint RenderWallColumn2(
         uint width,
         uint x,
@@ -803,6 +813,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
         return textureYPos_u;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void RenderWallColumn(
         uint width,
         uint x,
