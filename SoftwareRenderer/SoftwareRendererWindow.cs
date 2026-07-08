@@ -3,73 +3,29 @@ using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using RenderingEngine;
-using RenderingEngine.Tooling;
 using SoftwareRendererModels;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace SoftwareRenderer
 {
-    // AI Disclosure,
-    // Code to render BGRA to Screen via OpenGL was AI generated.
+    internal enum RenderState : byte
+    {
+        InitialLoad = 0,
+        Normal = 1,
+        BeingResized = 2,
+        Minimized = 3
+    }
 
-    public class SoftwareRendererWindow : GameWindow
+    public partial class SoftwareRendererWindow : GameWindow
     {
         private const int _defaultWidth = 1280;
         private const int _defaultHeight = 720;
 
         private readonly PortalEngine Engine;
 
-        // Set true while the window has a 0×0 client area (minimized), pausing
-        // updates/rendering so we never rebuild GPU resources or the engine's
-        // frame buffers at zero size. (AI Assisted)
-        private bool _isMinimized;
-
-        // ── OpenGL objects ───────────────────────────────────────────────────────
-        private int _vao;        // vertex array object
-        private int _vbo;        // vertex buffer (positions + UVs)
-        private int _texture;    // 2-D texture that holds the pixel data
-        private int _shader;     // linked shader program
-
-        // ── Shader sources ───────────────────────────────────────────────────────
-        private const string VertSrc = """
-        #version 410 core
-        layout(location = 0) in vec2 aPos;
-        layout(location = 1) in vec2 aUV;
-        out vec2 vUV;
-        void main() {
-            vUV = aUV;
-            gl_Position = vec4(aPos, 0.0, 1.0);
-        }
-        """;
-
-        // GL_BGRA upload swizzles B↔R automatically on the GPU, so the sampler
-        // already returns RGBA — no manual channel swap needed in the shader.
-        private const string FragSrc = """
-        #version 410 core
-        in  vec2 vUV;
-        out vec4 fragColor;
-        uniform sampler2D uTex;
-        void main() {
-            fragColor = texture(uTex, vUV);
-        }
-        """;
-
-        // ── Full-screen quad (NDC positions + UV coords) ─────────────────────────
-        // Two triangles covering [-1,+1] × [-1,+1].
-        // UV y=0 is the top of the texture; flip V so row-0 of the array maps to
-        // the top of the window.
-        private static readonly float[] QuadVertices =
-        [
-           // X      Y     U     V
-            -1.0f, -1.0f,  0.0f, 1.0f,   // bottom-left
-             1.0f, -1.0f,  1.0f, 1.0f,   // bottom-right
-             1.0f,  1.0f,  1.0f, 0.0f,   // top-right
- 
-            -1.0f, -1.0f,  0.0f, 1.0f,   // bottom-left
-             1.0f,  1.0f,  1.0f, 0.0f,   // top-right
-            -1.0f,  1.0f,  0.0f, 0.0f,   // top-left
-        ];
+        private int _lastWidth = -1;
+        private int _lastHeight = -1;
+        private RenderState _renderState;
 
         public SoftwareRendererWindow(Arguments arguments, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
             : base(gameWindowSettings, nativeWindowSettings)
@@ -103,75 +59,42 @@ namespace SoftwareRenderer
             base.OnLoad();
 
             GL.LoadBindings(new GLFWBindingsContext());
-
-            GL.ClearColor(0f, 0f, 0f, 1f);
-
             EnableDebugOutput();
 
             BuildShader();
             BuildQuad();
-            BuildTexture();
+
+            _renderState = RenderState.InitialLoad;
 
             StartTheGameLoop();
-        }
-
-        private static void EnableDebugOutput()
-        {
-            GL.Enable(EnableCap.DebugOutput);
-
-            GL.DebugMessageCallback(static (source, type, id, severity, len, msg, ptr) =>
-            {
-                LogSeverity logSeverity;
-
-                switch (severity)
-                {
-                    case DebugSeverity.DebugSeverityLow:
-                    case DebugSeverity.DontCare:
-                        logSeverity = LogSeverity.Debug;
-                        break;
-                    case DebugSeverity.DebugSeverityNotification:
-                        logSeverity = LogSeverity.Info;
-                        break;
-                    case DebugSeverity.DebugSeverityMedium:
-                        logSeverity = LogSeverity.Warning;
-                        break;
-                    case DebugSeverity.DebugSeverityHigh:
-                        logSeverity = LogSeverity.Error;
-                        break;
-                    default:
-                        logSeverity = LogSeverity.Info;
-                        break;
-                }
-
-                AsyncLogger.Default.AddLog(logSeverity, $"GL: {Marshal.PtrToStringAnsi(msg)}");
-            }, nint.Zero);
-        }
-
-        protected override void OnResize(ResizeEventArgs e)
-        {
-            _isMinimized = e.Width == 0 || e.Height == 0;
-
-            if (_isMinimized)
-            {
-                return;
-            }
-
-            GL.Viewport(0, 0, e.Width, e.Height);
-            base.OnResize(e);
         }
 
         protected override void OnFramebufferResize(FramebufferResizeEventArgs e)
         {
+            // Minimized State
             if (e.Width == 0 || e.Height == 0)
             {
+                base.OnFramebufferResize(e);
+                _renderState = RenderState.Minimized;
                 return;
             }
 
-            StopTheGameLoop();
-            StartTheGameLoop();
+            // Coming back from minimized state
+            if (_renderState == RenderState.Minimized)
+            {
+                base.OnFramebufferResize(e);
+                _renderState = RenderState.Normal;
 
-            GL.DeleteTexture(_texture);
-            BuildTexture();
+                // No need to re-create if same width & height
+                if (_lastHeight == e.Height && _lastWidth == e.Width)
+                {
+                    return;
+                }
+            }
+
+            GL.Viewport(0, 0, e.Width, e.Height);
+
+            _renderState = RenderState.BeingResized;
 
             base.OnFramebufferResize(e);
         }
@@ -188,8 +111,21 @@ namespace SoftwareRenderer
         {
             base.OnRenderFrame(e);
 
-            if (_isMinimized)
+            // 1. Don't render if minimized
+            // 2. On initial load, build texture, then start normal rendering
+            // 3. On normal behavior, copy pointer via TexSubImage2D
+            // 4. On resize, render one frame with old resolution, then re-build texture after buffer swap
+
+            if (_renderState == RenderState.Minimized)
             {
+                return;
+            }
+
+            // Initial Load - Build Texture
+            if (_renderState == RenderState.InitialLoad)
+            {
+                BuildTexture();
+                _renderState = RenderState.Normal;
                 return;
             }
 
@@ -199,33 +135,22 @@ namespace SoftwareRenderer
 
             if (bgraPtr == nint.Zero)
             {
+                Debug.Fail("BGRA pointer is zero");
                 return;
             }
 
-            // We re-render the whole screen, no need for clear
-            // GL.Clear(ClearBufferMask.ColorBufferBit);
-
-            // Re-upload pixel data to the texture (TexSubImage2D is faster than
-            // TexImage2D because it reuses the already-allocated GPU storage).
-            GL.BindTexture(TextureTarget.Texture2D, _texture);
-            GL.ActiveTexture(TextureUnit.Texture0);
-            GL.TexSubImage2D(
-                TextureTarget.Texture2D,
-                level: 0,
-                xoffset: 0,
-                yoffset: 0,
-                width: ClientSize.X,
-                height: ClientSize.Y,
-                format: PixelFormat.Bgra,
-                type: PixelType.UnsignedByte,
-                pixels: (nint)bgraPtr);
-
-            // Draw the full-screen quad
-            GL.UseProgram(_shader);
-            GL.BindVertexArray(_vao);
-            GL.DrawArrays(PrimitiveType.Triangles, 0, 6);
-
+            BindTexture(bgraPtr);
             SwapBuffers();
+
+            if (_renderState == RenderState.BeingResized)
+            {
+                StopTheGameLoop();
+                StartTheGameLoop();
+
+                BuildTexture();
+                _renderState = RenderState.Normal;
+                return;
+            }
 
             Engine.Renderer.RequestNextFrame();
         }
@@ -242,7 +167,7 @@ namespace SoftwareRenderer
 
         private void StartTheGameLoop()
         {
-            Engine.StartRenderingThread(ClientSize.X, ClientSize.Y);
+            Engine.StartRenderingThread(FramebufferSize.X, FramebufferSize.Y);
         }
 
         private void StopTheGameLoop()
@@ -260,89 +185,6 @@ namespace SoftwareRenderer
             GL.DeleteProgram(_shader);
 
             base.OnUnload();
-        }
-
-        private void BuildShader()
-        {
-            int vert = CompileShader(ShaderType.VertexShader, VertSrc);
-            int frag = CompileShader(ShaderType.FragmentShader, FragSrc);
-
-            _shader = GL.CreateProgram();
-            GL.AttachShader(_shader, vert);
-            GL.AttachShader(_shader, frag);
-            GL.LinkProgram(_shader);
-
-            GL.GetProgram(_shader, GetProgramParameterName.LinkStatus, out int ok);
-            if (ok == 0)
-                throw new Exception($"Shader link error:\n{GL.GetProgramInfoLog(_shader)}");
-
-            GL.DeleteShader(vert);
-            GL.DeleteShader(frag);
-
-            GL.UseProgram(_shader);
-            GL.Uniform1(GL.GetUniformLocation(_shader, "uTex"), 0);
-        }
-
-        private static int CompileShader(ShaderType type, string src)
-        {
-            int id = GL.CreateShader(type);
-            GL.ShaderSource(id, src);
-            GL.CompileShader(id);
-            GL.GetShader(id, ShaderParameter.CompileStatus, out int ok);
-            if (ok == 0)
-                throw new Exception($"{type} compile error:\n{GL.GetShaderInfoLog(id)}");
-
-            return id;
-        }
-
-        private void BuildQuad()
-        {
-            _vao = GL.GenVertexArray();
-            _vbo = GL.GenBuffer();
-
-            GL.BindVertexArray(_vao);
-            GL.BindBuffer(BufferTarget.ArrayBuffer, _vbo);
-            GL.BufferData(BufferTarget.ArrayBuffer,
-                QuadVertices.Length * sizeof(float),
-                QuadVertices,
-                BufferUsageHint.StaticDraw);
-
-            const int stride = 4 * sizeof(float); // 2 pos + 2 uv
-
-            // layout(location = 0) → position (xy)
-            GL.EnableVertexAttribArray(0);
-            GL.VertexAttribPointer(0, 2, VertexAttribPointerType.Float,
-                normalized: false, stride, offset: 0);
-
-            // layout(location = 1) → UV (xy)
-            GL.EnableVertexAttribArray(1);
-            GL.VertexAttribPointer(1, 2, VertexAttribPointerType.Float,
-                normalized: false, stride, offset: 2 * sizeof(float));
-        }
-
-        private void BuildTexture()
-        {
-            _texture = GL.GenTexture();
-            GL.ActiveTexture(TextureUnit.Texture0);
-            GL.BindTexture(TextureTarget.Texture2D, _texture);
-
-            // No mipmaps needed for a 1:1 pixel display.
-            GL.TexParameter(TextureTarget.Texture2D,
-                TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
-            GL.TexParameter(TextureTarget.Texture2D,
-                TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
-            GL.TexParameter(TextureTarget.Texture2D,
-                TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
-            GL.TexParameter(TextureTarget.Texture2D,
-                TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
-
-            // Allocate immutable GPU storage
-            GL.TexStorage2D(
-                TextureTarget2d.Texture2D,
-                levels: 1,
-                internalformat: SizedInternalFormat.Rgba8,  // GPU stores RGBA8
-                width: ClientSize.X,
-                height: ClientSize.Y);
         }
     }
 }
