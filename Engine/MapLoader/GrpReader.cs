@@ -12,9 +12,11 @@ internal static class GrpReader
 {
     public static Map LoadBuildMap(GrpFile grp, string mapName, Dictionary<int, SpriteAngleRotation[]> spriteToAngleFrames)
     {
-        var map = BuildFileParser.ExtractMapFiles(grp);
+        var maps = BuildFileParser.ExtractMapFiles(grp);
 
-        return ExtractBuildMap(map.Single(x => x.MapName == mapName), spriteToAngleFrames);
+        var map = maps.Single(x => x.MapName == mapName);
+
+        return ExtractBuildMap(map, spriteToAngleFrames);
     }
 
     public static void ExtractAllTextures(GrpFile grp, PaletteFile paletteFile, LookupFile lookupFile)
@@ -130,23 +132,19 @@ internal static class GrpReader
         List<Command> commands = ParseOutCommands(defsTokens);
         commands.AddRange(ParseOutCommands(gameConTokens));
 
-        Dictionary<string, DefineCommand> defines = commands.Where(static x => x is DefineCommand)
-            .Cast<DefineCommand>()
+        Dictionary<string, DefineCommand> defines = commands
+            .OfType<DefineCommand>()
             .ToDictionary(static x => x.Name, static x => x);
 
         var actors = commands
-            .Where(static x => x is BaseActorCommand)
-            .Cast<BaseActorCommand>()
+            .OfType<BaseActorCommand>()
             .ToDictionary(static x => x.PicNum, static x => x);
 
         var aiCommandToAction = commands
-            .Where(static x => x is AiCommand)
-            .Cast<AiCommand>()
+            .OfType<AiCommand>()
             .ToDictionary(static x => x.Name, static x => x.Action);
 
-        var actions = commands
-            .Where(static x => x is ActionCommand)
-            .Cast<ActionCommand>()
+        var actions = commands.OfType<ActionCommand>()
             .ToDictionary(static x => x.Name, static x => x);
 
         Dictionary<int, SpriteAngleRotation[]> spriteToActions = [];
@@ -714,7 +712,7 @@ internal static class GrpReader
 
         if (stat.HasFlag(WallCStat.XFlipped))
         {
-            options |= TextureRenderingOptions.FlipX;
+            options |= TextureRenderingOptions.MirrorX;
         }
 
         if (stat.HasFlag(WallCStat.YFlipped))
@@ -918,10 +916,7 @@ internal static class GrpReader
         {
             if ((textureWall.CStat ^ wall.CStat).HasFlag(WallCStat.XFlipped))
             {
-                renderingOptions ^= TextureRenderingOptions.FlipX;
-
-                if (xOffset != 0)
-                    xOffset = byte.MaxValue - xOffset;
+                renderingOptions ^= TextureRenderingOptions.FlipX | TextureRenderingOptions.MirrorX;
             }
         }
 
@@ -1104,7 +1099,7 @@ internal static class GrpReader
                         Debug.Assert(upperTextureInfo.YOffset >= 0);
                     }
 
-                    if (line.MiddleTexture is GameTextureInfo middleTextureInfo)
+                    if (line.MiddleTexture is { } middleTextureInfo)
                     {
                         (float middleXScale, float middleYScale) = DetermineScale(middleTextureInfo);
 
@@ -1155,6 +1150,8 @@ internal static class GrpReader
                 }
             }
         }
+
+        return;
 
         static void FixOffsets(GameTextureInfo textureInfo)
         {

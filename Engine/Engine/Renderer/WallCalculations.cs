@@ -287,6 +287,12 @@ namespace RenderingEngine.Engine
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
 
             bool flipX = wall.Flipped;
+            
+            if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.MirrorX))
+            {
+                flipX = !flipX;
+            }
+
             float rX = flipX ? wall.R2.X : wall.R1.X;
             float rY = flipX ? wall.R2.Y : wall.R1.Y;
 

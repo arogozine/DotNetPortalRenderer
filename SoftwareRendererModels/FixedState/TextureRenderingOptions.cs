@@ -15,5 +15,6 @@ public enum TextureRenderingOptions
     AlignWithFirstWall = 256,
     Sloped = 512,
     Translucent = 1024,
-    FromLower = 2048
+    FromLower = 2048,
+    MirrorX = 4096
 }
