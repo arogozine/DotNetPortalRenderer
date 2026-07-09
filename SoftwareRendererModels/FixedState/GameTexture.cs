@@ -13,7 +13,7 @@ public abstract class GameTexture : IFixedState, IUniqueName
     public short LeftOffset { get; init; }
     public short TopOffset { get; init; }
 
-    public GameTexture(string name, int width, int height)
+    protected GameTexture(string name, int width, int height)
     {
         Name = name;
         Width = width;

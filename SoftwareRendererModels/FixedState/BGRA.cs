@@ -49,7 +49,7 @@ public readonly struct BGRA : IFixedState
         A = alpha;
     }
 
-    public override readonly string ToString()
+    public readonly override string ToString()
     {
         return $"BGRA({B}, {G}, {R}, {A})";
     }

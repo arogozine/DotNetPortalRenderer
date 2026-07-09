@@ -7,7 +7,7 @@
         Sloped = 2,
 
         /// <summary>
-        /// swap x&y
+        /// swap x &amp; y
         /// </summary>
         SwapXy = 4,
 

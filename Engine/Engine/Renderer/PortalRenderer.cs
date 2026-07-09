@@ -7,8 +7,8 @@ namespace RenderingEngine.Engine
     {
         public readonly int PixelWidth;
         public readonly int PixelHeight;
-        public required RenderableSprite[] Sprites { get; set; }
-        public required RenderableSector[] Sectors { get; set; }
+        public required RenderableSprite[] Sprites { get; init; }
+        public required RenderableSector[] Sectors { get; init; }
 
         public void* Buffer => buffer;
 
@@ -24,7 +24,7 @@ namespace RenderingEngine.Engine
         // BGRA screen buffer
         private readonly void* buffer;
 
-        public PortalRenderer(int width, int height)
+        protected PortalRenderer(int width, int height)
         {
             PixelWidth = width;
             PixelHeight = height;
@@ -178,8 +178,8 @@ namespace RenderingEngine.Engine
 
                     Debug.Assert(neightborWall.Neighbor != null);
 
-                    var neighborToRender = ObjectPool.NeighborsToRender.GetOrCreate();
-                    neighborToRender.Initialize(renderableWall, renderableWall.ParentWalls!, neightborWall.Neighbor.Value);
+                    NeighborsToRender neighborToRender = ObjectPool.NeighborsToRender.GetOrCreate();
+                    neighborToRender.Initialize(renderableWall, renderableWall.ParentWalls, neightborWall.Neighbor.Value);
                     neighborToRender.MirrorWall = neightborWall.IsMirror ? neightborWall : renderableWall.MirrorWall;
                     sectorRenderQueue.Add(neighborToRender);
                 }

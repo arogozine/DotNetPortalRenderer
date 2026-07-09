@@ -9,12 +9,12 @@ public sealed class RenderablePortalWall
     private RenderableWall[]? _parentWalls;
 
     public int Id => Wall.Id;
-    public RenderableWall Wall { get; set; } = null!;
+    public RenderableWall Wall { get; private set; } = null!;
     public int XLeft { get; set; }
     public int XRight { get; set; }
-    public int Offset { get; set; }
+    public int Offset { get; private set; }
     public ReadOnlySpan<RenderableWall> ParentWalls => _parentWalls.AsSpan()[.._length];
-    public RenderColumnStatus RenderColumnStatus { get; set; }
+    public RenderColumnStatus RenderColumnStatus { get; private set; }
     public RenderableWall? MirrorWall { get; set; }
 
     public bool IsPortalWithMiddleTexture => Wall.IsPortal && Wall.MiddleTexture != null;

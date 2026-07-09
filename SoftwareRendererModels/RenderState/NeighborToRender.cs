@@ -67,4 +67,11 @@ public sealed class NeighborsToRender : IRenderState, IDisposable
         GC.SuppressFinalize(this);
     }
 
+    ~NeighborsToRender()
+    {
+        if (_parentWalls is not null)
+        {
+            ArrayPool<RenderableWall>.Shared.Return(_parentWalls);
+        }
+    }
 }

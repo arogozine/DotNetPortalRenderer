@@ -304,7 +304,7 @@ namespace RenderingEngine.Engine
                         rotatedWalls[i] = rotatedWalls[j];
                     }
 
-                    rotatedWalls = rotatedWalls[0..i];
+                    rotatedWalls = rotatedWalls[..i];
                     return rotatedWalls;
                 }
             }
@@ -334,7 +334,7 @@ namespace RenderingEngine.Engine
 
             if (rotatedWalls.Length <= 1)
             {
-                bunches[0] = 0..rotatedWalls.Length;
+                bunches[0] = ..rotatedWalls.Length;
                 return bunches[..rotatedWalls.Length];
             }
 

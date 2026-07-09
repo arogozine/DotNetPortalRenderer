@@ -48,8 +48,6 @@ namespace SoftwareRenderer
 
             iwadOption.Validators.Add((result) =>
             {
-                string? grp = result.GetValue(dukeGrpOption);
-                bool usingPaletteGrp = !string.IsNullOrEmpty(grp);
                 string? iwad = result.GetValue(iwadOption);
 
                 if (string.IsNullOrEmpty(iwad))
@@ -174,7 +172,7 @@ namespace SoftwareRenderer
             {
                 Debugger.Break();
 
-                AsyncLogger.Default.AddLog(LogSeverity.Error, $"Critical Application Failure", ex);
+                AsyncLogger.Default.AddLog(LogSeverity.Error, "Critical Application Failure", ex);
 
             }
 

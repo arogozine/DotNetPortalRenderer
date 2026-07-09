@@ -292,17 +292,6 @@ namespace RenderingEngine.Engine
             // For slopes
             Vector3 planePoint, planeNormal;
             Vector<float> nX, nY, nZ, pX, pY, pZ, dir_z;
-            // Scalar
-            float dir_z_scalar;
-            float alignX = alignXV[0];
-            float alignY = alignYV[0];
-            float rSin = rSinV[0];
-            float rCos = rCosV[0];
-            float pSin = pSinV[0];
-            float pCos = pCosV[0];
-            float px = pxV[0];
-            float py = pyV[0];
-            Vector3 linePoint = new(0f, 0f, pzV[0]);
 
             float* xMapPosMultiplierCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
             float* incrCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
@@ -591,8 +580,6 @@ namespace RenderingEngine.Engine
                     {
                         dir_z = pzV - Vector.Create<float>(slopeFloorBoolean ? sector.Floor : sector.Ceil);
                     }
-
-                    dir_z_scalar = dir_z[0];
                 }
                 else
                 {
@@ -605,7 +592,6 @@ namespace RenderingEngine.Engine
                     Unsafe.SkipInit(out pY);
                     Unsafe.SkipInit(out pZ);
                     Unsafe.SkipInit(out dir_z);
-                    Unsafe.SkipInit(out dir_z_scalar);
                 }
             }
         }

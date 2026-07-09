@@ -6,7 +6,7 @@ namespace SoftwareRendererModels;
 [DebuggerDisplay("Id = {Id}, Texture = {Texture.Name}")]
 public abstract class RenderableSprite : IRenderState
 {
-    public required Sprite Sprite { get; set; }
+    public required Sprite Sprite { get; init; }
 
     public int Id => Sprite.Id;
     public int SectorId => Sprite.SectorId;

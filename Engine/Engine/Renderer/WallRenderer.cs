@@ -13,8 +13,6 @@ namespace RenderingEngine.Engine
             uint* fromYClamped,
             uint* toYClamped)
         {
-            RenderableWall wall = renderableWall.Wall;
-
             bool flipY = textureInfo.RenderingOptions.IsFlippedY;
             bool flipX = textureInfo.RenderingOptions.IsFlippedX;
 

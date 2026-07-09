@@ -1167,7 +1167,7 @@ internal static class WadReader
                 return null;
             }
 
-            return MathF.PI * (angle / 180f);
+            return MathF.PI * (angle.Value / 180f);
         }
 
         static int ToInt32(float? value) => (int)(value ?? 0f);

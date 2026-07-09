@@ -47,17 +47,6 @@ internal unsafe interface ICoreRenderer<T>
         // Player height compared to ceiling/floor
         Vector<float> cameraPositionV = Vector.Create(cameraPosition);
 
-        // scalar
-        float alignX = alignXV[0];
-        float alignY = alignYV[0];
-        float rSin = rSinV[0];
-        float rCos = rCosV[0];
-        float pSin = pSinV[0];
-        float pCos = pCosV[0];
-        float px = pxV[0];
-        float py = pyV[0];
-
-
         for (int x = from; x <= to;)
         {
             ushort count = repeatedCount[x - from];
