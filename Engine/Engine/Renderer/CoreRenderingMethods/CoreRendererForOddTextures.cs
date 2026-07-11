@@ -535,9 +535,9 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
         uint* textureBuffer
         )
     {
-        var startYV = Vector128.Load(startY);
-        var endYV = Vector128.Load(endY);
-        var textureXIncr_uV = Vector128.Load(textureYIncr_u);
+        Vector128<uint> startYV = Vector128.Load(startY);
+        Vector128<uint> endYV = Vector128.Load(endY);
+        Vector128<uint> textureXIncr_uV = Vector128.Load(textureYIncr_u);
 
         (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
         (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);

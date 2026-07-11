@@ -414,14 +414,28 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
                 Vector256<uint> texelIndexV = textureXPosV + ((textureYPos_uV >> 16) & textureMaskV);
 
-                for (int i = 0; i < Vector256<uint>.Count; i++)
+                if (Avx2.IsSupported)
                 {
-                    if (mask[i] == 0U)
-                        continue;
+                    Vector256<uint> gathered = Avx2.GatherVector256(
+                        textureBuffer,
+                        texelIndexV.AsInt32(),
+                        scale: sizeof(uint)
+                    );
 
-                    uint texelIndex = texelIndexV[i];
-                    uint pixel = *(textureBuffer + texelIndex);
-                    T.Draw(screenIndexPtr + i, pixel);
+                    T.DrawLine(screenIndexPtr, gathered, mask);
+                }
+                else
+                {
+                    // AI Assisted: Scalar fallback
+                    for (int i = 0; i < Vector256<uint>.Count; i++)
+                    {
+                        if (mask[i] == 0U)
+                            continue;
+
+                        uint texelIndex = texelIndexV[i];
+                        uint pixel = *(textureBuffer + texelIndex);
+                        T.Draw(screenIndexPtr + i, pixel);
+                    }
                 }
 
                 textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
@@ -599,14 +613,28 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
                 Vector128<uint> texelIndexV = textureXPosV + ((textureYPos_uV >> 16) & textureMaskV);
 
-                for (int i = 0; i < Vector128<uint>.Count; i++)
+                if (Avx2.IsSupported)
                 {
-                    if (mask[i] == 0U)
-                        continue;
+                    Vector128<uint> gathered = Avx2.GatherVector128(
+                        textureBuffer,
+                        texelIndexV.AsInt32(),
+                        scale: sizeof(uint)
+                    );
 
-                    uint texelIndex = texelIndexV[i];
-                    uint pixel = *(textureBuffer + texelIndex);
-                    T.Draw(screenIndexPtr + i, pixel);
+                    T.DrawLine(screenIndexPtr, gathered, mask);
+                }
+                else
+                {
+                    // AI Assisted: Scalar fallback
+                    for (int i = 0; i < Vector128<uint>.Count; i++)
+                    {
+                        if (mask[i] == 0U)
+                            continue;
+
+                        uint texelIndex = texelIndexV[i];
+                        uint pixel = *(textureBuffer + texelIndex);
+                        T.Draw(screenIndexPtr + i, pixel);
+                    }
                 }
 
                 textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);

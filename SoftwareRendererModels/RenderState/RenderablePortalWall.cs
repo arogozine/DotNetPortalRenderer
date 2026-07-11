@@ -36,6 +36,6 @@ public sealed class RenderablePortalWall
         Offset = 0;
         RenderColumnStatus = default;
         MirrorWall = null;
-        ParentWalls = Tooling.ArraySegment<RenderableWall>.Empty; ;
+        ParentWalls = Tooling.ArraySegment<RenderableWall>.Empty;
     }
 }

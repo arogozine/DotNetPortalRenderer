@@ -1,6 +1,5 @@
 ﻿using System.Numerics;
 using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
 {
@@ -57,22 +56,8 @@ namespace RenderingEngine.Engine
             Vector256<uint> dst = Vector256.Load(surface);
             Vector256<uint> blended = BlendBGRA(dst, pixels);
 
-            if (Avx2.IsSupported)
-            {
-                Vector256<uint> result = Vector256.ConditionalSelect(mask, blended, dst);
-                Vector256.Store(result, surface);
-                return;
-            }
-
-            for (int i = 0; i < Vector256<uint>.Count; i++)
-            {
-                if (mask[i] != 0U)
-                {
-                    *surface = blended[i];
-                }
-
-                surface++;
-            }
+            Vector256<uint> result = Vector256.ConditionalSelect(mask, blended, dst);
+            Vector256.Store(result, surface);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -84,22 +69,8 @@ namespace RenderingEngine.Engine
             Vector128<uint> dst = Vector128.Load(surface);
             Vector128<uint> blended = BlendBGRA(dst, pixels);
 
-            if (Avx2.IsSupported)
-            {
-                Vector128<uint> result = Vector128.ConditionalSelect(mask, blended, dst);
-                Vector128.Store(result, surface);
-                return;
-            }
-
-            for (int i = 0; i < Vector128<uint>.Count; i++)
-            {
-                if (mask[i] != 0U)
-                {
-                    *surface = blended[i];
-                }
-
-                surface++;
-            }
+            Vector128<uint> result = Vector128.ConditionalSelect(mask, blended, dst);
+            Vector128.Store(result, surface);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

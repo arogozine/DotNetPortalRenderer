@@ -389,7 +389,6 @@ namespace RenderingEngine.Engine
                 Vector<float> xMapPosMultV)
             {
                 uint* screenTexPtr = screenPtr + floorFromY * width + xStart;
-                float* incr = incrCachePtr + floorFromY;
 
                 for (int y = floorFromY; y < floorToY; y++)
                 {
@@ -406,7 +405,6 @@ namespace RenderingEngine.Engine
                     }
 
                     screenTexPtr += width;
-                    incr++;
                 }
             }
 
@@ -418,7 +416,6 @@ namespace RenderingEngine.Engine
                 Vector<float> xMapPosMultV)
             {
                 uint* screenTexPtr = screenPtr + min_t * width + xStart;
-                float* incr = incrCachePtr + min_t;
 
                 for (int y = min_t; y < max_t; y++)
                 {
@@ -437,7 +434,6 @@ namespace RenderingEngine.Engine
                     }
 
                     screenTexPtr += width;
-                    incr++;
                 }
             }
 
