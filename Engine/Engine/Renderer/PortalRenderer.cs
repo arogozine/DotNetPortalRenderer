@@ -3,7 +3,8 @@ using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine
 {
-    internal unsafe partial class PortalRenderer
+    // AI Assisted
+    internal unsafe partial class PortalRenderer : IThreadPoolWorkItem
     {
         public readonly int PixelWidth;
         public readonly int PixelHeight;
@@ -246,7 +247,7 @@ namespace RenderingEngine.Engine
                 }
 
                 // 4. Render Floors, Ceilings, and Walls
-                List<RenderablePortalWall> neighbors = RenderSector(player, sector, sectors, sectorStatus);
+                List<RenderablePortalWall> neighbors = RenderSector(player, sector, sectorStatus);
 
                 // 5. Keep track of parent walls to avoid rendering them again
                 Span<RenderablePortalWall> neighborsSpan = CollectionsMarshal.AsSpan(neighbors);
@@ -339,63 +340,162 @@ namespace RenderingEngine.Engine
 
         }
 
+        // AI Assisted: reused across calls so RenderSector's floor/ceiling and wall-rendering splits
+        // don't allocate (Parallel.Invoke allocates a params array, delegates and Tasks on every call)
+        private readonly SemaphoreSlim oddWallsDoneSemaphore = new(0, 1);
+        private readonly SemaphoreSlim ceilingDoneSemaphore = new(0, 1);
+        private PortalPlayerSnapshot concurrentWorkPlayer = null!;
+        private RenderableSector concurrentWorkSector = null!;
+        private ConcurrentWorkKind pendingConcurrentWork;
+
+        // AI Assisted
+        private enum ConcurrentWorkKind
+        {
+            OddWalls,
+            Ceiling
+        }
+
         private List<RenderablePortalWall> RenderSector(
             PortalPlayerSnapshot player,
             RenderableSector sector,
-            ReadOnlySpan<RenderableSector> sectors,
             RenderColumnStatus sectorStatus)
         {
-            if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderFloor))
-            {
-                if (sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
-                {
-                    RenderSkyboxFloorVector(player, sector);
-                }
-                else
-                {
-                    RenderFloorVector(player, sector);
-                }
-            }
+            bool canRenderFloor = sectorStatus.HasFlag(RenderColumnStatus.CanRenderFloor);
+            bool canRenderCeiling = sectorStatus.HasFlag(RenderColumnStatus.CanRenderCeiling);
 
-            if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderCeiling))
+            if (canRenderFloor && canRenderCeiling)
             {
-                if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
-                {
-                    RenderSkyboxVector(player, sector);
-                }
-                else
-                {
-                    RenderCeilingVector(player, sector);
-                }
+                // AI Assisted: dispatch ceiling rendering to the thread pool via the reusable
+                // IThreadPoolWorkItem.Execute below, run floor rendering inline, and wait on a
+                // reusable semaphore instead of Parallel.Invoke (which allocates a params array,
+                // delegates and Tasks on every call). Floor rendering uses the Temp3/Temp4 memory
+                // buckets so it doesn't race with ceiling rendering's use of Temp/Temp2.
+                concurrentWorkPlayer = player;
+                concurrentWorkSector = sector;
+                pendingConcurrentWork = ConcurrentWorkKind.Ceiling;
+                bool success = ThreadPool.UnsafeQueueUserWorkItem(this, preferLocal: true);
+                Debug.Assert(success);
+                RenderFloor(player, sector);
+                ceilingDoneSemaphore.Wait();
+            }
+            else if (canRenderFloor)
+            {
+                RenderFloor(player, sector);
+            }
+            else if (canRenderCeiling)
+            {
+                RenderCeiling(player, sector);
             }
 
             (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
 
             if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderWall))
             {
-                for (int s = 0; s < renderableWalls.Count; s++)
-                {
-                    RenderablePortalWall renderableWall = renderableWalls[s];
-
-                    if (renderableWall.RenderColumnStatus.HasFlag(RenderColumnStatus.CanRenderWall))
-                    {
-                        RenderableWall wall = renderableWall.Wall;
-
-                        bool wallDrawn = wall.IsPortal ?
-                            DrawPortalWall(player, sectors, renderableWall) :
-                            DrawBasicWall(player, renderableWall);
-
-                        if (wallDrawn && wall.IsPortal)
-                        {
-                            neightbors.Add(renderableWall);
-                        }
-                    }
-                }
+                // AI Assisted: dispatch the odd-index half to the thread pool via the reusable
+                // IThreadPoolWorkItem.Execute below, run the even-index half inline, and wait on a
+                // reusable semaphore instead of Parallel.Invoke (which allocates a params array,
+                // delegates and Tasks on every call).
+                concurrentWorkPlayer = player;
+                pendingConcurrentWork = ConcurrentWorkKind.OddWalls;
+                bool success = ThreadPool.UnsafeQueueUserWorkItem(this, preferLocal: true);
+                Debug.Assert(success);
+                RenderEvenWalls(player);
+                oddWallsDoneSemaphore.Wait();
             }
 
             CalculateNewFloorCeiling(sectorFromX, sectorToX);
 
             return neightbors;
+        }
+
+        private void RenderFloor(PortalPlayerSnapshot player, RenderableSector sector)
+        {
+            if (sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
+            {
+                RenderSkyboxFloorVector(player, sector);
+            }
+            else
+            {
+                RenderFloorVector(player, sector);
+            }
+        }
+
+        private void RenderCeiling(PortalPlayerSnapshot player, RenderableSector sector)
+        {
+            if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
+            {
+                RenderSkyboxVector(player, sector);
+            }
+            else
+            {
+                RenderCeilingVector(player, sector);
+            }
+        }
+
+        // AI Assisted
+        void IThreadPoolWorkItem.Execute()
+        {
+            switch (pendingConcurrentWork)
+            {
+                case ConcurrentWorkKind.Ceiling:
+                    RenderCeiling(concurrentWorkPlayer, concurrentWorkSector);
+                    ceilingDoneSemaphore.Release();
+                    break;
+                case ConcurrentWorkKind.OddWalls:
+                    RenderOddWalls(concurrentWorkPlayer);
+                    oddWallsDoneSemaphore.Release();
+                    break;
+            }
+        }
+
+        // AI Assisted
+        private void RenderOddWalls(PortalPlayerSnapshot player)
+        {
+            ReadOnlySpan<RenderableSector> sectors = this.Sectors;
+
+            for (int s = 1; s < renderableWalls.Count; s += 2)
+            {
+                RenderablePortalWall renderableWall = renderableWalls[s];
+
+                if (renderableWall.RenderColumnStatus.HasFlag(RenderColumnStatus.CanRenderWall))
+                {
+                    RenderableWall wall = renderableWall.Wall;
+
+                    bool wallDrawn = wall.IsPortal ?
+                        DrawPortalWall(player, sectors, renderableWall) :
+                        DrawBasicWall(player, renderableWall);
+
+                    if (wallDrawn && wall.IsPortal)
+                    {
+                        neightbors.Add(renderableWall);
+                    }
+                }
+            }
+        }
+
+        // AI Assisted
+        private void RenderEvenWalls(PortalPlayerSnapshot player)
+        {
+            ReadOnlySpan<RenderableSector> sectors = this.Sectors;
+
+            for (int s = 0; s < renderableWalls.Count; s += 2)
+            {
+                RenderablePortalWall renderableWall = renderableWalls[s];
+
+                if (renderableWall.RenderColumnStatus.HasFlag(RenderColumnStatus.CanRenderWall))
+                {
+                    RenderableWall wall = renderableWall.Wall;
+
+                    bool wallDrawn = wall.IsPortal ?
+                        DrawPortalWall(player, sectors, renderableWall) :
+                        DrawBasicWall(player, renderableWall);
+
+                    if (wallDrawn && wall.IsPortal)
+                    {
+                        neightbors.Add(renderableWall);
+                    }
+                }
+            }
         }
 
 

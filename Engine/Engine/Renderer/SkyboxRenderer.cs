@@ -28,10 +28,12 @@ namespace RenderingEngine.Engine
                     ceilingStartPtr, wallStartPtr,
                     ceilingStartPtr, floorEndPtr,
                     PixelWidth,
-                    texture.Width, texture.Height);
+                    texture.Width, texture.Height, MemoryPoolBucket.Temp2);
             }
         }
 
+        // AI Assisted: repeatedCountBucket lets floor rendering use Temp4 instead of Temp2 so it
+        // can run concurrently with ceiling rendering without racing on the same buffer
         protected abstract void RenderSkyboxShared(PortalPlayerSnapshot player,
             RenderColumnStatus renderColumnStatus,
             uint* screenPtr,
@@ -41,7 +43,8 @@ namespace RenderingEngine.Engine
             int* ceilingStartPtr, int* floorEndPtr,
             int width,
             int textureWidth,
-            int textureHeight);
+            int textureHeight,
+            MemoryPoolBucket repeatedCountBucket);
 
         private void RenderSkyboxFloorVector(
             PortalPlayerSnapshot player,
@@ -69,7 +72,7 @@ namespace RenderingEngine.Engine
                     wallEndPtr, floorEndPtr,
                     ceilingStartPtr, floorEndPtr,
                     PixelWidth,
-                    texture.Width, texture.Height);
+                    texture.Width, texture.Height, MemoryPoolBucket.Temp4);
             }
         }
 
@@ -116,7 +119,7 @@ namespace RenderingEngine.Engine
                     wallStartPtr, wallEndPtr,
                     ceilingStartPtr, floorEndPtr,
                     PixelWidth,
-                    wallTexture.Width, wallTexture.Height);
+                    wallTexture.Width, wallTexture.Height, MemoryPoolBucket.Temp2);
             }
         }
     }

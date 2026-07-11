@@ -55,6 +55,14 @@
         /// </summary>
         Temp2,
         /// <summary>
+        /// Temp Buffer 3. Used by floor rendering so it can run concurrently with ceiling rendering (which uses Temp)
+        /// </summary>
+        Temp3,
+        /// <summary>
+        /// Temp Buffer 4. Used by floor rendering so it can run concurrently with ceiling rendering (which uses Temp2)
+        /// </summary>
+        Temp4,
+        /// <summary>
         /// Portal Top Window. Between [WallStart, WallEnd]
         /// </summary>
         PortalFrom,

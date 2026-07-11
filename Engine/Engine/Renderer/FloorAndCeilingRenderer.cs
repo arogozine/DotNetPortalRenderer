@@ -49,6 +49,8 @@ namespace RenderingEngine.Engine
             int* ceilingStart = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
             int* wallStartSloped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
             int* floorEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
+            // AI Assisted: ceiling rendering keeps Temp/Temp2 while floor rendering (which may run
+            // concurrently) uses Temp3/Temp4
             int* wallStartClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.Temp);
             wallStartClampedPtr += sectorFromX;
 
@@ -148,7 +150,9 @@ namespace RenderingEngine.Engine
             int* wallEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
             int* floorEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
             int* ceilingStart = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
-            int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.Temp);
+            // AI Assisted: floor rendering uses Temp3/Temp4 (rather than Temp/Temp2, used by ceiling
+            // rendering) so it can run concurrently with ceiling rendering without racing on the same buffer
+            int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.Temp3);
             wallEndClampedPtr += sectorFromX;
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateFloor);
@@ -221,7 +225,7 @@ namespace RenderingEngine.Engine
                 alignWallYV = Vector.Create(y1);
             }
 
-            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[sectorFromX..(sectorToX + 1)];
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp4)[sectorFromX..(sectorToX + 1)];
             repeatedCount.Fill((ushort)repeatedCount.Length);
 
             for (int x = sectorFromX; x <= sectorToX; x++)

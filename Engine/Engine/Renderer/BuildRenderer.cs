@@ -202,7 +202,8 @@ internal unsafe sealed class BuildRenderer : PortalRenderer
         int* ceilingStartPtr, int* floorEndPtr,
         int width,
         int textureWidth,
-        int textureHeight)
+        int textureHeight,
+        MemoryPoolBucket repeatedCountBucket)
     {
         float yTextureIncr = ((float)textureHeight) / PixelHeight;
 
@@ -234,7 +235,7 @@ internal unsafe sealed class BuildRenderer : PortalRenderer
 
             int length = sectorToX - sectorFromX;
 
-            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[sectorFromX..(sectorToX + 1)];
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(repeatedCountBucket)[sectorFromX..(sectorToX + 1)];
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {

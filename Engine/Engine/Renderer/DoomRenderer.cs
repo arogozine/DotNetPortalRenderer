@@ -188,7 +188,8 @@ internal unsafe sealed class DoomRenderer : PortalRenderer
         int* ceilingStartPtr, int* floorEndPtr,
         int width,
         int textureWidth,
-        int textureHeight)
+        int textureHeight,
+        MemoryPoolBucket repeatedCountBucket)
     {
         float yTextureIncr = ((float)textureHeight) / PixelHeight;
 
@@ -220,7 +221,7 @@ internal unsafe sealed class DoomRenderer : PortalRenderer
 
             int length = sectorToX - sectorFromX;
 
-            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[..(length + 1)];
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(repeatedCountBucket)[..(length + 1)];
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
