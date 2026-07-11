@@ -2,7 +2,7 @@
 
 namespace RenderingEngine.Tooling;
 
-internal unsafe class AlignedMemoryPool
+public unsafe class AlignedMemoryPool
 {
     public int BucketSize => _bucketSize;
     public int NumberOfBuckets => Buckets.Length;
@@ -78,7 +78,7 @@ internal unsafe class AlignedMemoryPool
         }
     }
 
-    internal static AlignedMemoryPool GeneratePool(int bucketSize, int numberOfBuckets)
+    public static AlignedMemoryPool GeneratePool(int bucketSize, int numberOfBuckets)
     {
         return new AlignedMemoryPool(bucketSize, numberOfBuckets);
     }

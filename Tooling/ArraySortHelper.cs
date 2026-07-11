@@ -7,7 +7,7 @@ using System.Numerics;
 
 namespace RenderingEngine.Tooling;
 
-internal static class ArraySortHelper
+public static class ArraySortHelper
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Sort<T, C>(this Span<T> keys, C comparer)
@@ -17,7 +17,7 @@ internal static class ArraySortHelper
     }
 }
 
-internal static class ArraySortHelper<T, C>
+public static class ArraySortHelper<T, C>
     where C : IComparer<T>
 {
     private const int IntrosortSizeThreshold = 16;

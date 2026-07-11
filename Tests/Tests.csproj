@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Engine\RenderingEngine.csproj" />
     <ProjectReference Include="..\SoftwareRendererModels\SoftwareRendererModels.csproj" />
+    <ProjectReference Include="..\Tooling\Tooling.csproj" />
   </ItemGroup>
 
   <ItemGroup>

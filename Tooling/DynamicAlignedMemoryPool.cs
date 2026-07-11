@@ -2,7 +2,7 @@
 
 namespace RenderingEngine.Tooling;
 
-internal unsafe class DynamicAlignedMemoryPool
+public unsafe class DynamicAlignedMemoryPool
 {
     public int BucketSizeInBytes => _bucketSizeInBytes;
 
@@ -99,7 +99,7 @@ internal unsafe class DynamicAlignedMemoryPool
         }
     }
 
-    internal static DynamicAlignedMemoryPool GeneratePool(int bucketSize, int numberOfBuckets)
+    public static DynamicAlignedMemoryPool GeneratePool(int bucketSize, int numberOfBuckets)
     {
         return new DynamicAlignedMemoryPool(bucketSize, numberOfBuckets);
     }

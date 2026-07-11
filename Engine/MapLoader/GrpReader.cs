@@ -3,6 +3,7 @@ using BuildAssetLoader.Con;
 using BuildAssetLoader.Map;
 using BuildAssetLoader.Texture;
 using RenderingEngine.Engine;
+using RenderingEngine.Tooling;
 using SoftwareRendererModels;
 using System.Numerics;
 
@@ -14,7 +15,14 @@ internal static class GrpReader
     {
         var maps = BuildFileParser.ExtractMapFiles(grp);
 
-        var map = maps.Single(x => x.MapName == mapName);
+        MapFile? map = maps.FirstOrDefault(x => x.MapName.Equals(mapName, StringComparison.InvariantCultureIgnoreCase));
+
+        if (map is null)
+        {
+            AsyncLogger.Default.AddLog(LogSeverity.Error, $"Map '{mapName}' not found in GRP file");
+            AsyncLogger.Default.WaitSync();
+            Environment.Exit(1);
+        }
 
         return ExtractBuildMap(map, spriteToAngleFrames);
     }

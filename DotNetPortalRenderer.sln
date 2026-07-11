@@ -22,6 +22,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildAssetLoader", "BuildAs
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SoftwareRendererModels", "SoftwareRendererModels\SoftwareRendererModels.csproj", "{1A5C50FB-A945-4B2E-AA4E-064B61C100A9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tooling", "Tooling\Tooling.csproj", "{6297CA51-619D-4C49-9B5E-7901834A7696}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,6 +58,10 @@ Global
 		{1A5C50FB-A945-4B2E-AA4E-064B61C100A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1A5C50FB-A945-4B2E-AA4E-064B61C100A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1A5C50FB-A945-4B2E-AA4E-064B61C100A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6297CA51-619D-4C49-9B5E-7901834A7696}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6297CA51-619D-4C49-9B5E-7901834A7696}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6297CA51-619D-4C49-9B5E-7901834A7696}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6297CA51-619D-4C49-9B5E-7901834A7696}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

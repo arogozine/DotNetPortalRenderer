@@ -16,7 +16,7 @@ Majority of the application and the rendering design are handmade.
 
 ### Project Structure
 
-The solution contains 7 projects:
+The solution contains 8 projects:
 
 1. **RenderingEngine** - Core portal rendering library
    - Implements the `PortalRenderer` class (main rendering loop)
@@ -46,10 +46,15 @@ The solution contains 7 projects:
    - Loads GRP files and extracts maps, textures, sprites
    - Handles palette and lookup table files for color/shading
 
-6. **Tests** - Unit tests (XUnit)
+6. **Tooling** - General-purpose utilities shared across projects
+   - Aligned memory pooling: `AlignedMemoryPool`, `DynamicAlignedMemoryPool`
+   - `ArraySortHelper` (allocation-free span sorting)
+   - `AsyncLogger` for background logging
+
+7. **Tests** - Unit tests (XUnit)
    - Tests for math functions, memory utilities, and asset loading
 
-7. **Benchmark** - Performance benchmarks (BenchmarkDotNet)
+8. **Benchmark** - Performance benchmarks (BenchmarkDotNet)
    - Benchmarks for rendering operations, vector operations, and math functions
 
 ### Rendering Pipeline

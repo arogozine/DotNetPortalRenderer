@@ -13,8 +13,9 @@
 3. **SoftwareRendererModels** - Shared data models
 4. **DoomAssetLoader** - Doom WAD file parsing
 5. **BuildAssetLoader** - Duke Nukem 3D GRP file parsing
-6. **Tests** - Unit tests (XUnit)
-7. **Benchmark** - Performance benchmarks (BenchmarkDotNet)
+6. **Tooling** - General-purpose utilities (memory pooling, sorting, async logging)
+7. **Tests** - Unit tests (XUnit)
+8. **Benchmark** - Performance benchmarks (BenchmarkDotNet)
 
 ### Rendering
 
@@ -22,7 +23,7 @@ Main rendering implementation is in (`Engine/Engine/Renderer/PortalRenderer.cs`)
 
 ### Memory Management
 
-Uses custom memory pooling (`AlignedMemoryPool`, `DynamicAlignedMemoryPool`).
+Uses custom memory pooling (`AlignedMemoryPool`, `DynamicAlignedMemoryPool` in the `Tooling` project). Engine-specific pooling glue (`ObjectPool`, `AlignedMemoryPoolExtensions`, `MemoryPoolBucket`, `SpriteCachePoolBucket`) stays in `Engine/Tooling` since it depends on renderer-specific types.
 
 ## Command Reference
 

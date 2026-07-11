@@ -1,25 +1,23 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace SoftwareRendererModels;
 
 [DebuggerDisplay("Id = {Id}, XLeft = {XLeft}, XRight = {XRight}")]
 public sealed class RenderablePortalWall
 {
-    private int _length;
-    private RenderableWall[]? _parentWalls;
-
     public int Id => Wall.Id;
     public RenderableWall Wall { get; private set; } = null!;
     public int XLeft { get; set; }
     public int XRight { get; set; }
     public int Offset { get; private set; }
-    public ReadOnlySpan<RenderableWall> ParentWalls => _parentWalls.AsSpan()[.._length];
+    public Tooling.ArraySegment<RenderableWall> ParentWalls { get; set; } = Tooling.ArraySegment<RenderableWall>.Empty;
     public RenderColumnStatus RenderColumnStatus { get; private set; }
     public RenderableWall? MirrorWall { get; set; }
 
     public bool IsPortalWithMiddleTexture => Wall.IsPortal && Wall.MiddleTexture != null;
 
-    // AI Assisted
+    [MemberNotNull(nameof(Wall))]
     public void Initialize(RenderableWall wall, int xLeft, int xRight, int offset, RenderColumnStatus renderColumnStatus)
     {
         Wall = wall;
@@ -27,27 +25,17 @@ public sealed class RenderablePortalWall
         XRight = xRight;
         Offset = offset;
         RenderColumnStatus = renderColumnStatus;
-        _parentWalls = null;
-        _length = 0;
         MirrorWall = null;
     }
 
-    // AI Assisted
     public void Reset()
     {
         Wall = null!;
         XLeft = 0;
         XRight = 0;
         Offset = 0;
-        _parentWalls = null;
-        _length = 0;
         RenderColumnStatus = default;
         MirrorWall = null;
-    }
-
-    public void SetParentWalls(RenderableWall[]? parentWalls, int length)
-    {
-        _parentWalls = parentWalls;
-        _length = length;
+        ParentWalls = Tooling.ArraySegment<RenderableWall>.Empty; ;
     }
 }

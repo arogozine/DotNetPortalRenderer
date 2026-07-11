@@ -179,7 +179,12 @@ namespace RenderingEngine.Engine
                     Debug.Assert(neightborWall.Neighbor != null);
 
                     NeighborsToRender neighborToRender = ObjectPool.NeighborsToRender.GetOrCreate();
-                    neighborToRender.Initialize(renderableWall, renderableWall.ParentWalls, neightborWall.Neighbor.Value);
+
+                    var pool = ObjectPool.RenderableWallPool.Request(renderableWall.ParentWalls.Count + 1);
+                    renderableWall.ParentWalls.CopyTo(pool);
+                    pool.AsSpan()[^1] = renderableWall.Wall;
+
+                    neighborToRender.Initialize(pool, renderableWall, neightborWall.Neighbor.Value);
                     neighborToRender.MirrorWall = neightborWall.IsMirror ? neightborWall : renderableWall.MirrorWall;
                     sectorRenderQueue.Add(neighborToRender);
                 }
@@ -247,9 +252,9 @@ namespace RenderingEngine.Engine
                 Span<RenderablePortalWall> neighborsSpan = CollectionsMarshal.AsSpan(neighbors);
                 for (int i = 0; i < neighborsSpan.Length; i++)
                 {
-                    (var parentWallsArray, var length) = sectorInfo.GetParentWallsArray();
+                    // (var parentWallsArray, var length) = sectorInfo.GetParentWallsArray();
 
-                    neighborsSpan[i].SetParentWalls(parentWallsArray, length);
+                    neighborsSpan[i].ParentWalls = sectorInfo.ParentWalls; //.SetParentWalls(parentWallsArray, length);
                     neighborsSpan[i].MirrorWall = sectorInfo.MirrorWall;
                 }
 
@@ -540,9 +545,9 @@ namespace RenderingEngine.Engine
                 offset = renderableFromX > wall.XLeft ? renderableFromX - wall.XLeft : 0;
 
                 // AI Assisted
-            var rw = ObjectPool.RenderablePortalWall.GetOrCreate();
-            rw.Initialize(wall, renderableFromX, renderableToX, offset, status);
-            renderableWalls.Add(rw);
+                var rw = ObjectPool.RenderablePortalWall.GetOrCreate();
+                rw.Initialize(wall, renderableFromX, renderableToX, offset, status);
+                renderableWalls.Add(rw);
             }
 
             return wallStatus;
