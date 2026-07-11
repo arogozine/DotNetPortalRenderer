@@ -45,9 +45,25 @@ internal static class ModelExtensions
         }
     }
 
+    private static readonly Lock _textureLock = new();
+
     extension(GameTexture gameTexture)
     {
-        public BGRA[] CalculateTexture(int id, int brightness)
+        public ref T GetBinaryRef<T>(int id, int shade, TextureTransform transform)
+            where T : unmanaged
+        {
+            Span<BGRA> binary;
+
+            lock (_textureLock)
+            {
+                binary = GetBinary(gameTexture, id, shade, transform);
+            }
+
+            Span<T> span = MemoryMarshal.Cast<BGRA, T>(binary);
+            return ref MemoryMarshal.GetReference(span);
+        }
+
+        private BGRA[] CalculateTexture(int id, int brightness)
         {
             if (gameTexture is BuildTexture buildTexture)
             {
@@ -66,13 +82,6 @@ internal static class ModelExtensions
             }
 
             throw new NotSupportedException();
-        }
-
-        public ref T GetBinaryRef<T>(int id, int shade, TextureTransform transform)
-            where T : unmanaged
-        {
-            Span<T> span = MemoryMarshal.Cast<BGRA, T>(GetBinary(gameTexture, id, shade, transform));
-            return ref MemoryMarshal.GetReference(span);
         }
 
         private Dictionary<int, BGRA[]>[] GetOrAddTransformToShade(int id)

@@ -745,10 +745,9 @@ namespace RenderingEngine.Engine
         {
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
-            ushort length = (ushort)(wallToX - wallFromX + 1);
 
-            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp)[..length];
-            repeatedCount.Fill(length);
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp)[wallFromX..(wallToX + 1)];
+            repeatedCount.Fill((ushort)repeatedCount.Length);
 
             // set repeat count to 0 where there is nothing to draw
             RenderColumnStatus* statusPtr = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);

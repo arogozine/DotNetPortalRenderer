@@ -123,6 +123,7 @@ internal unsafe sealed class BuildRenderer : PortalRenderer
         int* portalFromClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
         int* portalToClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
         ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.Temp);
+        repeatedCountPtr += wallFromX;
 
         int length = wallToX - wallFromX;
 
@@ -233,7 +234,7 @@ internal unsafe sealed class BuildRenderer : PortalRenderer
 
             int length = sectorToX - sectorFromX;
 
-            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[..(length + 1)];
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[sectorFromX..(sectorToX + 1)];
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {

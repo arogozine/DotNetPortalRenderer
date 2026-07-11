@@ -43,11 +43,14 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             RenderableSector sector)
         {
+            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
             RenderColumnStatus* statusPtr = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             int* ceilingStart = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
             int* wallStartSloped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
             int* floorEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
             int* wallStartClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.Temp);
+            wallStartClampedPtr += sectorFromX;
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateCeiling);
 
@@ -107,11 +110,8 @@ namespace RenderingEngine.Engine
             ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(sector.CeilTexture.Palette, sector.CeilingShade, transform);
             uint* screenPtr = (uint*)buffer;
 
-            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
-
-            int length = sectorToX - sectorFromX + 1;
-            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[..length];
-            repeatedCount.Fill((ushort)length);
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[sectorFromX..(sectorToX + 1)];
+            repeatedCount.Fill((ushort)repeatedCount.Length);
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {
@@ -142,11 +142,14 @@ namespace RenderingEngine.Engine
         [SkipLocalsInit]
         public unsafe void RenderFloorVector(PortalPlayerSnapshot player, RenderableSector sector)
         {
+            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+
             RenderColumnStatus* statusPtr = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             int* wallEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
             int* floorEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
             int* ceilingStart = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
             int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.Temp);
+            wallEndClampedPtr += sectorFromX;
 
             bool rotated = sector.Settings.HasFlag(MapSectorSettings.RotateFloor);
             GameTextureInfo floorTexture = sector.FloorTexture;
@@ -218,11 +221,8 @@ namespace RenderingEngine.Engine
                 alignWallYV = Vector.Create(y1);
             }
 
-            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
-
-            int length = sectorToX - sectorFromX + 1;
-            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[..length];
-            repeatedCount.Fill((ushort)length);
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp2)[sectorFromX..(sectorToX + 1)];
+            repeatedCount.Fill((ushort)repeatedCount.Length);
 
             for (int x = sectorFromX; x <= sectorToX; x++)
             {

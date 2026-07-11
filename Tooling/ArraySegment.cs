@@ -147,7 +147,7 @@ namespace Tooling
 
         public static bool operator !=(ArraySegment<T> a, ArraySegment<T> b) => !(a == b);
 
-        public static implicit operator ArraySegment<T>(T[] array) =>
+        public static implicit operator ArraySegment<T>(T[]? array) =>
             array != null ? new ArraySegment<T>(array) : default;
 
         public Span<T> AsSpan()

@@ -90,6 +90,7 @@ internal unsafe sealed class DoomRenderer : PortalRenderer
         int* portalFromClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
         int* portalToClampedPtr = this.memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
         ushort* repeatedCountPtr = this.memoryPool.GetBucketPtr<ushort>(MemoryPoolBucket.Temp);
+        repeatedCountPtr += wallFromX;
 
         int length = wallToX - wallFromX;
 
