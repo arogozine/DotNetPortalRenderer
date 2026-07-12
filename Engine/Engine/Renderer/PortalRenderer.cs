@@ -356,8 +356,7 @@ namespace RenderingEngine.Engine
         // AI Assisted: reused across calls so RenderSector's floor/ceiling and wall-rendering splits
         // don't allocate (Parallel.Invoke allocates a params array, delegates and Tasks on every call)
         private readonly SemaphoreSlim concurrentWorkAvailableSemaphore = new(0, 1);
-        private readonly SemaphoreSlim oddWallsDoneSemaphore = new(0, 1);
-        private readonly SemaphoreSlim ceilingDoneSemaphore = new(0, 1);
+        private readonly SemaphoreSlim parallelRenderingDoneSemaphore = new(0, 1);
         private PortalPlayerSnapshot concurrentWorkPlayer = null!;
         private RenderableSector concurrentWorkSector = null!;
         private ConcurrentWorkKind pendingConcurrentWork;
@@ -397,7 +396,7 @@ namespace RenderingEngine.Engine
                     pendingConcurrentWork = ConcurrentWorkKind.Ceiling;
                     concurrentWorkAvailableSemaphore.Release();
                     RenderFloor(player, sector);
-                    ceilingDoneSemaphore.Wait();
+                    parallelRenderingDoneSemaphore.Wait();
                 }
                 else
                 {
@@ -427,7 +426,7 @@ namespace RenderingEngine.Engine
                     pendingConcurrentWork = ConcurrentWorkKind.OddWalls;
                     concurrentWorkAvailableSemaphore.Release();
                     RenderEvenWalls(player);
-                    oddWallsDoneSemaphore.Wait();
+                    parallelRenderingDoneSemaphore.Wait();
                 }
                 else
                 {
@@ -481,13 +480,13 @@ namespace RenderingEngine.Engine
                     {
                         case ConcurrentWorkKind.Ceiling:
                             RenderCeiling(concurrentWorkPlayer, concurrentWorkSector);
-                            ceilingDoneSemaphore.Release();
                             break;
                         case ConcurrentWorkKind.OddWalls:
                             RenderOddWalls(concurrentWorkPlayer);
-                            oddWallsDoneSemaphore.Release();
                             break;
                     }
+                    
+                    parallelRenderingDoneSemaphore.Release();
                 }
             }
             catch (OperationCanceledException)
@@ -499,8 +498,9 @@ namespace RenderingEngine.Engine
         private void RenderOddWalls(PortalPlayerSnapshot player)
         {
             ReadOnlySpan<RenderableSector> sectors = this.Sectors;
+            int from = renderableWalls.Count >> 1;
 
-            for (int s = 1; s < renderableWalls.Count; s += 2)
+            for (int s = from; s < renderableWalls.Count; s++)
             {
                 RenderablePortalWall renderableWall = renderableWalls[s];
 
@@ -525,7 +525,9 @@ namespace RenderingEngine.Engine
         {
             ReadOnlySpan<RenderableSector> sectors = this.Sectors;
 
-            for (int s = 0; s < renderableWalls.Count; s += 2)
+            int to = renderableWalls.Count >> 1;
+
+            for (int s = 0; s < to; s++)
             {
                 RenderablePortalWall renderableWall = renderableWalls[s];
 
