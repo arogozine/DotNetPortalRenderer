@@ -1,5 +1,6 @@
 ﻿using RenderingEngine.Engine;
 using SoftwareRendererModels;
+using Tooling;
 
 namespace RenderingEngine.Tooling;
 
@@ -27,6 +28,12 @@ internal static class ObjectPool
     public static readonly DynamicObjectPool<NeighborsToRender> NeighborsToRender
         = new(static n => n.Reset());
 
+    public static readonly QuickArrayPool<RenderableWall> RotatedWallArrayPool = new();
+
+    public static readonly QuickArrayPool<RenderablePortalWall> RenderablePortalWall = new();
+
+    public static readonly DynamicObjectPool<RenderablePortalWall> RenderablePortalWallPool = new(static r => r.Reset());
+
     internal static void Clear()
     {
         HashSet.Clear();
@@ -34,6 +41,9 @@ internal static class ObjectPool
         FloorSpriteWallInfo.Reset();
         RenderWindowWallSnapshot.Reset();
         NeighborsToRender.Reset();
+        RotatedWallArrayPool.ClearAndOptimize();
+        RenderablePortalWall.ClearAndOptimize();
+        RenderablePortalWallPool.Clear();
     }
 
     private static void ClearSnapshot(FloorSpriteWallInfo floorSpriteWallInfo)

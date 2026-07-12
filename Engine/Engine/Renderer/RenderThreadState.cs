@@ -1,6 +1,4 @@
-using RenderingEngine.Tooling;
 using SoftwareRendererModels;
-using Tooling;
 
 namespace RenderingEngine.Engine
 {
@@ -10,8 +8,6 @@ namespace RenderingEngine.Engine
     /// </summary>
     internal sealed class RenderThreadState
     {
-        public required WallHelper WallHelper { get; init; }
-
         /// <summary>
         /// Selects which physical memoryPool scratch buckets (Temp/Temp2 vs Temp3/Temp4) this thread's
         /// floor/ceiling/wall rendering uses. Two threads processing disjoint screen columns still share
@@ -25,18 +21,5 @@ namespace RenderingEngine.Engine
         public readonly List<NeighborsToRender> SectorQueue = [];
         public readonly List<RenderablePortalWall> RenderableWalls = [];
         public readonly List<RenderablePortalWall> NeighborsForDepth = [];
-
-        public readonly DynamicObjectPool<RenderablePortalWall> RenderablePortalWallPool = new(static r => r.Reset());
-        public readonly QuickArrayPool<RenderablePortalWall> RenderablePortalWallArrayPool = new();
-
-        /// <summary>
-        /// Recycles the pools that are only safe to reset once per frame (not per depth).
-        /// </summary>
-        public void ClearPoolsForNextFrame()
-        {
-            RenderablePortalWallPool.Reset();
-            RenderablePortalWallArrayPool.ClearAndOptimize();
-            WallHelper.ClearPool();
-        }
     }
 }

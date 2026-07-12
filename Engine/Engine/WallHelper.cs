@@ -2,7 +2,6 @@
 using SoftwareRendererModels;
 using System.Numerics;
 using System.Runtime.Intrinsics;
-using Tooling;
 using static RenderingEngine.Engine.SharedHelpers;
 
 namespace RenderingEngine.Engine
@@ -19,7 +18,6 @@ namespace RenderingEngine.Engine
         private readonly float _halfHeight;
         private readonly bool[] visibility;
         private readonly WallComparer wallComparer;
-        private readonly QuickArrayPool<RenderableWall> rotatedWallArrayPool = new();
         private PortalPlayerSnapshot? _player;
 
         public WallHelper(
@@ -40,18 +38,6 @@ namespace RenderingEngine.Engine
         {
             _player = player;
         }
-
-        /// <summary>
-        /// Recycles the pooled array segments handed out by <see cref="RotateSectorWallsRelativeToPlayer"/>. Must be
-        /// called once per frame, after this instance's rotated walls are no longer needed by the caller.
-        /// </summary>
-        public void ClearPool() => rotatedWallArrayPool.ClearAndOptimize();
-
-        /// <summary>
-        /// Requests a scratch <see cref="RenderableWall"/> array segment from this instance's pool, for callers
-        /// (e.g. building a next-depth parent-wall chain) that just need a reusable buffer, not wall rotation.
-        /// </summary>
-        public global::Tooling.ArraySegment<RenderableWall> RequestWallArray(int size) => rotatedWallArrayPool.Request(size);
 
         public Span<RenderableWall> DetermineWallsToRender(RenderableSector sector, ReadOnlySpan<RenderableWall> portalWallsToOcclude, NeighborsToRender sectorInfo, PortalPlayerSnapshot player, int frame)
         {
@@ -151,10 +137,10 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        public Span<RenderableWall> RotateSectorWallsRelativeToPlayer(RenderableSector sector, PortalPlayerSnapshot player, NeighborsToRender sectorInfo, bool flipped, int frame)
+        public static Span<RenderableWall> RotateSectorWallsRelativeToPlayer(RenderableSector sector, PortalPlayerSnapshot player, NeighborsToRender sectorInfo, bool flipped, int frame)
         {
             ReadOnlySpan<RenderableWall> walls = sector.Walls;
-            Span<RenderableWall> rotatedWalls = rotatedWallArrayPool.Request(walls.Length);
+            Span<RenderableWall> rotatedWalls = ObjectPool.RotatedWallArrayPool.Request(walls.Length);
 
             Debug.Assert(rotatedWalls.Length == walls.Length);
 
@@ -209,8 +195,6 @@ namespace RenderingEngine.Engine
             float pCos = player.Cos;
             float px = player.X;
             float py = player.Y;
-            float pz = player.Z;
-            float yaw = player.Yaw;
 
             connectingSectors.Clear();
             bool sectorIsSloped = sector.Settings.Sloped;
@@ -247,9 +231,9 @@ namespace RenderingEngine.Engine
                             wall.R2 = MathFormulas.ReflectPoint(wall.PointB, mirroredWall.PointA, mirroredWall.PointB);
                         }
 
-                        _ = RotateWall(firstWall, pSin, pCos, px, py);
+                        wall.Flipped = wallFlipped;
 
-                        CalculateWallPlane(wall, pz, yaw);
+                        _ = RotateWall(firstWall, pSin, pCos, px, py);
                     }
                 }
             }

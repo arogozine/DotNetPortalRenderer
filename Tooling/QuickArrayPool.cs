@@ -5,6 +5,7 @@ public sealed class QuickArrayPool<T>
     private int _totalAllocated = 32;
     private int _maxBucketLength = 32;
     private int _currentBucket = 0;
+    private readonly Lock _lock = new();
 
     private readonly List<ArrayPoolBucket<T>> _buckets = [];
 
@@ -15,24 +16,27 @@ public sealed class QuickArrayPool<T>
 
     public ArraySegment<T> Request(int size)
     {
-        ArrayPoolBucket<T> bucket = _buckets[_currentBucket];
-
-        if (bucket.TryAllocate(size, out ArraySegment<T> segment))
+        lock (_lock)
         {
+            ArrayPoolBucket<T> bucket = _buckets[_currentBucket];
+
+            if (bucket.TryAllocate(size, out ArraySegment<T> segment))
+            {
+                return segment;
+            }
+
+            // allocate another bucket
+            _maxBucketLength = Math.Max(_maxBucketLength << 1, size << 1);
+            _totalAllocated += _maxBucketLength;
+            _currentBucket++;
+
+            bucket = AddBucket();
+
+            bool allocated = bucket.TryAllocate(size, out segment);
+            Debug.Assert(allocated);
+
             return segment;
         }
-
-        // allocate another bucket
-        _maxBucketLength = Math.Max(_maxBucketLength << 1, size << 1);
-        _totalAllocated += _maxBucketLength;
-        _currentBucket++;
-
-        bucket = AddBucket();
-
-        bool allocated = bucket.TryAllocate(size, out segment);
-        Debug.Assert(allocated);
-
-        return segment;
     }
 
     public void ClearAndOptimize()

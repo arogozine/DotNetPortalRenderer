@@ -6,6 +6,7 @@ public sealed class DynamicObjectPool<T>
     private int _requestedObjectCount = 0;
     private T?[] _objects;
     private readonly Action<T> _reset;
+    private readonly Lock _lock = new();
 
     public DynamicObjectPool(Action<T> reset)
     {
@@ -17,22 +18,25 @@ public sealed class DynamicObjectPool<T>
 
     public T GetOrCreate()
     {
-        int index = ++_requestedObjectCount;
-
-        if (index >= _objects.Length)
+        lock (_lock)
         {
-            Array.Resize(ref _objects, _objects.Length * 2);
+            int index = ++_requestedObjectCount;
+
+            if (index >= _objects.Length)
+            {
+                Array.Resize(ref _objects, _objects.Length * 2);
+            }
+
+            T? obj = _objects[index];
+
+            if (obj == null)
+            {
+                obj = new();
+                _objects[index] = obj;
+            }
+
+            return obj;
         }
-
-        T? obj = _objects[index];
-
-        if (obj == null)
-        {
-            obj = new();
-            _objects[index] = obj;
-        }
-
-        return obj;
     }
 
     public void Reset()
