@@ -109,7 +109,6 @@ namespace RenderingEngine.Engine
 
         private readonly List<RenderableSpriteSnapshot> transparentWalls = [];
         private readonly List<NeighborsToRender> sectorRenderQueue = [];
-        private readonly List<RenderablePortalWall> neightbors = [];
         private readonly List<RenderablePortalWall> renderableWalls = [];
         private readonly HashSet<int> renderedSectors = [];
         private readonly HashSet<int>[] mirroredSectors;
@@ -241,8 +240,6 @@ namespace RenderingEngine.Engine
         }
 
         private readonly List<RenderablePortalWall> neighborsForDepth = [];
-
-        private readonly Lock _lock = new();
         
         /// <summary>
         /// Draw all current sectors (one wall at a time) and return the next set of portal walls to drawn
@@ -269,7 +266,7 @@ namespace RenderingEngine.Engine
                 WallHelper.CalculateConnectingSectorsForSlope(player, sectors, sector);
 
                 // 2. Determine where ceiling, floor, and walls start and end
-                (RenderColumnStatus sectorStatus, int sectorFromX, int sectorToX) = CalculateRenderWindow(sectorInfo, sectors, sector, walls);
+                (RenderColumnStatus sectorStatus, int sectorFromX, int sectorToX) = CalculateRenderWindow(sectorInfo, sectors, sector, renderableWalls, walls);
 
                 // 3. Nothing to render, bail early
                 if (sectorStatus == default || renderableWalls.Count == 0)
@@ -278,19 +275,15 @@ namespace RenderingEngine.Engine
                 }
 
                 // 4. Render Floors, Ceilings, and Walls
-                List<RenderablePortalWall> neighbors = RenderSector(player, sector, sectorFromX, sectorToX, sectorStatus);
+                Span<RenderablePortalWall> neighbors = RenderSector(player, sector, sectorFromX, sectorToX, renderableWalls, sectorStatus);
 
                 // 5. Keep track of parent walls to avoid rendering them again
-                Span<RenderablePortalWall> neighborsSpan = CollectionsMarshal.AsSpan(neighbors);
-                for (int i = 0; i < neighborsSpan.Length; i++)
+                for (int i = 0; i < neighbors.Length; i++)
                 {
-                    // (var parentWallsArray, var length) = sectorInfo.GetParentWallsArray();
-
-                    neighborsSpan[i].ParentWalls = sectorInfo.ParentWalls; //.SetParentWalls(parentWallsArray, length);
-                    neighborsSpan[i].MirrorWall = sectorInfo.MirrorWall;
+                    neighbors[i].ParentWalls = sectorInfo.ParentWalls;
+                    neighbors[i].MirrorWall = sectorInfo.MirrorWall;
                 }
 
-                lock (_lock)
                 neighborsForDepth.AddRange(neighbors);
             }
 
@@ -321,7 +314,8 @@ namespace RenderingEngine.Engine
                     int renderDepth = sectorSprites.RenderDepth;
                     Span<float> currentDistance = depthBuffer[(PixelWidth * renderDepth)..];
                     HashSet<int> mirroredSectorsForDepth = mirroredSectors[renderDepth];
-                    Span<float> nextDistance = (--renderDepth) >= 0 ? depthBuffer[(PixelWidth * renderDepth)..] : default;
+                    Span<float> nextDistance =
+                        (--renderDepth) >= 0 ? depthBuffer[(PixelWidth * renderDepth)..] : default;
 
                     List<RenderableSprite> sprites = SpriteHelper.FilterOutSpritesOutsideDepth(playerVisibleSprites,
                         renderedSectors, currentDistance, nextDistance);
@@ -331,8 +325,10 @@ namespace RenderingEngine.Engine
                         DrawSprite(player, sectors, s, sectorSprites);
                     }
 
-                    Span<RenderableSprite> mirroredSprites = SpriteHelper.GetMirroredSprites(player, Sprites, Sectors, mirroredSectorsForDepth, sectorSprites);
-                    sprites = SpriteHelper.FilterOutSpritesOutsideDepth(mirroredSprites, renderedSectors, currentDistance, nextDistance);
+                    Span<RenderableSprite> mirroredSprites = SpriteHelper.GetMirroredSprites(player, Sprites, Sectors,
+                        mirroredSectorsForDepth, sectorSprites);
+                    sprites = SpriteHelper.FilterOutSpritesOutsideDepth(mirroredSprites, renderedSectors,
+                        currentDistance, nextDistance);
 
                     foreach (RenderableSprite s in sprites)
                     {
@@ -341,14 +337,14 @@ namespace RenderingEngine.Engine
                 }
             }
         }
-
+        
         private (RenderColumnStatus Status, int SectorFromX, int SectorToX) CalculateRenderWindow(
             NeighborsToRender sectorInfo,
             ReadOnlySpan<RenderableSector> sectors,
             RenderableSector sector,
+            List<RenderablePortalWall> renderableWalls,
             Span<RenderableWall> walls)
         {
-            neightbors.Clear();
             renderableWalls.Clear();
 
             if (sector.Floor == sector.Ceil)
@@ -373,7 +369,7 @@ namespace RenderingEngine.Engine
             {
                 RenderableWall wall = walls[s];
 
-                RenderColumnStatus status = CalculateRenderWindow(wall, sector, sectors, sectorFromX, sectorToX,  renderableWalls);
+                RenderColumnStatus status = CalculateRenderWindow(wall, sector, sectors, sectorFromX, sectorToX, renderableWalls);
                 sectorStatus |= status;
             }
 
@@ -385,21 +381,12 @@ namespace RenderingEngine.Engine
         // don't allocate (Parallel.Invoke allocates a params array, delegates and Tasks on every call)
         private readonly SemaphoreSlim concurrentWorkAvailableSemaphore = new(0, 1);
         private readonly SemaphoreSlim parallelRenderingDoneSemaphore = new(0, 1);
-        private PortalPlayerSnapshot concurrentWorkPlayer = null!;
-        private RenderableSector concurrentWorkSector = null!;
-        private ConcurrentWorkKind pendingConcurrentWork;
 
-        // AI Assisted
-        private enum ConcurrentWorkKind
-        {
-            OddWalls,
-            Ceiling
-        }
-
-        private List<RenderablePortalWall> RenderSector(
+        private Span<RenderablePortalWall> RenderSector(
             PortalPlayerSnapshot player,
             RenderableSector sector,
             int sectorFromX, int sectorToX,
+            List<RenderablePortalWall> renderableWalls,
             RenderColumnStatus sectorStatus)
         {
             ReadOnlySpan<RenderableSector> sectors = this.Sectors;
@@ -427,32 +414,45 @@ namespace RenderingEngine.Engine
                     RenderCeilingVector(player, sector, sectorFromX, sectorToX, true);
                 }
             }
+
+            Span<RenderablePortalWall> pool;
             
             if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderWall))
             {
+                pool = ObjectPool.RenderablePortalWallPool.Request(renderableWalls.Count);
+
+                int j = 0;
                 for (int s = 0; s < renderableWalls.Count; s++)
                 {
                     RenderablePortalWall renderableWall = renderableWalls[s];
 
-                    if (renderableWall.RenderColumnStatus.HasFlag(RenderColumnStatus.CanRenderWall))
+                    if (!renderableWall.RenderColumnStatus.HasFlag(RenderColumnStatus.CanRenderWall))
                     {
-                        RenderableWall wall = renderableWall.Wall;
+                        continue;
+                    }
 
-                        bool wallDrawn = wall.IsPortal ?
-                            DrawPortalWall(player, sectors, renderableWall) :
-                            DrawBasicWall(player, renderableWall);
+                    RenderableWall wall = renderableWall.Wall;
 
-                        if (wallDrawn && wall.IsPortal)
-                        {
-                            neightbors.Add(renderableWall);
-                        }
+                    bool wallDrawn = wall.IsPortal ?
+                        DrawPortalWall(player, sectors, renderableWall) :
+                        DrawBasicWall(player, renderableWall);
+
+                    if (wallDrawn && wall.IsPortal)
+                    {
+                        pool[j++] = renderableWall;
                     }
                 }
+
+                pool = pool[..j];
+            }
+            else
+            {
+                pool = [];
             }
 
             CalculateNewFloorCeiling(sectorFromX, sectorToX);
 
-            return neightbors;
+            return pool;
         }
         
         // AI Assisted: body of the dedicated long-running worker thread started in the constructor.
