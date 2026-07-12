@@ -26,8 +26,8 @@ namespace RenderingEngine
         private void MainEngineLoop(RenderableMap map, int width, int height, CancellationToken cancellationToken)
         {
             PortalRenderer renderer = _gameResourceType == GameResourceType.Doom ?
-                new DoomRenderer(width, height) { Sprites = map.Sprites, Sectors = map.Sectors } :
-                new BuildRenderer(width, height) { Sprites = map.Sprites, Sectors = map.Sectors };
+                new DoomRenderer(width, height, cancellationToken) { Sprites = map.Sprites, Sectors = map.Sectors } :
+                new BuildRenderer(width, height, cancellationToken) { Sprites = map.Sprites, Sectors = map.Sectors };
 
             engineLoopTask = Task.Factory
                 .StartNew(TaskBody, cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default)

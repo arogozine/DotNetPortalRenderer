@@ -5,7 +5,7 @@ namespace RenderingEngine.Engine;
 
 internal unsafe sealed class DoomRenderer : PortalRenderer
 {
-    public DoomRenderer(int width, int height) : base(width, height)
+    public DoomRenderer(int width, int height, CancellationToken cancellationToken) : base(width, height, cancellationToken)
     {
 
     }

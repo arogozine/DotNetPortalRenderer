@@ -4,7 +4,7 @@ using SoftwareRendererModels;
 namespace RenderingEngine.Engine
 {
     // AI Assisted
-    internal unsafe partial class PortalRenderer : IThreadPoolWorkItem
+    internal unsafe partial class PortalRenderer
     {
         public readonly int PixelWidth;
         public readonly int PixelHeight;
@@ -25,7 +25,7 @@ namespace RenderingEngine.Engine
         // BGRA screen buffer
         private readonly void* buffer;
 
-        protected PortalRenderer(int width, int height)
+        protected PortalRenderer(int width, int height, CancellationToken cancellationToken)
         {
             PixelWidth = width;
             PixelHeight = height;
@@ -46,6 +46,19 @@ namespace RenderingEngine.Engine
             {
                 mirroredSectors[i] = new();
             }
+
+            // AI Assisted: dedicated long-running thread instead of ThreadPool dispatch. RenderSector
+            // forks work here up to twice per call (dozens of times per frame); queuing to the shared
+            // ThreadPool on every call pays dispatch overhead and contends with other ThreadPool work,
+            // whereas a persistent worker just waits on a semaphore and reuses the same OS thread.
+            _ = Task.Factory
+                .StartNew(() => ConcurrentWorkerLoop(cancellationToken), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default)
+                .ContinueWith(static (Task t) =>
+                {
+                    AsyncLogger.Default.AddLog(LogSeverity.Error, "Concurrent Worker Thread Faulted", t.Exception);
+                    Debug.WriteLine(t.Exception);
+                    Debugger.Break();
+                }, TaskContinuationOptions.OnlyOnFaulted);
         }
 
         /// <summary>
@@ -342,6 +355,7 @@ namespace RenderingEngine.Engine
 
         // AI Assisted: reused across calls so RenderSector's floor/ceiling and wall-rendering splits
         // don't allocate (Parallel.Invoke allocates a params array, delegates and Tasks on every call)
+        private readonly SemaphoreSlim concurrentWorkAvailableSemaphore = new(0, 1);
         private readonly SemaphoreSlim oddWallsDoneSemaphore = new(0, 1);
         private readonly SemaphoreSlim ceilingDoneSemaphore = new(0, 1);
         private PortalPlayerSnapshot concurrentWorkPlayer = null!;
@@ -360,23 +374,37 @@ namespace RenderingEngine.Engine
             RenderableSector sector,
             RenderColumnStatus sectorStatus)
         {
+            // AI Assisted: sector column window is already known before any rendering happens
+            // (set in RenderWindowHelper.NewSector), so read it up front to decide whether this
+            // sector has enough work to be worth a hand-off/wait round trip at all.
+            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
+            bool worthParallelizing = sectorToX - sectorFromX + 1 >= EngineConstants.MinParallelSectorColumns;
+
             bool canRenderFloor = sectorStatus.HasFlag(RenderColumnStatus.CanRenderFloor);
             bool canRenderCeiling = sectorStatus.HasFlag(RenderColumnStatus.CanRenderCeiling);
 
             if (canRenderFloor && canRenderCeiling)
             {
-                // AI Assisted: dispatch ceiling rendering to the thread pool via the reusable
-                // IThreadPoolWorkItem.Execute below, run floor rendering inline, and wait on a
-                // reusable semaphore instead of Parallel.Invoke (which allocates a params array,
-                // delegates and Tasks on every call). Floor rendering uses the Temp3/Temp4 memory
-                // buckets so it doesn't race with ceiling rendering's use of Temp/Temp2.
-                concurrentWorkPlayer = player;
-                concurrentWorkSector = sector;
-                pendingConcurrentWork = ConcurrentWorkKind.Ceiling;
-                bool success = ThreadPool.UnsafeQueueUserWorkItem(this, preferLocal: true);
-                Debug.Assert(success);
-                RenderFloor(player, sector);
-                ceilingDoneSemaphore.Wait();
+                if (worthParallelizing)
+                {
+                    // AI Assisted: hand ceiling rendering to the dedicated worker thread (see
+                    // ConcurrentWorkerLoop below), run floor rendering inline, and wait on a
+                    // reusable semaphore instead of Parallel.Invoke (which allocates a params array,
+                    // delegates and Tasks on every call). Floor rendering uses the Temp3/Temp4 memory
+                    // buckets so it doesn't race with ceiling rendering's use of Temp/Temp2.
+                    concurrentWorkPlayer = player;
+                    concurrentWorkSector = sector;
+                    pendingConcurrentWork = ConcurrentWorkKind.Ceiling;
+                    concurrentWorkAvailableSemaphore.Release();
+                    RenderFloor(player, sector);
+                    ceilingDoneSemaphore.Wait();
+                }
+                else
+                {
+                    // AI Assisted: sector too narrow for the fork/join round trip to pay off
+                    RenderCeiling(player, sector);
+                    RenderFloor(player, sector);
+                }
             }
             else if (canRenderFloor)
             {
@@ -387,20 +415,26 @@ namespace RenderingEngine.Engine
                 RenderCeiling(player, sector);
             }
 
-            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
-
             if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderWall))
             {
-                // AI Assisted: dispatch the odd-index half to the thread pool via the reusable
-                // IThreadPoolWorkItem.Execute below, run the even-index half inline, and wait on a
-                // reusable semaphore instead of Parallel.Invoke (which allocates a params array,
-                // delegates and Tasks on every call).
-                concurrentWorkPlayer = player;
-                pendingConcurrentWork = ConcurrentWorkKind.OddWalls;
-                bool success = ThreadPool.UnsafeQueueUserWorkItem(this, preferLocal: true);
-                Debug.Assert(success);
-                RenderEvenWalls(player);
-                oddWallsDoneSemaphore.Wait();
+                if (worthParallelizing && renderableWalls.Count > 1)
+                {
+                    // AI Assisted: hand the odd-index half to the dedicated worker thread (see
+                    // ConcurrentWorkerLoop below), run the even-index half inline, and wait on a
+                    // reusable semaphore instead of Parallel.Invoke (which allocates a params array,
+                    // delegates and Tasks on every call).
+                    concurrentWorkPlayer = player;
+                    pendingConcurrentWork = ConcurrentWorkKind.OddWalls;
+                    concurrentWorkAvailableSemaphore.Release();
+                    RenderEvenWalls(player);
+                    oddWallsDoneSemaphore.Wait();
+                }
+                else
+                {
+                    // AI Assisted: too little wall work for the fork/join round trip to pay off
+                    RenderEvenWalls(player);
+                    RenderOddWalls(player);
+                }
             }
 
             CalculateNewFloorCeiling(sectorFromX, sectorToX);
@@ -432,19 +466,32 @@ namespace RenderingEngine.Engine
             }
         }
 
-        // AI Assisted
-        void IThreadPoolWorkItem.Execute()
+        // AI Assisted: body of the dedicated long-running worker thread started in the constructor.
+        // Waits for RenderSector to hand off work via concurrentWorkAvailableSemaphore, runs it, and
+        // signals the matching completion semaphore, instead of round-tripping through the ThreadPool.
+        private void ConcurrentWorkerLoop(CancellationToken cancellationToken)
         {
-            switch (pendingConcurrentWork)
+            try
             {
-                case ConcurrentWorkKind.Ceiling:
-                    RenderCeiling(concurrentWorkPlayer, concurrentWorkSector);
-                    ceilingDoneSemaphore.Release();
-                    break;
-                case ConcurrentWorkKind.OddWalls:
-                    RenderOddWalls(concurrentWorkPlayer);
-                    oddWallsDoneSemaphore.Release();
-                    break;
+                while (true)
+                {
+                    concurrentWorkAvailableSemaphore.Wait(cancellationToken);
+
+                    switch (pendingConcurrentWork)
+                    {
+                        case ConcurrentWorkKind.Ceiling:
+                            RenderCeiling(concurrentWorkPlayer, concurrentWorkSector);
+                            ceilingDoneSemaphore.Release();
+                            break;
+                        case ConcurrentWorkKind.OddWalls:
+                            RenderOddWalls(concurrentWorkPlayer);
+                            oddWallsDoneSemaphore.Release();
+                            break;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
             }
         }
 

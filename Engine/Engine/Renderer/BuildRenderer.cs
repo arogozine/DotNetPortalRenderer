@@ -5,7 +5,7 @@ namespace RenderingEngine.Engine;
 
 internal unsafe sealed class BuildRenderer : PortalRenderer
 {
-    public BuildRenderer(int width, int height) : base(width, height)
+    public BuildRenderer(int width, int height, CancellationToken cancellationToken) : base(width, height, cancellationToken)
     {
     }
 
