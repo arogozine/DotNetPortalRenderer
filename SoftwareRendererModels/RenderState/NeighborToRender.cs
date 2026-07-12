@@ -9,7 +9,7 @@ public sealed class NeighborsToRender : IRenderState
     public RenderableWall? MirrorWall { get; set; }
     public int SectorId { get; set; }
     public RenderablePortalWall? RenderableWall { get; private set; }
-    public Tooling.ArraySegment<RenderableWall> ParentWalls { get; set; } = Tooling.ArraySegment<RenderableWall>.Empty;
+    public Tooling.ArraySegment<RenderableWall> ParentWalls { get; private set; } = Tooling.ArraySegment<RenderableWall>.Empty;
 
     public void Initialize(int sectorId)
     {

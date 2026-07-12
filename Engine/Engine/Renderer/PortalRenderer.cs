@@ -6,8 +6,8 @@ namespace RenderingEngine.Engine
     // AI Assisted
     internal unsafe partial class PortalRenderer
     {
-        public readonly int PixelWidth;
-        public readonly int PixelHeight;
+        protected readonly int PixelWidth;
+        protected readonly int PixelHeight;
         public required RenderableSprite[] Sprites { get; init; }
         public required RenderableSector[] Sectors { get; init; }
 
@@ -15,8 +15,6 @@ namespace RenderingEngine.Engine
 
         private readonly WallHelper WallHelper;
         private readonly SpriteHelper SpriteHelper;
-
-        private readonly RenderWindowHelper RenderWindowHelper;
 
         private PortalPlayerSnapshot? Snapshot;
 
@@ -33,7 +31,6 @@ namespace RenderingEngine.Engine
             WallHelper = new WallHelper(width, height);
 
             memoryPool = AlignedMemoryPool.GeneratePool(width, (int)MemoryPoolBucket.Buffer + height + 1);
-            RenderWindowHelper = new RenderWindowHelper(width, height, memoryPool);
             buffer = memoryPool.GetBucketPtr(MemoryPoolBucket.Buffer);
 
             spriteCacheMemoryPool = DynamicAlignedMemoryPool.GeneratePool(width, (int)SpriteCachePoolBucket.RenderStatus + 1);
@@ -117,14 +114,14 @@ namespace RenderingEngine.Engine
         private readonly HashSet<int> renderedSectors = [];
         private readonly HashSet<int>[] mirroredSectors;
 
-        public void DrawScreen(PortalPlayerSnapshot player)
+        private void DrawScreen(PortalPlayerSnapshot player)
         {
             FillDepthZero();
 
             InitializeSharedVectors(player);
             this.WallHelper.SetSnapShot(player);
 
-            RenderWindowHelper.NewRender();
+            NewRender();
 
             var initialNeighbor = ObjectPool.NeighborsToRender.GetOrCreate();
             initialNeighbor.Initialize(player.Sector);
@@ -188,9 +185,9 @@ namespace RenderingEngine.Engine
                 // 5. Enqueue all portal walls for next depth
                 foreach (RenderablePortalWall renderableWall in neighborsForDepth)
                 {
-                    RenderableWall neightborWall = renderableWall.Wall;
+                    RenderableWall neighborWall = renderableWall.Wall;
 
-                    Debug.Assert(neightborWall.Neighbor != null);
+                    Debug.Assert(neighborWall.Neighbor != null);
 
                     NeighborsToRender neighborToRender = ObjectPool.NeighborsToRender.GetOrCreate();
 
@@ -198,8 +195,8 @@ namespace RenderingEngine.Engine
                     renderableWall.ParentWalls.CopyTo(pool);
                     pool.AsSpan()[^1] = renderableWall.Wall;
 
-                    neighborToRender.Initialize(pool, renderableWall, neightborWall.Neighbor.Value);
-                    neighborToRender.MirrorWall = neightborWall.IsMirror ? neightborWall : renderableWall.MirrorWall;
+                    neighborToRender.Initialize(pool, renderableWall, neighborWall.Neighbor.Value);
+                    neighborToRender.MirrorWall = neighborWall.IsMirror ? neighborWall : renderableWall.MirrorWall;
                     sectorRenderQueue.Add(neighborToRender);
                 }
 
@@ -223,15 +220,36 @@ namespace RenderingEngine.Engine
 
             ObjectPool.Clear();
         }
+        
+        private void NewRender()
+        {
+            Span<RenderColumnStatus> status = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
+            Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            Span<int> wallEndSloped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
+            Span<float> distance = memoryPool.GetBucket<float>(MemoryPoolBucket.Distance);
+
+            status.Fill(RenderColumnStatus.NewRender);
+            floorEnd.Fill(PixelHeight - 1);
+            wallEndSloped.Fill(PixelHeight - 1);
+            distance.Fill(float.MaxValue);
+
+            memoryPool.ClearBuckets(
+                MemoryPoolBucket.PortalFrom, MemoryPoolBucket.PortalFromClamped,
+                MemoryPoolBucket.PortalTo, MemoryPoolBucket.PortalToClamped,
+                MemoryPoolBucket.CeilingStart,
+                MemoryPoolBucket.TextureYIncrement, MemoryPoolBucket.StartingYTexturePosition);
+        }
 
         private readonly List<RenderablePortalWall> neighborsForDepth = [];
 
+        private readonly Lock _lock = new();
+        
         /// <summary>
         /// Draw all current sectors (one wall at a time) and return the next set of portal walls to drawn
         /// </summary>
         /// <param name="player">Player information</param>
-        /// <returns>Set of portal walls to render nexts</returns>
-        public List<RenderablePortalWall> DrawScreenStep(PortalPlayerSnapshot player)
+        /// <returns>Set of portal walls to render next</returns>
+        private List<RenderablePortalWall> DrawScreenStep(PortalPlayerSnapshot player)
         {
             ReadOnlySpan<RenderableSector> sectors = Sectors;
 
@@ -251,7 +269,7 @@ namespace RenderingEngine.Engine
                 WallHelper.CalculateConnectingSectorsForSlope(player, sectors, sector);
 
                 // 2. Determine where ceiling, floor, and walls start and end
-                RenderColumnStatus sectorStatus = CalculateRenderWindow(sectorInfo, sectors, sector, walls);
+                (RenderColumnStatus sectorStatus, int sectorFromX, int sectorToX) = CalculateRenderWindow(sectorInfo, sectors, sector, walls);
 
                 // 3. Nothing to render, bail early
                 if (sectorStatus == default || renderableWalls.Count == 0)
@@ -260,7 +278,7 @@ namespace RenderingEngine.Engine
                 }
 
                 // 4. Render Floors, Ceilings, and Walls
-                List<RenderablePortalWall> neighbors = RenderSector(player, sector, sectorStatus);
+                List<RenderablePortalWall> neighbors = RenderSector(player, sector, sectorFromX, sectorToX, sectorStatus);
 
                 // 5. Keep track of parent walls to avoid rendering them again
                 Span<RenderablePortalWall> neighborsSpan = CollectionsMarshal.AsSpan(neighbors);
@@ -272,6 +290,7 @@ namespace RenderingEngine.Engine
                     neighborsSpan[i].MirrorWall = sectorInfo.MirrorWall;
                 }
 
+                lock (_lock)
                 neighborsForDepth.AddRange(neighbors);
             }
 
@@ -280,7 +299,7 @@ namespace RenderingEngine.Engine
             return neighborsForDepth;
         }
 
-        public void RenderSpritesAndTransparentWalls(PortalPlayerSnapshot player)
+        private void RenderSpritesAndTransparentWalls(PortalPlayerSnapshot player)
         {
             ReadOnlySpan<RenderableSector> sectors = Sectors;
 
@@ -323,7 +342,7 @@ namespace RenderingEngine.Engine
             }
         }
 
-        private RenderColumnStatus CalculateRenderWindow(
+        private (RenderColumnStatus Status, int SectorFromX, int SectorToX) CalculateRenderWindow(
             NeighborsToRender sectorInfo,
             ReadOnlySpan<RenderableSector> sectors,
             RenderableSector sector,
@@ -338,18 +357,27 @@ namespace RenderingEngine.Engine
             }
 
             RenderColumnStatus sectorStatus = default;
-
-            RenderWindowHelper.NewSector(sectorInfo);
+            
+            int sectorFromX, sectorToX;
+            
+            if (sectorInfo.RenderableWall is { } renderableWall)
+            {
+                (sectorFromX, sectorToX) = (renderableWall.XLeft, Math.Min(renderableWall.XRight, PixelWidth - 1));
+            }
+            else
+            {
+                (sectorFromX, sectorToX) = (0, PixelWidth - 1);
+            }
 
             for (int s = 0; s < walls.Length; s++)
             {
                 RenderableWall wall = walls[s];
 
-                RenderColumnStatus status = CalculateRenderWindow(wall, sector, sectors, renderableWalls);
+                RenderColumnStatus status = CalculateRenderWindow(wall, sector, sectors, sectorFromX, sectorToX,  renderableWalls);
                 sectorStatus |= status;
             }
 
-            return sectorStatus & RenderColumnStatus.NewRender;
+            return (sectorStatus & RenderColumnStatus.NewRender, sectorFromX, sectorToX);
 
         }
 
@@ -371,68 +399,54 @@ namespace RenderingEngine.Engine
         private List<RenderablePortalWall> RenderSector(
             PortalPlayerSnapshot player,
             RenderableSector sector,
+            int sectorFromX, int sectorToX,
             RenderColumnStatus sectorStatus)
         {
-            // AI Assisted: sector column window is already known before any rendering happens
-            // (set in RenderWindowHelper.NewSector), so read it up front to decide whether this
-            // sector has enough work to be worth a hand-off/wait round trip at all.
-            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
-            bool worthParallelizing = sectorToX - sectorFromX + 1 >= EngineConstants.MinParallelSectorColumns;
-
-            bool canRenderFloor = sectorStatus.HasFlag(RenderColumnStatus.CanRenderFloor);
-            bool canRenderCeiling = sectorStatus.HasFlag(RenderColumnStatus.CanRenderCeiling);
-
-            if (canRenderFloor && canRenderCeiling)
+            ReadOnlySpan<RenderableSector> sectors = this.Sectors;
+            
+            if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderFloor))
             {
-                if (worthParallelizing)
+                if (sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
                 {
-                    // AI Assisted: hand ceiling rendering to the dedicated worker thread (see
-                    // ConcurrentWorkerLoop below), run floor rendering inline, and wait on a
-                    // reusable semaphore instead of Parallel.Invoke (which allocates a params array,
-                    // delegates and Tasks on every call). Floor rendering uses the Temp3/Temp4 memory
-                    // buckets so it doesn't race with ceiling rendering's use of Temp/Temp2.
-                    concurrentWorkPlayer = player;
-                    concurrentWorkSector = sector;
-                    pendingConcurrentWork = ConcurrentWorkKind.Ceiling;
-                    concurrentWorkAvailableSemaphore.Release();
-                    RenderFloor(player, sector);
-                    parallelRenderingDoneSemaphore.Wait();
+                    RenderSkyboxFloorVector(player, sector, sectorFromX, sectorToX, true);
                 }
                 else
                 {
-                    // AI Assisted: sector too narrow for the fork/join round trip to pay off
-                    RenderCeiling(player, sector);
-                    RenderFloor(player, sector);
+                    RenderFloorVector(player, sector, sectorFromX, sectorToX, true);
                 }
             }
-            else if (canRenderFloor)
-            {
-                RenderFloor(player, sector);
-            }
-            else if (canRenderCeiling)
-            {
-                RenderCeiling(player, sector);
-            }
 
+            if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderCeiling))
+            {
+                if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
+                {
+                    RenderSkyboxVector(player, sector, sectorFromX, sectorToX, true);
+                }
+                else
+                {
+                    RenderCeilingVector(player, sector, sectorFromX, sectorToX, true);
+                }
+            }
+            
             if (sectorStatus.HasFlag(RenderColumnStatus.CanRenderWall))
             {
-                if (worthParallelizing && renderableWalls.Count > 1)
+                for (int s = 0; s < renderableWalls.Count; s++)
                 {
-                    // AI Assisted: hand the odd-index half to the dedicated worker thread (see
-                    // ConcurrentWorkerLoop below), run the even-index half inline, and wait on a
-                    // reusable semaphore instead of Parallel.Invoke (which allocates a params array,
-                    // delegates and Tasks on every call).
-                    concurrentWorkPlayer = player;
-                    pendingConcurrentWork = ConcurrentWorkKind.OddWalls;
-                    concurrentWorkAvailableSemaphore.Release();
-                    RenderEvenWalls(player);
-                    parallelRenderingDoneSemaphore.Wait();
-                }
-                else
-                {
-                    // AI Assisted: too little wall work for the fork/join round trip to pay off
-                    RenderEvenWalls(player);
-                    RenderOddWalls(player);
+                    RenderablePortalWall renderableWall = renderableWalls[s];
+
+                    if (renderableWall.RenderColumnStatus.HasFlag(RenderColumnStatus.CanRenderWall))
+                    {
+                        RenderableWall wall = renderableWall.Wall;
+
+                        bool wallDrawn = wall.IsPortal ?
+                            DrawPortalWall(player, sectors, renderableWall) :
+                            DrawBasicWall(player, renderableWall);
+
+                        if (wallDrawn && wall.IsPortal)
+                        {
+                            neightbors.Add(renderableWall);
+                        }
+                    }
                 }
             }
 
@@ -440,31 +454,7 @@ namespace RenderingEngine.Engine
 
             return neightbors;
         }
-
-        private void RenderFloor(PortalPlayerSnapshot player, RenderableSector sector)
-        {
-            if (sector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
-            {
-                RenderSkyboxFloorVector(player, sector);
-            }
-            else
-            {
-                RenderFloorVector(player, sector);
-            }
-        }
-
-        private void RenderCeiling(PortalPlayerSnapshot player, RenderableSector sector)
-        {
-            if (sector.CeilTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox))
-            {
-                RenderSkyboxVector(player, sector);
-            }
-            else
-            {
-                RenderCeilingVector(player, sector);
-            }
-        }
-
+        
         // AI Assisted: body of the dedicated long-running worker thread started in the constructor.
         // Waits for RenderSector to hand off work via concurrentWorkAvailableSemaphore, runs it, and
         // signals the matching completion semaphore, instead of round-tripping through the ThreadPool.
@@ -476,15 +466,7 @@ namespace RenderingEngine.Engine
                 {
                     concurrentWorkAvailableSemaphore.Wait(cancellationToken);
 
-                    switch (pendingConcurrentWork)
-                    {
-                        case ConcurrentWorkKind.Ceiling:
-                            RenderCeiling(concurrentWorkPlayer, concurrentWorkSector);
-                            break;
-                        case ConcurrentWorkKind.OddWalls:
-                            RenderOddWalls(concurrentWorkPlayer);
-                            break;
-                    }
+                    //
                     
                     parallelRenderingDoneSemaphore.Release();
                 }
@@ -494,74 +476,23 @@ namespace RenderingEngine.Engine
             }
         }
 
-        // AI Assisted
-        private void RenderOddWalls(PortalPlayerSnapshot player)
-        {
-            ReadOnlySpan<RenderableSector> sectors = this.Sectors;
-            int from = renderableWalls.Count >> 1;
-
-            for (int s = from; s < renderableWalls.Count; s++)
-            {
-                RenderablePortalWall renderableWall = renderableWalls[s];
-
-                if (renderableWall.RenderColumnStatus.HasFlag(RenderColumnStatus.CanRenderWall))
-                {
-                    RenderableWall wall = renderableWall.Wall;
-
-                    bool wallDrawn = wall.IsPortal ?
-                        DrawPortalWall(player, sectors, renderableWall) :
-                        DrawBasicWall(player, renderableWall);
-
-                    if (wallDrawn && wall.IsPortal)
-                    {
-                        neightbors.Add(renderableWall);
-                    }
-                }
-            }
-        }
-
-        // AI Assisted
-        private void RenderEvenWalls(PortalPlayerSnapshot player)
-        {
-            ReadOnlySpan<RenderableSector> sectors = this.Sectors;
-
-            int to = renderableWalls.Count >> 1;
-
-            for (int s = 0; s < to; s++)
-            {
-                RenderablePortalWall renderableWall = renderableWalls[s];
-
-                if (renderableWall.RenderColumnStatus.HasFlag(RenderColumnStatus.CanRenderWall))
-                {
-                    RenderableWall wall = renderableWall.Wall;
-
-                    bool wallDrawn = wall.IsPortal ?
-                        DrawPortalWall(player, sectors, renderableWall) :
-                        DrawBasicWall(player, renderableWall);
-
-                    if (wallDrawn && wall.IsPortal)
-                    {
-                        neightbors.Add(renderableWall);
-                    }
-                }
-            }
-        }
-
-
         private RenderColumnStatus CalculateRenderWindow(
             RenderableWall wall,
             RenderableSector sector,
             ReadOnlySpan<RenderableSector> sectors,
+            int sectorFromX, int sectorToX,
             List<RenderablePortalWall> renderableWalls)
         {
-            if (!RenderWindowHelper.SetWallToCalculate(wall))
-            {
-                // don't render this wall, as its not within the window or is fully obscured by other walls
-                return default;
-            }
-
             Span<RenderColumnStatus> renderStatus = memoryPool.GetBucket<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
 
+            (bool canRender, int wallFromX, int wallToX) = SetWallToCalculate(renderStatus, sectorFromX, sectorToX, wall);
+            
+            if (!canRender)
+            {
+                // don't render this wall, as it's not within the window or is fully obscured by other walls
+                return default;
+            }
+            
             Span<int> wallStartClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallStartClamped);
             Span<int> wallEndClamped = memoryPool.GetBucket<int>(MemoryPoolBucket.WallEndClamped);
 
@@ -573,8 +504,12 @@ namespace RenderingEngine.Engine
 
             Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
+            
+            ArgumentNullException.ThrowIfNull(wall);
 
-            (int offset, int wallFromX, int wallToX) = RenderWindowHelper.GetWallRenderWindowX();
+            int offset = wallFromX > wall.XLeft ? wallFromX - wall.XLeft : 0;
+
+            //return (wallFromXOffset, wallFromX, wallToX);
 
             RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo2(sectors, wall, offset);
             float wallStartY = yPlaneInfo.WallStartY;
@@ -700,6 +635,47 @@ namespace RenderingEngine.Engine
             }
 
             return wallStatus;
+        }
+        
+        public static (bool CanRender, int WallFromX, int WallToX) SetWallToCalculate(
+            ReadOnlySpan<RenderColumnStatus> status,
+            int sectorFromX, int sectorToX,
+            RenderableWall wall)
+        {
+            //this.wall = wall;
+            int wallFromX = wall.XLeft;
+            int wallToX = wall.XRight;
+
+            // clamp to sector window
+            wallFromX = Math.Max(sectorFromX, wall.XLeft);
+            wallToX = Math.Min(sectorToX, wall.XRight);
+
+            int i, j;
+
+            for (i = wallFromX; i <= wallToX; i++)
+            {
+                RenderColumnStatus columnStatus = status[i];
+
+                if (!columnStatus.IsFinished && !columnStatus.IsCalculated)
+                {
+                    break;
+                }
+            }
+
+            for (j = wallToX; j >= wallFromX; j--)
+            {
+                RenderColumnStatus columnStatus = status[j];
+
+                if (!columnStatus.IsFinished && !columnStatus.IsCalculated)
+                {
+                    break;
+                }
+            }
+
+            (wallFromX, wallToX) = (i, j);
+
+            // wall has been rendered over for this sector
+            return (wallFromX < wallToX, wallFromX, wallToX);
         }
 
         [MemberNotNull(nameof(Snapshot))]

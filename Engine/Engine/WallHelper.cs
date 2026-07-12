@@ -67,7 +67,7 @@ namespace RenderingEngine.Engine
 
         private static Span<RenderableWall> CullWallsOutsideOfWindow(Span<RenderableWall> rotatedWalls, NeighborsToRender sectorInfo)
         {
-            // if the horizontal window is smaller then [0..width] (ex, a portal far away)
+            // if the horizontal window is smaller than [0..width] (ex, a portal far away)
             // we can cull all walls that won't show up to increase performance significantly
 
             RenderablePortalWall? renderableWall = sectorInfo.RenderableWall;
@@ -128,7 +128,7 @@ namespace RenderingEngine.Engine
 
         public Span<RenderableWall> CalculateRotatedWallsRelativeToPlayer(RenderableSector sector, PortalPlayerSnapshot player, NeighborsToRender sectorInfo)
         {
-            bool flipped = sectorInfo.MirrorWall is not null && sectorInfo.ParentWalls.Contains(sectorInfo.MirrorWall);
+            bool flipped = sectorInfo.MirrorWall is not null && sectorInfo.ParentWalls.AsSpan().Contains(sectorInfo.MirrorWall);
             int mirrorKey = flipped ? sectorInfo.MirrorWall!.Id : -1;
 
             Span<RenderableWall> rotatedWalls = RotateSectorWallsRelativeToPlayer(sector, player, sectorInfo, flipped);
@@ -140,17 +140,13 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        private RenderableWall[] _rotatedWalls = new RenderableWall[32];
-
         public Span<RenderableWall> RotateSectorWallsRelativeToPlayer(RenderableSector sector, PortalPlayerSnapshot player, NeighborsToRender sectorInfo, bool flipped)
         {
             ReadOnlySpan<RenderableWall> walls = sector.Walls;
-            if (_rotatedWalls.Length < walls.Length)
-            {
-                Array.Resize(ref _rotatedWalls, walls.Length);
-            }
-            Span<RenderableWall> rotatedWalls = _rotatedWalls.AsSpan()[..walls.Length];
+            Span<RenderableWall> rotatedWalls = ObjectPool.RenderableWallPool.Request(walls.Length);
 
+            Debug.Assert(rotatedWalls.Length == walls.Length);
+            
             int lastComputedFrame = _frame;
             int mirrorKey = flipped ? sectorInfo.MirrorWall!.Id : -1;
 

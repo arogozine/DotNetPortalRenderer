@@ -6,7 +6,11 @@ namespace RenderingEngine.Engine
 {
     internal unsafe partial class PortalRenderer
     {
-        private void RenderSkyboxVector(PortalPlayerSnapshot player, RenderableSector sector)
+        private void RenderSkyboxVector(
+            PortalPlayerSnapshot player,
+            RenderableSector sector,
+            int sectorFromX, int sectorToX,
+            bool temp2)
         {
             GameTextureInfo textureInfo = sector.CeilTexture;
             GameTexture texture = textureInfo.Texture;
@@ -14,9 +18,7 @@ namespace RenderingEngine.Engine
             ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(textureInfo.Palette, sector.CeilingShade, TextureTransform.Normal);
 
             uint* screenPtr = (uint*)buffer;
-
-            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
-
+            
             int* wallStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
             int* ceilingStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
             int* floorEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
@@ -28,7 +30,7 @@ namespace RenderingEngine.Engine
                     ceilingStartPtr, wallStartPtr,
                     ceilingStartPtr, floorEndPtr,
                     PixelWidth,
-                    texture.Width, texture.Height, MemoryPoolBucket.Temp2);
+                    texture.Width, texture.Height, temp2 ? MemoryPoolBucket.Temp2 : MemoryPoolBucket.Temp4);
             }
         }
 
@@ -48,7 +50,9 @@ namespace RenderingEngine.Engine
 
         private void RenderSkyboxFloorVector(
             PortalPlayerSnapshot player,
-            RenderableSector sector)
+            RenderableSector sector,
+            int sectorFromX, int sectorToX,
+            bool temp2)
         {
             GameTextureInfo textureInfo = sector.FloorTexture;
             GameTexture texture = textureInfo.Texture;
@@ -56,9 +60,7 @@ namespace RenderingEngine.Engine
             ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(textureInfo.Palette, sector.CeilingShade, TextureTransform.Normal);
 
             uint* screenPtr = (uint*)buffer;
-
-            (int sectorFromX, int sectorToX) = this.RenderWindowHelper.GetSectorX();
-
+            
             int* wallEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
             int* ceilingStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
             int* floorEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
@@ -72,7 +74,7 @@ namespace RenderingEngine.Engine
                     wallEndPtr, floorEndPtr,
                     ceilingStartPtr, floorEndPtr,
                     PixelWidth,
-                    texture.Width, texture.Height, MemoryPoolBucket.Temp4);
+                    texture.Width, texture.Height, temp2 ? MemoryPoolBucket.Temp2 : MemoryPoolBucket.Temp4);
             }
         }
 

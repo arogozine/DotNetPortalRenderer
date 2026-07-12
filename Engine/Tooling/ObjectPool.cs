@@ -33,6 +33,8 @@ internal static class ObjectPool
 
     public static readonly QuickArrayPool<RenderableWall> RenderableWallPool = new();
 
+    public static readonly QuickArrayPool<RenderablePortalWall> RenderablePortalWallPool = new();
+    
     internal static void Clear()
     {
         HashSet.Clear();
@@ -42,6 +44,7 @@ internal static class ObjectPool
         NeighborsToRender.Reset();
         RenderablePortalWall.Reset();
         RenderableWallPool.ClearAndOptimize();
+        RenderablePortalWallPool.ClearAndOptimize();
     }
 
     static void ClearSnapshot(FloorSpriteWallInfo floorSpriteWallInfo)

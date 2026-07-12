@@ -23,7 +23,7 @@ public sealed class QuickArrayPool<T>
         }
 
         // allocate another bucket
-        _maxBucketLength = Math.Min(_maxBucketLength << 1, size << 1);
+        _maxBucketLength = Math.Max(_maxBucketLength << 1, size << 1);
         _totalAllocated += _maxBucketLength;
         _currentBucket++;
 

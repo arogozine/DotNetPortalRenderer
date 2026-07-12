@@ -2,7 +2,7 @@
   "profiles": {
     "Raycaster2": {
       "commandName": "Project",
-      "commandLineArgs": "--grp=\"D:\\SteamLibrary\\steamapps\\common\\Duke Nukem 3D\\gameroot\\classic\" --map=E1L2"
+      "commandLineArgs": "--grp=\"/home/arogozine/DukeNukem\" --map=E4L3"
     }
   }
 }
