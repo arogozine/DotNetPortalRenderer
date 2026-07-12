@@ -17,7 +17,7 @@ namespace RenderingEngine.Engine
 
             ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(textureInfo.Palette, sector.CeilingShade, TextureTransform.Normal);
 
-            uint* screenPtr = (uint*)buffer;
+            uint* screenPtr = (uint*)Buffer;
             
             int* wallStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
             int* ceilingStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
@@ -59,7 +59,7 @@ namespace RenderingEngine.Engine
 
             ref uint ceilingTexturePtr = ref texture.GetBinaryRef<uint>(textureInfo.Palette, sector.CeilingShade, TextureTransform.Normal);
 
-            uint* screenPtr = (uint*)buffer;
+            uint* screenPtr = (uint*)Buffer;
             
             int* wallEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
             int* ceilingStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
@@ -109,7 +109,7 @@ namespace RenderingEngine.Engine
 
             ref uint wallTextureUintPtr = ref wallTexture.Texture.GetBinaryRef<uint>(wallTexture.Palette, renderableWall.Wall.Shade ?? byte.MaxValue, TextureTransform.Normal);
 
-            uint* screenPtr = (uint*)buffer;
+            uint* screenPtr = (uint*)Buffer;
 
             int* ceilingStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
             int* floorEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);

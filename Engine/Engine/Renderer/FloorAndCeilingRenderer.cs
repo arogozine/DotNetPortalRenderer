@@ -110,7 +110,7 @@ namespace RenderingEngine.Engine
             }
 
             ref uint ceilingTexturePtr = ref ceilingTexture.Texture.GetBinaryRef<uint>(sector.CeilTexture.Palette, sector.CeilingShade, transform);
-            uint* screenPtr = (uint*)buffer;
+            uint* screenPtr = (uint*)Buffer;
 
             Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(temp1 ? MemoryPoolBucket.Temp2 : MemoryPoolBucket.Temp4)[sectorFromX..(sectorToX + 1)];
             repeatedCount.Fill((ushort)repeatedCount.Length);
@@ -198,7 +198,7 @@ namespace RenderingEngine.Engine
             }
 
             ref uint floorTexturePtr = ref floorTexture.Texture.GetBinaryRef<uint>(sector.FloorTexture.Palette, sector.FloorShade, transform);
-            uint* screenPtr = (uint*)buffer;
+            uint* screenPtr = (uint*)Buffer;
 
             Unsafe.SkipInit(out Vector<float> rSinV);
             Unsafe.SkipInit(out Vector<float> rCosV);

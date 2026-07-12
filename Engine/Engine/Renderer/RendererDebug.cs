@@ -56,7 +56,7 @@ namespace RenderingEngine.Engine
         [Conditional("DEBUG")]
         private unsafe void RenderOutline(int* from, int* to, BGRA topColor, BGRA bottomColor, int fromX = 0, int toX = int.MaxValue)
         {
-            ref BGRA screen = ref Unsafe.AsRef<BGRA>(buffer);
+            ref BGRA screen = ref Unsafe.AsRef<BGRA>(Buffer);
 
             int length = PixelHeight * PixelWidth;
 
@@ -100,7 +100,7 @@ namespace RenderingEngine.Engine
         [Conditional("DEBUG")]
         private unsafe void RenderOutline(Span<int> from, Span<int> to, BGRA topColor, BGRA bottomColor, int fromX = 0, int toX = int.MaxValue)
         {
-            ref BGRA screen = ref Unsafe.AsRef<BGRA>(buffer);
+            ref BGRA screen = ref Unsafe.AsRef<BGRA>(Buffer);
 
             int length = PixelHeight * PixelWidth;
 

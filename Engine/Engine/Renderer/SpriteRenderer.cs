@@ -338,7 +338,7 @@ namespace RenderingEngine.Engine
 
             int textureHeight = texture.Height;
 
-            uint* screenPtr = (uint*)buffer;
+            uint* screenPtr = (uint*)Buffer;
             uint width = (uint)PixelWidth;
 
             bool isPowerOfTwo = SharedHelpers.IsPowerOfTwo(textureHeight);
@@ -467,7 +467,7 @@ namespace RenderingEngine.Engine
 
             ref uint floorTexturePtr = ref texture.Texture.GetBinaryRef<uint>(texture.Palette, sprite.Shade ?? sector.FloorShade,
                 TextureTransform.Normal | TextureTransform.FlippedX);
-            uint* screenPtr = (uint*)buffer;
+            uint* screenPtr = (uint*)Buffer;
 
             Vector<float> yFloorV = Vector.Create(yFloor);
             int textureHeightMask = texture.Height - 1;

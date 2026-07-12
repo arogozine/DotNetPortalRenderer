@@ -3,7 +3,6 @@ using SoftwareRendererModels;
 
 namespace RenderingEngine.Engine
 {
-    // AI Assisted
     internal unsafe partial class PortalRenderer
     {
         protected readonly int PixelWidth;
@@ -11,7 +10,7 @@ namespace RenderingEngine.Engine
         public required RenderableSprite[] Sprites { get; init; }
         public required RenderableSector[] Sectors { get; init; }
 
-        public void* Buffer => buffer;
+        public void* Buffer { get; }
 
         private readonly WallHelper WallHelper;
         private readonly SpriteHelper SpriteHelper;
@@ -19,9 +18,6 @@ namespace RenderingEngine.Engine
         private PortalPlayerSnapshot? Snapshot;
 
         protected readonly AlignedMemoryPool memoryPool;
-
-        // BGRA screen buffer
-        private readonly void* buffer;
 
         protected PortalRenderer(int width, int height, CancellationToken cancellationToken)
         {
@@ -31,7 +27,7 @@ namespace RenderingEngine.Engine
             WallHelper = new WallHelper(width, height);
 
             memoryPool = AlignedMemoryPool.GeneratePool(width, (int)MemoryPoolBucket.Buffer + height + 1);
-            buffer = memoryPool.GetBucketPtr(MemoryPoolBucket.Buffer);
+            Buffer = memoryPool.GetBucketPtr(MemoryPoolBucket.Buffer);
 
             spriteCacheMemoryPool = DynamicAlignedMemoryPool.GeneratePool(width, (int)SpriteCachePoolBucket.RenderStatus + 1);
 
@@ -505,11 +501,7 @@ namespace RenderingEngine.Engine
             Span<int> ceilingStart = memoryPool.GetBucket<int>(MemoryPoolBucket.CeilingStart);
             Span<int> floorEnd = memoryPool.GetBucket<int>(MemoryPoolBucket.FloorEnd);
             
-            ArgumentNullException.ThrowIfNull(wall);
-
             int offset = wallFromX > wall.XLeft ? wallFromX - wall.XLeft : 0;
-
-            //return (wallFromXOffset, wallFromX, wallToX);
 
             RenderablePlaneInfo yPlaneInfo = MathFormulas.CalculateLeftWallYPlaneInfo2(sectors, wall, offset);
             float wallStartY = yPlaneInfo.WallStartY;
@@ -685,7 +677,7 @@ namespace RenderingEngine.Engine
 
             DrawScreen(snapShot);
 
-            return this.buffer;
+            return this.Buffer;
         }
     }
 }

@@ -20,7 +20,7 @@ namespace RenderingEngine.Engine
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            uint* screenPtr = (uint*)buffer;
+            uint* screenPtr = (uint*)Buffer;
 
             var transform = TextureTransform.Rotated;
 
