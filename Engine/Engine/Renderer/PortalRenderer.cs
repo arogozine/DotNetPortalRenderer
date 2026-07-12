@@ -23,7 +23,8 @@ namespace RenderingEngine.Engine
         private readonly RenderThreadState threadStateA;
         private readonly RenderThreadState threadStateB;
 
-        private PortalPlayerSnapshot? Snapshot;
+        // Doesn't change per frame
+        private PortalPlayerSnapshot? PlayerStateShapshot;
 
         protected readonly AlignedMemoryPool memoryPool;
 
@@ -127,7 +128,6 @@ namespace RenderingEngine.Engine
 
             frame++;
             this.WallHelper.SetSnapShot(player);
-            // this.WallHelperB.SetSnapShot(player);
 
             NewRender();
 
@@ -250,7 +250,7 @@ namespace RenderingEngine.Engine
                 MemoryPoolBucket.TextureYIncrement, MemoryPoolBucket.StartingYTexturePosition);
         }
 
-        private readonly Lock _lock = new();
+        private readonly Lock _windowCalculationLock = new();
 
         /// <summary>
         /// Process one queued sector: cull/sort its walls, compute its render window, and draw its
@@ -270,7 +270,7 @@ namespace RenderingEngine.Engine
             int sectorFromX, sectorToX;
 
             // 1. Filter out walls outside the player's view and sort them closest to furthest
-            lock (_lock)
+            lock (_windowCalculationLock)
             {
                 walls = WallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player, frame);
                 WallHelper.CalculateConnectingSectorsForSlope(player, sectorInfo, sectors, sector, frame);
@@ -315,6 +315,7 @@ namespace RenderingEngine.Engine
             threadStateA.NeighborsForDepth.Clear();
             threadStateB.NeighborsForDepth.Clear();
 
+            FixPixelOverlap();
             PartitionSectorQueue();
 
             bool useWorker = threadStateB.SectorQueue.Count > 0;
@@ -342,33 +343,9 @@ namespace RenderingEngine.Engine
             return threadStateA.NeighborsForDepth;
         }
 
-        private void PartitionSectorQueue()
+        private void FixPixelOverlap()
         {
-            threadStateA.SectorQueue.Clear();
-            threadStateB.SectorQueue.Clear();
-
-            int count = sectorRenderQueue.Count;
-
-            if (count == 0)
-            {
-                return;
-            }
-
             Span<NeighborsToRender> queue = CollectionsMarshal.AsSpan(sectorRenderQueue);
-
-            if (count == 1)
-            {
-                threadStateA.SectorQueue.Add(queue[0]);
-                return;
-            }
-
-            int mid = queue.Length >> 1;
-
-            Debug.Assert(threadStateA.SectorQueue.Count == 0);
-            Debug.Assert(threadStateB.SectorQueue.Count == 0);
-
-            threadStateA.SectorQueue.AddRange(queue[..mid]);
-            threadStateB.SectorQueue.AddRange(queue[mid..]);
 
             // Fix Occasional 1PX Overlap
             for (int i = 0; i < queue.Length; i++)
@@ -403,6 +380,35 @@ namespace RenderingEngine.Engine
                 }
 
             }
+        }
+
+        private void PartitionSectorQueue()
+        {
+            threadStateA.SectorQueue.Clear();
+            threadStateB.SectorQueue.Clear();
+
+            int count = sectorRenderQueue.Count;
+
+            if (count == 0)
+            {
+                return;
+            }
+
+            Span<NeighborsToRender> queue = CollectionsMarshal.AsSpan(sectorRenderQueue);
+
+            if (count == 1)
+            {
+                threadStateA.SectorQueue.Add(queue[0]);
+                return;
+            }
+
+            int mid = queue.Length >> 1;
+
+            Debug.Assert(threadStateA.SectorQueue.Count == 0);
+            Debug.Assert(threadStateB.SectorQueue.Count == 0);
+
+            threadStateA.SectorQueue.AddRange(queue[..mid]);
+            threadStateB.SectorQueue.AddRange(queue[mid..]);
         }
         
         private void RenderSpritesAndTransparentWalls(PortalPlayerSnapshot player)
@@ -588,26 +594,23 @@ namespace RenderingEngine.Engine
                 {
                     concurrentWorkAvailableSemaphore.Wait(cancellationToken);
 
-                    // AI Assisted: try/finally so a fault in ProcessSectorEntry always releases the completion
-                    // semaphore -- otherwise the main thread would hang forever in DrawScreenStep's Wait().
-                    try
-                    {
-                        ReadOnlySpan<RenderableSector> sectors = Sectors;
-                        Span<NeighborsToRender> queueB = CollectionsMarshal.AsSpan(threadStateB.SectorQueue);
+                    ReadOnlySpan<RenderableSector> sectors = Sectors;
+                    Span<NeighborsToRender> queueB = CollectionsMarshal.AsSpan(threadStateB.SectorQueue);
 
-                        for (int s = 0; s < queueB.Length; s++)
-                        {
-                            ProcessSectorEntry(queueB[s], Snapshot!, sectors, threadStateB);
-                        }
-                    }
-                    finally
+                    for (int s = 0; s < queueB.Length; s++)
                     {
-                        _ = parallelRenderingDoneSemaphore.Release();
+                        ProcessSectorEntry(queueB[s], PlayerStateShapshot!, sectors, threadStateB);
                     }
+                    _ = parallelRenderingDoneSemaphore.Release();
                 }
             }
             catch (OperationCanceledException)
             {
+            }
+            catch (Exception ex)
+            {
+                AsyncLogger.Default.AddLog(LogSeverity.Error, "Secondary Rendering Thread Failure", ex);
+                Environment.Exit(1);
             }
         }
 
@@ -687,7 +690,7 @@ namespace RenderingEngine.Engine
                 {
                     if (x - 1 > renderableFromX)
                     {
-                        offset = wallFromX > wall.XLeft ? wallFromX - wall.XLeft : 0;
+                        offset = wallFromX > wall.XLeft ? renderableFromX - wall.XLeft : 0;
 
                         // AI Assisted
                         var rw = ObjectPool.RenderablePortalWallPool.GetOrCreate();
@@ -775,13 +778,9 @@ namespace RenderingEngine.Engine
             int sectorFromX, int sectorToX,
             RenderableWall wall)
         {
-            //this.wall = wall;
-            int wallFromX = wall.XLeft;
-            int wallToX = wall.XRight;
-
             // clamp to sector window
-            wallFromX = Math.Max(sectorFromX, wall.XLeft);
-            wallToX = Math.Min(sectorToX, wall.XRight);
+            int wallFromX = Math.Max(sectorFromX, wall.XLeft);
+            int wallToX = Math.Min(sectorToX, wall.XRight);
 
             int i, j;
 
@@ -811,12 +810,12 @@ namespace RenderingEngine.Engine
             return (wallFromX < wallToX, wallFromX, wallToX);
         }
 
-        [MemberNotNull(nameof(Snapshot))]
-        public void* DrawFrame(PortalPlayerSnapshot snapShot)
+        [MemberNotNull(nameof(PlayerStateShapshot))]
+        public void* DrawFrame(PortalPlayerSnapshot playerStateSnapshot)
         {
-            Snapshot = snapShot;
+            PlayerStateShapshot = playerStateSnapshot;
 
-            DrawScreen(snapShot);
+            DrawScreen(playerStateSnapshot);
 
             return this.Buffer;
         }
