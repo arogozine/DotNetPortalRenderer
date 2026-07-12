@@ -741,12 +741,12 @@ namespace RenderingEngine.Engine
             return statusY;
         }
 
-        private Span<ushort> DetermineMaxHorizontalRenderingDistance(RenderablePortalWall renderableWall, uint* wallStartPtr, uint* wallEndPtr)
+        private Span<ushort> DetermineMaxHorizontalRenderingDistance(RenderablePortalWall renderableWall, uint* wallStartPtr, uint* wallEndPtr, bool usePrimaryTempBuckets)
         {
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
 
-            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp)[wallFromX..(wallToX + 1)];
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(usePrimaryTempBuckets ? MemoryPoolBucket.Temp : MemoryPoolBucket.Temp3)[wallFromX..(wallToX + 1)];
             repeatedCount.Fill((ushort)repeatedCount.Length);
 
             // set repeat count to 0 where there is nothing to draw

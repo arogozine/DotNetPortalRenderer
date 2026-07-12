@@ -80,14 +80,15 @@ namespace RenderingEngine.Engine
 
         private bool DrawBasicSkyboxWall(
             PortalPlayerSnapshot player,
-            RenderablePortalWall renderableWall)
+            RenderablePortalWall renderableWall,
+            bool usePrimaryTempBuckets)
         {
             int* wallStartPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
             int* wallEndPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
 
             RenderableWall wall = renderableWall.Wall;
             Debug.Assert(wall.MiddleTexture != null);
-            DrawBasicSkyboxWall(player, renderableWall, wallStartPtr, wallEndPtr, wall.MiddleTexture);
+            DrawBasicSkyboxWall(player, renderableWall, wallStartPtr, wallEndPtr, wall.MiddleTexture, usePrimaryTempBuckets);
 
             // Set render status to finished
             int wallFromX = renderableWall.XLeft;
@@ -102,7 +103,8 @@ namespace RenderingEngine.Engine
             PortalPlayerSnapshot player,
             RenderablePortalWall renderableWall,
             int* wallStartPtr, int* wallEndPtr,
-            GameTextureInfo wallTexture)
+            GameTextureInfo wallTexture,
+            bool usePrimaryTempBuckets)
         {
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
@@ -121,7 +123,7 @@ namespace RenderingEngine.Engine
                     wallStartPtr, wallEndPtr,
                     ceilingStartPtr, floorEndPtr,
                     PixelWidth,
-                    wallTexture.Width, wallTexture.Height, MemoryPoolBucket.Temp2);
+                    wallTexture.Width, wallTexture.Height, usePrimaryTempBuckets ? MemoryPoolBucket.Temp2 : MemoryPoolBucket.Temp4);
             }
         }
     }

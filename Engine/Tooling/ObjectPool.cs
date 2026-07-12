@@ -1,6 +1,5 @@
 ﻿using RenderingEngine.Engine;
 using SoftwareRendererModels;
-using Tooling;
 
 namespace RenderingEngine.Tooling;
 
@@ -28,13 +27,6 @@ internal static class ObjectPool
     public static readonly DynamicObjectPool<NeighborsToRender> NeighborsToRender
         = new(static n => n.Reset());
 
-    public static readonly DynamicObjectPool<RenderablePortalWall> RenderablePortalWall
-        = new(static r => r.Reset());
-
-    public static readonly QuickArrayPool<RenderableWall> RenderableWallPool = new();
-
-    public static readonly QuickArrayPool<RenderablePortalWall> RenderablePortalWallPool = new();
-    
     internal static void Clear()
     {
         HashSet.Clear();
@@ -42,12 +34,9 @@ internal static class ObjectPool
         FloorSpriteWallInfo.Reset();
         RenderWindowWallSnapshot.Reset();
         NeighborsToRender.Reset();
-        RenderablePortalWall.Reset();
-        RenderableWallPool.ClearAndOptimize();
-        RenderablePortalWallPool.ClearAndOptimize();
     }
 
-    static void ClearSnapshot(FloorSpriteWallInfo floorSpriteWallInfo)
+    private static void ClearSnapshot(FloorSpriteWallInfo floorSpriteWallInfo)
     {
         floorSpriteWallInfo.IntersectsView = false;
         floorSpriteWallInfo.YLeftFloor = default;
@@ -56,13 +45,13 @@ internal static class ObjectPool
         floorSpriteWallInfo.XRight = default;
     }
 
-    static void ClearSnapshot(RenderWindowSpriteSnapshot s)
+    private static void ClearSnapshot(RenderWindowSpriteSnapshot s)
     {
         s.MirroredWalls?.Clear();
         s.Depth = s.XRight = s.XLeft = s.RenderDepth = default;
     }
 
-    static void ClearSnapshot(RenderWindowWallSnapshot rw)
+    private static void ClearSnapshot(RenderWindowWallSnapshot rw)
     {
         rw.Depth = 0;
         rw.Wall = null!;

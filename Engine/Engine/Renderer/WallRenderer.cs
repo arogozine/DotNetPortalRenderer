@@ -65,7 +65,8 @@ namespace RenderingEngine.Engine
 
         private bool DrawBasicWall(
             PortalPlayerSnapshot player,
-            RenderablePortalWall renderableWall)
+            RenderablePortalWall renderableWall,
+            bool usePrimaryTempBuckets)
         {
             // separate path for skybox rendering
             RenderableWall wall = renderableWall.Wall;
@@ -76,7 +77,7 @@ namespace RenderingEngine.Engine
             if (textureInfo.RenderingOptions.IsSkybox)
             {
                 CalculateDistance(renderableWall);
-                return DrawBasicSkyboxWall(player, renderableWall);
+                return DrawBasicSkyboxWall(player, renderableWall, usePrimaryTempBuckets);
             }
 
             // Precalculate render window and texture positions
@@ -85,7 +86,7 @@ namespace RenderingEngine.Engine
             ref RenderColumnStatus statusRef = ref memoryPool.GetBucketRef<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
             int wallFromX = renderableWall.XLeft;
             int wallToX = renderableWall.XRight;
-            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(MemoryPoolBucket.Temp)[wallFromX..(wallToX + 1)];
+            Span<ushort> repeatedCount = memoryPool.GetBucket<ushort>(usePrimaryTempBuckets ? MemoryPoolBucket.Temp : MemoryPoolBucket.Temp3)[wallFromX..(wallToX + 1)];
             repeatedCount.Fill((ushort)repeatedCount.Length);
 
             // Set the X position as "FinishedRendering" for this wall
@@ -132,7 +133,8 @@ namespace RenderingEngine.Engine
         private bool DrawPortalWall(
             PortalPlayerSnapshot player,
             ReadOnlySpan<RenderableSector> sectors,
-            RenderablePortalWall renderableWall)
+            RenderablePortalWall renderableWall,
+            bool usePrimaryTempBuckets)
         {
             (bool renderLower, bool renderUpper, bool basicWall) = CalculateCanRenderPortalWall(sectors, renderableWall.Wall);
 
@@ -156,13 +158,13 @@ namespace RenderingEngine.Engine
                 if (lowerTexture.RenderingOptions.IsSkybox)
                 {
                     CalculateDistance(renderableWall);
-                    DrawLowerSkyboxPortalWall(player, renderableWall);
+                    DrawLowerSkyboxPortalWall(player, renderableWall, usePrimaryTempBuckets);
                 }
                 else
                 {
                     CalculateLowerTextureYIncrement(renderableWall, lowerTexture, sectors);
                     CalculateTextureDistanceAndXPosition(renderableWall, lowerTexture);
-                    DrawLowerPortalWall(renderableWall);
+                    DrawLowerPortalWall(renderableWall, usePrimaryTempBuckets);
                 }
             }
 
@@ -173,13 +175,13 @@ namespace RenderingEngine.Engine
                 if (upperTexture.RenderingOptions.IsSkybox)
                 {
                     if (!renderLower) { CalculateDistance(renderableWall); }
-                    DrawUpperSkyboxPortalWall(player, renderableWall);
+                    DrawUpperSkyboxPortalWall(player, renderableWall, usePrimaryTempBuckets);
                 }
                 else
                 {
                     CalculateUpperTextureYIncrement(renderableWall, upperTexture);
                     CalculateTextureDistanceAndXPosition(renderableWall, upperTexture);
-                    DrawUpperPortalWall(renderableWall);
+                    DrawUpperPortalWall(renderableWall, usePrimaryTempBuckets);
                 }
             }
 
@@ -191,30 +193,33 @@ namespace RenderingEngine.Engine
 
         private void DrawUpperSkyboxPortalWall(
             PortalPlayerSnapshot player,
-            RenderablePortalWall renderableWall)
+            RenderablePortalWall renderableWall,
+            bool usePrimaryTempBuckets)
         {
             int* wallStartClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
             int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalFromClamped);
             RenderableWall wall = renderableWall.Wall;
 
             Debug.Assert(wall.UpperTexture is not null);
-            DrawBasicSkyboxWall(player, renderableWall, wallStartClampedPtr, wallEndClampedPtr, wall.UpperTexture);
+            DrawBasicSkyboxWall(player, renderableWall, wallStartClampedPtr, wallEndClampedPtr, wall.UpperTexture, usePrimaryTempBuckets);
         }
 
         private void DrawLowerSkyboxPortalWall(
                 PortalPlayerSnapshot player,
-                RenderablePortalWall renderableWall)
+                RenderablePortalWall renderableWall,
+                bool usePrimaryTempBuckets)
         {
             int* wallStartClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.PortalToClamped);
             int* wallEndClampedPtr = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallEndClamped);
             RenderableWall wall = renderableWall.Wall;
 
             Debug.Assert(wall.LowerTexture is not null);
-            DrawBasicSkyboxWall(player, renderableWall, wallStartClampedPtr, wallEndClampedPtr, wall.LowerTexture);
+            DrawBasicSkyboxWall(player, renderableWall, wallStartClampedPtr, wallEndClampedPtr, wall.LowerTexture, usePrimaryTempBuckets);
         }
 
         private void DrawUpperPortalWall(
-            RenderablePortalWall renderableWall)
+            RenderablePortalWall renderableWall,
+            bool usePrimaryTempBuckets)
         {
             RenderableWall wall = renderableWall.Wall;
             GameTextureInfo upperTexture = wall.UpperTexture!;
@@ -224,13 +229,14 @@ namespace RenderingEngine.Engine
             uint* wallStartClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.WallStartClamped);
             uint* wallEndClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalFromClamped);
 
-            Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall, wallStartClamped, wallEndClamped);
+            Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall, wallStartClamped, wallEndClamped, usePrimaryTempBuckets);
 
             DrawWallShared(renderableWall, upperTexture, repeatedCount, wall.Shade, wallStartClamped, wallEndClamped);
         }
 
         private void DrawLowerPortalWall(
-            RenderablePortalWall renderableWall)
+            RenderablePortalWall renderableWall,
+            bool usePrimaryTempBuckets)
         {
             RenderableWall wall = renderableWall.Wall;
             GameTextureInfo lowerTexture = wall.LowerTexture!;
@@ -240,7 +246,7 @@ namespace RenderingEngine.Engine
             uint* wallStartClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalToClamped);
             uint* wallEndClamped = memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.WallEndClamped);
 
-            Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall, wallStartClamped, wallEndClamped);
+            Span<ushort> repeatedCount = DetermineMaxHorizontalRenderingDistance(renderableWall, wallStartClamped, wallEndClamped, usePrimaryTempBuckets);
 
             DrawWallShared(renderableWall, lowerTexture, repeatedCount, wall.LowerShade, wallStartClamped, wallEndClamped);
         }
