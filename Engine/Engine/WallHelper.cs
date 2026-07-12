@@ -199,15 +199,25 @@ namespace RenderingEngine.Engine
 
         private readonly HashSet<RenderableSector> connectingSectors = [];
 
-        public void CalculateConnectingSectorsForSlope(PortalPlayerSnapshot player, ReadOnlySpan<RenderableSector> sectors, RenderableSector sector)
+        public void CalculateConnectingSectorsForSlope(PortalPlayerSnapshot player,
+            NeighborsToRender sectorInfo,
+            ReadOnlySpan<RenderableSector> sectors,
+            RenderableSector sector,
+            int frame)
         {
             float pSin = player.Sin;
             float pCos = player.Cos;
             float px = player.X;
             float py = player.Y;
+            float pz = player.Z;
+            float yaw = player.Yaw;
 
             connectingSectors.Clear();
             bool sectorIsSloped = sector.Settings.Sloped;
+
+            RenderableWall? mirroredWall = sectorInfo.MirrorWall;
+            bool flipped = sectorInfo.MirrorWall is not null && sectorInfo.ParentWalls.AsSpan().Contains(sectorInfo.MirrorWall);
+            int mirrorKey = flipped ? sectorInfo.MirrorWall!.Id : -1;
 
             for (int i = 0; i < sector.Walls.Length; i++)
             {
@@ -221,12 +231,25 @@ namespace RenderingEngine.Engine
                     {
                         RenderableWall firstWall = n.Walls[0];
 
+                        if (firstWall.LastComputedFrame == frame && firstWall.LastComputedMirrorKey == mirrorKey)
+                        {
+                            continue;
+                        }
+
+                        bool wallFlipped = flipped && wall.Id != mirroredWall!.Id;
+
                         firstWall.R1 = firstWall.PointA;
                         firstWall.R2 = firstWall.PointB;
 
+                        if (wallFlipped)
+                        {
+                            wall.R1 = MathFormulas.ReflectPoint(wall.PointA, mirroredWall!.PointA, mirroredWall.PointB);
+                            wall.R2 = MathFormulas.ReflectPoint(wall.PointB, mirroredWall.PointA, mirroredWall.PointB);
+                        }
+
                         _ = RotateWall(firstWall, pSin, pCos, px, py);
-                        firstWall.LastComputedFrame = -1;
-                        firstWall.LastComputedMirrorKey = -1;
+
+                        CalculateWallPlane(wall, pz, yaw);
                     }
                 }
             }
@@ -479,7 +502,7 @@ namespace RenderingEngine.Engine
         public Span<RenderableWall> CullHiddenWallsAndCombineBunches(
             scoped Span<Range> bunches, scoped Span<RenderableWall> rotatedWalls, ReadOnlySpan<RenderableWall> parentPortalWallsToOcclude)
         {
-            
+
             if (rotatedWalls.Length > _visible.Length)
             {
                 Array.Resize(ref _visible, rotatedWalls.Length);

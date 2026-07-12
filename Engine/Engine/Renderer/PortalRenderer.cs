@@ -140,7 +140,7 @@ namespace RenderingEngine.Engine
 
             NewRender();
 
-            var initialNeighbor = ObjectPool.NeighborsToRender.GetOrCreate();
+            NeighborsToRender initialNeighbor = ObjectPool.NeighborsToRender.GetOrCreate();
             initialNeighbor.Initialize(player.Sector);
             sectorRenderQueue.Add(initialNeighbor);
 
@@ -273,8 +273,8 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<RenderableWall> parentWalls = sectorInfo.ParentWalls;
 
             // 1. Filter out walls outside the player's view and sort them closest to furthest
+            state.WallHelper.CalculateConnectingSectorsForSlope(player, sectorInfo, sectors, sector, frame);
             Span<RenderableWall> walls = state.WallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player, frame);
-            state.WallHelper.CalculateConnectingSectorsForSlope(player, sectors, sector);
 
             // 2. Determine where ceiling, floor, and walls start and end
             (RenderColumnStatus sectorStatus, int sectorFromX, int sectorToX) =
@@ -603,10 +603,17 @@ namespace RenderingEngine.Engine
 
             if (sectorInfo.RenderableWall is { } renderableWall)
             {
-                (sectorFromX, sectorToX) = (renderableWall.XLeft, Math.Min(renderableWall.XRight, PixelWidth - 1));
+                sectorFromX = renderableWall.XLeft;
+                sectorToX = Math.Min(renderableWall.XRight, PixelWidth - 1);
+
+                if (sectorFromX >= sectorToX)
+                {
+                    return default;
+                }
             }
             else
             {
+                // first sector
                 (sectorFromX, sectorToX) = (0, PixelWidth - 1);
             }
 
