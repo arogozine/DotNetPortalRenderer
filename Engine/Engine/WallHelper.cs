@@ -20,6 +20,10 @@ namespace RenderingEngine.Engine
         private readonly WallComparer wallComparer;
         private PortalPlayerSnapshot? _player;
 
+        private readonly HashSet<RenderableSector> connectingSectors = [];
+        private Range[] _bunches = new Range[32];
+        private RenderableWall[] _visible = new RenderableWall[8];
+
         public WallHelper(
             int width,
             int height)
@@ -183,8 +187,6 @@ namespace RenderingEngine.Engine
             return rotatedWalls;
         }
 
-        private readonly HashSet<RenderableSector> connectingSectors = [];
-
         public void CalculateConnectingSectorsForSlope(PortalPlayerSnapshot player,
             NeighborsToRender sectorInfo,
             ReadOnlySpan<RenderableSector> sectors,
@@ -325,9 +327,6 @@ namespace RenderingEngine.Engine
 
             return rotatedWalls;
         }
-
-
-        private Range[] _bunches = new Range[32];
 
         public Span<Range> BreakUpIntoBunches(scoped ReadOnlySpan<RenderableWall> rotatedWalls)
         {
@@ -480,8 +479,6 @@ namespace RenderingEngine.Engine
 
             return walls[..j];
         }
-
-        private RenderableWall[] _visible = new RenderableWall[8];
 
         public Span<RenderableWall> CullHiddenWallsAndCombineBunches(
             scoped Span<Range> bunches, scoped Span<RenderableWall> rotatedWalls, ReadOnlySpan<RenderableWall> parentPortalWallsToOcclude)

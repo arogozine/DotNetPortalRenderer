@@ -13,7 +13,7 @@ namespace RenderingEngine.Engine
 
         public void* Buffer { get; }
 
-        private readonly WallHelper WallHelper;
+        private readonly (WallHelper A, WallHelper B) _wallHelper;
         private readonly SpriteHelper SpriteHelper;
 
         // AI Assisted: single frame counter shared by both WallHelper instances so per-wall memoization
@@ -33,7 +33,7 @@ namespace RenderingEngine.Engine
             PixelWidth = width;
             PixelHeight = height;
             SpriteHelper = new SpriteHelper(width, height);
-            WallHelper = new WallHelper(width, height);
+            _wallHelper = (new WallHelper(width, height), new WallHelper(width, height));
 
             threadStateA = new RenderThreadState { UsePrimaryTempBuckets = true };
             threadStateB = new RenderThreadState { UsePrimaryTempBuckets = false };
@@ -127,7 +127,8 @@ namespace RenderingEngine.Engine
             InitializeSharedVectors(player);
 
             frame++;
-            this.WallHelper.SetSnapShot(player);
+            this._wallHelper.A.SetSnapShot(player);
+            this._wallHelper.B.SetSnapShot(player);
 
             NewRender();
 
@@ -266,19 +267,18 @@ namespace RenderingEngine.Engine
             ReadOnlySpan<RenderableWall> parentWalls = sectorInfo.ParentWalls;
             Span<RenderableWall> walls;
 
-            RenderColumnStatus sectorStatus;
-            int sectorFromX, sectorToX;
+            WallHelper wallHelper = state.UsePrimaryTempBuckets ? _wallHelper.A : _wallHelper.B;
 
             // 1. Filter out walls outside the player's view and sort them closest to furthest
             lock (_windowCalculationLock)
             {
-                walls = WallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player, frame);
-                WallHelper.CalculateConnectingSectorsForSlope(player, sectorInfo, sectors, sector, frame);
-
-                // 2. Determine where ceiling, floor, and walls start and end
-                (sectorStatus, sectorFromX, sectorToX) =
-                    CalculateRenderWindow(sectorInfo, sectors, sector, state.RenderableWalls, walls);
+                walls = wallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player, frame);
+                wallHelper.CalculateConnectingSectorsForSlope(player, sectorInfo, sectors, sector, frame);
             }
+
+            // 2. Determine where ceiling, floor, and walls start and end
+            (RenderColumnStatus sectorStatus, int sectorFromX, int sectorToX) =
+                CalculateRenderWindow(sectorInfo, sectors, sector, state.RenderableWalls, walls);
 
             // 3. Nothing to render, bail early
             if (sectorStatus == default || state.RenderableWalls.Count == 0)
