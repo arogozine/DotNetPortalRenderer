@@ -148,7 +148,6 @@ namespace RenderingEngine.Engine
 
             Debug.Assert(rotatedWalls.Length == walls.Length);
 
-            int lastComputedFrame = frame;
             int mirrorKey = flipped ? sectorInfo.MirrorWall!.Id : -1;
 
             float pSin = player.Sin;
@@ -161,30 +160,62 @@ namespace RenderingEngine.Engine
             for (int i = 0; i < walls.Length; i++)
             {
                 RenderableWall wall = walls[i];
+                bool wallFlipped = flipped && wall.Id != mirroredWall!.Id;
 
-                if (lastComputedFrame != wall.LastComputedFrame || (mirrorKey != wall.LastComputedMirrorKey))
-                {
-                    wall.R1 = wall.PointA;
-                    wall.R2 = wall.PointB;
-
-                    bool wallFlipped = flipped && wall.Id != mirroredWall!.Id;
-
-                    if (wallFlipped)
-                    {
-                        wall.R1 = MathFormulas.ReflectPoint(wall.PointA, mirroredWall!.PointA, mirroredWall.PointB);
-                        wall.R2 = MathFormulas.ReflectPoint(wall.PointB, mirroredWall.PointA, mirroredWall.PointB);
-                    }
-
-                    wall.Flipped = wallFlipped;
-                    rotatedWalls[i] = RotateWall(wall, pSin, pCos, px, py);
-                }
-                else
-                {
-                    rotatedWalls[i] = wall;
-                }
+                RotateWallIfNeeded(wall, wallFlipped, mirroredWall, frame, mirrorKey, pSin, pCos, px, py);
+                rotatedWalls[i] = wall;
             }
 
             return rotatedWalls;
+        }
+
+        /// <summary>
+        /// Rotates every wall of <paramref name="sector"/> relative to the player, without allocating
+        /// the pooled rotated-wall array <see cref="RotateSectorWallsRelativeToPlayer"/> returns.
+        /// Used by the single-threaded pre-pass in PortalRenderer so per-wall rotation is already cached
+        /// (see <see cref="RenderableWall.HasCachedState"/>) by the time the parallel per-sector work runs.
+        /// </summary>
+        public static void PreRotateSectorWalls(RenderableSector sector, PortalPlayerSnapshot player, NeighborsToRender sectorInfo, bool flipped, int frame)
+        {
+            ReadOnlySpan<RenderableWall> walls = sector.Walls;
+            int mirrorKey = flipped ? sectorInfo.MirrorWall!.Id : -1;
+
+            float pSin = player.Sin;
+            float pCos = player.Cos;
+            float px = player.X;
+            float py = player.Y;
+            RenderableWall? mirroredWall = sectorInfo.MirrorWall;
+
+            for (int i = 0; i < walls.Length; i++)
+            {
+                RenderableWall wall = walls[i];
+                bool wallFlipped = flipped && wall.Id != mirroredWall!.Id;
+
+                RotateWallIfNeeded(wall, wallFlipped, mirroredWall, frame, mirrorKey, pSin, pCos, px, py);
+            }
+        }
+
+        private static void RotateWallIfNeeded(
+            RenderableWall wallToRotate, bool wallFlipped, RenderableWall? mirroredWall,
+            int frame, int mirrorKey, float pSin, float pCos, float px, float py)
+        {
+            if (wallToRotate.HasCachedState(frame, mirrorKey, WallCacheState.Rotated))
+            {
+                return;
+            }
+
+            wallToRotate.R1 = wallToRotate.PointA;
+            wallToRotate.R2 = wallToRotate.PointB;
+
+            if (wallFlipped)
+            {
+                wallToRotate.R1 = MathFormulas.ReflectPoint(wallToRotate.PointA, mirroredWall!.PointA, mirroredWall.PointB);
+                wallToRotate.R2 = MathFormulas.ReflectPoint(wallToRotate.PointB, mirroredWall.PointA, mirroredWall.PointB);
+            }
+
+            wallToRotate.Flipped = wallFlipped;
+            _ = RotateWall(wallToRotate, pSin, pCos, px, py);
+            wallToRotate.SetCachedState(frame, mirrorKey, WallCacheState.Rotated);
         }
 
         public void CalculateConnectingSectorsForSlope(PortalPlayerSnapshot player,
@@ -213,29 +244,17 @@ namespace RenderingEngine.Engine
                 {
                     RenderableSector n = sectors[wall.Neighbor!.Value];
 
-                    if ((sectorIsSloped || n.Settings.Sloped) && connectingSectors.Add(n))
+                    if ((!sectorIsSloped && !n.Settings.Sloped) || !connectingSectors.Add(n))
                     {
-                        RenderableWall firstWall = n.Walls[0];
+                        continue;
+                    }
 
-                        if (firstWall.LastComputedFrame == frame && firstWall.LastComputedMirrorKey == mirrorKey)
-                        {
-                            continue;
-                        }
+                    bool wallFlipped = flipped && wall.Id != mirroredWall!.Id;
 
-                        bool wallFlipped = flipped && wall.Id != mirroredWall!.Id;
-
-                        firstWall.R1 = firstWall.PointA;
-                        firstWall.R2 = firstWall.PointB;
-
-                        if (wallFlipped)
-                        {
-                            wall.R1 = MathFormulas.ReflectPoint(wall.PointA, mirroredWall!.PointA, mirroredWall.PointB);
-                            wall.R2 = MathFormulas.ReflectPoint(wall.PointB, mirroredWall.PointA, mirroredWall.PointB);
-                        }
-
-                        wall.Flipped = wallFlipped;
-
-                        _ = RotateWall(firstWall, pSin, pCos, px, py);
+                    for (int j = 0; j < n.Walls.Length; j++)
+                    {
+                        RenderableWall neighborWall = n.Walls[0];
+                        RotateWallIfNeeded(neighborWall, wallFlipped, mirroredWall, frame, mirrorKey, pSin, pCos, px, py);
                     }
                 }
             }
@@ -415,7 +434,7 @@ namespace RenderingEngine.Engine
                 {
                     if (flipped) // mirrored logic
                     {
-                        if ((wall.LastComputedFrame != lastComputedFrame || mirrorKey != wall.LastComputedMirrorKey) && x2 * y1 > y2 * x1)
+                        if (!wall.HasCachedState(lastComputedFrame, mirrorKey, WallCacheState.PlaneCalculated) && x2 * y1 > y2 * x1)
                         {
                             continue;
                         }
@@ -443,12 +462,11 @@ namespace RenderingEngine.Engine
             {
                 RenderableWall wall = walls[i];
 
-                if (lastComputedFrame != wall.LastComputedFrame || (mirrorKey != wall.LastComputedMirrorKey))
+                if (!wall.HasCachedState(lastComputedFrame, mirrorKey, WallCacheState.PlaneCalculated))
                 {
                     CalculateWallPlane(wall, pz, yaw);
 
-                    wall.LastComputedFrame = lastComputedFrame;
-                    wall.LastComputedMirrorKey = mirrorKey;
+                    wall.SetCachedState(lastComputedFrame, mirrorKey, WallCacheState.PlaneCalculated);
                 }
             }
         }

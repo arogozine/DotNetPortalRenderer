@@ -254,6 +254,33 @@ namespace RenderingEngine.Engine
         private readonly Lock _windowCalculationLock = new();
 
         /// <summary>
+        /// Rotates every wall of every sector queued for this depth (and, for sloped portals, the
+        /// connecting neighbor's proxy wall) up front, single-threaded. Runs after <see cref="PartitionSectorQueue"/>
+        /// but before thread B is released via <see cref="concurrentWorkAvailableSemaphore"/> and before thread A's
+        /// own <see cref="ProcessSectorEntry"/> loop starts, so no lock is needed here. This means rotation is
+        /// already cached (see <see cref="RenderableWall.HasCachedState"/>) by the time <see cref="ProcessSectorEntry"/>
+        /// runs on either thread, shrinking the work done under <see cref="_windowCalculationLock"/> there.
+        /// </summary>
+        private void PreRotateQueuedWalls(PortalPlayerSnapshot player, ReadOnlySpan<RenderableSector> sectors)
+        {
+            Span<NeighborsToRender> queue = CollectionsMarshal.AsSpan(sectorRenderQueue);
+
+            for (int i = 0; i < queue.Length; i++)
+            {
+                NeighborsToRender entry = queue[i];
+                RenderableSector sector = sectors[entry.SectorId];
+
+                bool flipped = entry.MirrorWall is not null && entry.ParentWalls.AsSpan().Contains(entry.MirrorWall);
+
+                WallHelper.PreRotateSectorWalls(sector, player, entry, flipped, frame);
+
+                // Safe without a lock: thread B (ConcurrentWorkerLoop) hasn't been released yet at this
+                // point in DrawScreenStep, so _wallHelper.A's connectingSectors scratch set can't race with B's.
+                _wallHelper.A.CalculateConnectingSectorsForSlope(player, entry, sectors, sector, frame);
+            }
+        }
+
+        /// <summary>
         /// Process one queued sector: cull/sort its walls, compute its render window, and draw its
         /// floor/ceiling/walls, appending any resulting portal walls to <paramref name="state"/>'s output list.
         /// Called from both thread A (inline) and thread B (<see cref="ConcurrentWorkerLoop"/>) against their
@@ -273,7 +300,7 @@ namespace RenderingEngine.Engine
             lock (_windowCalculationLock)
             {
                 walls = wallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player, frame);
-                wallHelper.CalculateConnectingSectorsForSlope(player, sectorInfo, sectors, sector, frame);
+                // wallHelper.CalculateConnectingSectorsForSlope(player, sectorInfo, sectors, sector, frame);
             }
 
             // 2. Determine where ceiling, floor, and walls start and end
@@ -317,6 +344,8 @@ namespace RenderingEngine.Engine
 
             FixPixelOverlap();
             PartitionSectorQueue();
+
+            PreRotateQueuedWalls(player, sectors);
 
             bool useWorker = threadStateB.SectorQueue.Count > 0;
 

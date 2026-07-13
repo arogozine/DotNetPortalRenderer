@@ -64,6 +64,24 @@ public sealed class RenderableWall : IRenderState, IWallLike
     public int? Bunch { get; set; }
 
 
-    public int LastComputedFrame { get; set; } = -1;
-    public int LastComputedMirrorKey { get; set; } = int.MinValue;
+    public int CacheFrame { get; set; } = -1;
+    public int CacheMirrorKey { get; set; } = int.MinValue;
+    public WallCacheState CacheState { get; set; } = WallCacheState.None;
+
+    public bool HasCachedState(int frame, int mirrorKey, WallCacheState flag) =>
+        CacheFrame == frame && CacheMirrorKey == mirrorKey && (CacheState & flag) == flag;
+
+    public void SetCachedState(int frame, int mirrorKey, WallCacheState flag)
+    {
+        if (CacheFrame != frame || CacheMirrorKey != mirrorKey)
+        {
+            CacheFrame = frame;
+            CacheMirrorKey = mirrorKey;
+            CacheState = flag;
+        }
+        else
+        {
+            CacheState |= flag;
+        }
+    }
 }
