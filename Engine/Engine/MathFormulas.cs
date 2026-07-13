@@ -219,7 +219,7 @@ namespace RenderingEngine.Engine
                 }
 
                 p3 = wallI.R1;
-                (float floorZ, float ceilZ) = CalculateZAtPoint(sector, p3);
+                (float floorZ, float ceilZ) = CalculateZAtPoint(sector, wallI.PointA, true);
 
                 p3z = calcCeil ? ceilZ : floorZ;
             }
