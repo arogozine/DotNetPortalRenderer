@@ -215,7 +215,7 @@ namespace DoomAssetLoader
                     continue;
                 }
 
-                if (isMap && MapToLoad is string mapToLoad && mapToLoad != mapName)
+                if (isMap && MapToLoad is { } mapToLoad && mapToLoad != mapName)
                 {
                     continue;
                 }

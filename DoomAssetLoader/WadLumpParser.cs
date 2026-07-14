@@ -280,12 +280,12 @@ namespace DoomAssetLoader
                 throw new ArgumentException($"WadLump is not a {wadName} lump");
             }
 
-            if (fixedSize is int expectedSide && wadLump.Bytes.Length != expectedSide)
+            if (fixedSize is { } expectedSide && wadLump.Bytes.Length != expectedSide)
             {
                 throw new ArgumentException($"WadLump is not of expected size ({expectedSide})");
             }
 
-            if (divisor is int mod && wadLump.Bytes.Length % mod != 0)
+            if (divisor is { } mod && wadLump.Bytes.Length % mod != 0)
             {
                 throw new ArgumentException($"WadLump size is not divisible by {mod}");
             }

@@ -36,7 +36,7 @@ internal static class WadReader
 
     public static Map LoadDoomMap(WadFile wad, string mapName)
     {
-        if (wad.GetMapLump(mapName, LumpType.TextMap) is WadLump textMap)
+        if (wad.GetMapLump(mapName, LumpType.TextMap) is { } textMap)
         {
             return ExtractDoomMap(textMap, mapName);
         }
@@ -220,12 +220,12 @@ internal static class WadReader
     {
         Dictionary<string, TextureInfo> textures = [];
 
-        if (wad[LumpType.Texture1] is WadLump textureLump1)
+        if (wad[LumpType.Texture1] is { } textureLump1)
         {
             ExtractTextures(wad, textureLump1, textures);
         }
 
-        if (wad[LumpType.Texture2] is WadLump textureLump2)
+        if (wad[LumpType.Texture2] is { } textureLump2)
         {
             ExtractTextures(wad, textureLump2, textures);
         }
@@ -505,7 +505,7 @@ internal static class WadReader
             {
                 GameTextureInfo? middleTextureInfo = line.MiddleTexture;
 
-                if (line.SectorTo is int sectorTo)
+                if (line.SectorTo is { } sectorTo)
                 {
                     int sectorHeight = sector.Ceiling - sector.Floor;
 
@@ -719,7 +719,7 @@ internal static class WadReader
 
             foreach (Line wall in sector.Walls)
             {
-                if (wall.SectorTo is int sectorId)
+                if (wall.SectorTo is { } sectorId)
                 {
                     MapSector neightbor = sectors[sectorId];
 
@@ -1203,15 +1203,15 @@ internal static class WadReader
         {
             UdmfLinedef linedef = lineDefs[i];
 
-            UdmfSidedef? leftDef = linedef.SidedefFront is int sidedefFront ? sideDefs[sidedefFront] : null;
-            UdmfSidedef? rightDef = linedef.SidedefBack is int sidedefBack ? sideDefs[sidedefBack] : null;
+            UdmfSidedef? leftDef = linedef.SidedefFront is { } sidedefFront ? sideDefs[sidedefFront] : null;
+            UdmfSidedef? rightDef = linedef.SidedefBack is { } sidedefBack ? sideDefs[sidedefBack] : null;
 
-            if (leftDef?.Sector is int leftSector)
+            if (leftDef?.Sector is { } leftSector)
             {
                 AddSectorLineDef(leftSector, i, rightDef?.Sector, leftDef, linedef, true);
             }
 
-            if (rightDef?.Sector is int rightSector)
+            if (rightDef?.Sector is { } rightSector)
             {
                 AddSectorLineDef(rightSector, i, leftDef?.Sector, rightDef, linedef, false);
             }
@@ -1261,12 +1261,12 @@ internal static class WadReader
             Sidedef? leftDef = linedef.HasSideDefLeft ? sideDefs[linedef.SidedefLeft] : null;
             Sidedef? rightDef = linedef.HasSideDefRight ? sideDefs[linedef.SidedefRight] : null;
 
-            if (leftDef is Sidedef left)
+            if (leftDef is { } left)
             {
                 AddSectorLineDef(left.Sector, i, rightDef?.Sector, ref left, ref linedef, true);
             }
 
-            if (rightDef is Sidedef right)
+            if (rightDef is { } right)
             {
                 AddSectorLineDef(right.Sector, i, leftDef?.Sector, ref right, ref linedef, false);
             }

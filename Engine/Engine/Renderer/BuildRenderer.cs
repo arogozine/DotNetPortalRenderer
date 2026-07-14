@@ -209,7 +209,7 @@ internal unsafe sealed class BuildRenderer : PortalRenderer
 
         float* angleCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.AngleCache);
 
-        Span<ushort> repeatedCount = CaclulateRepeatedCount();
+        Span<ushort> repeatedCount = CalculateRepeatedCount();
         _ = SharedHelpers.PopulateRepeatedValuesInPlace(repeatedCount);
 
         bool isPowerOfTwo = SharedHelpers.IsPowerOfTwo(textureHeight);
@@ -229,7 +229,7 @@ internal unsafe sealed class BuildRenderer : PortalRenderer
 
         return;
 
-        Span<ushort> CaclulateRepeatedCount()
+        Span<ushort> CalculateRepeatedCount()
         {
             RenderColumnStatus* status = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
 

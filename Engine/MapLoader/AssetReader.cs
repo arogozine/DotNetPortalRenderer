@@ -72,11 +72,11 @@ internal static class Precalculations
 
         fixed (BGRA* bgraPtr = &texture[0])
         {
-            var image = SKImage.FromPixels(info, (nint)bgraPtr, info.RowBytes);
+            SKImage? image = SKImage.FromPixels(info, (nint)bgraPtr, info.RowBytes);
 
-            using var data = image.Encode(SKEncodedImageFormat.Png, 100); // 100 = max quality
+            using SKData? data = image.Encode(SKEncodedImageFormat.Png, 100); // 100 = max quality
             string outputPath = Path.Combine(Directory.GetCurrentDirectory(), $"temp\\{textureName}.PNG");
-            using (var stream = File.OpenWrite(outputPath))
+            using (FileStream stream = File.OpenWrite(outputPath))
             {
                 data.SaveTo(stream);
             }

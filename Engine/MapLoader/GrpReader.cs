@@ -957,9 +957,9 @@ internal static class GrpReader
             {
                 foreach (Line line in sector.Walls)
                 {
-                    if (line.SectorTo is int sectorTo && sectorTo != -1)
+                    if (line.SectorTo is { } sectorTo && sectorTo != -1)
                     {
-                        var childSector = sectors[sectorTo];
+                        MapSector childSector = sectors[sectorTo];
 
                         bool ceilSkyboxChild = childSector.CeilingTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
                         bool floorSkyboxChild = childSector.FloorTexture.RenderingOptions.HasFlag(TextureRenderingOptions.Skybox);
@@ -1038,7 +1038,7 @@ internal static class GrpReader
 
             foreach (Line line in sector.Walls)
             {
-                if (line.SectorTo is int sectorTo && sectorTo != -1)
+                if (line.SectorTo is { } sectorTo && sectorTo != -1)
                 {
                     int sectorHeight = sector.Ceiling - sector.Floor;
 

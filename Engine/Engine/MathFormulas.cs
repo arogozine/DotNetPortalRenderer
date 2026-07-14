@@ -40,9 +40,9 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static (uint min, uint max) GetMinMaxValue(Vector128<uint> value)
         {
-            var valueShuffled = Vector128.ShuffleNative(value, Vector128.Create(2U, 3U, 0U, 1U));
-            var valueMax = Vector128.MaxNative(value, valueShuffled);
-            var valueMin = Vector128.MinNative(value, valueShuffled);
+            Vector128<uint> valueShuffled = Vector128.ShuffleNative(value, Vector128.Create(2U, 3U, 0U, 1U));
+            Vector128<uint> valueMax = Vector128.MaxNative(value, valueShuffled);
+            Vector128<uint> valueMin = Vector128.MinNative(value, valueShuffled);
 
             uint min = Math.Min(valueMin[0], valueMin[1]);
             uint max = Math.Max(valueMax[0], valueMax[1]);
@@ -53,9 +53,9 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static (int min, int max) GetMinMaxValue(Vector128<int> value)
         {
-            var valueShuffled = Vector128.ShuffleNative(value, Vector128.Create(2, 3, 0, 1));
-            var valueMax = Vector128.MaxNative(value, valueShuffled);
-            var valueMin = Vector128.MinNative(value, valueShuffled);
+            Vector128<int> valueShuffled = Vector128.ShuffleNative(value, Vector128.Create(2, 3, 0, 1));
+            Vector128<int> valueMax = Vector128.MaxNative(value, valueShuffled);
+            Vector128<int> valueMin = Vector128.MinNative(value, valueShuffled);
 
             int min = MathFormulas.Min(valueMin[0], valueMin[1]);
             int max = MathFormulas.Max(valueMax[0], valueMax[1]);
@@ -86,14 +86,14 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static (uint min, uint max) GetMinMaxValue(Vector256<uint> value)
         {
-            var valueLower = value.GetLower();
-            var valueUpper = value.GetUpper();
+            Vector128<uint> valueLower = value.GetLower();
+            Vector128<uint> valueUpper = value.GetUpper();
 
-            var value128min = Vector128.MinNative(valueLower, valueUpper);
-            var shuffle = Vector128.ShuffleNative(value128min, Vector128.Create(2U, 3U, 0U, 1U));
+            Vector128<uint> value128min = Vector128.MinNative(valueLower, valueUpper);
+            Vector128<uint> shuffle = Vector128.ShuffleNative(value128min, Vector128.Create(2U, 3U, 0U, 1U));
             value128min = Vector128.MinNative(value128min, shuffle);
 
-            var value128max = Vector128.MaxNative(valueLower, valueUpper);
+            Vector128<uint> value128max = Vector128.MaxNative(valueLower, valueUpper);
             shuffle = Vector128.ShuffleNative(value128max, Vector128.Create(2U, 3U, 0U, 1U));
             value128max = Vector128.MaxNative(value128max, shuffle);
 

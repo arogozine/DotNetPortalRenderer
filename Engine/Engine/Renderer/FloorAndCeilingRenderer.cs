@@ -560,7 +560,7 @@ namespace RenderingEngine.Engine
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             void CreateSlopeVectors()
             {
-                if (slopeFloor is bool slopeFloorBoolean)
+                if (slopeFloor is { } slopeFloorBoolean)
                 {
                     (planePoint, planeNormal) = slopeFloorBoolean ? MathFormulas.CalculatePlaneNormalFloor(sector)
                         : MathFormulas.CalculatePlaneNormalCeil(sector);

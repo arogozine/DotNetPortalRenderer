@@ -1,6 +1,7 @@
 ﻿using RenderingEngine.Tooling;
 using SoftwareRendererModels;
 using System.Numerics;
+
 namespace RenderingEngine.Engine
 {
     internal unsafe abstract partial class PortalRenderer
@@ -135,10 +136,18 @@ namespace RenderingEngine.Engine
             int* ceil = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
             int* textureYIncrement = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureYIncrement);
 
+            RenderableSector neighborSector = sectors[wall.Neighbor!.Value];
+            RenderableWall neighborWall = neighborSector.Walls[0];
+            (float floorZ_a, float ceilingZ_a) = MathFormulas.CalculateZAtPoint(neighborSector, portalWall.Wall.PointA, true);
+            (float floorZ_b, float ceilingZ_b) = MathFormulas.CalculateZAtPoint(neighborSector, portalWall.Wall.PointB, true);
+
+
+            int neighborFloor = (int)MathF.Max(floorZ_a, floorZ_b);
+          
             Debug.Assert(wall.Neighbor.HasValue);
             RenderableSector sector = wall.Sector;
-            RenderableSector neightbor = sectors[wall.Neighbor.Value];
-            int lowerSectorHeight = neightbor.Floor - sector.Floor;
+            RenderableSector neighbor = sectors[wall.Neighbor.Value];
+            int lowerSectorHeight = neighborFloor - sector.Floor;
             int sectorHeight = sector.Ceil - sector.Floor;
             int wallFromXOffset = portalWall.Offset;
             int wallFromX = portalWall.XLeft;
@@ -183,13 +192,15 @@ namespace RenderingEngine.Engine
                 wallEndY += floorDistIncr;
             }
 
+            return;
+
             (int Height, float ScaledTextureHeight) CalculateScale()
             {
                 int textureHeight = textureInfo.Height;
 
                 float scaledTextureHeight;
 
-                if (textureInfo.YScale is float yScale)
+                if (textureInfo.YScale is { } yScale)
                 {
                     yScale = lowerSectorHeight * yScale;
                     scaledTextureHeight = (textureHeight << 16) * yScale;
@@ -274,7 +285,7 @@ namespace RenderingEngine.Engine
             int textureWidth = textureInfo.Width;
             float xOffset = SharedHelpers.EnsureOffsetIsPositive(textureInfo.Width, textureInfo.XOffset);
 
-            if (textureInfo.XScale is float xScale)
+            if (textureInfo.XScale is { } xScale)
             {
                 float wallLength = wall.Length;
                 xScale = xScale / wallLength * textureWidth;
@@ -792,7 +803,7 @@ namespace RenderingEngine.Engine
 
             float scaledTextureHeight;
 
-            if (wallTexture.YScale is float yScale)
+            if (wallTexture.YScale is { } yScale)
             {
                 yScale = (sector.Ceil - sector.Floor) * yScale;
                 scaledTextureHeight = (textureHeight << 16) * yScale;

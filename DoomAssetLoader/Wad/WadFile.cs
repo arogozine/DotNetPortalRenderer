@@ -49,7 +49,7 @@
 
             void EnsureExist(string lumpType)
             {
-                if (this[lumpType] is null && wadFile[lumpType] is WadLump lump)
+                if (this[lumpType] is null && wadFile[lumpType] is { } lump)
                 {
                     Lumps.Add(lump);
                 }

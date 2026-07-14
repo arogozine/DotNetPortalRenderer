@@ -801,8 +801,8 @@ namespace RenderingEngine.Engine
 
             return wallStatus;
         }
-        
-        public static (bool CanRender, int WallFromX, int WallToX) SetWallToCalculate(
+
+        private static (bool CanRender, int WallFromX, int WallToX) SetWallToCalculate(
             ReadOnlySpan<RenderColumnStatus> status,
             int sectorFromX, int sectorToX,
             RenderableWall wall)

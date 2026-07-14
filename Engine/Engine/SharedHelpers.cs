@@ -370,7 +370,7 @@ namespace RenderingEngine.Engine
 
             for (int i = 0; i < sides.Length; i++)
             {
-                (var pointA, var pointB) = sides[i];
+                (Vector2 pointA, Vector2 pointB) = sides[i];
 
                 float x1 = pointA.X;
                 float y1 = pointA.Y;
