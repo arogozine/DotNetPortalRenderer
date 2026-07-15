@@ -416,9 +416,11 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
                 if (Avx2.IsSupported)
                 {
-                    Vector256<uint> gathered = Avx2.GatherVector256(
+                    Vector256<uint> gathered = Avx2.GatherMaskVector256(
+                        yV,
                         textureBuffer,
                         texelIndexV.AsInt32(),
+                        mask,
                         scale: sizeof(uint)
                     );
 
@@ -515,9 +517,11 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
                 if (Avx2.IsSupported)
                 {
-                    Vector256<uint> gathered = Avx2.GatherVector256(
+                    Vector256<uint> gathered = Avx2.GatherMaskVector256(
+                        default,
                         textureBuffer,
                         texelIndexV.AsInt32(),
+                        mask,
                         scale: sizeof(uint)
                     );
 
@@ -551,9 +555,11 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
                 if (Avx2.IsSupported)
                 {
-                    Vector256<uint> gathered = Avx2.GatherVector256(
+                    Vector256<uint> gathered = Avx2.GatherMaskVector256(
+                        default,
                         textureBuffer,
                         texelIndexV.AsInt32(),
+                        mask,
                         scale: sizeof(uint)
                     );
 
@@ -615,9 +621,11 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
                 if (Avx2.IsSupported)
                 {
-                    Vector128<uint> gathered = Avx2.GatherVector128(
+                    Vector128<uint> gathered = Avx2.GatherMaskVector128(
+                        yV,
                         textureBuffer,
                         texelIndexV.AsInt32(),
+                        mask,
                         scale: sizeof(uint)
                     );
 
@@ -714,9 +722,11 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
                 if (Avx2.IsSupported)
                 {
-                    Vector128<uint> gathered = Avx2.GatherVector128(
+                    Vector128<uint> gathered = Avx2.GatherMaskVector128(
+                        default,
                         textureBuffer,
                         texelIndexV.AsInt32(),
+                        mask,
                         scale: sizeof(uint)
                     );
 
@@ -750,9 +760,11 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
                 if (Avx2.IsSupported)
                 {
-                    Vector128<uint> gathered = Avx2.GatherVector128(
+                    Vector128<uint> gathered = Avx2.GatherMaskVector128(
+                        default,
                         textureBuffer,
                         texelIndexV.AsInt32(),
+                        mask,
                         scale: sizeof(uint)
                     );
 

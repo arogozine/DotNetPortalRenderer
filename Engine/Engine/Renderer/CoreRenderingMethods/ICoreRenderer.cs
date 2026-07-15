@@ -147,7 +147,13 @@ internal unsafe interface ICoreRenderer<T>
 
                 if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                 {
-                    Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndexV.AsVector256(), scale: sizeof(int));
+                    Vector256<uint> gathered = Avx2.GatherMaskVector256(
+                        incrementVector.AsVector256().AsUInt32(),
+                        texturePtr,
+                        textureIndexV.AsVector256(),
+                        maskV.AsVector256(),
+                        scale: sizeof(int));
+
                     T.DrawLine(screenTexPtr, gathered, maskV.AsVector256());
                 }
                 else
@@ -183,7 +189,13 @@ internal unsafe interface ICoreRenderer<T>
 
                 if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                 {
-                    Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndexV.AsVector256(), scale: sizeof(int));
+                    Vector256<uint> gathered = Avx2.GatherMaskVector256(
+                        incrementVector.AsVector256().AsUInt32(),
+                        texturePtr,
+                        textureIndexV.AsVector256(),
+                        maskV.AsVector256(),
+                        scale: sizeof(int));
+
                     T.DrawLine(screenTexPtr, gathered, maskV.AsVector256());
                 }
                 else

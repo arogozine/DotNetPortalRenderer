@@ -1,9 +1,8 @@
 ﻿using BenchmarkDotNet.Attributes;
-using System;
-using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Text;
+using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 
 namespace Benchmark.Benchmarks
 {
@@ -27,15 +26,31 @@ namespace Benchmark.Benchmarks
             FillRandom(x, y, sin, cos, px, py);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static (Vector<float>, Vector<float>) RotateOriginal(
-        Vector<float> x, Vector<float> y,
-        Vector<float> psin, Vector<float> pcos,
-        Vector<float> px, Vector<float> py)
+        [Benchmark(Baseline = true)]
+        public void RotateFused()
         {
-            Vector<float> rx1 = y * pcos + x * psin;
-            Vector<float> ry1 = y * psin - x * pcos;
-            return (rx1 + px, ry1 + py);
+            for (int i = 0; i < N; i++)
+            {
+                (rxA[i], ryA[i]) = RotateFused(x[i], y[i], sin[i], cos[i], px[i], py[i]);
+            }
+        }
+
+        [Benchmark]
+        public void RotateFMA()
+        {
+            for (int i = 0; i < N; i++)
+            {
+                (rxA[i], ryA[i]) = RotateFMA(x[i], y[i], sin[i], cos[i], px[i], py[i]);
+            }
+        }
+
+        [Benchmark]
+        public void RotateFMA2()
+        {
+            for (int i = 0; i < N; i++)
+            {
+                (rxA[i], ryA[i]) = RotateFMA2(x[i], y[i], sin[i], cos[i], px[i], py[i]);
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -61,31 +76,21 @@ namespace Benchmark.Benchmarks
             return (rx, ry);
         }
 
-        [Benchmark(Baseline = true)]
-        public void RotateOriginalB()
-        {
-            for (int i = 0; i < N; i++)
-            {
-                (rxA[i], ryA[i]) = RotateOriginal(x[i], y[i], sin[i], cos[i], px[i], py[i]);
-            }
-        }
 
-        [Benchmark]
-        public void RotateFusedB()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static (Vector<float>, Vector<float>) RotateFMA2(
+            Vector<float> x, Vector<float> y,
+            Vector<float> psin, Vector<float> pcos,
+            Vector<float> px, Vector<float> py)
         {
-            for (int i = 0; i < N; i++)
+            if (Fma.IsSupported && Vector<float>.Count == Vector256<float>.Count)
             {
-                (rxA[i], ryA[i]) = RotateFused(x[i], y[i], sin[i], cos[i], px[i], py[i]);
+                var rx = px.AsVector256() + Fma.MultiplyAdd(y.AsVector256(), pcos.AsVector256(), x.AsVector256() * psin.AsVector256());
+                var ry = py.AsVector256() + Fma.MultiplyAddSubtract(y.AsVector256(), psin.AsVector256(), x.AsVector256() * pcos.AsVector256());
+                return (rx.AsVector(), ry.AsVector());
             }
-        }
 
-        [Benchmark]
-        public void RotateFMAB()
-        {
-            for (int i = 0; i < N; i++)
-            {
-                (rxA[i], ryA[i]) = RotateFMA(x[i], y[i], sin[i], cos[i], px[i], py[i]);
-            }
+            throw new NotSupportedException();
         }
 
         static void FillRandom(Vector<float>[] x, Vector<float>[] y, Vector<float>[] s,

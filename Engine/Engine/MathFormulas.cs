@@ -1,6 +1,7 @@
 ﻿using SoftwareRendererModels;
 using System.Numerics;
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
 {
@@ -84,24 +85,38 @@ namespace RenderingEngine.Engine
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static (uint min, uint max) GetMinMaxValue(Vector256<uint> value)
+        public static (uint Min, uint Max) GetMinMaxValue(Vector256<uint> v)
         {
-            Vector128<uint> valueLower = value.GetLower();
-            Vector128<uint> valueUpper = value.GetUpper();
+            Vector128<uint> lo = v.GetLower();
+            Vector128<uint> hi = v.GetUpper();
 
-            Vector128<uint> value128min = Vector128.MinNative(valueLower, valueUpper);
-            Vector128<uint> shuffle = Vector128.ShuffleNative(value128min, Vector128.Create(2U, 3U, 0U, 1U));
-            value128min = Vector128.MinNative(value128min, shuffle);
+            Vector128<uint> vMin = Sse41.IsSupported ? Sse41.Min(lo, hi) : Vector128.Min(lo, hi);
+            Vector128<uint> vMax = Sse41.IsSupported ? Sse41.Max(lo, hi) : Vector128.Max(lo, hi);
 
-            Vector128<uint> value128max = Vector128.MaxNative(valueLower, valueUpper);
-            shuffle = Vector128.ShuffleNative(value128max, Vector128.Create(2U, 3U, 0U, 1U));
-            value128max = Vector128.MaxNative(value128max, shuffle);
+            if (Sse2.IsSupported)
+            {
+                Vector128<uint> sMin = Sse2.Shuffle(vMin.AsInt32(), 0b01_00_11_10).AsUInt32();
+                Vector128<uint> sMax = Sse2.Shuffle(vMax.AsInt32(), 0b01_00_11_10).AsUInt32();
+                vMin = Sse41.Min(vMin, sMin);
+                vMax = Sse41.Max(vMax, sMax);
 
-            uint min = Math.Min(value128min[0], value128min[1]);
-            uint max = Math.Max(value128max[0], value128max[1]);
+                sMin = Sse2.Shuffle(vMin.AsInt32(), 0b10_11_00_01).AsUInt32();
+                sMax = Sse2.Shuffle(vMax.AsInt32(), 0b10_11_00_01).AsUInt32();
+                vMin = Sse41.Min(vMin, sMin);
+                vMax = Sse41.Max(vMax, sMax);
+            }
+            else
+            {
+                // fallback
+                vMin = Vector128.Min(vMin, Vector128.Shuffle(vMin, Vector128.Create(2u, 3u, 0u, 1u)));
+                vMax = Vector128.Max(vMax, Vector128.Shuffle(vMax, Vector128.Create(2u, 3u, 0u, 1u)));
+                vMin = Vector128.Min(vMin, Vector128.Shuffle(vMin, Vector128.Create(1u, 0u, 3u, 2u)));
+                vMax = Vector128.Max(vMax, Vector128.Shuffle(vMax, Vector128.Create(1u, 0u, 3u, 2u)));
+            }
 
-            return (min, max);
+            return (vMin.ToScalar(), vMax.ToScalar());
         }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int Max(int a, int b) => a > b ? a : b;
