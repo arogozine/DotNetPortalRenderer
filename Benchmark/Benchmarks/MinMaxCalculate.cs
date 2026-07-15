@@ -119,7 +119,8 @@ public class MinMaxCalculate
         return (min_t, min_b, max_t, max_b);
     }
     */
-    [Benchmark]
+
+    [Benchmark(Baseline = true)]
     public (uint min_t, uint min_b, uint max_t, uint max_b) Vector()
     {
         var startYV = Vector256.LoadUnsafe(ref _data[0]);
@@ -138,26 +139,14 @@ public class MinMaxCalculate
         var startYV = Vector256.LoadUnsafe(ref _data[0]);
         var endYV = Vector256.LoadUnsafe(ref _data[Vector256<int>.Count]);
 
-        (uint min_t, uint max_t) = GetMinMaxValue2(startYV);
-        (uint min_b, uint max_b) = GetMinMaxValue2(endYV);
+        (uint min_t, uint max_t) = HorizontalMinMax(startYV);
+        (uint min_b, uint max_b) = HorizontalMinMax(endYV);
 
 
         return (min_t, min_b, max_t, max_b);
     }
 
-    [Benchmark]
-    public (uint min_t, uint min_b, uint max_t, uint max_b) Vector3()
-    {
-        var startYV = Vector256.LoadUnsafe(ref _data[0]);
-        var endYV = Vector256.LoadUnsafe(ref _data[Vector256<int>.Count]);
-
-        (uint min_t, uint max_t) = GetMinMaxValue3(startYV);
-        (uint min_b, uint max_b) = GetMinMaxValue3(endYV);
-
-
-        return (min_t, min_b, max_t, max_b);
-    }
-
+    /*
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static (uint min, uint max) GetMinMaxValue3(Vector256<uint> value)
     {
@@ -203,7 +192,27 @@ public class MinMaxCalculate
 
         return (min, max);
     }
+    */
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static (uint min, uint max) GetMinMaxValue2(Vector256<uint> value)
+    {
+        var valueLower = value.GetLower();
+        var valueUpper = value.GetUpper();
+
+        var value128min = Vector128.MinNative(valueLower, valueUpper);
+        var value128Shuffledmin = Vector128.ShuffleNative(value128min, Vector128.Create(2U, 3U, 0U, 1U));
+        value128min = Vector128.MinNative(value128min, value128Shuffledmin);
+
+        var value128max = Vector128.MaxNative(valueLower, valueUpper);
+        var value128Shuffledmax = Vector128.ShuffleNative(value128max, Vector128.Create(2U, 3U, 0U, 1U));
+        value128max = Vector128.MaxNative(value128max, value128Shuffledmax);
+
+        uint min = Math.Min(value128min[0], value128min[1]);
+        uint max = Math.Max(value128max[0], value128max[1]);
+
+        return (min, max);
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static (uint min, uint max) GetMinMaxValue(Vector256<uint> value)
@@ -223,6 +232,42 @@ public class MinMaxCalculate
         uint max = Math.Max(value128max[0], value128max[1]);
 
         return (min, max);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static (uint Min, uint Max) HorizontalMinMax(Vector256<uint> v)
+    {
+        // Fold 256 -> 128 bits (one lane-crossing extract; everything after is intra-128, cheap)
+        Vector128<uint> lo = v.GetLower();
+        Vector128<uint> hi = v.GetUpper();
+
+        Vector128<uint> vMin = Sse41.IsSupported ? Sse41.Min(lo, hi) : Vector128.Min(lo, hi);
+        Vector128<uint> vMax = Sse41.IsSupported ? Sse41.Max(lo, hi) : Vector128.Max(lo, hi);
+
+        if (Sse2.IsSupported)
+        {
+            // Fold 4 -> 2: [a,b,c,d] -> [c,d,a,b]
+            Vector128<uint> sMin = Sse2.Shuffle(vMin.AsInt32(), 0b01_00_11_10).AsUInt32();
+            Vector128<uint> sMax = Sse2.Shuffle(vMax.AsInt32(), 0b01_00_11_10).AsUInt32();
+            vMin = Sse41.Min(vMin, sMin);
+            vMax = Sse41.Max(vMax, sMax);
+
+            // Fold 2 -> 1: [a,b,c,d] -> [b,a,d,c]
+            sMin = Sse2.Shuffle(vMin.AsInt32(), 0b10_11_00_01).AsUInt32();
+            sMax = Sse2.Shuffle(vMax.AsInt32(), 0b10_11_00_01).AsUInt32();
+            vMin = Sse41.Min(vMin, sMin);
+            vMax = Sse41.Max(vMax, sMax);
+        }
+        else
+        {
+            // Portable fallback (Arm64/Wasm) - JIT still vectorizes constant-index Shuffle well
+            vMin = Vector128.Min(vMin, Vector128.Shuffle(vMin, Vector128.Create(2u, 3u, 0u, 1u)));
+            vMax = Vector128.Max(vMax, Vector128.Shuffle(vMax, Vector128.Create(2u, 3u, 0u, 1u)));
+            vMin = Vector128.Min(vMin, Vector128.Shuffle(vMin, Vector128.Create(1u, 0u, 3u, 2u)));
+            vMax = Vector128.Max(vMax, Vector128.Shuffle(vMax, Vector128.Create(1u, 0u, 3u, 2u)));
+        }
+
+        return (vMin.ToScalar(), vMax.ToScalar());
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

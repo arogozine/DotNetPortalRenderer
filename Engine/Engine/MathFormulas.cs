@@ -7,6 +7,39 @@ namespace RenderingEngine.Engine
 {
     internal static class MathFormulas
     {
+
+        public static Vector256<uint> Modulo(Vector256<uint> numerator, Vector256<uint> divisor)
+        {
+            if (Avx2.IsSupported)
+            {
+                Vector256<uint> quotient = numerator / divisor;
+                Vector256<uint> multiplied = Avx2.MultiplyLow(quotient, divisor);
+                return Avx2.Subtract(numerator, multiplied);
+            }
+            else
+            {
+                Vector256<uint> quotient = numerator / divisor;
+                Vector256<uint> multiplied = quotient * divisor;
+                return numerator - multiplied;
+            }
+        }
+
+        public static Vector128<uint> Modulo(Vector128<uint> numerator, Vector128<uint> divisor)
+        {
+            if (Avx2.IsSupported)
+            {
+                Vector128<uint> quotient = numerator / divisor;
+                Vector128<uint> multiplied = Avx2.MultiplyLow(quotient, divisor);
+                return Avx2.Subtract(numerator, multiplied);
+            }
+            else
+            {
+                Vector128<uint> quotient = numerator / divisor;
+                Vector128<uint> multiplied = quotient * divisor;
+                return numerator - multiplied;
+            }
+        }
+
         public static unsafe (uint min, uint max) GetMinMaxValue(uint* ptr, int count)
         {
             uint max_agg = uint.MinValue;
@@ -93,7 +126,7 @@ namespace RenderingEngine.Engine
             Vector128<uint> vMin = Sse41.IsSupported ? Sse41.Min(lo, hi) : Vector128.Min(lo, hi);
             Vector128<uint> vMax = Sse41.IsSupported ? Sse41.Max(lo, hi) : Vector128.Max(lo, hi);
 
-            if (Sse2.IsSupported)
+            if (Sse41.IsSupported)
             {
                 Vector128<uint> sMin = Sse2.Shuffle(vMin.AsInt32(), 0b01_00_11_10).AsUInt32();
                 Vector128<uint> sMax = Sse2.Shuffle(vMax.AsInt32(), 0b01_00_11_10).AsUInt32();
