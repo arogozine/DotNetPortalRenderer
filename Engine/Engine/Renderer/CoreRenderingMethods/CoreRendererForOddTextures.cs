@@ -278,6 +278,8 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
                 continue;
             }
 
+            bool aligned32 = 0 == (x & (Vector256<uint>.Count - 1));
+            bool aligned16 = 0 == (x & (Vector128<uint>.Count - 1));
             uint* clampedFromY = portalFromClampedPtr + x;
             uint* clampedToY = portalToClampedPtr + x;
             uint* textureXPos = textureXLocationPtr + x;
@@ -288,18 +290,36 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
 
             if (Vector256.IsHardwareAccelerated && count >= Vector256<uint>.Count)
             {
-                RenderMultipleWallLinesV256(
-                    width,
-                    (uint)x,
-                    textureHeight,
-                    clampedFromY,
-                    clampedToY,
-                    textureYPos,
-                    textureYIncr,
-                    screenPtr,
-                    textureXPos,
-                    texturePtr
-                );
+                if (aligned32)
+                {
+                    RenderMultipleWallLinesV256_Aligned(
+                        width,
+                        (uint)x,
+                        textureHeight,
+                        clampedFromY,
+                        clampedToY,
+                        textureYPos,
+                        textureYIncr,
+                        screenPtr,
+                        textureXPos,
+                        texturePtr
+                    );
+                }
+                else
+                {
+                    RenderMultipleWallLinesV256(
+                        width,
+                        (uint)x,
+                        textureHeight,
+                        clampedFromY,
+                        clampedToY,
+                        textureYPos,
+                        textureYIncr,
+                        screenPtr,
+                        textureXPos,
+                        texturePtr
+                    );
+                }
 
                 x += Vector256<uint>.Count;
                 continue;
@@ -307,18 +327,36 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
 
             if (Vector128.IsHardwareAccelerated && count >= Vector128<uint>.Count)
             {
-                RenderMultipleWallLinesV128(
-                    width,
-                    (uint)x,
-                    textureHeight,
-                    clampedFromY,
-                    clampedToY,
-                    textureYPos,
-                    textureYIncr,
-                    screenPtr,
-                    textureXPos,
-                    texturePtr
-                );
+                if (aligned16)
+                {
+                    RenderMultipleWallLinesV128_Aligned(
+                        width,
+                        (uint)x,
+                        textureHeight,
+                        clampedFromY,
+                        clampedToY,
+                        textureYPos,
+                        textureYIncr,
+                        screenPtr,
+                        textureXPos,
+                        texturePtr
+                    );
+                }
+                else
+                {
+                    RenderMultipleWallLinesV128(
+                        width,
+                        (uint)x,
+                        textureHeight,
+                        clampedFromY,
+                        clampedToY,
+                        textureYPos,
+                        textureYIncr,
+                        screenPtr,
+                        textureXPos,
+                        texturePtr
+                    );
+                }
 
                 x += Vector128<uint>.Count;
                 continue;
@@ -382,6 +420,143 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
             ICoreRenderer<T>.RenderMultipleHorizontalLines(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
 
             x += count;
+        }
+    }
+
+    public static void RenderMultipleWallLinesV256_Aligned(
+        uint width,
+        uint x,
+        int textureHeight,
+        uint* startY,
+        uint* endY,
+        uint* textureYPos_u,
+        uint* textureYIncr_u,
+        uint* screenPtr,
+        uint* texturePos,
+        uint* textureBuffer
+    )
+    {
+        Vector256<uint> startYV = Vector256.LoadAligned(startY);
+        Vector256<uint> endYV = Vector256.LoadAligned(endY);
+        Vector256<uint> textureYIncr_uV = Vector256.LoadAligned(textureYIncr_u);
+
+        (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
+        (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
+
+        uint textureHeightU = (uint)(textureHeight);
+        Vector256<uint> textureYPos_uV = Vector256.LoadAligned(textureYPos_u);
+        Vector256<uint> textureXPosV = Vector256.LoadAligned(texturePos);
+
+        uint* screenIndexPtr = screenPtr + min_t * width + x;
+
+        if (min_b <= max_t)
+        {
+            for (uint y = min_t; y < max_b; y++, screenIndexPtr += width)
+            {
+                Vector256<uint> yV = Vector256.Create(y);
+                Vector256<uint> maskV = Vector256.LessThan(startYV, yV) & Vector256.GreaterThan(endYV, yV);
+
+                Vector256<uint> textureYPosV = textureYPos_uV >> 16;
+
+                for (int i = 0; i < Vector256<uint>.Count; i++)
+                {
+                    if (maskV[i] == 0U)
+                        continue;
+
+                    uint texelIndex = textureYPosV[i] % textureHeightU + textureXPosV[i];
+                    uint pixel = *(textureBuffer + texelIndex);
+                    T.Draw(screenIndexPtr + i, pixel);
+                }
+
+                textureYPos_uV = Vector256.ConditionalSelect(maskV, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+            }
+
+            return;
+        }
+
+        // render tops where there is no shared window
+        if (min_t != max_t)
+        {
+            RenderTops();
+        }
+
+        if (min_b > max_t)
+        {
+            // prepare for the shared vertical window
+            uint* screenIndexPtrEnd = screenPtr + (min_b * width + x);
+
+            // go down the column set
+            while (screenIndexPtr < screenIndexPtrEnd)
+            {
+                Vector256<uint> texelIndexV = textureYPos_uV >> 16;
+
+                // horizontally draw the texture (keeps per-lane behavior)
+                for (int i = 0; i < Vector256<uint>.Count; i++)
+                {
+                    uint pixel = *(textureBuffer + textureXPosV[i] + (texelIndexV[i] % textureHeightU));
+
+                    T.Draw(screenIndexPtr + i, pixel);
+                }
+
+                textureYPos_uV += textureYIncr_uV;
+                screenIndexPtr += width;
+            }
+        }
+
+        // render bottoms where there is no shared window
+        if (min_b == max_b)
+        {
+            return;
+        }
+
+        RenderBottoms();
+
+        return;
+
+        void RenderTops()
+        {
+            for (uint y = min_t; y < max_t; y++)
+            {
+                Vector256<uint> textureYPos = textureYPos_uV >> 16;
+                Vector256<uint> mask = Vector256.LessThan(startYV, Vector256.Create(y));
+
+                for (int i = 0; i < Vector256<uint>.Count; i++)
+                {
+                    if (mask[i] == 0U)
+                        continue;
+
+                    uint texelIndex = (textureYPos[i] % textureHeightU) + textureXPosV[i];
+
+                    uint pixel = *(textureBuffer + texelIndex);
+                    T.Draw((screenIndexPtr + i), pixel);
+                }
+
+                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                screenIndexPtr += width;
+            }
+        }
+
+        void RenderBottoms()
+        {
+            for (uint y = min_b; y < max_b; y++)
+            {
+                Vector256<uint> textureYPos = textureYPos_uV >> 16;
+                Vector256<uint> mask = Vector256.GreaterThan(endYV, Vector256.Create(y));
+
+                for (int i = 0; i < Vector256<uint>.Count; i++)
+                {
+                    if (mask[i] == 0U)
+                        continue;
+
+                    uint texelIndex = (textureYPos[i] % textureHeightU) + textureXPosV[i];
+
+                    uint pixel = *(textureBuffer + texelIndex);
+                    T.Draw((screenIndexPtr + i), pixel);
+                }
+
+                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                screenIndexPtr += width;
+            }
         }
     }
 
@@ -545,6 +720,143 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
         uint textureHeightU = (uint)(textureHeight);
         Vector128<uint> textureYPos_uV = Vector128.Load(textureYPos_u);
         Vector128<uint> textureXPosV = Vector128.Load(texturePos);
+
+        if (min_b <= max_t)
+        {
+            uint* screenIndexPtr2 = screenPtr + min_t * width + x;
+
+            for (uint y = min_t; y < max_b; y++, screenIndexPtr2 += width)
+            {
+                Vector128<uint> yV = Vector128.Create(y);
+                Vector128<uint> mask = Vector128.LessThan(startYV, yV) & Vector128.GreaterThan(endYV, yV);
+
+                Vector128<uint> textureYPos = textureYPos_uV >> 16;
+
+                for (int i = 0; i < Vector128<uint>.Count; i++)
+                {
+                    if (mask[i] == 0U)
+                        continue;
+
+                    uint texelIndex = textureYPos[i] % textureHeightU + textureXPosV[i];
+                    uint pixel = *(textureBuffer + texelIndex);
+                    T.Draw(screenIndexPtr2 + i, pixel);
+                }
+
+                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+            }
+
+            return;
+        }
+
+        uint* screenIndexPtr = screenPtr + min_t * width + x;
+
+        // render tops where there is no shared window
+        if (min_t != max_t)
+        {
+            RenderTops();
+        }
+
+        if (min_b > max_t)
+        {
+            // prepare for the shared vertical window
+            uint* screenIndexPtrEnd = screenPtr + (min_b * width + x);
+
+            // go down the column set
+            while (screenIndexPtr < screenIndexPtrEnd)
+            {
+                Vector128<uint> texelIndexV = textureYPos_uV >> 16;
+
+                // horizontally draw the texture (keeps per-lane behavior)
+                for (int i = 0; i < Vector128<uint>.Count; i++)
+                {
+                    uint pixel = *(textureBuffer + textureXPosV[i] + (texelIndexV[i] % textureHeightU));
+
+                    T.Draw(screenIndexPtr + i, pixel);
+                }
+
+                textureYPos_uV += textureXIncr_uV;
+                screenIndexPtr += width;
+            }
+        }
+
+        // render bottoms where there is no shared window
+        if (min_b == max_b)
+        {
+            return;
+        }
+
+        RenderBottoms();
+
+        void RenderTops()
+        {
+            for (uint y = min_t; y < max_t; y++)
+            {
+                Vector128<uint> textureYPos = textureYPos_uV >> 16;
+                Vector128<uint> mask = Vector128.LessThan(startYV, Vector128.Create(y));
+
+                for (int i = 0; i < Vector128<uint>.Count; i++)
+                {
+                    if (mask[i] == 0U)
+                        continue;
+
+                    uint texelIndex = (textureYPos[i] % textureHeightU) + textureXPosV[i];
+
+                    uint pixel = *(textureBuffer + texelIndex);
+                    T.Draw((screenIndexPtr + i), pixel);
+                }
+
+                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+                screenIndexPtr += width;
+            }
+        }
+
+        void RenderBottoms()
+        {
+            for (uint y = min_b; y < max_b; y++)
+            {
+                Vector128<uint> textureYPos = textureYPos_uV >> 16;
+                Vector128<uint> mask = Vector128.GreaterThan(endYV, Vector128.Create(y));
+
+                for (int i = 0; i < Vector128<uint>.Count; i++)
+                {
+                    if (mask[i] == 0U)
+                        continue;
+
+                    uint texelIndex = (textureYPos[i] % textureHeightU) + textureXPosV[i];
+
+                    uint pixel = *(textureBuffer + texelIndex);
+                    T.Draw((screenIndexPtr + i), pixel);
+                }
+
+                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+                screenIndexPtr += width;
+            }
+        }
+    }
+
+    public static void RenderMultipleWallLinesV128_Aligned(
+        uint width,
+        uint x,
+        int textureHeight,
+        uint* startY,
+        uint* endY,
+        uint* textureYPos_u,
+        uint* textureYIncr_u,
+        uint* screenPtr,
+        uint* texturePos,
+        uint* textureBuffer
+    )
+    {
+        Vector128<uint> startYV = Vector128.LoadAligned(startY);
+        Vector128<uint> endYV = Vector128.LoadAligned(endY);
+        Vector128<uint> textureXIncr_uV = Vector128.Load(textureYIncr_u);
+
+        (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
+        (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
+
+        uint textureHeightU = (uint)(textureHeight);
+        Vector128<uint> textureYPos_uV = Vector128.LoadAligned(textureYPos_u);
+        Vector128<uint> textureXPosV = Vector128.LoadAligned(texturePos);
 
         if (min_b <= max_t)
         {
