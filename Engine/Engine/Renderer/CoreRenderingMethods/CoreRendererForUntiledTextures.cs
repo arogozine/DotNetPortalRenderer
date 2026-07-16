@@ -6,7 +6,7 @@ using System.Runtime.Intrinsics.X86;
 namespace RenderingEngine.Engine;
 
 /// <summary>
-/// For rendeing textures without Y (vertical) tiling.
+/// For rendering textures without Y (vertical) tiling.
 /// </summary>
 /// <typeparam name="T">How each pixel, or pixel line, is drawn</typeparam>
 internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T>
