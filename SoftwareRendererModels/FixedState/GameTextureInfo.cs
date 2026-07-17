@@ -15,5 +15,6 @@ public sealed class GameTextureInfo : IFixedState
     public required float? XScale { get; set; }
     public required float? YScale { get; set; }
     public required int Palette { get; init; }
+    public bool YUntiled { get; set; }
     public required TextureRenderingOptions RenderingOptions { get; set; }
 }
