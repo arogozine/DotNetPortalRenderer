@@ -54,6 +54,12 @@ namespace RenderingEngine.Engine
                         wallTexturePtr, screenPtr,
                         fromYClamped, toYClamped, textureXLocation, textureYPosPtr, textureYIncrementPtr);
                 }
+                else if (textureInfo.YUntiled)
+                {
+                    CoreRendererForUntiledTextures<DrawSimplePixel>.RenderWall(wallFromX, wallToX, (uint)width, textureWidth, repeatedCountPtr,
+                        wallTexturePtr, screenPtr,
+                        fromYClamped, toYClamped, textureXLocation, textureYPosPtr, textureYIncrementPtr);
+                }
                 else
                 {
                     CoreRendererForOddTextures<DrawSimplePixel>.RenderWall(wallFromX, wallToX, (uint)width, textureWidth, repeatedCountPtr,

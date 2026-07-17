@@ -228,7 +228,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
             float angleX = *(angleCachePtr + x) - viewAngle;
             angleX = MathFormulas.ClampAngle(angleX);
 
-            int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) % textureWidth;
+            int texX = float.ConvertToIntegerNative<int>(textureWidth4 * angleX) & (textureWidth - 1);
 
             float vScreen = fromY * yTextureIncr;
             uint* textureColumnPtr = texturePtr + texX;
@@ -270,6 +270,8 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 continue;
             }
 
+            bool aligned32 = 0 == (x & (Vector256<uint>.Count - 1));
+            bool aligned16 = 0 == (x & (Vector128<uint>.Count - 1));
             uint* clampedFromY = portalFromClampedPtr + x;
             uint* clampedToY = portalToClampedPtr + x;
             uint* textureXPos = textureXLocationPtr + x;
@@ -283,6 +285,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 RenderMultipleWallLinesV256(
                     width,
                     (uint)x,
+                    textureHeight,
                     clampedFromY,
                     clampedToY,
                     textureYPos,
@@ -301,6 +304,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 RenderMultipleWallLinesV128(
                     width,
                     (uint)x,
+                    textureHeight,
                     clampedFromY,
                     clampedToY,
                     textureYPos,
@@ -318,6 +322,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 count,
                 width,
                 (uint)x,
+                textureHeight,
                 clampedFromY,
                 clampedToY,
                 textureYPos,
@@ -377,6 +382,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
     public static void RenderMultipleWallLinesV256(
         uint width,
         uint x,
+        int textureHeight,
         uint* startY,
         uint* endY,
         uint* textureYPos_u,
@@ -393,6 +399,8 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
         (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
         (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
 
+        Vector256<uint> textureHeightV = Vector256.Create((uint)textureHeight);
+
         Vector256<uint> textureXPosV = Vector256.Load(texturePos);
         Vector256<uint> textureYPos_uV = Vector256.Load(textureYPos_u);
 
@@ -405,16 +413,31 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 Vector256<uint> yV = Vector256.Create(y);
                 Vector256<uint> mask = Vector256.LessThan(startYV, yV) & Vector256.GreaterThan(endYV, yV);
 
-                Vector256<uint> texelIndexV = textureXPosV + (textureYPos_uV >> 16);
+                Vector256<uint> texelIndexV = textureXPosV + WrapTextureIndex(textureYPos_uV >> 16, textureHeightV);
 
-                for (int i = 0; i < Vector256<uint>.Count; i++)
+                if (Avx2.IsSupported)
                 {
-                    if (mask[i] == 0U)
-                        continue;
+                    Vector256<uint> gathered = Avx2.GatherMaskVector256(
+                        yV,
+                        textureBuffer,
+                        texelIndexV.AsInt32(),
+                        mask,
+                        scale: sizeof(uint)
+                    );
 
-                    uint texelIndex = texelIndexV[i];
-                    uint pixel = *(textureBuffer + texelIndex);
-                    T.Draw(screenIndexPtr + i, pixel);
+                    T.DrawLine(screenIndexPtr, gathered, mask);
+                }
+                else
+                {
+                    for (int i = 0; i < Vector256<uint>.Count; i++)
+                    {
+                        if (mask[i] == 0U)
+                            continue;
+
+                        uint texelIndex = texelIndexV[i];
+                        uint pixel = *(textureBuffer + texelIndex);
+                        T.Draw(screenIndexPtr + i, pixel);
+                    }
                 }
 
                 textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
@@ -438,7 +461,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
             {
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector256<uint> texelIndexV = (textureYPos_uV >> 16);
+                    Vector256<uint> texelIndexV = WrapTextureIndex(textureYPos_uV >> 16, textureHeightV);
                     texelIndexV += textureXPosV;
 
                     Vector256<uint> gathered = Avx2.GatherVector256(
@@ -458,7 +481,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 // go down the column set
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector256<uint> texelIndexV = (textureYPos_uV >> 16);
+                    Vector256<uint> texelIndexV = WrapTextureIndex(textureYPos_uV >> 16, textureHeightV);
                     texelIndexV += textureXPosV;
 
                     // horizontally draw the texture
@@ -489,16 +512,18 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
         {
             for (uint y = min_t; y < max_t; y++)
             {
-                Vector256<uint> texelIndexV = (textureYPos_uV >> 16);
+                Vector256<uint> texelIndexV = WrapTextureIndex(textureYPos_uV >> 16, textureHeightV);
                 texelIndexV += textureXPosV;
 
                 Vector256<uint> mask = Vector256.LessThan(startYV, Vector256.Create(y));
 
                 if (Avx2.IsSupported)
                 {
-                    Vector256<uint> gathered = Avx2.GatherVector256(
+                    Vector256<uint> gathered = Avx2.GatherMaskVector256(
+                        default,
                         textureBuffer,
                         texelIndexV.AsInt32(),
+                        mask,
                         scale: sizeof(uint)
                     );
 
@@ -525,16 +550,18 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
         {
             for (uint y = min_b; y < max_b; y++)
             {
-                Vector256<uint> texelIndexV = (textureYPos_uV >> 16);
+                Vector256<uint> texelIndexV = WrapTextureIndex(textureYPos_uV >> 16, textureHeightV);
                 texelIndexV += textureXPosV;
 
                 Vector256<uint> mask = Vector256.GreaterThan(endYV, Vector256.Create(y));
 
                 if (Avx2.IsSupported)
                 {
-                    Vector256<uint> gathered = Avx2.GatherVector256(
+                    Vector256<uint> gathered = Avx2.GatherMaskVector256(
+                        default,
                         textureBuffer,
                         texelIndexV.AsInt32(),
+                        mask,
                         scale: sizeof(uint)
                     );
 
@@ -557,10 +584,10 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
             }
         }
     }
-
     public static void RenderMultipleWallLinesV128(
         uint width,
         uint x,
+        int textureHeight,
         uint* startY,
         uint* endY,
         uint* textureYPos_u,
@@ -579,6 +606,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
 
         uint* screenIndexPtr = screenPtr + min_t * width + x;
 
+        Vector128<uint> textureHeightV = Vector128.Create((uint)textureHeight);
         Vector128<uint> textureYPos_uV = Vector128.Load(textureYPos_u);
         Vector128<uint> textureXPosV = Vector128.Load(texturePos);
 
@@ -589,16 +617,32 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 Vector128<uint> yV = Vector128.Create(y);
                 Vector128<uint> mask = Vector128.LessThan(startYV, yV) & Vector128.GreaterThan(endYV, yV);
 
-                Vector128<uint> texelIndexV = textureXPosV + (textureYPos_uV >> 16);
+                Vector128<uint> texelIndexV = textureXPosV + WrapTextureIndex(textureYPos_uV >> 16, textureHeightV);
 
-                for (int i = 0; i < Vector128<uint>.Count; i++)
+                if (Avx2.IsSupported)
                 {
-                    if (mask[i] == 0U)
-                        continue;
+                    Vector128<uint> gathered = Avx2.GatherMaskVector128(
+                        yV,
+                        textureBuffer,
+                        texelIndexV.AsInt32(),
+                        mask,
+                        scale: sizeof(uint)
+                    );
 
-                    uint texelIndex = texelIndexV[i];
-                    uint pixel = *(textureBuffer + texelIndex);
-                    T.Draw(screenIndexPtr + i, pixel);
+                    T.DrawLine(screenIndexPtr, gathered, mask);
+                }
+                else
+                {
+                    // AI Assisted: Scalar fallback
+                    for (int i = 0; i < Vector128<uint>.Count; i++)
+                    {
+                        if (mask[i] == 0U)
+                            continue;
+
+                        uint texelIndex = texelIndexV[i];
+                        uint pixel = *(textureBuffer + texelIndex);
+                        T.Draw(screenIndexPtr + i, pixel);
+                    }
                 }
 
                 textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
@@ -622,7 +666,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
             {
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector128<uint> texelIndexV = (textureYPos_uV >> 16);
+                    Vector128<uint> texelIndexV = WrapTextureIndex(textureYPos_uV >> 16, textureHeightV);
                     texelIndexV += textureXPosV;
 
                     Vector128<uint> gathered = Avx2.GatherVector128(
@@ -642,7 +686,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 // go down the column set
                 while (screenIndexPtr < screenIndexPtrEnd)
                 {
-                    Vector128<uint> texelIndexV = (textureYPos_uV >> 16);
+                    Vector128<uint> texelIndexV = WrapTextureIndex(textureYPos_uV >> 16, textureHeightV);
                     texelIndexV += textureXPosV;
 
                     // horizontally draw the texture
@@ -673,16 +717,18 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
         {
             for (uint y = min_t; y < max_t; y++)
             {
-                Vector128<uint> texelIndexV = (textureYPos_uV >> 16);
+                Vector128<uint> texelIndexV = WrapTextureIndex(textureYPos_uV >> 16, textureHeightV);
                 texelIndexV += textureXPosV;
 
                 Vector128<uint> mask = Vector128.LessThan(startYV, Vector128.Create(y));
 
                 if (Avx2.IsSupported)
                 {
-                    Vector128<uint> gathered = Avx2.GatherVector128(
+                    Vector128<uint> gathered = Avx2.GatherMaskVector128(
+                        default,
                         textureBuffer,
                         texelIndexV.AsInt32(),
+                        mask,
                         scale: sizeof(uint)
                     );
 
@@ -709,16 +755,18 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
         {
             for (uint y = min_b; y < max_b; y++)
             {
-                Vector128<uint> texelIndexV = (textureYPos_uV >> 16);
+                Vector128<uint> texelIndexV = WrapTextureIndex(textureYPos_uV >> 16, textureHeightV);
                 texelIndexV += textureXPosV;
 
                 Vector128<uint> mask = Vector128.GreaterThan(endYV, Vector128.Create(y));
 
                 if (Avx2.IsSupported)
                 {
-                    Vector128<uint> gathered = Avx2.GatherVector128(
+                    Vector128<uint> gathered = Avx2.GatherMaskVector128(
+                        default,
                         textureBuffer,
                         texelIndexV.AsInt32(),
+                        mask,
                         scale: sizeof(uint)
                     );
 
@@ -746,6 +794,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
         uint count,
         uint width,
         uint x,
+        int textureHeight,
         uint* startY,
         uint* endY,
         uint* textureYPos_u,
@@ -780,7 +829,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 uint top = *(startY + i);
                 uint bottom = *(endY + i);
 
-                RenderWallColumn(width, x, top, bottom, textureYPos, incr, screenPtr,
+                RenderWallColumn(width, x, textureHeight, top, bottom, textureYPos, incr, screenPtr,
                     textureBuffer + *(texturePos + i));
             }
 
@@ -804,7 +853,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
 
                 uint xi = x + i;
 
-                *textureYPos = RenderWallColumn2(width, xi, top, max_t, *textureYPos, incr, screenPtr,
+                *textureYPos = RenderWallColumn2(width, xi, textureHeight, top, max_t, *textureYPos, incr, screenPtr,
                     textureBuffer + *(texturePos + i));
             }
         }
@@ -822,7 +871,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 for (int i = 0; i < count; i++)
                 {
                     uint* textureXPos = textureYPos_u + i;
-                    uint texelIndex = *textureXPos >> 16;
+                    uint texelIndex = WrapTextureIndex(*textureXPos >> 16, textureHeight);
                     texelIndex += *(texturePos + i);
 
                     uint pixel = *(textureBuffer + texelIndex);
@@ -855,15 +904,36 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
             uint textureYPos = *(textureYPos_u + i);
             uint incr = *(textureYIncr_u + i);
 
-            RenderWallColumn(width, x, min_b, bottom, textureYPos, incr, screenPtr,
+            RenderWallColumn(width, x, textureHeight, min_b, bottom, textureYPos, incr, screenPtr,
                 textureBuffer + *(texturePos + i));
         }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint WrapTextureIndex(uint rawIndex, int textureHeight)
+    {
+        return rawIndex >= (uint)textureHeight ? rawIndex - (uint)textureHeight : rawIndex;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector256<uint> WrapTextureIndex(Vector256<uint> rawIndexV, Vector256<uint> textureHeightV)
+    {
+        Vector256<uint> overV = Vector256.GreaterThanOrEqual(rawIndexV, textureHeightV);
+        return rawIndexV - (overV & textureHeightV);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Vector128<uint> WrapTextureIndex(Vector128<uint> rawIndexV, Vector128<uint> textureHeightV)
+    {
+        Vector128<uint> overV = Vector128.GreaterThanOrEqual(rawIndexV, textureHeightV);
+        return rawIndexV - (overV & textureHeightV);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint RenderWallColumn2(
         uint width,
         uint x,
+        int textureHeight,
         uint startY,
         uint endY,
         uint textureYPos_u,
@@ -878,7 +948,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
 
         while (screenIndexPtr != screenIndexPtrEnd)
         {
-            uint texelIndex = textureYPos_u >> 16;
+            uint texelIndex = WrapTextureIndex(textureYPos_u >> 16, textureHeight);
             uint pixel = *(textureBuffer + texelIndex);
 
             T.Draw(screenIndexPtr, pixel);
@@ -894,6 +964,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
     public static void RenderWallColumn(
         uint width,
         uint x,
+        int textureHeight,
         uint startY,
         uint endY,
         uint textureYPos_u,
@@ -908,7 +979,7 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
 
         while (screenIndexPtr < screenIndexPtrEnd)
         {
-            uint texelIndex = textureYPos_u >> 16;
+            uint texelIndex = WrapTextureIndex(textureYPos_u >> 16, textureHeight);
             uint pixel = *(textureBuffer + texelIndex);
 
             T.Draw(screenIndexPtr, pixel);

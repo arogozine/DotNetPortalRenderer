@@ -62,14 +62,6 @@
                 { "path": "/etc/shadow", "mode": "deny" },
                 { "path": "C:\\Users\\*\\AppData\\Local\\Microsoft\\Credentials\\**", "mode": "deny" },
                 { "path": "C:\\Users\\*\\AppData\\Roaming\\Microsoft\\Crypto\\**", "mode": "deny" }  
-            ],
-            "envVars": [
-                { "name": "AWS_*", "mode": "deny"},
-                { "name": "AZURE_*", "mode": "deny"},
-                { "name": "KUBE_*", "mode": "deny"},
-                { "name": "HOME", "mode": "deny"},
-                { "name": "USERPROFILE", "mode": "deny"},
-                { "name": "SSH_*", "mode": "deny"}
             ]
         }
     }
