@@ -540,12 +540,11 @@ namespace RenderingEngine.Engine
 
             fixed (uint* texturePtr = &floorTexturePtr)
             {
-                float* xMapPosMultiplierCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
                 float* incrCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
                 if (translucent)
                 {
-                    ICoreRenderer<DrawAlphaPixel>.RenderFloorOrCeilingSprite(xMapPosMultiplierCachePtr, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
+                    ICoreRenderer<DrawAlphaPixel>.RenderFloorOrCeilingSprite(null, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,
@@ -554,7 +553,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    ICoreRenderer<DrawTransparentPixel>.RenderFloorOrCeilingSprite(xMapPosMultiplierCachePtr, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
+                    ICoreRenderer<DrawTransparentPixel>.RenderFloorOrCeilingSprite(null, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,

@@ -15,7 +15,7 @@ public class CoreRendererForUntiledTextures_DrawSimplePixel_Tests : CoreRenderer
         fixed (uint* texturePtr = Texture)
         {
             CoreRendererForUntiledTextures<DrawSimplePixel>.RenderWallColumn(
-                width: ScreenWidth, x: 5,
+                width: ScreenWidth, x: 5, textureHeight: TextureHeight,
                 startY: 10, endY: 20, textureYPos_u: 0, textureYIncr_u: 1u << 16,
                 screenPtr, texturePtr);
 
@@ -35,7 +35,7 @@ public class CoreRendererForUntiledTextures_DrawSimplePixel_Tests : CoreRenderer
         fixed (uint* texturePtr = Texture)
         {
             CoreRendererForUntiledTextures<DrawSimplePixel>.RenderWallColumn(
-                width: ScreenWidth, x: 0,
+                width: ScreenWidth, x: 0, textureHeight: TextureHeight,
                 startY: 10, endY: 10, textureYPos_u: 0, textureYIncr_u: 1u << 16,
                 screenPtr, texturePtr);
 
@@ -55,7 +55,7 @@ public class CoreRendererForUntiledTextures_DrawSimplePixel_Tests : CoreRenderer
         fixed (uint* texturePtr = Texture)
         {
             uint finalPos = CoreRendererForUntiledTextures<DrawSimplePixel>.RenderWallColumn2(
-                width: ScreenWidth, x: 10,
+                width: ScreenWidth, x: 10, textureHeight: TextureHeight,
                 startY, endY, textureYPos_u: 0, textureYIncr_u: incr,
                 screenPtr, texturePtr);
 
@@ -91,7 +91,7 @@ public class CoreRendererForUntiledTextures_DrawSimplePixel_Tests : CoreRenderer
         fixed (uint* texturePosPtr = texturePos)
         {
             CoreRendererForUntiledTextures<DrawSimplePixel>.RenderMultipleWallLines(
-                count, ScreenWidth, x,
+                count, ScreenWidth, x, textureHeight: TextureHeight,
                 startYPtr, endYPtr,
                 textureYPosPtr, textureYIncrPtr,
                 screenPtr, texturePosPtr, texturePtr);
@@ -131,7 +131,7 @@ public class CoreRendererForUntiledTextures_DrawSimplePixel_Tests : CoreRenderer
         fixed (uint* texturePosPtr = texturePos)
         {
             CoreRendererForUntiledTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
-                ScreenWidth, x,
+                ScreenWidth, x, textureHeight: TextureHeight,
                 startYPtr, endYPtr,
                 textureYPosPtr, textureYIncrPtr,
                 screenPtr, texturePosPtr, texturePtr);
@@ -171,7 +171,7 @@ public class CoreRendererForUntiledTextures_DrawSimplePixel_Tests : CoreRenderer
         fixed (uint* texturePosPtr = texturePos)
         {
             CoreRendererForUntiledTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
-                ScreenWidth, x,
+                ScreenWidth, x, textureHeight: TextureHeight,
                 startYPtr, endYPtr,
                 textureYPosPtr, textureYIncrPtr,
                 screenPtr, texturePosPtr, texturePtr);

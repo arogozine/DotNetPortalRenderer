@@ -11,10 +11,6 @@
         /// </summary>
         CameraHeightToMapYPos,
         /// <summary>
-        /// Generated once per window size
-        /// </summary>
-        XMapPosMultiplierCache,
-        /// <summary>
         /// Rendering / rendered status of each column
         /// </summary>
         RenderColumnStatus,

@@ -283,7 +283,7 @@ public class CoreRendererParityUntiled_DrawSimplePixel_Tests : CoreRendererTestB
 
             fixed (uint* screenPtr = screenUntiled)
                 CoreRendererForUntiledTextures<DrawSimplePixel>.RenderWallColumn(
-                    ScreenWidth, x, startY, endY, 0, 1u << 16, screenPtr, texturePtr);
+                    ScreenWidth, x, UniqueTextureSize, startY, endY, 0, 1u << 16, screenPtr, texturePtr);
         }
 
         for (uint y = startY; y < endY; y++)
@@ -316,7 +316,7 @@ public class CoreRendererParityUntiled_DrawSimplePixel_Tests : CoreRendererTestB
 
             fixed (uint* screenPtr = screenUntiled)
                 CoreRendererForUntiledTextures<DrawSimplePixel>.RenderWallColumn2(
-                    ScreenWidth, x, startY, endY, 0, incr, screenPtr, texturePtr);
+                    ScreenWidth, x, UniqueTextureSize, startY, endY, 0, incr, screenPtr, texturePtr);
         }
 
         for (uint y = startY; y < endY; y++)
@@ -424,7 +424,7 @@ public class CoreRendererParityUntiled_DrawSimplePixel_Tests : CoreRendererTestB
 
             fixed (uint* screenPtr = screenUntiled)
                 CoreRendererForUntiledTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
-                    ScreenWidth, x,
+                    ScreenWidth, x, UniqueTextureSize,
                     startYPtr, endYPtr,
                     textureYPosPtr, textureYIncrPtr,
                     screenPtr, texturePosPtr, texturePtr);
@@ -478,7 +478,7 @@ public class CoreRendererParityUntiled_DrawSimplePixel_Tests : CoreRendererTestB
 
             fixed (uint* screenPtr = screenUntiled)
                 CoreRendererForUntiledTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
-                    ScreenWidth, x,
+                    ScreenWidth, x, UniqueTextureSize,
                     startYPtr, endYPtr,
                     textureYPosPtr, textureYIncrPtr,
                     screenPtr, texturePosPtr, texturePtr);

@@ -295,11 +295,14 @@ namespace RenderingEngine.Engine
             Vector<float> pxV = this.pxV;
             Vector<float> pyV = this.pyV;
             Vector<float> pzV = this.pzV;
+            // X Map Position Multiplier
+            Vector<int> widthDiv2V = Vector.Create(width >> 1);
+            Vector<float> xPosIncrV = Vector.Create(1f / (width * -EngineConstants.HeightToWidthRatio));
+            Vector<int> xIncrV = Vector.CreateSequence(0, 1);
             // For slopes
             Vector3 planePoint, planeNormal;
             Vector<float> nX, nY, nZ, pX, pY, pZ, dir_z;
 
-            float* xMapPosMultiplierCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
             float* incrCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
             CreateSlopeVectors();
@@ -336,7 +339,10 @@ namespace RenderingEngine.Engine
                     int floorFromY = floorFrom[x - sectorFrom];
                     int floorToY = floorTo[x - sectorFrom];
 
-                    RenderColumn(floorToY, floorFromY, x, *(xMapPosMultiplierCachePtr + x));
+                    int widthDiv2 = width >> 1;
+                    float xMapPosMultiplierCache = (widthDiv2 - x) * xPosIncrV[0];
+
+                    RenderColumn(floorToY, floorFromY, x, xMapPosMultiplierCache);
                     x++;
                 }
             }
@@ -349,7 +355,8 @@ namespace RenderingEngine.Engine
                 int min_t, int max_t, int min_b, int max_b
                 )
             {
-                Vector<float> xMapPosMultiplierCacheV = Vector.Load(xMapPosMultiplierCachePtr + x);
+                Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(x) - xIncrV);
+                Vector<float> xMapPosMultiplierCacheV = diff * xPosIncrV;
 
                 // render tops where there is no shared window
                 if (min_t != max_t)

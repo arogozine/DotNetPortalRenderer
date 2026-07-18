@@ -46,6 +46,10 @@ internal unsafe interface ICoreRenderer<T>
         Vector<int> yOffSetV = Vector.Create(yOffset);
         // Player height compared to ceiling/floor
         Vector<float> cameraPositionV = Vector.Create(cameraPosition);
+        // X Map Position Multiplier
+        Vector<int> widthDiv2V = Vector.Create(width >> 1);
+        Vector<float> xPosIncrV = Vector.Create(1f / (width * -EngineConstants.HeightToWidthRatio));
+        Vector<int> xIncrV = Vector.CreateSequence(0, 1);
 
         for (int x = from; x <= to;)
         {
@@ -79,9 +83,11 @@ internal unsafe interface ICoreRenderer<T>
             {
                 int clampedFromY = fromYPtr[x];
                 int clampedToY = toYPtr[x];
-                float xMapPosMultiplier = *(xMapPosMultiplierCachePtr + x);
 
-                RenderColumn(clampedFromY, clampedToY, x, xMapPosMultiplier);
+                int widthDiv2 = width >> 1;
+                float xMapPosMultiplierCache = (widthDiv2 - x) * xPosIncrV[0];
+
+                RenderColumn(clampedFromY, clampedToY, x, xMapPosMultiplierCache);
                 x++;
             }
         }
@@ -94,7 +100,8 @@ internal unsafe interface ICoreRenderer<T>
             int min_t, int max_t, int min_b, int max_b
             )
         {
-            Vector<float> xMapPosMultiplierCacheV = Vector.Load(xMapPosMultiplierCachePtr + x);
+            Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(x) - xIncrV);
+            Vector<float> xMapPosMultiplierCacheV = diff * xPosIncrV;
 
             // render tops where there is no shared window
             if (min_t != max_t)
@@ -137,7 +144,8 @@ internal unsafe interface ICoreRenderer<T>
             int xStart)
         {
             uint* screenTexPtr = screenPtr + floorFromY * width + xStart;
-            Vector<float> xMapPosMultiplierCacheV = Vector.Load(xMapPosMultiplierCachePtr + xStart);
+            Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(xStart) - xIncrV);
+            Vector<float> xMapPosMultiplierCacheV = diff * xPosIncrV;
 
             for (int y = floorFromY; y < floorToY; y++)
             {
@@ -179,7 +187,8 @@ internal unsafe interface ICoreRenderer<T>
             int xStart)
         {
             uint* screenTexPtr = screenPtr + min_t * width + xStart;
-            Vector<float> xMapPosMultiplierCacheV = Vector.Load(xMapPosMultiplierCachePtr + xStart);
+            Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(xStart) - xIncrV);
+            Vector<float> xMapPosMultiplierCacheV = diff * xPosIncrV;
 
             for (int y = min_t; y < max_t; y++)
             {

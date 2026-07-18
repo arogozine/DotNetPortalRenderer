@@ -86,7 +86,6 @@ namespace RenderingEngine.Engine
 
         private void GenerateCache()
         {
-            float* xMapPosMultiplierCache = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.XMapPosMultiplierCache);
             float* cameraHeightToMapYPos = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
             int width = this.PixelWidth;
@@ -102,14 +101,6 @@ namespace RenderingEngine.Engine
                 }
 
                 cameraHeightToMapYPos[y] = height / (float)lower;
-            }
-
-            float xPosIncr = 1f / (width * -EngineConstants.HeightToWidthRatio);
-            int widthDiv2 = width / 2;
-
-            for (int x = 0; x < width; x++)
-            {
-                xMapPosMultiplierCache[x] = (widthDiv2 - x) * xPosIncr;
             }
         }
 
