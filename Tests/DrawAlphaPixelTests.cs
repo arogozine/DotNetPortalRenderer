@@ -7,15 +7,15 @@ namespace Tests;
 
 public class DrawAlphaPixelTests
 {
-    // Mirrors the scalar BlendBGRA in DrawAlphaPixel (same constants).
+    // Mirrors the scalar BlendBGRA in DrawAlphaPixel with proper rounding.
+    // AI Assisted: Updated to match Avx2.Average behavior with (a + b + 1) >> 1
     static uint BlendBGRA(BGRA dst, BGRA src)
     {
-        const uint a = 127;
         const uint Alpha = (uint)byte.MaxValue << 24;
 
-        uint bOut = (src.B * a + dst.B * a) >> 8;
-        uint gOut = (src.G * a + dst.G * a) >> 8;
-        uint rOut = (src.R * a + dst.R * a) >> 8;
+        uint bOut = ((uint)src.B + dst.B + 1) >> 1;
+        uint gOut = ((uint)src.G + dst.G + 1) >> 1;
+        uint rOut = ((uint)src.R + dst.R + 1) >> 1;
 
         return Alpha | (rOut << 16) | (gOut << 8) | bOut;
     }

@@ -108,7 +108,6 @@ namespace RenderingEngine.Engine
 
         static uint BlendBGRA(uint bgraDstU, uint bgraSrcU)
         {
-            const uint a = 127;
             const uint ByteMask = 0xFF;
             const uint Alpha = (uint)byte.MaxValue << 24;
 
@@ -120,9 +119,10 @@ namespace RenderingEngine.Engine
             uint gSrc = (bgraSrcU >> 8) & ByteMask;
             uint rSrc = (bgraSrcU >> 16) & ByteMask;
 
-            uint bOut = (bSrc * a + bDst * a) >> 8;
-            uint gOut = (gSrc * a + gDst * a) >> 8;
-            uint rOut = (rSrc * a + rDst * a) >> 8;
+            // AI Assisted: Match Avx2.Average behavior with proper rounding
+            uint bOut = (bSrc + bDst + 1) >> 1;
+            uint gOut = (gSrc + gDst + 1) >> 1;
+            uint rOut = (rSrc + rDst + 1) >> 1;
 
             return (Alpha | (rOut << 16) | (gOut << 8) | bOut);
         }
@@ -139,10 +139,10 @@ namespace RenderingEngine.Engine
                 return Vector128.ConditionalSelect(gMask, blended, bgraDst);
             }
 
-
-            Vector128<uint> a = Vector128.Create((uint)127);
+            // AI Assisted: Match Avx2.Average behavior with proper rounding
             Vector128<uint> byteMask = Vector128.Create((uint)0xFF);
             Vector128<uint> alpha = Vector128.Create((uint)byte.MaxValue << 24);
+            Vector128<uint> one = Vector128.Create((uint)1);
 
             Vector128<uint> bDst = bgraDst & byteMask;
             Vector128<uint> bSrc = bgraSrc & byteMask;
@@ -153,9 +153,9 @@ namespace RenderingEngine.Engine
             Vector128<uint> rDst = (bgraDst >> 16) & byteMask;
             Vector128<uint> rSrc = (bgraSrc >> 16) & byteMask;
 
-            Vector128<uint> bOut = ((bSrc * a) + (bDst * a)) >> 8;
-            Vector128<uint> gOut = ((gSrc * a) + (gDst * a)) >> 8;
-            Vector128<uint> rOut = ((rSrc * a) + (rDst * a)) >> 8;
+            Vector128<uint> bOut = (bSrc + bDst + one) >> 1;
+            Vector128<uint> gOut = (gSrc + gDst + one) >> 1;
+            Vector128<uint> rOut = (rSrc + rDst + one) >> 1;
 
             blended = alpha | (rOut << 16) | (gOut << 8) | bOut;
             gMask = Vector128.GreaterThan(bgraSrc, Vector128<uint>.Zero);
@@ -175,9 +175,10 @@ namespace RenderingEngine.Engine
                 return Vector256.ConditionalSelect(gMask, blended, bgraDst);
             }
 
-            Vector256<uint> a = Vector256.Create((uint)127);
+            // AI Assisted: Match Avx2.Average behavior with proper rounding
             Vector256<uint> byteMask = Vector256.Create((uint)0xFF);
             Vector256<uint> alpha = Vector256.Create((uint)byte.MaxValue << 24);
+            Vector256<uint> one = Vector256.Create((uint)1);
 
             Vector256<uint> bDst = bgraDst & byteMask;
             Vector256<uint> bSrc = bgraSrc & byteMask;
@@ -188,10 +189,10 @@ namespace RenderingEngine.Engine
             Vector256<uint> rDst = (bgraDst >> 16) & byteMask;
             Vector256<uint> rSrc = (bgraSrc >> 16) & byteMask;
 
-            Vector256<uint> bOut = ((bSrc * a) + (bDst * a)) >> 8;
-            Vector256<uint> gOut = ((gSrc * a) + (gDst * a)) >> 8;
-            Vector256<uint> rOut = ((rSrc * a) + (rDst * a)) >> 8;
-            
+            Vector256<uint> bOut = (bSrc + bDst + one) >> 1;
+            Vector256<uint> gOut = (gSrc + gDst + one) >> 1;
+            Vector256<uint> rOut = (rSrc + rDst + one) >> 1;
+
             blended = alpha | (rOut << 16) | (gOut << 8) | bOut;
 
             gMask = Vector256.GreaterThan(bgraSrc, Vector256<uint>.Zero);
@@ -200,9 +201,10 @@ namespace RenderingEngine.Engine
 
         static Vector<uint> BlendBGRA(Vector<uint> bgraDst, Vector<uint> bgraSrc)
         {
-            Vector<uint> a = Vector.Create((uint)127);
+            // AI Assisted: Match Avx2.Average behavior with proper rounding
             Vector<uint> byteMask = Vector.Create((uint)0xFF);
             Vector<uint> alpha = Vector.Create((uint)byte.MaxValue << 24);
+            Vector<uint> one = Vector.Create((uint)1);
 
             Vector<uint> bDst = bgraDst & byteMask;
             Vector<uint> bSrc = bgraSrc & byteMask;
@@ -213,9 +215,9 @@ namespace RenderingEngine.Engine
             Vector<uint> rDst = (bgraDst >> 16) & byteMask;
             Vector<uint> rSrc = (bgraSrc >> 16) & byteMask;
 
-            Vector<uint> bOut = ((bSrc * a) + (bDst * a)) >> 8;
-            Vector<uint> gOut = ((gSrc * a) + (gDst * a)) >> 8;
-            Vector<uint> rOut = ((rSrc * a) + (rDst * a)) >> 8;
+            Vector<uint> bOut = (bSrc + bDst + one) >> 1;
+            Vector<uint> gOut = (gSrc + gDst + one) >> 1;
+            Vector<uint> rOut = (rSrc + rDst + one) >> 1;
 
             Vector<uint> blended = alpha | (rOut << 16) | (gOut << 8) | bOut;
 
