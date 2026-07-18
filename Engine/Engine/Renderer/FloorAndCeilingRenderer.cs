@@ -401,12 +401,30 @@ namespace RenderingEngine.Engine
                     Vector<float> incrementVector = Vector.Create(*(incrCachePtr + y));
                     Vector<int> textureIndexV = GetXyFromScreenSpace(incrementVector, xMapPosMultV);
 
-                    for (int i = 0; i < Vector<uint>.Count; i++)
+                    if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                     {
-                        if (to[i] > y)
+                        Vector256<int> yV = Vector256.Create(y);
+                        Vector256<int> mask = Vector256.GreaterThan(to.AsVector256(), yV);
+
+                        Vector256<int> gathered = Avx2.GatherMaskVector256(
+                            yV,
+                            (int*)texturePtr,
+                            textureIndexV.AsVector256(),
+                            mask,
+                            scale: sizeof(int)
+                        );
+
+                        Avx2.MaskStore((int*)screenTexPtr, mask, gathered);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < Vector<uint>.Count; i++)
                         {
-                            int textureIndex = textureIndexV[i];
-                            screenTexPtr[i] = texturePtr[textureIndex];
+                            if (to[i] > y)
+                            {
+                                int textureIndex = textureIndexV[i];
+                                screenTexPtr[i] = texturePtr[textureIndex];
+                            }
                         }
                     }
 
@@ -428,15 +446,33 @@ namespace RenderingEngine.Engine
                     Vector<float> incrementVector = Vector.Create(*(incrCachePtr + y));
                     Vector<int> textureIndexV = GetXyFromScreenSpace(incrementVector, xMapPosMultV);
 
-                    for (int i = 0; i < Vector<uint>.Count; i++)
+                    if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                     {
-                        if (from[i] >= y)
-                        {
-                            continue;
-                        }
+                        Vector<int> yV = Vector.Create(y);
+                        Vector<int> mask = Vector.LessThan(from, yV);
 
-                        int textureIndex = textureIndexV[i];
-                        screenTexPtr[i] = texturePtr[textureIndex];
+                        Vector256<int> gathered = Avx2.GatherMaskVector256(
+                            yV.AsVector256(),
+                            (int*)texturePtr,
+                            textureIndexV.AsVector256(),
+                            mask.AsVector256(),
+                            scale: sizeof(int)
+                        );
+
+                        Avx2.MaskStore((int*)screenTexPtr, mask.AsVector256(), gathered);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < Vector<uint>.Count; i++)
+                        {
+                            if (from[i] >= y)
+                            {
+                                continue;
+                            }
+
+                            int textureIndex = textureIndexV[i];
+                            screenTexPtr[i] = texturePtr[textureIndex];
+                        }
                     }
 
                     screenTexPtr += width;
