@@ -88,7 +88,6 @@ namespace RenderingEngine.Engine
         {
             float* cameraHeightToMapYPos = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
-            int width = this.PixelWidth;
             int height = this.PixelHeight;
             int halfHeightInt = this.PixelHeight / 2;
 
@@ -197,6 +196,8 @@ namespace RenderingEngine.Engine
 
                     neighborToRender.Initialize(pool, renderableWall, neighborWall.Neighbor.Value);
                     neighborToRender.MirrorWall = neighborWall.IsMirror ? neighborWall : renderableWall.MirrorWall;
+
+                    Debug.Assert(renderableWall.XLeft < renderableWall.XRight);
 
                     sectorRenderQueue.Add(neighborToRender);
                 }
@@ -384,12 +385,18 @@ namespace RenderingEngine.Engine
 
                     if (itemI.RenderableWall.XLeft == itemJ.RenderableWall.XRight)
                     {
+                        itemI.RenderableWall.Offset++;
                         itemI.RenderableWall.XLeft++;
                     }
 
                     if (itemI.RenderableWall.XRight == itemJ.RenderableWall.XLeft)
                     {
                         itemI.RenderableWall.XRight--;
+                    }
+
+                    if (itemI.RenderableWall.XLeft > itemI.RenderableWall.XRight)
+                    {
+                        continue;
                     }
 
                     Debug.Assert(

@@ -35,33 +35,19 @@ namespace RenderingEngine.Engine
             // AI Assisted
             if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
             {
-                int vCount = Vector<float>.Count;
-                int rem = length & (vCount - 1);
+                int rem = length & (Vector<float>.Count - 1);
                 wallToX -= rem;
 
-                float* wallStartYSpan = stackalloc float[vCount];
-                float* wallEndYSpan = stackalloc float[vCount];
+                Vector<float> ceilDistIncrV = Vector.Create(ceilDistIncr * Vector<float>.Count);
+                Vector<float> floorDistIncrV = Vector.Create(floorDistIncr * Vector<float>.Count);
+                Vector<float> wallStartYv = Vector.CreateSequence(wallStartY, ceilDistIncr);
+                Vector<float> wallEndYv = Vector.CreateSequence(wallEndY, floorDistIncr);
 
                 Vector<float> scaledTextureHeightV = Vector.Create(scaledTextureHeight);
                 Vector<float> textureStartV = Vector.Create(textureStart);
 
-                for (int x = wallFromX; x < wallToX; x += vCount)
+                for (int x = wallFromX; x < wallToX; x += Vector<float>.Count)
                 {
-                    // precision seems critical here
-                    // so we fall back to scalar math here
-                    // Vector.CreateSequence and wallStartYv + strideV produce
-                    // a slightly different result
-                    for (int i = 0; i < vCount; i++)
-                    {
-                        wallStartYSpan[i] = wallStartY;
-                        wallEndYSpan[i] = wallEndY;
-                        wallStartY += ceilDistIncr;
-                        wallEndY += floorDistIncr;
-                    }
-
-                    Vector<float> wallStartYv = Vector.Load(wallStartYSpan);
-                    Vector<float> wallEndYv = Vector.Load(wallEndYSpan);
-
                     Vector<int> ceilingYv = Vector.Load(ceil + x);
                     Vector<int> wallSlopedStartYv = Vector.Load(wallStartSloped + x);
 
@@ -75,16 +61,22 @@ namespace RenderingEngine.Engine
                     topOffsetV += Vector.ConvertToSingle(wallSlopedStartYv) - wallStartYv;
 
                     Vector<float> textureYIncrV = scaledTextureHeightV / (wallEndYv - wallStartYv);
-                    Vector<float> textureYPosYv = textureStartV + topOffsetV * textureYIncrV;
+                    Vector<float> textureYPosYv = Vector.FusedMultiplyAdd(topOffsetV, textureYIncrV, textureStartV);
                     Vector<int> textureYPosYIntV = Vector.ConvertToInt32Native(textureYPosYv);
 
-                    for (int i = 0; i < vCount; i++)
+                    for (int i = 0; i < Vector<float>.Count; i++)
                     {
                         startingYTexturePosition[x + i] = SharedHelpers.EnsureOffsetIsPositive(textureHeightShifted, textureYPosYIntV[i]);
                     }
 
                     Vector.Store(Vector.ConvertToInt32Native(textureYIncrV), textureYIncrement + x);
+
+                    wallStartYv += ceilDistIncrV;
+                    wallEndYv += floorDistIncrV;
                 }
+
+                wallStartY = wallStartYv[0];
+                wallEndY = wallEndYv[0];
 
                 wallFromX = wallToX;
                 wallToX += rem;
@@ -224,10 +216,6 @@ namespace RenderingEngine.Engine
             }
         }
 
-        // AI Assisted
-        // Shared vector/scalar loop body for CalculateLowerTextureYIncrement and
-        // CalculateLowerTextureYIncrementForSwappedWalls: identical math, only the
-        // pre-loop setup (wallStartY/wallEndY/increments/scale) differs between callers.
         private static void CalculateLowerTextureYIncrementCore(
             int* portalTo,
             int* portalToClamped,
@@ -252,29 +240,16 @@ namespace RenderingEngine.Engine
                 int rem = length & (vCount - 1);
                 wallToX -= rem;
 
-                float* wallStartYSpan = stackalloc float[vCount];
-                float* wallEndYSpan = stackalloc float[vCount];
-
                 Vector<float> scaledTextureHeightV = Vector.Create(scaledTextureHeight);
                 Vector<float> textureStartV = Vector.Create((float)textureStart);
 
+                Vector<float> ceilDistIncrV = Vector.Create(ceilDistIncr * Vector<float>.Count);
+                Vector<float> floorDistIncrV = Vector.Create(floorDistIncr * Vector<float>.Count);
+                Vector<float> wallStartYv = Vector.CreateSequence(wallStartY, ceilDistIncr);
+                Vector<float> wallEndYv = Vector.CreateSequence(wallEndY, floorDistIncr);
+
                 for (int x = wallFromX; x < wallToX; x += vCount)
                 {
-                    // precision seems critical here
-                    // so we fall back to scalar math here
-                    // Vector.CreateSequence and wallStartYv + strideV produce
-                    // a slightly different result
-                    for (int i = 0; i < vCount; i++)
-                    {
-                        wallStartYSpan[i] = wallStartY;
-                        wallEndYSpan[i] = wallEndY;
-                        wallStartY += ceilDistIncr;
-                        wallEndY += floorDistIncr;
-                    }
-
-                    Vector<float> wallStartYv = Vector.Load(wallStartYSpan);
-                    Vector<float> wallEndYv = Vector.Load(wallEndYSpan);
-
                     Vector<int> portalToYv = Vector.Load(portalTo + x);
                     Vector<int> portalToSlopedYv = Vector.Load(portalToClamped + x);
                     Vector<int> ceilYv = Vector.Load(ceil + x);
@@ -296,7 +271,13 @@ namespace RenderingEngine.Engine
                     }
 
                     Vector.Store(Vector.ConvertToInt32Native(textureYIncrV), textureYIncrement + x);
+
+                    wallStartYv += ceilDistIncrV;
+                    wallEndYv += floorDistIncrV;
                 }
+
+                wallStartY = wallStartYv[0];
+                wallEndY = wallEndYv[0];
 
                 wallFromX = wallToX;
                 wallToX += rem;
