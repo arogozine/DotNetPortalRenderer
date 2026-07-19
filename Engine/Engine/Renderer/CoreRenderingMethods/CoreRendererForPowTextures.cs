@@ -405,7 +405,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
         if (Sse.IsSupported)
         {
-            uint minTextureIndex = *texturePos;
+            Debug.Assert(textureHeight > (textureYPos_uV[0] >> 16));
             Sse.Prefetch0(textureBuffer + minTextureIndex);
             minTextureIndex &= ~textureHeightMask;
             Sse.Prefetch1(textureBuffer + minTextureIndex);
@@ -436,7 +436,6 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
                 }
                 else
                 {
-                    // AI Assisted: Scalar fallback
                     for (int i = 0; i < Vector256<uint>.Count; i++)
                     {
                         if (mask[i] == 0U)

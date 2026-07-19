@@ -104,6 +104,8 @@ internal unsafe sealed class BuildRenderer : PortalRenderer
         GameTexture texture = TextureCache.GetTexture(textureInfo);
         int textureWidth = texture.Height;
         int textureHeight = texture.Width;
+        int textureHeightShifted = (int)texture.Height << 16;
+
         bool texHeightDivisible2 = SharedHelpers.IsPowerOfTwo(textureHeight);
         if (texHeightDivisible2)
         {
@@ -185,7 +187,8 @@ internal unsafe sealed class BuildRenderer : PortalRenderer
             portalToClampedPtr[x] = clampedToY;
 
             textureXLocationPtr[x] = textureXPos;
-            textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
+            textureYLocationPtr[x] = (uint)SharedHelpers.EnsureOffsetIsPositive(textureHeightShifted, float.ConvertToIntegerNative<int>(textureYPos));
+
             textureYIncrementPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
             repeatedCountPtr[x - wallFromX] = (ushort)length;
         }

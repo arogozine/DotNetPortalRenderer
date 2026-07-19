@@ -131,9 +131,9 @@ namespace RenderingEngine.Engine
         {
             Vector128<uint> blended, gMask;
 
-            if (Avx2.IsSupported)
+            if (Sse2.IsSupported)
             {
-                blended = Avx2.Average(bgraDst.AsByte(), bgraSrc.AsByte()).AsUInt32();
+                blended = Sse2.Average(bgraDst.AsByte(), bgraSrc.AsByte()).AsUInt32();
                 gMask = Vector128.GreaterThan(bgraSrc, Vector128<uint>.Zero);
 
                 return Vector128.ConditionalSelect(gMask, blended, bgraDst);
