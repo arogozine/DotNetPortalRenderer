@@ -73,8 +73,8 @@ namespace RenderingEngine.Engine
 
                     for (int i = 0; i < length; i += Vector<int>.Count)
                     {
-                        ceilingStartV = Vector.LoadAligned(&ceilingStartPtr[i]);
-                        floorEndV = Vector.LoadAligned(&floorEndPtr[i]);
+                        ceilingStartV = Vector.LoadAlignedNonTemporal(&ceilingStartPtr[i]);
+                        floorEndV = Vector.LoadAlignedNonTemporal(&floorEndPtr[i]);
 
                         ceilingStartV = Vector.ClampNative(ceilingStartV, zero, max);
                         floorEndV = Vector.ClampNative(floorEndV, zero, max);

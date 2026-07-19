@@ -10,7 +10,7 @@ public sealed class RenderablePortalWall
     public RenderableWall Wall { get; private set; } = null!;
     public int XLeft { get; set; }
     public int XRight { get; set; }
-    public int Offset { get; private set; }
+    public int Offset { get; set; }
     public Tooling.ArraySegment<RenderableWall> ParentWalls { get; set; } = Tooling.ArraySegment<RenderableWall>.Empty;
     public RenderColumnStatus RenderColumnStatus { get; private set; }
     public RenderableWall? MirrorWall { get; set; }
