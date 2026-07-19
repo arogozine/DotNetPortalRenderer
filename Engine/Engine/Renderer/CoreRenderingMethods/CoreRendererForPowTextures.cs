@@ -371,7 +371,16 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
             (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(clampedFromY, count);
             (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(clampedToY, count);
 
+            bool aligned = 0 == (x & (Vector<uint>.Count - 1));
+
+            if (aligned)
+            {
+                ICoreRenderer<T>.RenderMultipleHorizontalLines_Aligned(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
+            }
+            else
+            {
             ICoreRenderer<T>.RenderMultipleHorizontalLines(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
+            }
 
             x += count;
         }
