@@ -198,12 +198,12 @@ namespace RenderingEngine.Engine
             out Vector<float> intersectionY)
         {
             // denominator = dot(lineDirection, planeNormal)
-            Vector<float> denominator = lineDirectionX * nX + lineDirectionY * nY + lineDirectionZ * nZ;
+            Vector<float> denominator = Vector.FusedMultiplyAdd(lineDirectionZ, nZ, Vector.FusedMultiplyAdd(lineDirectionX, nX, lineDirectionY * nY));
 
             Vector<float> ptpZ = pZ - linePointZ;
 
             // numerator = dot(pointToPlane, planeNormal)
-            Vector<float> numerator = pX * nX + pY * nY + ptpZ * nZ;
+            Vector<float> numerator = Vector.FusedMultiplyAdd(ptpZ, nZ, Vector.FusedMultiplyAdd(pX, nX, pY * nY));
 
             // t = numerator / denominator -- handle small denominators to avoid NaNs/Infs
             // Vector<float> absDen = Vector.Abs(denominator);
