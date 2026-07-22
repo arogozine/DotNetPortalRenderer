@@ -2,6 +2,7 @@
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using Tooling;
 
 namespace RenderingEngine.Engine;
 
@@ -284,22 +285,42 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
             uint* textureYPos = textureYLocationPtr + x;
             uint* textureYIncr = textureYIncrementPtr + x;
 
+            bool aligned = 0 == (x & (Vector<uint>.Count - 1));
+
             Debug.Assert(*clampedFromY < *clampedToY);
 
             if (Vector256.IsHardwareAccelerated && count >= Vector256<uint>.Count)
             {
-                RenderMultipleWallLinesV256(
-                    width,
-                    (uint)x,
-                    textureHeight,
-                    clampedFromY,
-                    clampedToY,
-                    textureYPos,
-                    textureYIncr,
-                    screenPtr,
-                    textureXPos,
-                    texturePtr
-                );
+                if (aligned)
+                {
+                    RenderMultipleWallLinesV256<AlignedMemory>(
+                        width,
+                        (uint)x,
+                        textureHeight,
+                        clampedFromY,
+                        clampedToY,
+                        textureYPos,
+                        textureYIncr,
+                        screenPtr,
+                        textureXPos,
+                        texturePtr
+                    );
+                }
+                else
+                {
+                    RenderMultipleWallLinesV256<UnalignedMemory>(
+                        width,
+                        (uint)x,
+                        textureHeight,
+                        clampedFromY,
+                        clampedToY,
+                        textureYPos,
+                        textureYIncr,
+                        screenPtr,
+                        textureXPos,
+                        texturePtr
+                    );
+                }
 
                 x += Vector256<uint>.Count;
                 continue;
@@ -307,18 +328,36 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
 
             if (Vector128.IsHardwareAccelerated && count >= Vector128<uint>.Count)
             {
-                RenderMultipleWallLinesV128(
-                    width,
-                    (uint)x,
-                    textureHeight,
-                    clampedFromY,
-                    clampedToY,
-                    textureYPos,
-                    textureYIncr,
-                    screenPtr,
-                    textureXPos,
-                    texturePtr
-                );
+                if (aligned)
+                {
+                    RenderMultipleWallLinesV128<AlignedMemory>(
+                        width,
+                        (uint)x,
+                        textureHeight,
+                        clampedFromY,
+                        clampedToY,
+                        textureYPos,
+                        textureYIncr,
+                        screenPtr,
+                        textureXPos,
+                        texturePtr
+                    );
+                }
+                else
+                {
+                    RenderMultipleWallLinesV128<UnalignedMemory>(
+                        width,
+                        (uint)x,
+                        textureHeight,
+                        clampedFromY,
+                        clampedToY,
+                        textureYPos,
+                        textureYIncr,
+                        screenPtr,
+                        textureXPos,
+                        texturePtr
+                    );
+                }
 
                 x += Vector128<uint>.Count;
                 continue;
@@ -376,25 +415,28 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
             uint* textureYPos = textureYLocationPtr + x;
             uint* textureYIncr = textureYIncrementPtr + x;
 
-            (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(clampedFromY, count);
-            (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(clampedToY, count);
-
             bool aligned = 0 == (x & (Vector<uint>.Count - 1));
 
             if (aligned)
             {
-                ICoreRenderer<T>.RenderMultipleHorizontalLines_Aligned(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
+                (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue<AlignedMemory>(clampedFromY, count);
+                (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue<AlignedMemory>(clampedToY, count);
+
+                ICoreRenderer<T>.RenderMultipleHorizontalLines<AlignedMemory>(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
             }
             else
             {
-            ICoreRenderer<T>.RenderMultipleHorizontalLines(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
+                (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue<UnalignedMemory>(clampedFromY, count);
+                (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue<UnalignedMemory>(clampedToY, count);
+
+                ICoreRenderer<T>.RenderMultipleHorizontalLines<UnalignedMemory>(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
             }
 
             x += count;
         }
     }
 
-    public static void RenderMultipleWallLinesV256(
+    public static void RenderMultipleWallLinesV256<I>(
         uint width,
         uint x,
         int textureHeight,
@@ -406,17 +448,18 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
         uint* texturePos,
         uint* textureBuffer
     )
+        where I : IMemoryAlignment
     {
-        Vector256<uint> startYV = Vector256.Load(startY);
-        Vector256<uint> endYV = Vector256.Load(endY);
-        Vector256<uint> textureYIncr_uV = Vector256.Load(textureYIncr_u);
+        Vector256<uint> startYV = I.Load256(startY);
+        Vector256<uint> endYV = I.Load256(endY);
+        Vector256<uint> textureYIncr_uV = I.Load256(textureYIncr_u);
 
         (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
         (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
 
         uint textureHeightU = (uint)(textureHeight);
-        Vector256<uint> textureYPos_uV = Vector256.Load(textureYPos_u);
-        Vector256<uint> textureXPosV = Vector256.Load(texturePos);
+        Vector256<uint> textureYPos_uV = I.Load256(textureYPos_u);
+        Vector256<uint> textureXPosV = I.Load256(texturePos);
 
         uint* screenIndexPtr = screenPtr + min_t * width + x;
 
@@ -531,7 +574,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
         }
     }
 
-    public static void RenderMultipleWallLinesV128(
+    public static void RenderMultipleWallLinesV128<I>(
         uint width,
         uint x,
         int textureHeight,
@@ -543,17 +586,18 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
         uint* texturePos,
         uint* textureBuffer
         )
+        where I : IMemoryAlignment
     {
-        Vector128<uint> startYV = Vector128.Load(startY);
-        Vector128<uint> endYV = Vector128.Load(endY);
-        Vector128<uint> textureXIncr_uV = Vector128.Load(textureYIncr_u);
+        Vector128<uint> startYV = I.Load128(startY);
+        Vector128<uint> endYV = I.Load128(endY);
+        Vector128<uint> textureXIncr_uV = I.Load128(textureYIncr_u);
 
         (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
         (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
 
         uint textureHeightU = (uint)(textureHeight);
-        Vector128<uint> textureYPos_uV = Vector128.Load(textureYPos_u);
-        Vector128<uint> textureXPosV = Vector128.Load(texturePos);
+        Vector128<uint> textureYPos_uV = I.Load128(textureYPos_u);
+        Vector128<uint> textureXPosV = I.Load128(texturePos);
 
         if (min_b <= max_t)
         {

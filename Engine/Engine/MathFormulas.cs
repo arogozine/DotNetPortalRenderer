@@ -2,6 +2,7 @@
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using Tooling;
 
 namespace RenderingEngine.Engine
 {
@@ -40,7 +41,8 @@ namespace RenderingEngine.Engine
             }
         }
 
-        public static unsafe (uint min, uint max) GetMinMaxValue(uint* ptr, int count)
+        public static unsafe (uint min, uint max) GetMinMaxValue<I>(uint* ptr, int count)
+            where I : IMemoryAlignment
         {
             uint max_agg = uint.MinValue;
             uint min_agg = uint.MaxValue;
@@ -49,10 +51,10 @@ namespace RenderingEngine.Engine
             {
                 while (count > Vector256<uint>.Count)
                 {
-                    (uint min, uint max) = GetMinMaxValue(Vector256.Load(ptr));
+                    (uint min, uint max) = GetMinMaxValue(I.Load256(ptr));
 
-                    max_agg = MathFormulas.Max(max_agg, max);
-                    min_agg = MathFormulas.Min(min_agg, min);
+                    max_agg = Max(max_agg, max);
+                    min_agg = Min(min_agg, min);
 
                     ptr += Vector256<uint>.Count;
                     count -= Vector256<uint>.Count;
@@ -61,8 +63,8 @@ namespace RenderingEngine.Engine
 
             while (count > 0)
             {
-                max_agg = MathFormulas.Max(max_agg, *ptr);
-                min_agg = MathFormulas.Min(min_agg, *ptr);
+                max_agg = Max(max_agg, *ptr);
+                min_agg = Min(min_agg, *ptr);
 
                 ptr++;
                 count--;

@@ -2,6 +2,7 @@
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using Tooling;
 
 namespace RenderingEngine.Engine;
 
@@ -270,8 +271,6 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
                 continue;
             }
 
-            bool aligned32 = 0 == (x & (Vector256<uint>.Count - 1));
-            bool aligned16 = 0 == (x & (Vector128<uint>.Count - 1));
             uint* clampedFromY = portalFromClampedPtr + x;
             uint* clampedToY = portalToClampedPtr + x;
             uint* textureXPos = textureXLocationPtr + x;
@@ -370,10 +369,22 @@ internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T
             uint* textureYPos = textureYLocationPtr + x;
             uint* textureYIncr = textureYIncrementPtr + x;
 
-            (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(clampedFromY, count);
-            (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(clampedToY, count);
+            bool aligned = 0 == (x & (Vector<uint>.Count - 1));
 
-            ICoreRenderer<T>.RenderMultipleHorizontalLines(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
+            if (aligned)
+            {
+                (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue<AlignedMemory>(clampedFromY, count);
+                (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue<AlignedMemory>(clampedToY, count);
+
+                ICoreRenderer<T>.RenderMultipleHorizontalLines<AlignedMemory>(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
+            }
+            else
+            {
+                (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue<UnalignedMemory>(clampedFromY, count);
+                (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue<UnalignedMemory>(clampedToY, count);
+
+                ICoreRenderer<T>.RenderMultipleHorizontalLines<UnalignedMemory>(count, width, (uint)x, clampedFromY, clampedToY, min_t, max_t, min_b, max_b, textureYPos, textureYIncr, screenPtr, textureXPos, texturePtr);
+            }
 
             x += count;
         }

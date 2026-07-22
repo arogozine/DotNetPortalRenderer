@@ -296,9 +296,8 @@ namespace RenderingEngine.Engine
             Vector<float> pyV = this.pyV;
             Vector<float> pzV = this.pzV;
             // X Map Position Multiplier
-            Vector<int> widthDiv2V = Vector.Create(width >> 1);
+            Vector<int> widthDiv2V = Vector.Create(width >> 1) - Vector.CreateSequence(0, 1);
             Vector<float> xPosIncrV = Vector.Create(1f / (width * -EngineConstants.HeightToWidthRatio));
-            Vector<int> xIncrV = Vector.CreateSequence(0, 1);
             // For slopes
             Vector3 planePoint, planeNormal;
             Vector<float> nX, nY, nZ, pX, pY, pZ, dir_z;
@@ -355,7 +354,7 @@ namespace RenderingEngine.Engine
                 int min_t, int max_t, int min_b, int max_b
                 )
             {
-                Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(x) - xIncrV);
+                Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(x));
                 Vector<float> xMapPosMultiplierCacheV = diff * xPosIncrV;
 
                 // render tops where there is no shared window
@@ -366,11 +365,9 @@ namespace RenderingEngine.Engine
 
                 for (int y = max_t, screenIndex = y * width + x; y <= min_b; y++, screenIndex += width)
                 {
-                    Vector<float> incrementVector = Vector.Create(*(incrCachePtr + y));
-
                     uint* screenTexPtr = screenPtr + screenIndex;
 
-                    Vector<int> textureIndex = GetXyFromScreenSpace(incrementVector, xMapPosMultiplierCacheV);
+                    Vector<int> textureIndex = GetXyFromScreenSpace(Vector.Create(*(incrCachePtr + y)), xMapPosMultiplierCacheV);
 
                     if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                     {
@@ -544,7 +541,7 @@ namespace RenderingEngine.Engine
                     for (int i = 0; i < rem; i++)
                     {
                         int textureIndex = textureIndexV[i];
-                        * screenTexPtr = texturePtr[textureIndex];
+                        *screenTexPtr = texturePtr[textureIndex];
                         screenTexPtr += width;
                     }
                 }

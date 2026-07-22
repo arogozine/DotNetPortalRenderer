@@ -2,13 +2,15 @@
 using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using Tooling;
 
 namespace RenderingEngine.Engine;
 
 internal unsafe interface ICoreRenderer<T>
     where T : IDrawPixel
 {
-    public static void RenderFloorOrCeilingSprite(
+    public static void RenderFloorOrCeilingSprite
+        (
         float* xMapPosMultiplierCachePtr,
         float* incrCachePtr,
         ushort* repeatedCount,
@@ -47,9 +49,8 @@ internal unsafe interface ICoreRenderer<T>
         // Player height compared to ceiling/floor
         Vector<float> cameraPositionV = Vector.Create(cameraPosition);
         // X Map Position Multiplier
-        Vector<int> widthDiv2V = Vector.Create(width >> 1);
+        Vector<int> widthDiv2V = Vector.Create(width >> 1) - Vector.CreateSequence(0, 1);
         Vector<float> xPosIncrV = Vector.Create(1f / (width * -EngineConstants.HeightToWidthRatio));
-        Vector<int> xIncrV = Vector.CreateSequence(0, 1);
 
         for (int x = from; x <= to;)
         {
@@ -100,7 +101,7 @@ internal unsafe interface ICoreRenderer<T>
             int min_t, int max_t, int min_b, int max_b
             )
         {
-            Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(x) - xIncrV);
+            Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(x));
             Vector<float> xMapPosMultiplierCacheV = diff * xPosIncrV;
 
             // render tops where there is no shared window
@@ -144,7 +145,7 @@ internal unsafe interface ICoreRenderer<T>
             int xStart)
         {
             uint* screenTexPtr = screenPtr + floorFromY * width + xStart;
-            Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(xStart) - xIncrV);
+            Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(xStart));
             Vector<float> xMapPosMultiplierCacheV = diff * xPosIncrV;
 
             for (int y = floorFromY; y < floorToY; y++)
@@ -187,7 +188,7 @@ internal unsafe interface ICoreRenderer<T>
             int xStart)
         {
             uint* screenTexPtr = screenPtr + min_t * width + xStart;
-            Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(xStart) - xIncrV);
+            Vector<float> diff = Vector.ConvertToSingle(widthDiv2V - Vector.Create(xStart));
             Vector<float> xMapPosMultiplierCacheV = diff * xPosIncrV;
 
             for (int y = min_t; y < max_t; y++)
@@ -313,7 +314,7 @@ internal unsafe interface ICoreRenderer<T>
         }
     }
 
-    public static void RenderMultipleHorizontalLines_Aligned(
+    public static void RenderMultipleHorizontalLines<I>(
         uint count,
         uint width,
         uint x,
@@ -327,6 +328,7 @@ internal unsafe interface ICoreRenderer<T>
         uint* texturePos,
         uint* textureBuffer
         )
+        where I : IMemoryAlignment
     {
         RenderTops();
         RenderHorizontal();
@@ -349,8 +351,8 @@ internal unsafe interface ICoreRenderer<T>
                 {
                     uint* textureYPos = textureYPos_u + i;
 
-                    Vector<uint> textureYPosV = Vector.LoadAligned(textureYPos);
-                    Vector<uint> texturePosV = Vector.LoadAligned(texturePos + i);
+                    Vector<uint> textureYPosV = I.Load(textureYPos);
+                    Vector<uint> texturePosV = I.Load(texturePos + i);
                     Vector<uint> texelIndexV = (textureYPosV >> 16) + texturePosV;
 
                     if (Avx2.IsSupported && Vector<uint>.Count == Vector256<uint>.Count)
@@ -372,149 +374,8 @@ internal unsafe interface ICoreRenderer<T>
                         }
                     }
 
-                    textureYPosV += Vector.LoadAligned(textureYIncr_u + i);
-                    textureYPosV.StoreAligned(textureYPos);
-                    screenIndexPtr += Vector<uint>.Count;
-                }
-
-                count += rem;
-
-                for (; i < count; i++)
-                {
-                    uint* textureYPos = textureYPos_u + i;
-                    uint texelIndex = (*textureYPos >> 16);
-                    texelIndex += *(texturePos + i);
-
-                    uint pixel = *(textureBuffer + texelIndex);
-
-                    T.Draw(screenIndexPtr, pixel);
-
-                    *textureYPos += *(textureYIncr_u + i);
-                    screenIndexPtr++;
-                }
-
-                screenIndexPtr += width - count;
-            }
-        }
-
-        void RenderTops()
-        {
-            uint* screenIndexPtr = screenPtr + min_t * width + x;
-
-            for (uint y = min_t; y < max_t; y++)
-            {
-                for (int i = 0; i < count; i++)
-                {
-                    uint start = *(startY + i);
-
-                    if (y <= start)
-                        continue;
-
-                    uint* textureXPos = textureYPos_u + i;
-                    uint texelIndex = (*textureXPos >> 16);
-                    texelIndex += *(texturePos + i);
-
-                    uint pixel = *(textureBuffer + texelIndex);
-
-                    T.Draw((screenIndexPtr + i), pixel);
-
-                    *textureXPos += *(textureYIncr_u + i);
-                }
-
-                screenIndexPtr += width;
-            }
-        }
-
-        void RenderBottoms()
-        {
-            uint* screenIndexPtr = screenPtr + min_b * width + x;
-
-            for (uint y = min_b; y < max_b; y++)
-            {
-                for (int i = 0; i < count; i++)
-                {
-                    uint end = *(endY + i);
-
-                    if (end <= y)
-                        continue;
-
-                    uint* textureXPos = textureYPos_u + i;
-                    uint texelIndex = (*textureXPos >> 16);
-                    texelIndex += *(texturePos + i);
-
-                    uint pixel = *(textureBuffer + texelIndex);
-
-                    T.Draw((screenIndexPtr + i), pixel);
-
-                    *textureXPos += *(textureYIncr_u + i);
-                }
-
-                screenIndexPtr += width;
-            }
-        }
-    }
-
-    public static void RenderMultipleHorizontalLines(
-        uint count,
-        uint width,
-        uint x,
-        uint* startY,
-        uint* endY,
-        uint min_t, uint max_t,
-        uint min_b, uint max_b,
-        uint* textureYPos_u,
-        uint* textureYIncr_u,
-        uint* screenPtr,
-        uint* texturePos,
-        uint* textureBuffer
-        )
-    {
-        RenderTops();
-        RenderHorizontal();
-        RenderBottoms();
-
-        return;
-
-        void RenderHorizontal()
-        {
-            uint* screenIndexPtr = screenPtr + max_t * width + x;
-            uint* screenIndexPtrEnd = screenPtr + min_b * width + x;
-
-            while (screenIndexPtr < screenIndexPtrEnd)
-            {
-                int i = 0;
-                uint rem = count & ((uint)Vector<uint>.Count - 1U);
-                count -= rem;
-
-                for (; i < count; i += Vector<uint>.Count)
-                {
-                    uint* textureYPos = textureYPos_u + i;
-
-                    Vector<uint> textureYPosV = Vector.Load(textureYPos);
-                    Vector<uint> texturePosV = Vector.Load(texturePos + i);
-                    Vector<uint> texelIndexV = (textureYPosV >> 16) + texturePosV;
-
-                    if (Avx2.IsSupported && Vector<uint>.Count == Vector256<uint>.Count)
-                    {
-                        Vector256<uint> gathered = Avx2.GatherVector256(
-                            textureBuffer,
-                            texelIndexV.AsVector256().AsInt32(),
-                            scale: sizeof(uint)
-                        );
-
-                        T.DrawLine(screenIndexPtr, gathered);
-                    }
-                    else
-                    {
-                        for (int j = 0; j < Vector<uint>.Count; j++)
-                        {
-                            uint pixel = *(textureBuffer + texelIndexV[j]);
-                            T.Draw(screenIndexPtr + j, pixel);
-                        }
-                    }
-
-                    textureYPosV += Vector.Load(textureYIncr_u + i);
-                    textureYPosV.Store(textureYPos);
+                    textureYPosV += I.Load(textureYIncr_u + i);
+                    I.Store(textureYPos, textureYPosV);
                     screenIndexPtr += Vector<uint>.Count;
                 }
 

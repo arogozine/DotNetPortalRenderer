@@ -32,9 +32,14 @@ namespace RenderingEngine.Engine
 
             int length = wallToX - wallFromX;
 
-            // AI Assisted
             if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
             {
+                int scalar = Vector<float>.Count - wallFromX & (Vector<float>.Count - 1);
+
+                Scalar(wallFromX, wallFromX + scalar);
+                wallFromX += scalar;
+
+                length = wallToX - wallFromX;
                 int rem = length & (Vector<float>.Count - 1);
                 wallToX -= rem;
 
@@ -48,8 +53,8 @@ namespace RenderingEngine.Engine
 
                 for (int x = wallFromX; x < wallToX; x += Vector<float>.Count)
                 {
-                    Vector<int> ceilingYv = Vector.Load(ceil + x);
-                    Vector<int> wallSlopedStartYv = Vector.Load(wallStartSloped + x);
+                    Vector<int> ceilingYv = Vector.LoadAligned(ceil + x);
+                    Vector<int> wallSlopedStartYv = Vector.LoadAligned(wallStartSloped + x);
 
                     // ceiling (render start) is lower than sloped wall start
                     // increment texture start to accomodate
@@ -69,7 +74,7 @@ namespace RenderingEngine.Engine
                         startingYTexturePosition[x + i] = SharedHelpers.EnsureOffsetIsPositive(textureHeightShifted, textureYPosYIntV[i]);
                     }
 
-                    Vector.Store(Vector.ConvertToInt32Native(textureYIncrV), textureYIncrement + x);
+                    Vector.StoreAligned(Vector.ConvertToInt32Native(textureYIncrV), textureYIncrement + x);
 
                     wallStartYv += ceilDistIncrV;
                     wallEndYv += floorDistIncrV;
@@ -80,38 +85,49 @@ namespace RenderingEngine.Engine
 
                 wallFromX = wallToX;
                 wallToX += rem;
+
+                Scalar(wallFromX, wallToX);
+            }
+            else
+            {
+                Scalar(wallFromX, wallToX);
             }
 
-            for (int x = wallFromX; x <= wallToX; x++)
+            return;
+
+            void Scalar(int from, int to)
             {
-                float textureYIncr = scaledTextureHeight / (wallEndY - wallStartY);
-
-                int ceilingY = ceil[x];
-                int wallSlopedStartY = wallStartSloped[x];
-
-                Debug.Assert(ceilingY >= 0);
-
-                float topOffset = 0f;
-
-                // ceiling (render start) is lower than sloped wall start
-                // increment texture start to accomodate
-                if (ceilingY > wallSlopedStartY)
+                for (int x = from; x <= to; x++)
                 {
-                    topOffset += ceilingY - wallSlopedStartY;
+                    float textureYIncr = scaledTextureHeight / (wallEndY - wallStartY);
+
+                    int ceilingY = ceil[x];
+                    int wallSlopedStartY = wallStartSloped[x];
+
+                    Debug.Assert(ceilingY >= 0);
+
+                    float topOffset = 0f;
+
+                    // ceiling (render start) is lower than sloped wall start
+                    // increment texture start to accomodate
+                    if (ceilingY > wallSlopedStartY)
+                    {
+                        topOffset += ceilingY - wallSlopedStartY;
+                    }
+
+                    // slope hides part of the wall,
+                    // increment texture start to accomodate
+                    topOffset += wallSlopedStartY - wallStartY;
+
+                    int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + topOffset * textureYIncr);
+                    textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeightShifted, textureYPosY);
+
+                    startingYTexturePosition[x] = textureYPosY;
+                    textureYIncrement[x] = float.ConvertToIntegerNative<int>(textureYIncr);
+
+                    wallStartY += ceilDistIncr;
+                    wallEndY += floorDistIncr;
                 }
-
-                // slope hides part of the wall,
-                // increment texture start to accomodate
-                topOffset += wallSlopedStartY - wallStartY;
-
-                int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + topOffset * textureYIncr);
-                textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeightShifted, textureYPosY);
-
-                startingYTexturePosition[x] = textureYPosY;
-                textureYIncrement[x] = float.ConvertToIntegerNative<int>(textureYIncr);
-
-                wallStartY += ceilDistIncr;
-                wallEndY += floorDistIncr;
             }
         }
 
@@ -236,8 +252,14 @@ namespace RenderingEngine.Engine
 
             if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
             {
-                int vCount = Vector<float>.Count;
-                int rem = length & (vCount - 1);
+                int scalar = Vector<float>.Count - wallFromX & (Vector<float>.Count - 1);
+
+                Scalar(wallFromX, wallFromX + scalar);
+
+                wallFromX += scalar;
+
+                length = wallToX - wallFromX;
+                int rem = length & (Vector<float>.Count - 1);
                 wallToX -= rem;
 
                 Vector<float> scaledTextureHeightV = Vector.Create(scaledTextureHeight);
@@ -248,11 +270,11 @@ namespace RenderingEngine.Engine
                 Vector<float> wallStartYv = Vector.CreateSequence(wallStartY, ceilDistIncr);
                 Vector<float> wallEndYv = Vector.CreateSequence(wallEndY, floorDistIncr);
 
-                for (int x = wallFromX; x < wallToX; x += vCount)
+                for (int x = wallFromX; x < wallToX; x += Vector<float>.Count)
                 {
-                    Vector<int> portalToYv = Vector.Load(portalTo + x);
-                    Vector<int> portalToSlopedYv = Vector.Load(portalToClamped + x);
-                    Vector<int> ceilYv = Vector.Load(ceil + x);
+                    Vector<int> portalToYv = Vector.LoadAligned(portalTo + x);
+                    Vector<int> portalToSlopedYv = Vector.LoadAligned(portalToClamped + x);
+                    Vector<int> ceilYv = Vector.LoadAligned(ceil + x);
 
                     Vector<int> ceilDiffV = ceilYv - portalToSlopedYv;
                     Vector<float> topOffsetV = Vector.Max(Vector.ConvertToSingle(ceilDiffV), Vector<float>.Zero);
@@ -265,12 +287,12 @@ namespace RenderingEngine.Engine
                     Vector<float> textureYPosYv = textureStartV + topOffsetV;
                     Vector<int> textureYPosYIntV = Vector.ConvertToInt32Native(textureYPosYv);
 
-                    for (int i = 0; i < vCount; i++)
+                    for (int i = 0; i < Vector<float>.Count; i++)
                     {
                         startingYTexturePosition[x + i] = SharedHelpers.EnsureOffsetIsPositive(textureHeightShifted, textureYPosYIntV[i]);
                     }
 
-                    Vector.Store(Vector.ConvertToInt32Native(textureYIncrV), textureYIncrement + x);
+                    Vector.StoreAligned(Vector.ConvertToInt32Native(textureYIncrV), textureYIncrement + x);
 
                     wallStartYv += ceilDistIncrV;
                     wallEndYv += floorDistIncrV;
@@ -281,36 +303,48 @@ namespace RenderingEngine.Engine
 
                 wallFromX = wallToX;
                 wallToX += rem;
+
+                Scalar(wallFromX, wallToX);
+            }
+            else
+            {
+                Scalar(wallFromX, wallToX);
             }
 
-            for (int x = wallFromX; x <= wallToX; x++)
+            return;
+
+            void Scalar(int from, int to)
             {
-                float textureYIncr = scaledTextureHeight / (wallEndY - wallStartY);
 
-                int portalToY = portalTo[x];
-                int portalToSlopedY = portalToClamped[x];
-                int ceilY = ceil[x];
-
-                float topOffset = 0;
-
-                if (portalToSlopedY < ceilY)
+                for (int x = from; x <= to; x++)
                 {
-                    topOffset -= portalToSlopedY - ceilY;
+                    float textureYIncr = scaledTextureHeight / (wallEndY - wallStartY);
+
+                    int portalToY = portalTo[x];
+                    int portalToSlopedY = portalToClamped[x];
+                    int ceilY = ceil[x];
+
+                    float topOffset = 0;
+
+                    if (portalToSlopedY < ceilY)
+                    {
+                        topOffset -= portalToSlopedY - ceilY;
+                    }
+
+                    topOffset += portalToSlopedY - portalToY;
+                    topOffset *= textureYIncr;
+
+                    int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + topOffset);
+                    textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeightShifted, textureYPosY);
+
+                    Debug.Assert(textureYPosY < textureHeightShifted);
+
+                    startingYTexturePosition[x] = textureYPosY;
+                    textureYIncrement[x] = float.ConvertToIntegerNative<int>(textureYIncr);
+
+                    wallStartY += ceilDistIncr;
+                    wallEndY += floorDistIncr;
                 }
-
-                topOffset += portalToSlopedY - portalToY;
-                topOffset *= textureYIncr;
-
-                int textureYPosY = float.ConvertToIntegerNative<int>(textureStart + topOffset);
-                textureYPosY = SharedHelpers.EnsureOffsetIsPositive(textureHeightShifted, textureYPosY);
-
-                Debug.Assert(textureYPosY < textureHeightShifted);
-
-                startingYTexturePosition[x] = textureYPosY;
-                textureYIncrement[x] = float.ConvertToIntegerNative<int>(textureYIncr);
-
-                wallStartY += ceilDistIncr;
-                wallEndY += floorDistIncr;
             }
         }
 
@@ -331,15 +365,19 @@ namespace RenderingEngine.Engine
             {
                 float* cameraRaySpan = stackalloc float[Vector<float>.Count];
 
-                int vCount = Vector<float>.Count;
-                int rem = length & (vCount - 1);
+                int scalar = Vector<float>.Count - wallFromX & (Vector<float>.Count - 1);
+
+                Scalar(wallFromX, wallFromX + scalar);
+                wallFromX += scalar;
+
+                int rem = length & (Vector<float>.Count - 1);
                 wallToX -= rem;
 
                 Vector<float> t1V = Vector.Create(t1);
                 Vector<float> d2yV = Vector.Create(d2y);
                 Vector<float> negD2xV = Vector.Create(-d2x);
 
-                for (int x = wallFromX; x < wallToX; x += vCount)
+                for (int x = wallFromX; x < wallToX; x += Vector<float>.Count)
                 {
                     // precision seems critical here
                     // so we fall back to scalar math here
@@ -359,11 +397,22 @@ namespace RenderingEngine.Engine
 
                 wallFromX = wallToX;
                 wallToX += rem;
+
+                Scalar(wallFromX, wallToX);
+            }
+            else
+            {
+                Scalar(wallFromX, wallToX);
             }
 
-            for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
+            return;
+
+            void Scalar(int from, int to)
             {
-                distance[x] = MathFormulas.CalculateDistance2(cameraRay, t1, d2y, d2x);
+                for (int x = from; x <= to; x++, cameraRay += cameraWidthIncr)
+                {
+                    distance[x] = MathFormulas.CalculateDistance2(cameraRay, t1, d2y, d2x);
+                }
             }
         }
 
@@ -634,26 +683,33 @@ namespace RenderingEngine.Engine
 
             if (Vector.IsHardwareAccelerated && length > Vector<int>.Count)
             {
-                int rem = length & (Vector<int>.Count - 1);
+                Vector<int> wallMask = Vector.Create((int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall));
+
+                int scalar = Vector<float>.Count - wallFromX & (Vector<float>.Count - 1);
+
+                Scalar(wallFromX, wallFromX + scalar);
+                wallFromX += scalar;
+
+                length = wallToX - wallFromX;
+                int rem = length & (Vector<float>.Count - 1);
                 wallToX -= rem;
 
-                Vector<int> wallMask = Vector.Create((int)(RenderColumnStatus.Calculated | RenderColumnStatus.CanRenderWall));
 
                 for (int x = wallFromX; x < wallToX; x += Vector<int>.Count)
                 {
-                    Vector<int> statusV = Vector.Load((int*)(statusPtr + x));
+                    Vector<int> statusV = Vector.LoadAligned((int*)(statusPtr + x));
 
-                    Vector<int> ceilingStartY = Vector.Load(ceilingStartPtr + x);
-                    Vector<int> floorEndY = Vector.Load(floorEndPtr + x);
+                    Vector<int> ceilingStartY = Vector.LoadAligned(ceilingStartPtr + x);
+                    Vector<int> floorEndY = Vector.LoadAligned(floorEndPtr + x);
 
-                    Vector<int> wallStartY = Vector.Load(wallStartClampedPtr + x);
-                    Vector<int> wallEndY = Vector.Load(wallEndClampedPtr + x);
+                    Vector<int> wallStartY = Vector.LoadAligned(wallStartClampedPtr + x);
+                    Vector<int> wallEndY = Vector.LoadAligned(wallEndClampedPtr + x);
 
                     Vector<int> clamptedFromY = Vector.ClampNative(wallStartY, ceilingStartY, floorEndY);
                     Vector<int> clamptedToY = Vector.ClampNative(wallEndY, ceilingStartY, floorEndY);
 
-                    Vector.Store(clamptedFromY, wallStartClampedPtr + x);
-                    Vector.Store(clamptedToY, wallEndClampedPtr + x);
+                    Vector.StoreAligned(clamptedFromY, wallStartClampedPtr + x);
+                    Vector.StoreAligned(clamptedToY, wallEndClampedPtr + x);
 
                     // no need for conditional select to preserve already-finished lanes:
                     // WallStartClamped/WallEndClamped are only ever read for columns that are
@@ -674,33 +730,44 @@ namespace RenderingEngine.Engine
 
                 wallFromX = wallToX;
                 wallToX += rem;
+
+                Scalar(wallFromX, wallToX);
+            }
+            else
+            {
+                Scalar(wallFromX, wallToX);
             }
 
 
-            for (int x = wallFromX; x <= wallToX; x++)
+            return;
+
+            void Scalar(int from, int to)
             {
-                if (statusPtr[x].IsFinished)
+                for (int x = from; x <= to; x++)
                 {
-                    continue;
-                }
+                    if (statusPtr[x].IsFinished)
+                    {
+                        continue;
+                    }
 
-                int ceilingStartY = ceilingStartPtr[x];
-                int floorEndY = floorEndPtr[x];
+                    int ceilingStartY = ceilingStartPtr[x];
+                    int floorEndY = floorEndPtr[x];
 
-                int wallStartY = wallStartClampedPtr[x];
-                int wallEndY = wallEndClampedPtr[x];
+                    int wallStartY = wallStartClampedPtr[x];
+                    int wallEndY = wallEndClampedPtr[x];
 
-                int clamptedFromY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
-                int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
+                    int clamptedFromY = Math.Clamp(wallStartY, ceilingStartY, floorEndY);
+                    int clamptedToY = Math.Clamp(wallEndY, ceilingStartY, floorEndY);
 
-                Debug.Assert(ceilingStartY >= 0);
-                Debug.Assert(floorEndY >= 0);
-                wallStartClampedPtr[x] = clamptedFromY;
-                wallEndClampedPtr[x] = clamptedToY;
+                    Debug.Assert(ceilingStartY >= 0);
+                    Debug.Assert(floorEndY >= 0);
+                    wallStartClampedPtr[x] = clamptedFromY;
+                    wallEndClampedPtr[x] = clamptedToY;
 
-                if (!statusPtr[x].WallRenderable || clamptedFromY >= clamptedToY)
-                {
-                    statusPtr[x] = RenderColumnStatus.FinishedRendering;
+                    if (!statusPtr[x].WallRenderable || clamptedFromY >= clamptedToY)
+                    {
+                        statusPtr[x] = RenderColumnStatus.FinishedRendering;
+                    }
                 }
             }
         }
