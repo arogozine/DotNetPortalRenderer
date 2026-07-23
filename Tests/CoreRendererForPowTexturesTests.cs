@@ -2,6 +2,7 @@
 using RenderingEngine.Engine;
 using RenderingEngine.Tooling;
 using System.Runtime.Intrinsics;
+using Tooling;
 
 namespace Tests;
 
@@ -208,7 +209,7 @@ public class CoreRendererForPowTextures_DrawSimplePixel_Tests : CoreRendererTest
         fixed (uint* textureYIncrPtr = textureYIncr)
         fixed (uint* texturePosPtr = texturePos)
         {
-            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
+            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128<UnalignedMemory>(
                 ScreenWidth, x, TextureHeight,
                 startYPtr, endYPtr,
                 textureYPosPtr, textureYIncrPtr,
@@ -249,7 +250,7 @@ public class CoreRendererForPowTextures_DrawSimplePixel_Tests : CoreRendererTest
         fixed (uint* textureYIncrPtr = textureYIncr)
         fixed (uint* texturePosPtr = texturePos)
         {
-            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
+            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256<UnalignedMemory>(
                 ScreenWidth, x, TextureHeight,
                 startYPtr, endYPtr,
                 textureYPosPtr, textureYIncrPtr,
@@ -462,7 +463,7 @@ public class CoreRendererForPowTextures_DrawSimplePixel_Tests : CoreRendererTest
         fixed (uint* textureYIncrPtr = textureYIncr)
         fixed (uint* texturePosPtr = texturePos)
         {
-            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
+            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128<UnalignedMemory>(
                 ScreenWidth, x, TextureHeight,
                 startYPtr, endYPtr,
                 textureYPosPtr, textureYIncrPtr,
@@ -505,7 +506,7 @@ public class CoreRendererForPowTextures_DrawSimplePixel_Tests : CoreRendererTest
         fixed (uint* textureYIncrPtr = textureYIncr)
         fixed (uint* texturePosPtr = texturePos)
         {
-            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
+            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256<UnalignedMemory>(
                 ScreenWidth, x, TextureHeight,
                 startYPtr, endYPtr,
                 textureYPosPtr, textureYIncrPtr,

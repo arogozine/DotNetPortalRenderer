@@ -552,7 +552,7 @@ namespace RenderingEngine.Engine
 
                 if (translucent)
                 {
-                    ICoreRenderer<DrawAlphaPixel>.RenderFloorOrCeilingSprite(null, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
+                    ICoreRenderer<DrawAlphaPixel>.RenderFloorOrCeilingSprite(incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,
@@ -561,7 +561,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    ICoreRenderer<DrawTransparentPixel>.RenderFloorOrCeilingSprite(null, incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
+                    ICoreRenderer<DrawTransparentPixel>.RenderFloorOrCeilingSprite(incrCachePtr, repeatedCountPtr, screenPtr, texturePtr, from, to,
                         portalFromClampedPtr, portalToClampedPtr,
                         width,
                         yFloor, yOffset, xOffset, textureWidth,

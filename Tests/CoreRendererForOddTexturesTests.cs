@@ -1,6 +1,7 @@
 // AI Assisted
 using RenderingEngine.Engine;
 using System.Runtime.Intrinsics;
+using Tooling;
 
 namespace Tests;
 
@@ -143,7 +144,7 @@ public class CoreRendererForOddTextures_DrawSimplePixel_Tests : CoreRendererTest
         fixed (uint* textureYIncrPtr = textureYIncr)
         fixed (uint* texturePosPtr = texturePos)
         {
-            CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
+            CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV128<UnalignedMemory>(
                 ScreenWidth, x, OddTextureHeight,
                 startYPtr, endYPtr,
                 textureYPosPtr, textureYIncrPtr,
@@ -183,7 +184,7 @@ public class CoreRendererForOddTextures_DrawSimplePixel_Tests : CoreRendererTest
         fixed (uint* textureYIncrPtr = textureYIncr)
         fixed (uint* texturePosPtr = texturePos)
         {
-            CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
+            CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV256<UnalignedMemory>(
                 ScreenWidth, x, OddTextureHeight,
                 startYPtr, endYPtr,
                 textureYPosPtr, textureYIncrPtr,
@@ -395,7 +396,7 @@ public class CoreRendererForOddTextures_DrawSimplePixel_Tests : CoreRendererTest
         fixed (uint* textureYIncrPtr = textureYIncr)
         fixed (uint* texturePosPtr = texturePos)
         {
-            CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
+            CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV128<UnalignedMemory>(
                 ScreenWidth, x, OddTextureHeight,
                 startYPtr, endYPtr,
                 textureYPosPtr, textureYIncrPtr,
@@ -438,7 +439,7 @@ public class CoreRendererForOddTextures_DrawSimplePixel_Tests : CoreRendererTest
         fixed (uint* textureYIncrPtr = textureYIncr)
         fixed (uint* texturePosPtr = texturePos)
         {
-            CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
+            CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV256<UnalignedMemory>(
                 ScreenWidth, x, OddTextureHeight,
                 startYPtr, endYPtr,
                 textureYPosPtr, textureYIncrPtr,

@@ -3,6 +3,7 @@
 // for a 64x64 texture (power-of-2 height), since (y >> 16) & 63 == (y >> 16) % 64.
 using RenderingEngine.Engine;
 using System.Runtime.Intrinsics;
+using Tooling;
 
 namespace Tests;
 
@@ -169,14 +170,14 @@ public class CoreRendererParity_DrawSimplePixel_Tests : CoreRendererTestBase
         fixed (uint* texturePosPtr = texturePos)
         {
             fixed (uint* screenPtr = screenPow)
-                CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
+                CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128<UnalignedMemory>(
                     ScreenWidth, x, UniqueTextureSize,
                     startYPtr, endYPtr,
                     textureYPosPtr, textureYIncrPtr,
                     screenPtr, texturePosPtr, texturePtr);
 
             fixed (uint* screenPtr = screenOdd)
-                CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
+                CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV128<UnalignedMemory>(
                     ScreenWidth, x, UniqueTextureSize,
                     startYPtr, endYPtr,
                     textureYPosPtr, textureYIncrPtr,
@@ -223,14 +224,14 @@ public class CoreRendererParity_DrawSimplePixel_Tests : CoreRendererTestBase
         fixed (uint* texturePosPtr = texturePos)
         {
             fixed (uint* screenPtr = screenPow)
-                CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
+                CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256<UnalignedMemory>(
                     ScreenWidth, x, UniqueTextureSize,
                     startYPtr, endYPtr,
                     textureYPosPtr, textureYIncrPtr,
                     screenPtr, texturePosPtr, texturePtr);
 
             fixed (uint* screenPtr = screenOdd)
-                CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
+                CoreRendererForOddTextures<DrawSimplePixel>.RenderMultipleWallLinesV256<UnalignedMemory>(
                     ScreenWidth, x, UniqueTextureSize,
                     startYPtr, endYPtr,
                     textureYPosPtr, textureYIncrPtr,
@@ -416,7 +417,7 @@ public class CoreRendererParityUntiled_DrawSimplePixel_Tests : CoreRendererTestB
         fixed (uint* texturePosPtr = texturePos)
         {
             fixed (uint* screenPtr = screenPow)
-                CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
+                CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128<UnalignedMemory>(
                     ScreenWidth, x, UniqueTextureSize,
                     startYPtr, endYPtr,
                     textureYPosPtr, textureYIncrPtr,
@@ -470,7 +471,7 @@ public class CoreRendererParityUntiled_DrawSimplePixel_Tests : CoreRendererTestB
         fixed (uint* texturePosPtr = texturePos)
         {
             fixed (uint* screenPtr = screenPow)
-                CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
+                CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256<UnalignedMemory>(
                     ScreenWidth, x, UniqueTextureSize,
                     startYPtr, endYPtr,
                     textureYPosPtr, textureYIncrPtr,

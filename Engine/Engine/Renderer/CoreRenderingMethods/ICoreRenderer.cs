@@ -10,8 +10,7 @@ internal unsafe interface ICoreRenderer<T>
     where T : IDrawPixel
 {
     public static void RenderFloorOrCeilingSprite
-        (
-        float* xMapPosMultiplierCachePtr,
+    (
         float* incrCachePtr,
         ushort* repeatedCount,
         uint* screenPtr,
@@ -70,7 +69,7 @@ internal unsafe interface ICoreRenderer<T>
 
                 (int min_t, int max_t, int min_b, int max_b) = CalculateLaneTopBottoms(fromV, toV);
 
-                if (min_b > max_t + 16)
+                if (min_b > max_t)
                 {
                     RenderLine(x, toV, fromV,
                         min_t, max_t, min_b, max_b);
@@ -287,10 +286,10 @@ internal unsafe interface ICoreRenderer<T>
                 Vector<float> xMapPosMultiplierV
             )
         {
-            Vector<float> yMapPosR = cameraPositionV * incrementVector;
-            Vector<float> xMapPosR = yMapPosR * xMapPosMultiplierV;
+            Vector<float> yMapPos = cameraPositionV * incrementVector;
+            Vector<float> xMapPos = yMapPos * xMapPosMultiplierV;
 
-            (Vector<float> xMapPos, Vector<float> yMapPos) = SharedHelpers.RotateVertexBack(xMapPosR, yMapPosR, pSinV, pCosV, pxV, pyV);
+            (xMapPos, yMapPos) = SharedHelpers.RotateVertexBack(xMapPos, yMapPos, pSinV, pCosV, pxV, pyV);
 
             if (rotated)
             {

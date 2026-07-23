@@ -3,6 +3,7 @@ using BenchmarkDotNet.Attributes;
 using RenderingEngine.Engine;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
+using Tooling;
 
 namespace Benchmark.Benchmarks;
 
@@ -63,7 +64,7 @@ public unsafe partial class RenderMultipleWallLinesAvx2Gather
 
         for (int x = 0; x < LaneCount; x += stride)
         {
-            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
+            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256<AlignedMemory>(
                 Width,
                 (uint)x,
                 TextureHeight,
@@ -85,7 +86,7 @@ public unsafe partial class RenderMultipleWallLinesAvx2Gather
 
         for (int x = 0; x < LaneCount; x += stride)
         {
-            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
+            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128<AlignedMemory>(
                 Width,
                 (uint)x,
                 TextureHeight,

@@ -2,6 +2,7 @@ using BenchmarkDotNet.Attributes;
 using RenderingEngine.Engine;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
+using Tooling;
 
 namespace Benchmark.Benchmarks;
 
@@ -110,7 +111,7 @@ public unsafe class RenderMultipleWallLines
 
         for (int x = 0; x < LaneCount; x += stride)
         {
-            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
+            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128<AlignedMemory>(
                 Width,
                 (uint)x,
                 TextureHeight,
@@ -124,7 +125,29 @@ public unsafe class RenderMultipleWallLines
             );
         }
     }
+    
+    [Benchmark]
+    public void V128_Unaligned()
+    {
+        int stride = Vector128<uint>.Count;
 
+        for (int x = 0; x < LaneCount; x += stride)
+        {
+            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV128<UnalignedMemory>(
+                Width,
+                (uint)x,
+                TextureHeight,
+                _startY + x,
+                _endY + x,
+                _textureYPos + x,
+                _textureYIncr + x,
+                _screen,
+                _texturePos + x,
+                _texture
+            );
+        }
+    }
+    
     [Benchmark]
     public void V256()
     {
@@ -132,7 +155,29 @@ public unsafe class RenderMultipleWallLines
 
         for (int x = 0; x < LaneCount; x += stride)
         {
-            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
+            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256<AlignedMemory>(
+                Width,
+                (uint)x,
+                TextureHeight,
+                _startY + x,
+                _endY + x,
+                _textureYPos + x,
+                _textureYIncr + x,
+                _screen,
+                _texturePos + x,
+                _texture
+            );
+        }
+    }
+    
+    [Benchmark]
+    public void V256_Unaligned()
+    {
+        int stride = Vector256<uint>.Count;
+
+        for (int x = 0; x < LaneCount; x += stride)
+        {
+            CoreRendererForPowTextures<DrawSimplePixel>.RenderMultipleWallLinesV256<UnalignedMemory>(
                 Width,
                 (uint)x,
                 TextureHeight,

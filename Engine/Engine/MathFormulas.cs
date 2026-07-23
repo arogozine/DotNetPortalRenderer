@@ -185,6 +185,40 @@ namespace RenderingEngine.Engine
             return new Vector3(p, z);
         }
 
+        
+        internal static void FindIntersectionVectorZero(
+            Vector<float> numerator,
+            Vector<float> nX, // plane normal
+            Vector<float> nY,
+            Vector<float> nZ,
+            Vector<float> lineDirectionX,
+            Vector<float> lineDirectionY,
+            Vector<float> lineDirectionZ,
+            out Vector<float> intersectionX,
+            out Vector<float> intersectionY)
+        {
+            Vector<float> denominator = Vector.FusedMultiplyAdd(lineDirectionZ, nZ,
+                Vector.FusedMultiplyAdd(lineDirectionX, nX, lineDirectionY * nY));
+            Vector<float> t = numerator / denominator;
+
+            intersectionX = lineDirectionX * t;
+            intersectionY = lineDirectionY * t;
+        }
+        
+        internal static Vector<float> PrecalculateDenominator(
+            Vector<float> nX, // plane normal
+            Vector<float> nY,
+            Vector<float> nZ,
+            Vector<float> pX, // plane point
+            Vector<float> pY,
+            Vector<float> pZ,
+            Vector<float> linePointZ)
+        {
+            Vector<float> ptpZ = pZ - linePointZ; 
+            
+            return Vector.FusedMultiplyAdd(ptpZ, nZ, Vector.FusedMultiplyAdd(pX, nX, pY * nY));
+        }
+
         internal static void FindIntersectionVectorZero(
             Vector<float> nX, // plane normal
             Vector<float> nY,
@@ -199,24 +233,14 @@ namespace RenderingEngine.Engine
             out Vector<float> intersectionX,
             out Vector<float> intersectionY)
         {
-            // denominator = dot(lineDirection, planeNormal)
             Vector<float> denominator = Vector.FusedMultiplyAdd(lineDirectionZ, nZ, Vector.FusedMultiplyAdd(lineDirectionX, nX, lineDirectionY * nY));
 
             Vector<float> ptpZ = pZ - linePointZ;
 
-            // numerator = dot(pointToPlane, planeNormal)
             Vector<float> numerator = Vector.FusedMultiplyAdd(ptpZ, nZ, Vector.FusedMultiplyAdd(pX, nX, pY * nY));
 
-            // t = numerator / denominator -- handle small denominators to avoid NaNs/Infs
-            // Vector<float> absDen = Vector.Abs(denominator);
-            // Vector<float> zeroT = Vector<float>.Zero;
             Vector<float> t = numerator / denominator;
 
-            // For lanes where denominator is nearly zero set t = 0
-            // Vector<int> smallMask = Vector.LessThanOrEqual(absDen, new Vector<float>(1e-8f));
-            // t = Vector.ConditionalSelect(smallMask, zeroT, t);
-
-            // intersection = linePoint + lineDirection * t
             intersectionX = lineDirectionX * t;
             intersectionY = lineDirectionY * t;
         }
