@@ -2,6 +2,7 @@
 // Verifies CoreRendererForPowTextures and CoreRendererForOddTextures produce identical output
 // for a 64x64 texture (power-of-2 height), since (y >> 16) & 63 == (y >> 16) % 64.
 using RenderingEngine.Engine;
+using RenderingEngine.Tooling;
 using System.Runtime.Intrinsics;
 using Tooling;
 
@@ -98,12 +99,21 @@ public class CoreRendererParity_DrawSimplePixel_Tests : CoreRendererTestBase
         const uint startY = 50;
         const uint endY = 114; // 64 rows
 
-        ushort[] repeatedCount = [colCount, 0, 0];
-        uint[] fromClamped = [startY, startY, startY];
-        uint[] toClamped = [endY, endY, endY];
-        uint[] textureXLoc = new uint[colCount]; // column 0 for all
-        uint[] textureYLoc = new uint[colCount];
-        uint[] textureYIncr = [1u << 16, 1u << 16, 1u << 16];
+        AlignedMemoryPool buffers = AlignedMemoryPool.GeneratePool(colCount, RenderWallBucketCount);
+        Span<ushort> repeatedCount = buffers.GetBucket<ushort>(RepeatedCountBucket)[..colCount];
+        Span<uint> fromClamped = buffers.GetBucket<uint>(FromClampedBucket)[..colCount];
+        Span<uint> toClamped = buffers.GetBucket<uint>(ToClampedBucket)[..colCount];
+        Span<uint> textureXLoc = buffers.GetBucket<uint>(TextureXLocBucket)[..colCount]; // column 0 for all
+        Span<uint> textureYLoc = buffers.GetBucket<uint>(TextureYLocBucket)[..colCount];
+        Span<uint> textureYIncr = buffers.GetBucket<uint>(TextureYIncrBucket)[..colCount];
+
+        repeatedCount.Clear();
+        repeatedCount[0] = colCount;
+        fromClamped.Fill(startY);
+        toClamped.Fill(endY);
+        textureXLoc.Clear();
+        textureYLoc.Clear();
+        textureYIncr.Fill(1u << 16);
 
         fixed (uint* texturePtr = _uniqueTexture)
         fixed (ushort* repeatedCountPtr = repeatedCount)
@@ -344,13 +354,21 @@ public class CoreRendererParityUntiled_DrawSimplePixel_Tests : CoreRendererTestB
         const uint endY = 100; // 50 rows, no y tiling
 
         // 4 groups of 4 → V128 path, which does not write back textureYLoc, so the array is safe to share.
-        ushort[] repeatedCount = new ushort[colCount];
+        AlignedMemoryPool buffers = AlignedMemoryPool.GeneratePool(colCount, RenderWallBucketCount);
+        Span<ushort> repeatedCount = buffers.GetBucket<ushort>(RepeatedCountBucket)[..colCount];
+        Span<uint> fromClamped = buffers.GetBucket<uint>(FromClampedBucket)[..colCount];
+        Span<uint> toClamped = buffers.GetBucket<uint>(ToClampedBucket)[..colCount];
+        Span<uint> textureXLoc = buffers.GetBucket<uint>(TextureXLocBucket)[..colCount];
+        Span<uint> textureYLoc = buffers.GetBucket<uint>(TextureYLocBucket)[..colCount];
+        Span<uint> textureYIncr = buffers.GetBucket<uint>(TextureYIncrBucket)[..colCount];
+
+        repeatedCount.Clear();
         repeatedCount[0] = 4; repeatedCount[4] = 4; repeatedCount[8] = 4; repeatedCount[12] = 4;
-        uint[] fromClamped = Enumerable.Repeat(startY, colCount).ToArray();
-        uint[] toClamped = Enumerable.Repeat(endY, colCount).ToArray();
-        uint[] textureXLoc = new uint[colCount];
-        uint[] textureYLoc = new uint[colCount];
-        uint[] textureYIncr = Enumerable.Repeat(1u << 16, colCount).ToArray();
+        fromClamped.Fill(startY);
+        toClamped.Fill(endY);
+        textureXLoc.Clear();
+        textureYLoc.Clear();
+        textureYIncr.Fill(1u << 16);
 
         fixed (uint* texturePtr = _uniqueTexture)
         fixed (ushort* repeatedCountPtr = repeatedCount)
@@ -424,7 +442,7 @@ public class CoreRendererParityUntiled_DrawSimplePixel_Tests : CoreRendererTestB
                     screenPtr, texturePosPtr, texturePtr);
 
             fixed (uint* screenPtr = screenUntiled)
-                CoreRendererForUntiledTextures<DrawSimplePixel>.RenderMultipleWallLinesV128(
+                CoreRendererForUntiledTextures<DrawSimplePixel>.RenderMultipleWallLinesV128<UnalignedMemory>(
                     ScreenWidth, x, UniqueTextureSize,
                     startYPtr, endYPtr,
                     textureYPosPtr, textureYIncrPtr,
@@ -478,7 +496,7 @@ public class CoreRendererParityUntiled_DrawSimplePixel_Tests : CoreRendererTestB
                     screenPtr, texturePosPtr, texturePtr);
 
             fixed (uint* screenPtr = screenUntiled)
-                CoreRendererForUntiledTextures<DrawSimplePixel>.RenderMultipleWallLinesV256(
+                CoreRendererForUntiledTextures<DrawSimplePixel>.RenderMultipleWallLinesV256<UnalignedMemory>(
                     ScreenWidth, x, UniqueTextureSize,
                     startYPtr, endYPtr,
                     textureYPosPtr, textureYIncrPtr,

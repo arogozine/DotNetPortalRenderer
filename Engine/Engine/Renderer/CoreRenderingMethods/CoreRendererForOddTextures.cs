@@ -482,7 +482,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
                     T.Draw(screenIndexPtr + i, pixel);
                 }
 
-                textureYPos_uV = Vector256.ConditionalSelect(maskV, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                textureYPos_uV += maskV & textureYIncr_uV;
             }
 
             return;
@@ -532,11 +532,11 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
             for (uint y = min_t; y < max_t; y++)
             {
                 Vector256<uint> textureYPos = textureYPos_uV >> 16;
-                Vector256<uint> mask = Vector256.LessThan(startYV, Vector256.Create(y));
+                Vector256<uint> maskV = Vector256.LessThan(startYV, Vector256.Create(y));
 
                 for (int i = 0; i < Vector256<uint>.Count; i++)
                 {
-                    if (mask[i] == 0U)
+                    if (maskV[i] == 0U)
                         continue;
 
                     uint texelIndex = (textureYPos[i] % textureHeightU) + textureXPosV[i];
@@ -545,7 +545,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
                     T.Draw((screenIndexPtr + i), pixel);
                 }
 
-                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                textureYPos_uV += maskV & textureYIncr_uV;
                 screenIndexPtr += width;
             }
         }
@@ -555,11 +555,11 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
             for (uint y = min_b; y < max_b; y++)
             {
                 Vector256<uint> textureYPos = textureYPos_uV >> 16;
-                Vector256<uint> mask = Vector256.GreaterThan(endYV, Vector256.Create(y));
+                Vector256<uint> maskV = Vector256.GreaterThan(endYV, Vector256.Create(y));
 
                 for (int i = 0; i < Vector256<uint>.Count; i++)
                 {
-                    if (mask[i] == 0U)
+                    if (maskV[i] == 0U)
                         continue;
 
                     uint texelIndex = (textureYPos[i] % textureHeightU) + textureXPosV[i];
@@ -568,7 +568,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
                     T.Draw((screenIndexPtr + i), pixel);
                 }
 
-                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                textureYPos_uV += maskV & textureYIncr_uV;
                 screenIndexPtr += width;
             }
         }
@@ -590,7 +590,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
     {
         Vector128<uint> startYV = I.Load128(startY);
         Vector128<uint> endYV = I.Load128(endY);
-        Vector128<uint> textureXIncr_uV = I.Load128(textureYIncr_u);
+        Vector128<uint> textureYIncr_uV = I.Load128(textureYIncr_u);
 
         (uint min_t, uint max_t) = MathFormulas.GetMinMaxValue(startYV);
         (uint min_b, uint max_b) = MathFormulas.GetMinMaxValue(endYV);
@@ -606,13 +606,13 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
             for (uint y = min_t; y < max_b; y++, screenIndexPtr2 += width)
             {
                 Vector128<uint> yV = Vector128.Create(y);
-                Vector128<uint> mask = Vector128.LessThan(startYV, yV) & Vector128.GreaterThan(endYV, yV);
+                Vector128<uint> maskV = Vector128.LessThan(startYV, yV) & Vector128.GreaterThan(endYV, yV);
 
                 Vector128<uint> textureYPos = textureYPos_uV >> 16;
 
                 for (int i = 0; i < Vector128<uint>.Count; i++)
                 {
-                    if (mask[i] == 0U)
+                    if (maskV[i] == 0U)
                         continue;
 
                     uint texelIndex = textureYPos[i] % textureHeightU + textureXPosV[i];
@@ -620,7 +620,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
                     T.Draw(screenIndexPtr2 + i, pixel);
                 }
 
-                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+                textureYPos_uV += maskV & textureYIncr_uV;
             }
 
             return;
@@ -652,7 +652,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
                     T.Draw(screenIndexPtr + i, pixel);
                 }
 
-                textureYPos_uV += textureXIncr_uV;
+                textureYPos_uV += textureYIncr_uV;
                 screenIndexPtr += width;
             }
         }
@@ -670,11 +670,11 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
             for (uint y = min_t; y < max_t; y++)
             {
                 Vector128<uint> textureYPos = textureYPos_uV >> 16;
-                Vector128<uint> mask = Vector128.LessThan(startYV, Vector128.Create(y));
+                Vector128<uint> maskV = Vector128.LessThan(startYV, Vector128.Create(y));
 
                 for (int i = 0; i < Vector128<uint>.Count; i++)
                 {
-                    if (mask[i] == 0U)
+                    if (maskV[i] == 0U)
                         continue;
 
                     uint texelIndex = (textureYPos[i] % textureHeightU) + textureXPosV[i];
@@ -683,7 +683,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
                     T.Draw((screenIndexPtr + i), pixel);
                 }
 
-                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+                textureYPos_uV += maskV & textureYIncr_uV;
                 screenIndexPtr += width;
             }
         }
@@ -693,11 +693,11 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
             for (uint y = min_b; y < max_b; y++)
             {
                 Vector128<uint> textureYPos = textureYPos_uV >> 16;
-                Vector128<uint> mask = Vector128.GreaterThan(endYV, Vector128.Create(y));
+                Vector128<uint> maskV = Vector128.GreaterThan(endYV, Vector128.Create(y));
 
                 for (int i = 0; i < Vector128<uint>.Count; i++)
                 {
-                    if (mask[i] == 0U)
+                    if (maskV[i] == 0U)
                         continue;
 
                     uint texelIndex = (textureYPos[i] % textureHeightU) + textureXPosV[i];
@@ -706,7 +706,7 @@ internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
                     T.Draw((screenIndexPtr + i), pixel);
                 }
 
-                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureXIncr_uV, textureYPos_uV);
+                textureYPos_uV += maskV & textureYIncr_uV;
                 screenIndexPtr += width;
             }
         }

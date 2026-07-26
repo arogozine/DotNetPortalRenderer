@@ -76,27 +76,56 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static (uint min, uint max) GetMinMaxValue(Vector128<uint> value)
         {
-            Vector128<uint> valueShuffled = Vector128.ShuffleNative(value, Vector128.Create(2U, 3U, 0U, 1U));
-            Vector128<uint> valueMax = Vector128.MaxNative(value, valueShuffled);
-            Vector128<uint> valueMin = Vector128.MinNative(value, valueShuffled);
+            if (Sse41.IsSupported)
+            {
+                Vector128<uint> sMin = Sse2.Shuffle(value, 0b01_00_11_10);
+                Vector128<uint> sMax = Sse2.Shuffle(value, 0b01_00_11_10);
+                Vector128<uint> vMin = Sse41.Min(value, sMin);
+                Vector128<uint> vMax = Sse41.Max(value, sMax);
 
-            uint min = Math.Min(valueMin[0], valueMin[1]);
-            uint max = Math.Max(valueMax[0], valueMax[1]);
+                sMin = Sse2.Shuffle(vMin, 0b10_11_00_01);
+                sMax = Sse2.Shuffle(vMax, 0b10_11_00_01);
+                vMin = Sse41.Min(vMin, sMin);
+                vMax = Sse41.Max(vMax, sMax);
 
-            return (min, max);
+                return (vMin.ToScalar(), vMax.ToScalar());
+            }
+            else
+            {
+                Vector128<uint> vMin = Vector128.MinNative(value, Vector128.ShuffleNative(value, Vector128.Create(2u, 3u, 0u, 1u)));
+                Vector128<uint> vMax = Vector128.MaxNative(value, Vector128.ShuffleNative(value, Vector128.Create(2u, 3u, 0u, 1u)));
+                vMin = Vector128.MinNative(vMin, Vector128.ShuffleNative(vMin, Vector128.Create(1u, 0u, 3u, 2u)));
+                vMax = Vector128.MaxNative(vMax, Vector128.ShuffleNative(vMax, Vector128.Create(1u, 0u, 3u, 2u)));
+                return (vMin.ToScalar(), vMax.ToScalar());
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static (int min, int max) GetMinMaxValue(Vector128<int> value)
         {
-            Vector128<int> valueShuffled = Vector128.ShuffleNative(value, Vector128.Create(2, 3, 0, 1));
-            Vector128<int> valueMax = Vector128.MaxNative(value, valueShuffled);
-            Vector128<int> valueMin = Vector128.MinNative(value, valueShuffled);
+            if (Sse41.IsSupported)
+            {
+                Vector128<int> sMin = Sse2.Shuffle(value, 0b01_00_11_10);
+                Vector128<int> sMax = Sse2.Shuffle(value, 0b01_00_11_10);
+                Vector128<int> vMin = Sse41.Min(value, sMin);
+                Vector128<int> vMax = Sse41.Max(value, sMax);
 
-            int min = MathFormulas.Min(valueMin[0], valueMin[1]);
-            int max = MathFormulas.Max(valueMax[0], valueMax[1]);
+                sMin = Sse2.Shuffle(vMin, 0b10_11_00_01);
+                sMax = Sse2.Shuffle(vMax, 0b10_11_00_01);
+                vMin = Sse41.Min(vMin, sMin);
+                vMax = Sse41.Max(vMax, sMax);
 
-            return (min, max);
+                return (vMin.ToScalar(), vMax.ToScalar());
+            }
+            else
+            {
+                Vector128<int> vMin = Vector128.MinNative(value, Vector128.ShuffleNative(value, Vector128.Create(2, 3, 0, 1)));
+                Vector128<int> vMax = Vector128.MaxNative(value, Vector128.ShuffleNative(value, Vector128.Create(2, 3, 0, 1)));
+                vMin = Vector128.MinNative(vMin, Vector128.ShuffleNative(vMin, Vector128.Create(1, 0, 3, 2)));
+                vMax = Vector128.MaxNative(vMax, Vector128.ShuffleNative(vMax, Vector128.Create(1, 0, 3, 2)));
+
+                return (vMin.ToScalar(), vMax.ToScalar());
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -143,13 +172,13 @@ namespace RenderingEngine.Engine
 
             if (Sse41.IsSupported)
             {
-                Vector128<uint> sMin = Sse2.Shuffle(vMin.AsInt32(), 0b01_00_11_10).AsUInt32();
-                Vector128<uint> sMax = Sse2.Shuffle(vMax.AsInt32(), 0b01_00_11_10).AsUInt32();
+                Vector128<uint> sMin = Sse2.Shuffle(vMin, 0b01_00_11_10);
+                Vector128<uint> sMax = Sse2.Shuffle(vMax, 0b01_00_11_10);
                 vMin = Sse41.Min(vMin, sMin);
                 vMax = Sse41.Max(vMax, sMax);
 
-                sMin = Sse2.Shuffle(vMin.AsInt32(), 0b10_11_00_01).AsUInt32();
-                sMax = Sse2.Shuffle(vMax.AsInt32(), 0b10_11_00_01).AsUInt32();
+                sMin = Sse2.Shuffle(vMin, 0b10_11_00_01);
+                sMax = Sse2.Shuffle(vMax, 0b10_11_00_01);
                 vMin = Sse41.Min(vMin, sMin);
                 vMax = Sse41.Max(vMax, sMax);
             }

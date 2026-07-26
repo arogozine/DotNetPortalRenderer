@@ -299,7 +299,8 @@ namespace RenderingEngine.Engine
             Vector<int> widthDiv2V = Vector.Create(width >> 1) - Vector.CreateSequence(0, 1);
             Vector<float> xPosIncrV = Vector.Create(1f / (width * -EngineConstants.HeightToWidthRatio));
             // For slopes
-            Vector<float> nX, nY, nZ, dir_z, numerator;
+            Vector3 planePoint, planeNormal;
+            Vector<float> nX, nY, nZ, pX, pY, pZ, dir_z;
 
             float* incrCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
 
@@ -540,7 +541,7 @@ namespace RenderingEngine.Engine
                     for (int i = 0; i < rem; i++)
                     {
                         int textureIndex = textureIndexV[i];
-                        * screenTexPtr = texturePtr[textureIndex];
+                        *screenTexPtr = texturePtr[textureIndex];
                         screenTexPtr += width;
                     }
                 }
@@ -562,7 +563,7 @@ namespace RenderingEngine.Engine
                     Vector<float> dir_y = -yMapPos;
 
                     // Vectorized intersection for the whole vector lane
-                    MathFormulas.FindIntersectionVectorZero(numerator, nX, nY, nZ,
+                    MathFormulas.FindIntersectionVectorZero(nX, nY, nZ, pX, pY, pZ, pzV,
                         dir_x, dir_y, dir_z,
                         out xMapPos, out yMapPos);
                 }
@@ -601,17 +602,17 @@ namespace RenderingEngine.Engine
             {
                 if (slopeFloor is { } slopeFloorBoolean)
                 {
-                    (Vector3 planePoint, Vector3 planeNormal) = slopeFloorBoolean ? MathFormulas.CalculatePlaneNormalFloor(sector)
+                    (planePoint, planeNormal) = slopeFloorBoolean ? MathFormulas.CalculatePlaneNormalFloor(sector)
                         : MathFormulas.CalculatePlaneNormalCeil(sector);
 
                     // Convert scalar plane data into vectors
                     nX = Vector.Create(planeNormal.X);
                     nY = Vector.Create(planeNormal.Y);
                     nZ = Vector.Create(planeNormal.Z);
-                    Vector<float> pX = Vector.Create(planePoint.X);
-                    Vector<float> pY = Vector.Create(planePoint.Y);
-                    Vector<float> pZ = Vector.Create(planePoint.Z);
-                    
+                    pX = Vector.Create(planePoint.X);
+                    pY = Vector.Create(planePoint.Y);
+                    pZ = Vector.Create(planePoint.Z);
+
                     if (cameraPosition == 0)
                     {
                         dir_z = pzV;
@@ -621,17 +622,18 @@ namespace RenderingEngine.Engine
                     {
                         dir_z = pzV - Vector.Create<float>(slopeFloorBoolean ? sector.Floor : sector.Ceil);
                     }
-                    
-                    numerator = MathFormulas.PrecalculateDenominator(
-                        nX, nY, nZ, pX, pY, pZ, dir_z);
                 }
                 else
                 {
+                    Unsafe.SkipInit(out planePoint);
+                    Unsafe.SkipInit(out planeNormal);
                     Unsafe.SkipInit(out nX);
                     Unsafe.SkipInit(out nY);
                     Unsafe.SkipInit(out nZ);
+                    Unsafe.SkipInit(out pX);
+                    Unsafe.SkipInit(out pY);
+                    Unsafe.SkipInit(out pZ);
                     Unsafe.SkipInit(out dir_z);
-                    Unsafe.SkipInit(out numerator);
                 }
             }
         }

@@ -1,7 +1,10 @@
 // AI Assisted
 using RenderingEngine.Engine;
 using RenderingEngine.Tooling;
+using SoftwareRendererModels;
+using System.Numerics;
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.X86;
 using Tooling;
 
 namespace Tests;
@@ -14,6 +17,15 @@ public abstract class CoreRendererTestBase
     protected const int TextureHeight = 64;
     // BGRA: A=255, R=0, G=255, B=0
     protected const uint GreenPixel = 0xFF00FF00u;
+
+    // Bucket indices for the aligned per-column buffers RenderWall reads via IMemoryAlignment.
+    protected const int RepeatedCountBucket = 0;
+    protected const int FromClampedBucket = 1;
+    protected const int ToClampedBucket = 2;
+    protected const int TextureXLocBucket = 3;
+    protected const int TextureYLocBucket = 4;
+    protected const int TextureYIncrBucket = 5;
+    protected const int RenderWallBucketCount = 6;
 
     private readonly AlignedMemoryPool _pool;
     protected readonly uint[] Texture;
@@ -277,13 +289,21 @@ public class CoreRendererForPowTextures_DrawSimplePixel_Tests : CoreRendererTest
 
         // 4 groups of 4: count=4 < Vector256 width (8) so each group takes the V128 path,
         // guaranteeing all 16 columns are rendered on every machine.
-        ushort[] repeatedCount = new ushort[colCount];
+        AlignedMemoryPool buffers = AlignedMemoryPool.GeneratePool(colCount, RenderWallBucketCount);
+        Span<ushort> repeatedCount = buffers.GetBucket<ushort>(RepeatedCountBucket)[..colCount];
+        Span<uint> fromClamped = buffers.GetBucket<uint>(FromClampedBucket)[..colCount];
+        Span<uint> toClamped = buffers.GetBucket<uint>(ToClampedBucket)[..colCount];
+        Span<uint> textureXLoc = buffers.GetBucket<uint>(TextureXLocBucket)[..colCount];
+        Span<uint> textureYLoc = buffers.GetBucket<uint>(TextureYLocBucket)[..colCount];
+        Span<uint> textureYIncr = buffers.GetBucket<uint>(TextureYIncrBucket)[..colCount];
+
+        repeatedCount.Clear();
         repeatedCount[0] = 4; repeatedCount[4] = 4; repeatedCount[8] = 4; repeatedCount[12] = 4;
-        uint[] fromClamped = Enumerable.Repeat(startY, colCount).ToArray();
-        uint[] toClamped = Enumerable.Repeat(endY, colCount).ToArray();
-        uint[] textureXLoc = new uint[colCount];
-        uint[] textureYLoc = new uint[colCount];
-        uint[] textureYIncr = Enumerable.Repeat(1u << 16, colCount).ToArray();
+        fromClamped.Fill(startY);
+        toClamped.Fill(endY);
+        textureXLoc.Clear();
+        textureYLoc.Clear();
+        textureYIncr.Fill(1u << 16);
 
         fixed (uint* screenPtr = screen)
         fixed (uint* texturePtr = Texture)
@@ -314,13 +334,22 @@ public class CoreRendererForPowTextures_DrawSimplePixel_Tests : CoreRendererTest
     public unsafe void RenderWall_SkipsColumnsWithZeroCount()
     {
         Span<uint> screen = ClearScreen();
+        const int colCount = 3;
 
-        ushort[] repeatedCount = [0, 0, 0];
-        uint[] fromClamped = [10, 10, 10];
-        uint[] toClamped = [20, 20, 20];
-        uint[] textureXLoc = new uint[3];
-        uint[] textureYLoc = new uint[3];
-        uint[] textureYIncr = [1u << 16, 1u << 16, 1u << 16];
+        AlignedMemoryPool buffers = AlignedMemoryPool.GeneratePool(colCount, RenderWallBucketCount);
+        Span<ushort> repeatedCount = buffers.GetBucket<ushort>(RepeatedCountBucket)[..colCount];
+        Span<uint> fromClamped = buffers.GetBucket<uint>(FromClampedBucket)[..colCount];
+        Span<uint> toClamped = buffers.GetBucket<uint>(ToClampedBucket)[..colCount];
+        Span<uint> textureXLoc = buffers.GetBucket<uint>(TextureXLocBucket)[..colCount];
+        Span<uint> textureYLoc = buffers.GetBucket<uint>(TextureYLocBucket)[..colCount];
+        Span<uint> textureYIncr = buffers.GetBucket<uint>(TextureYIncrBucket)[..colCount];
+
+        repeatedCount.Clear();
+        fromClamped.Fill(10);
+        toClamped.Fill(20);
+        textureXLoc.Clear();
+        textureYLoc.Clear();
+        textureYIncr.Fill(1u << 16);
 
         fixed (uint* screenPtr = screen)
         fixed (uint* texturePtr = Texture)
@@ -534,13 +563,21 @@ public class CoreRendererForPowTextures_DrawSimplePixel_Tests : CoreRendererTest
         const uint endY = 228; // 128 rows = 2 × TextureHeight
 
         // 4 groups of 4 → V128 path, which does not write back textureYLoc.
-        ushort[] repeatedCount = new ushort[colCount];
+        AlignedMemoryPool buffers = AlignedMemoryPool.GeneratePool(colCount, RenderWallBucketCount);
+        Span<ushort> repeatedCount = buffers.GetBucket<ushort>(RepeatedCountBucket)[..colCount];
+        Span<uint> fromClamped = buffers.GetBucket<uint>(FromClampedBucket)[..colCount];
+        Span<uint> toClamped = buffers.GetBucket<uint>(ToClampedBucket)[..colCount];
+        Span<uint> textureXLoc = buffers.GetBucket<uint>(TextureXLocBucket)[..colCount];
+        Span<uint> textureYLoc = buffers.GetBucket<uint>(TextureYLocBucket)[..colCount];
+        Span<uint> textureYIncr = buffers.GetBucket<uint>(TextureYIncrBucket)[..colCount];
+
+        repeatedCount.Clear();
         repeatedCount[0] = 4; repeatedCount[4] = 4; repeatedCount[8] = 4; repeatedCount[12] = 4;
-        uint[] fromClamped = Enumerable.Repeat(startY, colCount).ToArray();
-        uint[] toClamped = Enumerable.Repeat(endY, colCount).ToArray();
-        uint[] textureXLoc = new uint[colCount];
-        uint[] textureYLoc = new uint[colCount];
-        uint[] textureYIncr = Enumerable.Repeat(1u << 16, colCount).ToArray();
+        fromClamped.Fill(startY);
+        toClamped.Fill(endY);
+        textureXLoc.Clear();
+        textureYLoc.Clear();
+        textureYIncr.Fill(1u << 16);
 
         fixed (uint* screenPtr = screen)
         fixed (uint* texturePtr = _tiledTexture)
@@ -568,5 +605,99 @@ public class CoreRendererForPowTextures_DrawSimplePixel_Tests : CoreRendererTest
 
             AssertOnlyRectRendered(screen, ScreenWidth, spriteFromX, spriteToX + 1, (int)startY, (int)endY);
         }
+    }
+
+    [Fact]
+    public unsafe void RenderSkybox_StaggeredLanes_RendersTopSharedAndBottomRegionsPerLane()
+    {
+        // AI Assisted
+        // Exercises the AVX2 masked-gather path in RenderColumnAngleTop/Bottom by staggering
+        // wall bounds per lane so min_t != max_t and min_b != max_b within the vector group.
+        if (!Avx2.IsSupported || Vector<int>.Count != Vector256<int>.Count)
+            return;
+
+        const int laneCount = 8; // Vector256<int>.Count
+        const int minTop = 50;
+        const int maxTop = minTop + (laneCount - 1) * 10; // 120
+        const int minBottom = 250 - (laneCount - 1) * 10; // 180
+        const int maxBottom = 250;
+
+        Span<uint> screen = ClearScreen();
+
+        int[] fromY = new int[laneCount];
+        int[] toY = new int[laneCount];
+        int[] ceilingStart = new int[laneCount];
+        int[] floorEnd = new int[laneCount];
+        float[] angleCache = new float[laneCount];
+        ushort[] repeatedCount = new ushort[laneCount];
+        // RenderSkybox never masks the row index against textureHeight, so the backing buffer
+        // must cover every row the wall bounds can reach (up to maxBottom), not just TextureHeight.
+        const int textureRows = maxBottom + 1;
+        uint[] texture = new uint[TextureWidth * textureRows];
+
+        for (int i = 0; i < laneCount; i++)
+        {
+            fromY[i] = minTop + i * 10;
+            toY[i] = maxBottom - i * 10;
+            ceilingStart[i] = 0;
+            floorEnd[i] = 300;
+            angleCache[i] = 0f;
+        }
+
+        repeatedCount[0] = laneCount;
+
+        for (int row = 0; row < textureRows; row++)
+            texture[row * TextureWidth] = (uint)(row + 1);
+
+        PortalPlayerSnapshot player = new() { Angle = 0f };
+
+        fixed (uint* screenPtr = screen)
+        fixed (uint* texturePtr = texture)
+        fixed (int* fromYPtr = fromY)
+        fixed (int* toYPtr = toY)
+        fixed (int* ceilingStartPtr = ceilingStart)
+        fixed (int* floorEndPtr = floorEnd)
+        fixed (float* angleCachePtr = angleCache)
+        fixed (ushort* repeatedCountPtr = repeatedCount)
+        {
+            CoreRendererForPowTextures<DrawSimplePixel>.RenderSkybox(
+                player,
+                repeatCount: 1,
+                repeatedCountPtr,
+                angleCachePtr,
+                screenPtr,
+                texturePtr,
+                sectorFromX: 0, sectorToX: laneCount,
+                fromYPtr, toYPtr,
+                ceilingStartPtr, floorEndPtr,
+                width: ScreenWidth,
+                textureWidth: TextureWidth,
+                textureHeight: textureRows,
+                yTextureIncr: 1f);
+        }
+
+        for (int y = 0; y < ScreenHeight; y++)
+        {
+            for (int lane = 0; lane < laneCount; lane++)
+            {
+                bool expectedWrite;
+                if (y < minTop || y >= maxBottom)
+                    expectedWrite = false;
+                else if (y >= maxTop && y <= minBottom)
+                    expectedWrite = true; // shared window: always written
+                else if (y < maxTop)
+                    expectedWrite = fromY[lane] < y; // top region
+                else
+                    expectedWrite = toY[lane] > y; // bottom region
+
+                uint actual = screen[y * ScreenWidth + lane];
+                uint expected = expectedWrite ? (uint)(y + 1) : 0u;
+
+                Assert.True(expected == actual,
+                    $"Mismatch at y={y}, lane={lane}: expected {expected}, got {actual}");
+            }
+        }
+
+        AssertOnlyRectRendered(screen, ScreenWidth, 0, laneCount, minTop, maxBottom);
     }
 }

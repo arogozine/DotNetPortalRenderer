@@ -158,6 +158,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void RenderColumnAngleBottom(
             int min_b,
             int max_b,
@@ -168,6 +169,27 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
             uint* screenTexPtr = screenPtr + min_b * width + xStart;
 
             float vScreen = min_b * yTextureIncr;
+
+            if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
+            {
+                Vector256<int> toV256 = to.AsVector256();
+                Vector256<int> texXV256 = texXV.AsVector256();
+
+                for (int y = min_b; y < max_b; y++)
+                {
+                    Vector256<int> yIndexV = Vector256.Create(textureWidth * float.ConvertToIntegerNative<int>(vScreen));
+                    Vector256<int> indexV = texXV256 + yIndexV;
+                    Vector256<uint> maskV = Vector256.GreaterThan(toV256, Vector256.Create(y)).AsUInt32();
+
+                    Vector256<uint> gathered = Avx2.GatherMaskVector256(default, texturePtr, indexV, maskV, scale: sizeof(int));
+                    T.DrawLine(screenTexPtr, gathered, maskV);
+
+                    screenTexPtr += width;
+                    vScreen += yTextureIncr;
+                }
+
+                return;
+            }
 
             for (int y = min_b; y < max_b; y++)
             {
@@ -190,6 +212,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void RenderColumnAngleTop(
             int min_t,
             int max_t,
@@ -200,6 +223,27 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
             uint* screenTexPtr = screenPtr + min_t * width + xStart;
 
             float vScreen = min_t * yTextureIncr;
+
+            if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
+            {
+                Vector256<int> fromV256 = from.AsVector256();
+                Vector256<int> texXV256 = texXV.AsVector256();
+
+                for (int y = min_t; y < max_t; y++)
+                {
+                    Vector256<int> yIndexV = Vector256.Create(textureWidth * float.ConvertToIntegerNative<int>(vScreen));
+                    Vector256<int> indexV = texXV256 + yIndexV;
+                    Vector256<uint> maskV = Vector256.LessThan(fromV256, Vector256.Create(y)).AsUInt32();
+
+                    Vector256<uint> gathered = Avx2.GatherMaskVector256(default, texturePtr, indexV, maskV, scale: sizeof(int));
+                    T.DrawLine(screenTexPtr, gathered, maskV);
+
+                    screenTexPtr += width;
+                    vScreen += yTextureIncr;
+                }
+
+                return;
+            }
 
             for (int y = min_t; y < max_t; y++)
             {
@@ -264,7 +308,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
         for (int x = spriteFromX; x <= spriteToX;)
         {
             ushort count = repeatedCount[x - spriteFromX];
-            
+
             if (count == 0)
             {
                 x++;
@@ -277,13 +321,11 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
             uint* textureYPos = textureYLocationPtr + x;
             uint* textureYIncr = textureYIncrementPtr + x;
 
-            bool aligned = 0 == (x & (Vector<uint>.Count - 1));
-
             Debug.Assert(*clampedFromY < *clampedToY);
 
             if (Vector256.IsHardwareAccelerated && count >= Vector256<uint>.Count)
             {
-                if (aligned)
+                if (0 == (x & (Vector256<uint>.Count - 1)))
                 {
                     RenderMultipleWallLinesV256<AlignedMemory>(
                         width,
@@ -320,7 +362,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
             if (Vector128.IsHardwareAccelerated && count >= Vector128<uint>.Count)
             {
-                if (aligned)
+                if (0 == (x & (Vector128<uint>.Count - 1)))
                 {
                     RenderMultipleWallLinesV128<AlignedMemory>(
                         width,
@@ -440,7 +482,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
         uint* texturePos,
         uint* textureBuffer
     )
-        where I: IMemoryAlignment
+        where I : IMemoryAlignment
     {
         Vector256<uint> startYV = I.Load256(startY);
         Vector256<uint> endYV = I.Load256(endY);
@@ -501,7 +543,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
                     }
                 }
 
-                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                textureYPos_uV += mask & textureYIncr_uV;
             }
 
             return;
@@ -569,6 +611,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
         return;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void RenderTops()
         {
             for (uint y = min_t; y < max_t; y++)
@@ -602,11 +645,12 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
                     }
                 }
 
-                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                textureYPos_uV += mask & textureYIncr_uV;
                 screenIndexPtr += width;
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void RenderBottoms()
         {
             for (uint y = min_b; y < max_b; y++)
@@ -640,7 +684,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
                     }
                 }
 
-                textureYPos_uV = Vector256.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                textureYPos_uV += mask & textureYIncr_uV;
                 screenIndexPtr += width;
             }
         }
@@ -658,7 +702,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
         uint* texturePos,
         uint* textureBuffer
     )
-        where I: IMemoryAlignment
+        where I : IMemoryAlignment
     {
         Vector128<uint> startYV = I.Load128(startY);
         Vector128<uint> endYV = I.Load128(endY);
@@ -681,7 +725,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
             uint minTextureIndex = textureXPosV[0];
             Sse.Prefetch1(textureBuffer + minTextureIndex);
             uint maxTextureIndex = minTextureIndex + (textureYPos_uV[0] >> 16);
-            Sse.Prefetch0(textureBuffer + minTextureIndex);
+            Sse.Prefetch0(textureBuffer + maxTextureIndex);
         }
 
         if (min_b <= max_t)
@@ -719,7 +763,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
                     }
                 }
 
-                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                textureYPos_uV += mask & textureYIncr_uV;
             }
 
             return;
@@ -785,6 +829,9 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
 
         RenderBottoms();
 
+        return;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void RenderTops()
         {
             for (uint y = min_t; y < max_t; y++)
@@ -818,11 +865,12 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
                     }
                 }
 
-                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                textureYPos_uV += mask & textureYIncr_uV;
                 screenIndexPtr += width;
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void RenderBottoms()
         {
             for (uint y = min_b; y < max_b; y++)
@@ -856,7 +904,7 @@ internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
                     }
                 }
 
-                textureYPos_uV = Vector128.ConditionalSelect(mask, textureYPos_uV + textureYIncr_uV, textureYPos_uV);
+                textureYPos_uV += mask & textureYIncr_uV;
                 screenIndexPtr += width;
             }
         }

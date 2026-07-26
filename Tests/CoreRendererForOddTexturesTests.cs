@@ -1,5 +1,6 @@
 // AI Assisted
 using RenderingEngine.Engine;
+using RenderingEngine.Tooling;
 using System.Runtime.Intrinsics;
 using Tooling;
 
@@ -210,13 +211,21 @@ public class CoreRendererForOddTextures_DrawSimplePixel_Tests : CoreRendererTest
 
         // 4 groups of 4: count=4 < Vector256 width (8) so each group takes the V128 path,
         // guaranteeing all 16 columns are rendered on every machine.
-        ushort[] repeatedCount = new ushort[colCount];
+        AlignedMemoryPool buffers = AlignedMemoryPool.GeneratePool(colCount, RenderWallBucketCount);
+        Span<ushort> repeatedCount = buffers.GetBucket<ushort>(RepeatedCountBucket)[..colCount];
+        Span<uint> fromClamped = buffers.GetBucket<uint>(FromClampedBucket)[..colCount];
+        Span<uint> toClamped = buffers.GetBucket<uint>(ToClampedBucket)[..colCount];
+        Span<uint> textureXLoc = buffers.GetBucket<uint>(TextureXLocBucket)[..colCount]; // column 0 for all
+        Span<uint> textureYLoc = buffers.GetBucket<uint>(TextureYLocBucket)[..colCount];
+        Span<uint> textureYIncr = buffers.GetBucket<uint>(TextureYIncrBucket)[..colCount];
+
+        repeatedCount.Clear();
         repeatedCount[0] = 4; repeatedCount[4] = 4; repeatedCount[8] = 4; repeatedCount[12] = 4;
-        uint[] fromClamped = Enumerable.Repeat(startY, colCount).ToArray();
-        uint[] toClamped = Enumerable.Repeat(endY, colCount).ToArray();
-        uint[] textureXLoc = new uint[colCount]; // column 0 for all
-        uint[] textureYLoc = new uint[colCount];
-        uint[] textureYIncr = Enumerable.Repeat(1u << 16, colCount).ToArray();
+        fromClamped.Fill(startY);
+        toClamped.Fill(endY);
+        textureXLoc.Clear();
+        textureYLoc.Clear();
+        textureYIncr.Fill(1u << 16);
 
         fixed (uint* screenPtr = screen)
         fixed (uint* texturePtr = _oddTexture)
@@ -247,13 +256,22 @@ public class CoreRendererForOddTextures_DrawSimplePixel_Tests : CoreRendererTest
     public unsafe void RenderWall_SkipsColumnsWithZeroCount()
     {
         Span<uint> screen = ClearScreen();
+        const int colCount = 3;
 
-        ushort[] repeatedCount = [0, 0, 0];
-        uint[] fromClamped = [10, 10, 10];
-        uint[] toClamped = [20, 20, 20];
-        uint[] textureXLoc = new uint[3];
-        uint[] textureYLoc = new uint[3];
-        uint[] textureYIncr = [1u << 16, 1u << 16, 1u << 16];
+        AlignedMemoryPool buffers = AlignedMemoryPool.GeneratePool(colCount, RenderWallBucketCount);
+        Span<ushort> repeatedCount = buffers.GetBucket<ushort>(RepeatedCountBucket)[..colCount];
+        Span<uint> fromClamped = buffers.GetBucket<uint>(FromClampedBucket)[..colCount];
+        Span<uint> toClamped = buffers.GetBucket<uint>(ToClampedBucket)[..colCount];
+        Span<uint> textureXLoc = buffers.GetBucket<uint>(TextureXLocBucket)[..colCount];
+        Span<uint> textureYLoc = buffers.GetBucket<uint>(TextureYLocBucket)[..colCount];
+        Span<uint> textureYIncr = buffers.GetBucket<uint>(TextureYIncrBucket)[..colCount];
+
+        repeatedCount.Clear();
+        fromClamped.Fill(10);
+        toClamped.Fill(20);
+        textureXLoc.Clear();
+        textureYLoc.Clear();
+        textureYIncr.Fill(1u << 16);
 
         fixed (uint* screenPtr = screen)
         fixed (uint* texturePtr = _oddTexture)
@@ -467,13 +485,21 @@ public class CoreRendererForOddTextures_DrawSimplePixel_Tests : CoreRendererTest
         const uint endY = 166; // 66 rows = 2 × OddTextureHeight
 
         // 4 groups of 4 → V128 path, which does not write back textureYLoc.
-        ushort[] repeatedCount = new ushort[colCount];
+        AlignedMemoryPool buffers = AlignedMemoryPool.GeneratePool(colCount, RenderWallBucketCount);
+        Span<ushort> repeatedCount = buffers.GetBucket<ushort>(RepeatedCountBucket)[..colCount];
+        Span<uint> fromClamped = buffers.GetBucket<uint>(FromClampedBucket)[..colCount];
+        Span<uint> toClamped = buffers.GetBucket<uint>(ToClampedBucket)[..colCount];
+        Span<uint> textureXLoc = buffers.GetBucket<uint>(TextureXLocBucket)[..colCount];
+        Span<uint> textureYLoc = buffers.GetBucket<uint>(TextureYLocBucket)[..colCount];
+        Span<uint> textureYIncr = buffers.GetBucket<uint>(TextureYIncrBucket)[..colCount];
+
+        repeatedCount.Clear();
         repeatedCount[0] = 4; repeatedCount[4] = 4; repeatedCount[8] = 4; repeatedCount[12] = 4;
-        uint[] fromClamped = Enumerable.Repeat(startY, colCount).ToArray();
-        uint[] toClamped = Enumerable.Repeat(endY, colCount).ToArray();
-        uint[] textureXLoc = new uint[colCount];
-        uint[] textureYLoc = new uint[colCount];
-        uint[] textureYIncr = Enumerable.Repeat(1u << 16, colCount).ToArray();
+        fromClamped.Fill(startY);
+        toClamped.Fill(endY);
+        textureXLoc.Clear();
+        textureYLoc.Clear();
+        textureYIncr.Fill(1u << 16);
 
         fixed (uint* screenPtr = screen)
         fixed (uint* texturePtr = _tiledOddTexture)

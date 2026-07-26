@@ -225,7 +225,7 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    scaledTextureHeight =lowerSectorHeight << 16;
+                    scaledTextureHeight = lowerSectorHeight << 16;
                 }
 
                 return (textureHeight, scaledTextureHeight);
@@ -392,7 +392,7 @@ namespace RenderingEngine.Engine
                     Vector<float> cameraRayV = Vector.Load(cameraRaySpan);
                     Vector<float> denominatorV = Vector.FusedMultiplyAdd(cameraRayV, d2yV, negD2xV);
                     Vector<float> resultV = t1V / denominatorV;
-                    Vector.Store(resultV, distance + x);
+                    Vector.StoreAligned(resultV, distance + x);
                 }
 
                 wallFromX = wallToX;
@@ -447,7 +447,7 @@ namespace RenderingEngine.Engine
             (float cameraRay, float cameraWidthIncr, float t1, float d2y, float d2x) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
 
             bool flipX = wall.Flipped;
-            
+
             if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.MirrorX))
             {
                 flipX = !flipX;
@@ -604,6 +604,7 @@ namespace RenderingEngine.Engine
             }
         }
 
+
         private void CalculatePortalClamp(RenderablePortalWall renderableWall)
         {
             RenderColumnStatus* status = memoryPool.GetBucketPtr<RenderColumnStatus>(MemoryPoolBucket.RenderColumnStatus);
@@ -620,6 +621,12 @@ namespace RenderingEngine.Engine
 
             if (Vector.IsHardwareAccelerated && length > Vector<int>.Count)
             {
+                int scalar = Vector<int>.Count - wallFromX & (Vector<int>.Count - 1);
+
+                Scalar(wallFromX, wallFromX + scalar - 1);
+                wallFromX += scalar;
+
+                length = wallToX - wallFromX;
                 int rem = length & (Vector<int>.Count - 1);
                 wallToX -= rem;
 
@@ -627,11 +634,11 @@ namespace RenderingEngine.Engine
 
                 for (int x = wallFromX; x < wallToX; x += Vector<int>.Count)
                 {
-                    Vector<int> statusV = Vector.Load((int*)(status + x));
-                    Vector<int> wallStartV = Vector.Load(wallStartClamped + x);
-                    Vector<int> wallEndV = Vector.Load(wallEndClamped + x);
-                    Vector<int> portalFromV = Vector.Load(portalFromClamped + x);
-                    Vector<int> portalToV = Vector.Load(portalToClamped + x);
+                    Vector<int> statusV = Vector.LoadAligned((int*)(status + x));
+                    Vector<int> wallStartV = Vector.LoadAligned(wallStartClamped + x);
+                    Vector<int> wallEndV = Vector.LoadAligned(wallEndClamped + x);
+                    Vector<int> portalFromV = Vector.LoadAligned(portalFromClamped + x);
+                    Vector<int> portalToV = Vector.LoadAligned(portalToClamped + x);
 
                     Vector<int> clampedFrom = Vector.ClampNative(portalFromV, wallStartV, wallEndV);
                     Vector<int> clampedTo = Vector.ClampNative(portalToV, wallStartV, wallEndV);
@@ -639,32 +646,43 @@ namespace RenderingEngine.Engine
                     // keep original values for finished columns, use clamped elsewhere
                     Vector<int> isFinished = Vector.Equals(statusV & finishedFlag, finishedFlag);
 
-                    Vector.Store(Vector.ConditionalSelect(isFinished, portalFromV, clampedFrom), portalFromClamped + x);
-                    Vector.Store(Vector.ConditionalSelect(isFinished, portalToV, clampedTo), portalToClamped + x);
+                    Vector.StoreAligned(Vector.ConditionalSelect(isFinished, portalFromV, clampedFrom), portalFromClamped + x);
+                    Vector.StoreAligned(Vector.ConditionalSelect(isFinished, portalToV, clampedTo), portalToClamped + x);
                 }
 
                 wallFromX = wallToX;
                 wallToX += rem;
+
+                Scalar(wallFromX, wallToX);
+            }
+            else
+            {
+                Scalar(wallFromX, wallToX);
             }
 
-            for (int x = wallFromX; x <= wallToX; x++)
+            return;
+
+            void Scalar(int from, int to)
             {
-                if (status[x].IsFinished)
+                for (int x = from; x <= to; x++)
                 {
-                    continue;
+                    if (status[x].IsFinished)
+                    {
+                        continue;
+                    }
+
+                    int wallStartClampedY = wallStartClamped[x];
+                    int wallEndClampedY = wallEndClamped[x];
+
+                    int portalFromClampedY = portalFromClamped[x];
+                    int portalToClampedY = portalToClamped[x];
+
+                    portalFromClampedY = Math.Clamp(portalFromClampedY, wallStartClampedY, wallEndClampedY);
+                    portalToClampedY = Math.Clamp(portalToClampedY, wallStartClampedY, wallEndClampedY);
+
+                    portalFromClamped[x] = portalFromClampedY;
+                    portalToClamped[x] = portalToClampedY;
                 }
-
-                int wallStartClampedY = wallStartClamped[x];
-                int wallEndClampedY = wallEndClamped[x];
-
-                int portalFromClampedY = portalFromClamped[x];
-                int portalToClampedY = portalToClamped[x];
-
-                portalFromClampedY = Math.Clamp(portalFromClampedY, wallStartClampedY, wallEndClampedY);
-                portalToClampedY = Math.Clamp(portalToClampedY, wallStartClampedY, wallEndClampedY);
-
-                portalFromClamped[x] = portalFromClampedY;
-                portalToClamped[x] = portalToClampedY;
             }
         }
 
@@ -786,6 +804,12 @@ namespace RenderingEngine.Engine
 
             if (Vector.IsHardwareAccelerated && length > Vector<int>.Count)
             {
+                int scalar = Vector<int>.Count - from & (Vector<int>.Count - 1);
+
+                Scalar(from, from + scalar - 1);
+                from += scalar;
+
+                length = to - from;
                 int rem = length & (Vector<int>.Count - 1);
                 to -= rem;
 
@@ -795,36 +819,47 @@ namespace RenderingEngine.Engine
 
                 for (int x = from; x < to; x += Vector<int>.Count)
                 {
-                    Vector<int> statusV = Vector.Load((int*)(status + x));
-                    Vector<int> portalFromV = Vector.Load(portalFromClamped + x);
-                    Vector<int> portalToV = Vector.Load(portalToClamped + x);
+                    Vector<int> statusV = Vector.LoadAligned((int*)(status + x));
+                    Vector<int> portalFromV = Vector.LoadAligned(portalFromClamped + x);
+                    Vector<int> portalToV = Vector.LoadAligned(portalToClamped + x);
 
                     Vector<int> isRenderable = Vector.Equals(Vector.BitwiseAnd(statusV, wallRenderableMask), wallRenderableMask);
                     Vector<int> isNotRenderable = ~isRenderable;
 
                     // no need for conditional select to match scalar option,
-                    Vector.Store(portalFromV, ceilingStart + x);
-                    Vector.Store(portalToV, floorEnd + x);
+                    Vector.StoreAligned(portalFromV, ceilingStart + x);
+                    Vector.StoreAligned(portalToV, floorEnd + x);
 
                     Vector<int> newStatusV = Vector.ConditionalSelect(isNotRenderable, finishedFlagV, statusV ^ canRenderWallV);
-                    Vector.Store(newStatusV, (int*)(status + x));
+                    Vector.StoreAligned(newStatusV, (int*)(status + x));
                 }
 
                 from = to;
                 to += rem;
+
+                Scalar(from, to);
+            }
+            else
+            {
+                Scalar(from, to);
             }
 
-            for (int x = from; x <= to; x++)
-            {
-                if (!status[x].WallRenderable)
-                {
-                    status[x] = RenderColumnStatus.FinishedRendering;
-                    continue;
-                }
+            return;
 
-                ceilingStart[x] = portalFromClamped[x];
-                floorEnd[x] = portalToClamped[x];
-                status[x] ^= RenderColumnStatus.CanRenderWall;
+            void Scalar(int scalarFrom, int scalarTo)
+            {
+                for (int x = scalarFrom; x <= scalarTo; x++)
+                {
+                    if (!status[x].WallRenderable)
+                    {
+                        status[x] = RenderColumnStatus.FinishedRendering;
+                        continue;
+                    }
+
+                    ceilingStart[x] = portalFromClamped[x];
+                    floorEnd[x] = portalToClamped[x];
+                    status[x] ^= RenderColumnStatus.CanRenderWall;
+                }
             }
         }
 
