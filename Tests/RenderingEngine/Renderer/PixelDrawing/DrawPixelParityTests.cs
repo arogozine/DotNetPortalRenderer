@@ -3,11 +3,11 @@ using System.Runtime.Intrinsics;
 using RenderingEngine.Engine;
 using SoftwareRendererModels;
 
-namespace Tests;
+namespace Tests.RenderingEngine.Renderer.PixelDrawing;
 
 // For textures with no transparency (all pixels fully opaque), DrawSimplePixel
 // and DrawTransparentPixel must produce identical results.
-public class DrawPixelParityTests
+public unsafe class DrawPixelParityTests
 {
     // --- Draw ---
 

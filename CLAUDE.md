@@ -23,7 +23,9 @@ Main rendering implementation is in (`Engine/Engine/Renderer/PortalRenderer.cs`)
 
 ### Memory Management
 
-Uses custom memory pooling (`AlignedMemoryPool`, `DynamicAlignedMemoryPool` in the `Tooling` project). Engine-specific pooling glue (`ObjectPool`, `AlignedMemoryPoolExtensions`, `MemoryPoolBucket`, `SpriteCachePoolBucket`) stays in `Engine/Tooling` since it depends on renderer-specific types.
+Uses custom memory pooling for SIMD aligned loads.
+
+Uses object pooling to avoid GC.
 
 ## Command Reference
 
@@ -60,7 +62,9 @@ dotnet test DotNetPortalRenderer.sln
 dotnet run --project Benchmark -c Release
 ```
 
-## Code Guidelines
+## Guidelines & Standards
+
+### Guidelines
 
 - **Self-documenting code**: Avoid redundant comments.
 - **Use vectorized/SIMD code**: Use Vector intrinsics with scalar fallback.
@@ -68,7 +72,7 @@ dotnet run --project Benchmark -c Release
 - **Immutability**: Prefer readonly structs, sealed records and classes, etc.
 - **LLM-assisted code**: Add "AI Assisted" comment to written or modified code.
 
-## Coding Standards
+### Standards
 
 - No unused parameters, assignments, and declarations
 - Prefer native casts (`float.ConvertToIntegerNative<int>`, `Vector.ConvertToInt32Native`, etc).
@@ -78,3 +82,7 @@ dotnet run --project Benchmark -c Release
 - Use `Unsafe.SkipInit` for structs.
 - Prefer static local functions.
 - Avoid primary constructors
+
+## Prohibited Behavior
+
+- GIT: Commit, Push, Stage, and Unstage

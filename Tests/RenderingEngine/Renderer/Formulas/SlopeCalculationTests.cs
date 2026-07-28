@@ -5,12 +5,12 @@ using SoftwareRendererModels;
 using System.Numerics;
 using static RenderingEngine.Engine.MathFormulas;
 
-namespace Tests
+namespace Tests.RenderingEngine.Renderer.Formulas
 {
     public class SlopeCalculationTests
     {
         [Fact]
-        public void SlopeGetsCalculatedProperly()
+        public void CalculateZAtPoint_MatchesUpperOrLowerSectorHeightsAtSharedWallsAndInterpolatesAcrossSlopedWall()
         {
             (RenderableSector slopedSector, RenderableSector upperSector) = Setup();
 
@@ -145,7 +145,7 @@ namespace Tests
         }
 
         [Fact]
-        public void SlopeGetsCalculatedProperly2()
+        public void CalculateZAtPoint_AgreesForPointsSharingTheSameWallEndpoint()
         {
             RenderableSector slopedSector = SetupSloped();
 

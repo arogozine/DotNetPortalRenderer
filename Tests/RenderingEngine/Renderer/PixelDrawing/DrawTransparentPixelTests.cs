@@ -3,9 +3,9 @@ using System.Runtime.Intrinsics;
 using RenderingEngine.Engine;
 using SoftwareRendererModels;
 
-namespace Tests;
+namespace Tests.RenderingEngine.Renderer.PixelDrawing;
 
-public class DrawTransparentPixelTests
+public unsafe class DrawTransparentPixelTests
 {
     // --- Draw ---
 

@@ -5,13 +5,13 @@ using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
-namespace Tests
+namespace Tests.RenderingEngine.Renderer.Formulas
 {
     public class MathFormulaUnitTests
     {
 
         [Fact]
-        public void ClampAngle_Works()
+        public void ClampAngle_ClampedAngleProducesSameSinCosAsOriginal()
         {
             for (float i = -9.9f; i < 9.9f; i += 0.1f)
             {
@@ -27,7 +27,7 @@ namespace Tests
         }
 
         [Fact]
-        public void FastConvertionFloatToIntNative()
+        public void ConvertToIntegerNative_MatchesCStyleCastTruncationForPositiveFloats()
         {
             Random r = new();
 
@@ -45,7 +45,7 @@ namespace Tests
         }
 
         [Fact]
-        public void FastMod()
+        public void FastMod_ScalarVariants_MatchModuloOperatorForConstantDivisor()
         {
             // https://lemire.me/blog/2019/02/08/faster-remainders-when-the-divisor-is-a-constant-beating-compilers-and-libdivide/
             const int d = 7;
@@ -120,7 +120,7 @@ namespace Tests
         }
 
         [Fact]
-        public void FastModV()
+        public void FastMod_Vector256Variant_MatchesModuloOperatorForConstantDivisor()
         {
             // https://lemire.me/blog/2019/02/08/faster-remainders-when-the-divisor-is-a-constant-beating-compilers-and-libdivide/
             const int d = 7;

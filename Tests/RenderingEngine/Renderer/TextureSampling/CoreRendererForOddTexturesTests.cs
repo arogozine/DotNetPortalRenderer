@@ -4,9 +4,9 @@ using RenderingEngine.Tooling;
 using System.Runtime.Intrinsics;
 using Tooling;
 
-namespace Tests;
+namespace Tests.RenderingEngine.Renderer.TextureSampling;
 
-public class CoreRendererForOddTextures_DrawSimplePixel_Tests : CoreRendererTestBase
+public unsafe class CoreRendererForOddTextures_DrawSimplePixel_Tests : CoreRendererTestBase
 {
     private const int OddTextureWidth = 44;
     private const int OddTextureHeight = 33;

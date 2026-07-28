@@ -6,9 +6,9 @@ using RenderingEngine.Tooling;
 using System.Runtime.Intrinsics;
 using Tooling;
 
-namespace Tests;
+namespace Tests.RenderingEngine.Renderer.TextureSampling;
 
-public class CoreRendererParity_DrawSimplePixel_Tests : CoreRendererTestBase
+public unsafe class CoreRendererParity_DrawSimplePixel_Tests : CoreRendererTestBase
 {
     private const int UniqueTextureSize = 64; // power-of-2; width and height are equal
 
@@ -263,7 +263,7 @@ public class CoreRendererParity_DrawSimplePixel_Tests : CoreRendererTestBase
 
 // Verifies CoreRendererForUntiledTextures produces the same output as CoreRendererForPowTextures
 // when the texture Y index never reaches textureHeight (no wrapping needed).
-public class CoreRendererParityUntiled_DrawSimplePixel_Tests : CoreRendererTestBase
+public unsafe class CoreRendererParityUntiled_DrawSimplePixel_Tests : CoreRendererTestBase
 {
     private const int UniqueTextureSize = 64;
 

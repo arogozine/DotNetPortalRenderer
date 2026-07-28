@@ -1,6 +1,6 @@
 ﻿using RenderingEngine.Engine;
 
-namespace Tests
+namespace Tests.RenderingEngine.Renderer.Formulas
 {
     public class SharedHelpersTests
     {

@@ -4,9 +4,9 @@ using RenderingEngine.Tooling;
 using System.Runtime.Intrinsics;
 using Tooling;
 
-namespace Tests;
+namespace Tests.RenderingEngine.Renderer.TextureSampling;
 
-public class CoreRendererForUntiledTextures_DrawSimplePixel_Tests : CoreRendererTestBase
+public unsafe class CoreRendererForUntiledTextures_DrawSimplePixel_Tests : CoreRendererTestBase
 {
     [Fact]
     public unsafe void RenderWallColumn_FillsColumnWithTextureColor()

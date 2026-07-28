@@ -3,9 +3,9 @@ using System.Runtime.Intrinsics;
 using RenderingEngine.Engine;
 using SoftwareRendererModels;
 
-namespace Tests;
+namespace Tests.RenderingEngine.Renderer.PixelDrawing;
 
-public class DrawAlphaPixelTests
+public unsafe class DrawAlphaPixelTests
 {
     // Mirrors the scalar BlendBGRA in DrawAlphaPixel with proper rounding.
     // AI Assisted: Updated to match Avx2.Average behavior with (a + b + 1) >> 1
