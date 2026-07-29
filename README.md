@@ -4,15 +4,22 @@
 
 The renderer runs in software (no GPU rendering), using SIMD/vectorized operations for performance. It renders to a BGRA framebuffer that gets uploaded to an OpenGL texture each frame.
 
+### Screenshots
+
+| ![DN3D 1](duke_nukem.png) | ![DN3D 2](duke_nukem_2.png) |
+|------------------------|------------------------|
+| ![Doom 1](doom.png) | ![Doom 2](doom_2.png) |
+
+
 ### AI Use Disclosure
 
-Claude Code, Copilot, and Grok were used for,
+Majority of the application and the rendering design are handmade.
+
+AI tools are used for,
 - Code Review and optimization recommendation. Such as "Native" methods and pointing me towards the Avx2 instructions.
 - Help with algorithms, such as slope calculations.
-- Documentation. Except this paragraph.
+- Documentation.
 - Unit test generation.
-
-Majority of the application and the rendering design are handmade.
 
 ### Project Structure
 
@@ -23,36 +30,21 @@ The solution contains 8 projects:
    - Portal-based sector traversal and depth-based rendering
    - Wall, floor, ceiling, and sprite rendering
    - Handles raycasting, texture mapping, and shading
-   - Contains math formulas for geometry calculations
 
 2. **SoftwareRenderer** - Cross platform application
-   - Entry point with command-line argument parsing (via System.CommandLine)
-   - Opens OpenGL window via OpenTK.Windowing.Desktop (GameWindow)
-   - Manages the game loop, keyboard input, and framebuffer updates
-   - Uses OpenTK (OpenGL) and SkiaSharp for window presentation (uploads rendered buffer as texture quad)
+   - Uses OpenTK
 
 3. **SoftwareRendererModels** - Shared data models
-   - Game state models: `FixedGameState`, `RenderableMap`, `PortalPlayerSnapshot`
-   - Rendering state: `RenderableSector`, `RenderableWall`, `RenderableSprite`
-   - Texture models: `BGRA`, `DoomTexture`, `BuildTexture`, `GameTextureInfo`
-   - Enums for rendering options, texture transforms, sector settings
 
-4. **DoomAssetLoader** - Doom WAD file parsing
-   - Loads IWAD (base assets) and PWAD (custom content) files
-   - Extracts maps, textures, sprites from Doom binary WAD format
+4. **DoomAssetLoader** - Doom WAD/PWAD file parsing
    - Supports both classic binary format and UDMF (text-based) maps
 
 5. **BuildAssetLoader** - Duke Nukem 3D GRP file parsing
    - Loads GRP files and extracts maps, textures, sprites
-   - Handles palette and lookup table files for color/shading
 
 6. **Tooling** - General-purpose utilities shared across projects
-   - Aligned memory pooling: `AlignedMemoryPool`, `DynamicAlignedMemoryPool`
-   - `ArraySortHelper` (allocation-free span sorting)
-   - `AsyncLogger` for background logging
 
 7. **Tests** - Unit tests (XUnit)
-   - Tests for math functions, memory utilities, and asset loading
 
 8. **Benchmark** - Performance benchmarks (BenchmarkDotNet)
    - Benchmarks for rendering operations, vector operations, and math functions
@@ -91,5 +83,5 @@ dotnet run --project SoftwareRenderer -- --map E1M1 --iwad /path/to/doom.wad
 dotnet run --project SoftwareRenderer -- --map E1M1 --iwad /path/to/doom.wad --pwad /path/to/custom.wad
 
 # Load a Duke Nukem 3D map
-dotnet run --project SoftwareRenderer -- --map NAME --grp /path/to/duke3d/folder
+dotnet run --project SoftwareRenderer -- --map E1L2 --grp /path/to/duke3d/folder
 ```
