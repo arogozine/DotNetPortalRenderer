@@ -1,5 +1,4 @@
-﻿using SoftwareRendererModels;
-using System.Numerics;
+﻿using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using Tooling;
@@ -454,34 +453,6 @@ internal unsafe interface ICoreRenderer<T>
             }
         }
     }
-    static abstract void RenderSpriteHorizontally(
-        int spriteFromX, int spriteToX,
-        uint width,
-        ushort* repeatedCount,
-        uint* texturePtr,
-        uint* screenPtr,
-        uint* portalFromClampedPtr,
-        uint* portalToClampedPtr,
-        uint* textureXLocationPtr,
-        uint* textureYLocationPtr,
-        uint* textureYIncrementPtr
-        );
-
-    static abstract void RenderWall(int spriteFromX, int spriteToX, uint width, int textureHeight, ushort* repeatedCount, uint* texturePtr, uint* screenPtr, uint* portalFromClampedPtr, uint* portalToClampedPtr, uint* textureXLocationPtr, uint* textureYLocationPtr, uint* textureYIncrementPtr);
-
-    static abstract void RenderSkybox(PortalPlayerSnapshot player,
-           int repeatCount,
-           ushort* repeatedCount,
-           float* angleCachePtr,
-           uint* screenPtr,
-           uint* texturePtr,
-           int sectorFromX, int sectorToX,
-           int* fromYPtr, int* toYPtr,
-           int* ceilingStartPtr, int* floorEndPtr,
-           int width,
-           int textureWidth,
-           int textureHeight,
-           float yTextureIncr);
 
     public static (int min_t, int max_t, int min_b, int max_b) CalculateLaneTopBottoms(Vector<int> from, Vector<int> to)
     {

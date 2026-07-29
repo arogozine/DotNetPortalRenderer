@@ -12,11 +12,9 @@ namespace RenderingEngine.Engine;
 /// <see cref="CoreRendererForUntiledTextures{T}"/>
 /// </summary>
 /// <typeparam name="T">How each pixel, or pixel line, is drawn</typeparam>
-internal sealed unsafe class CoreRendererForOddTextures<T> : ICoreRenderer<T>
+internal static unsafe class CoreRendererForOddTextures<T>
     where T : IDrawPixel
 {
-    private CoreRendererForOddTextures() { }
-
     public static void RenderSkybox(PortalPlayerSnapshot player,
         int repeatCount,
         ushort* repeatedCount,

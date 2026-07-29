@@ -1,6 +1,5 @@
 ﻿using RenderingEngine.Tooling;
 using SoftwareRendererModels;
-using Tooling;
 
 namespace RenderingEngine.Engine
 {
@@ -52,10 +51,6 @@ namespace RenderingEngine.Engine
                 mirroredSectors[i] = new();
             }
 
-            // AI Assisted: dedicated long-running thread instead of ThreadPool dispatch. RenderSector
-            // forks work here up to twice per call (dozens of times per frame); queuing to the shared
-            // ThreadPool on every call pays dispatch overhead and contends with other ThreadPool work,
-            // whereas a persistent worker just waits on a semaphore and reuses the same OS thread.
             _ = Task.Factory
                 .StartNew(() => ConcurrentWorkerLoop(cancellationToken), cancellationToken, TaskCreationOptions.LongRunning, TaskScheduler.Default)
                 .ContinueWith(static (Task t) =>
@@ -266,8 +261,6 @@ namespace RenderingEngine.Engine
 
                 WallHelper.PreRotateSectorWalls(sector, player, entry, flipped, frame);
 
-                // Safe without a lock: thread B (ConcurrentWorkerLoop) hasn't been released yet at this
-                // point in DrawScreenStep, so _wallHelper.A's connectingSectors scratch set can't race with B's.
                 _wallHelper.A.CalculateConnectingSectorsForSlope(player, entry, sectors, sector, frame);
             }
         }
@@ -292,7 +285,6 @@ namespace RenderingEngine.Engine
             lock (_windowCalculationLock)
             {
                 walls = wallHelper.DetermineWallsToRender(sector, parentWalls, sectorInfo, player, frame);
-                // wallHelper.CalculateConnectingSectorsForSlope(player, sectorInfo, sectors, sector, frame);
             }
 
             // 2. Determine where ceiling, floor, and walls start and end
@@ -530,8 +522,6 @@ namespace RenderingEngine.Engine
 
         }
 
-        // AI Assisted: reused across calls so RenderSector's floor/ceiling and wall-rendering splits
-        // don't allocate (Parallel.Invoke allocates a params array, delegates and Tasks on every call)
         private readonly SemaphoreSlim concurrentWorkAvailableSemaphore = new(0, 1);
         private readonly SemaphoreSlim parallelRenderingDoneSemaphore = new(0, 1);
 
@@ -609,10 +599,6 @@ namespace RenderingEngine.Engine
             return pool;
         }
         
-        // AI Assisted: body of the dedicated long-running worker thread started in the constructor.
-        // Waits for DrawScreenStep to hand off thread B's half of the current depth's sector queue via
-        // concurrentWorkAvailableSemaphore, processes it against threadStateB, and signals the matching
-        // completion semaphore, instead of round-tripping through the ThreadPool.
         private void ConcurrentWorkerLoop(CancellationToken cancellationToken)
         {
             try
@@ -719,8 +705,7 @@ namespace RenderingEngine.Engine
                     {
                         offset = wallFromX > wall.XLeft ? renderableFromX - wall.XLeft : 0;
 
-                        // AI Assisted
-                        var rw = ObjectPool.RenderablePortalWallPool.GetOrCreate();
+                        RenderablePortalWall rw = ObjectPool.RenderablePortalWallPool.GetOrCreate();
                         rw.Initialize(wall, renderableFromX, x, offset, status);
                         renderableWalls.Add(rw);
                     }
@@ -791,8 +776,7 @@ namespace RenderingEngine.Engine
             {
                 offset = renderableFromX > wall.XLeft ? renderableFromX - wall.XLeft : 0;
 
-                // AI Assisted
-                var rw = ObjectPool.RenderablePortalWallPool.GetOrCreate();
+                RenderablePortalWall rw = ObjectPool.RenderablePortalWallPool.GetOrCreate();
                 rw.Initialize(wall, renderableFromX, renderableToX, offset, status);
                 renderableWalls.Add(rw);
             }

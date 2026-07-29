@@ -10,11 +10,9 @@ namespace RenderingEngine.Engine;
 /// For rendering textures that are Power of 2.
 /// </summary>
 /// <typeparam name="T">How each pixel, or pixel line, is drawn</typeparam>
-internal sealed unsafe class CoreRendererForPowTextures<T> : ICoreRenderer<T>
+internal static unsafe class CoreRendererForPowTextures<T>
     where T : IDrawPixel
 {
-    private CoreRendererForPowTextures() { }
-
     public static void RenderSkybox(PortalPlayerSnapshot player,
         int repeatCount,
         ushort* repeatedCount,

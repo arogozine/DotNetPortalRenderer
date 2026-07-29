@@ -299,7 +299,6 @@ namespace RenderingEngine.Engine
             Vector<int> widthDiv2V = Vector.Create(width >> 1) - Vector.CreateSequence(0, 1);
             Vector<float> xPosIncrV = Vector.Create(1f / (width * -EngineConstants.HeightToWidthRatio));
             // For slopes
-            Vector3 planePoint, planeNormal;
             Vector<float> nX, nY, nZ, pX, pY, pZ, dir_z;
 
             float* incrCachePtr = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.CameraHeightToMapYPos);
@@ -394,7 +393,7 @@ namespace RenderingEngine.Engine
             void RenderColumnAngleBottom(
                 int floorFromY,
                 int floorToY,
-                Vector<int> to,
+                Vector<int> toV,
                 int xStart,
                 Vector<float> xMapPosMultV)
             {
@@ -408,7 +407,7 @@ namespace RenderingEngine.Engine
                     if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                     {
                         Vector256<int> yV = Vector256.Create(y);
-                        Vector256<int> mask = Vector256.GreaterThan(to.AsVector256(), yV);
+                        Vector256<int> mask = Vector256.GreaterThan(toV.AsVector256(), yV);
 
                         Vector256<int> gathered = Avx2.GatherMaskVector256(
                             yV,
@@ -424,7 +423,7 @@ namespace RenderingEngine.Engine
                     {
                         for (int i = 0; i < Vector<uint>.Count; i++)
                         {
-                            if (to[i] > y)
+                            if (toV[i] > y)
                             {
                                 int textureIndex = textureIndexV[i];
                                 screenTexPtr[i] = texturePtr[textureIndex];
@@ -439,7 +438,7 @@ namespace RenderingEngine.Engine
             void RenderColumnAngleTop(
                 int min_t,
                 int max_t,
-                Vector<int> from,
+                Vector<int> fromV,
                 int xStart,
                 Vector<float> xMapPosMultV)
             {
@@ -453,7 +452,7 @@ namespace RenderingEngine.Engine
                     if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
                     {
                         Vector<int> yV = Vector.Create(y);
-                        Vector<int> mask = Vector.LessThan(from, yV);
+                        Vector<int> mask = Vector.LessThan(fromV, yV);
 
                         Vector256<int> gathered = Avx2.GatherMaskVector256(
                             yV.AsVector256(),
@@ -469,7 +468,7 @@ namespace RenderingEngine.Engine
                     {
                         for (int i = 0; i < Vector<uint>.Count; i++)
                         {
-                            if (from[i] >= y)
+                            if (fromV[i] >= y)
                             {
                                 continue;
                             }
@@ -602,7 +601,7 @@ namespace RenderingEngine.Engine
             {
                 if (slopeFloor is { } slopeFloorBoolean)
                 {
-                    (planePoint, planeNormal) = slopeFloorBoolean ? MathFormulas.CalculatePlaneNormalFloor(sector)
+                    (var planePoint, var planeNormal) = slopeFloorBoolean ? MathFormulas.CalculatePlaneNormalFloor(sector)
                         : MathFormulas.CalculatePlaneNormalCeil(sector);
 
                     // Convert scalar plane data into vectors
@@ -625,8 +624,6 @@ namespace RenderingEngine.Engine
                 }
                 else
                 {
-                    Unsafe.SkipInit(out planePoint);
-                    Unsafe.SkipInit(out planeNormal);
                     Unsafe.SkipInit(out nX);
                     Unsafe.SkipInit(out nY);
                     Unsafe.SkipInit(out nZ);

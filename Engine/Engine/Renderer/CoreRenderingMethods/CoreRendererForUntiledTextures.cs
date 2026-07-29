@@ -10,11 +10,9 @@ namespace RenderingEngine.Engine;
 /// For rendering textures without Y (vertical) tiling.
 /// </summary>
 /// <typeparam name="T">How each pixel, or pixel line, is drawn</typeparam>
-internal sealed unsafe class CoreRendererForUntiledTextures<T> : ICoreRenderer<T>
+internal static unsafe class CoreRendererForUntiledTextures<T>
     where T : IDrawPixel
 {
-    private CoreRendererForUntiledTextures() { }
-
     public static void RenderSkybox(PortalPlayerSnapshot player,
         int repeatCount,
         ushort* repeatedCount,
