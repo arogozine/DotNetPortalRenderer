@@ -1,7 +1,5 @@
 # Code of Conduct
 
-## Our Commitment
-
 Everyone can contribute to DotNetPortalRenderer - just be helpful, professional, and have fun! We welcome contributors of all backgrounds and experience levels.
 
 ## Contribution Principles
@@ -10,8 +8,7 @@ Everyone can contribute to DotNetPortalRenderer - just be helpful, professional,
 
 1. **Contributions Welcome** - We especially appreciate bug fixes and quality improvements
 2. **Attribution is Required** - All non-original code must be properly attributed with source references
-3. **AI Transparency** - AI-assisted code must be clearly disclosed with comments and PR notes
-4. **Developer Responsibility** - You must review, understand, and test all AI-generated code before submission
+3. **AI Transparency** - AI-assisted code must be clearly disclosed in the PR. You must review, understand, and test all AI-generated code before submission
 
 ### The AI Assistance Contract
 
@@ -33,11 +30,5 @@ This Code of Conduct applies to all project discussions and interactions.
 ## Enforcement
 
 The project owner can ban anyone from contributing for being unhelpful or rude.
-
-## Attribution
-
-This Code of Conduct is inspired by the Contributor Covenant and adapted for the specific needs of the DotNetPortalRenderer project.
-
----
 
 Thank you for helping make DotNetPortalRenderer a welcoming and professional community!

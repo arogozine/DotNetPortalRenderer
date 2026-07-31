@@ -32,7 +32,7 @@ internal static class ModelExtensions
 
     extension(GameTextureInfo gameTextureInfo)
     {
-        public (float Width, float Height) GetScaledDemensions()
+        public (float Width, float Height) GetScaledDimensions()
         {
             (float xScale, float yScale) = gameTextureInfo.GetScale();
 

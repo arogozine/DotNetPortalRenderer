@@ -10,17 +10,6 @@ The renderer runs in software (no GPU rendering), using SIMD/vectorized operatio
 |------------------------|------------------------|
 | ![Doom 1](doom.png) | ![Doom 2](doom_2.png) |
 
-
-### AI Use Disclosure
-
-Majority of the application and the rendering design are handmade.
-
-AI tools are used for,
-- Code Review and optimization recommendation. Such as "Native" methods and pointing me towards the Avx2 instructions.
-- Help with algorithms, such as slope calculations.
-- Documentation.
-- Unit test generation.
-
 ### Project Structure
 
 The solution contains 8 projects:
@@ -85,3 +74,23 @@ dotnet run --project SoftwareRenderer -- --map E1M1 --iwad /path/to/doom.wad --p
 # Load a Duke Nukem 3D map
 dotnet run --project SoftwareRenderer -- --map E1L2 --grp /path/to/duke3d/folder
 ```
+
+### FAQ
+
+**Why?** 
+
+To learn how to write high performance C# code, to learn SIMD, and learn how old games rendered their environments.
+
+**Is this a port of ID Tech or Build Enine to C#?**
+
+No. This is largely my own work / design.
+
+### AI Use Disclosure
+
+Majority of the application and the rendering design are handmade.
+
+AI tools are used for,
+- Code Review and optimization recommendation. Such as "Native" methods and pointing me towards the Avx2 instructions.
+- Help with algorithms, such as slope calculations.
+- Documentation.
+- Unit test generation.

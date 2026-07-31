@@ -2,7 +2,8 @@
 
 ## Project Overview
 
-**DotNetPortalRenderer** is a .NET 10 software-based portal rendering engine that renders maps from the Doom (ID Tech 1) and Build (Duke Nukem 3D) game engines. It implements a classic portal-based raycasting renderer.
+**DotNetPortalRenderer** is a .NET 10 software-based portal rendering engine that renders maps from the Doom (ID Tech 1) and Build (Duke Nukem 3D) game engines.
+It implements a classic portal-based raycasting renderer.
 
 ## Architecture Overview
 

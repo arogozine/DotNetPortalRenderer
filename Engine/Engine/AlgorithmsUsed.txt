@@ -1,9 +1,0 @@
-Determining Walls to Draw,
-1. Rotate Walls relative to player's view and offset them so player is in the middle.
-2. All walls that might be visible have at least one point with a positive Y (ahead of player's view).
-3. We then calculate wall planes. See below.
-4. Filter out walls not visible.
-
-Calculating Wall Planes,
-Wall Left Screen X Starting Point = (Point1_X / Point1_Y) * (width_x * 0.5 / 0.66)
-Wall Right Screen X Ending Point = (Point1_X / Point1_Y) * (width_x * 0.5 / 0.66)

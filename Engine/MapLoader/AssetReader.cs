@@ -14,7 +14,7 @@ internal static class Precalculations
             Sprite sprite = sprites[i];
             GameTextureInfo texture = sprite.Texture;
 
-            (float width, float height) = texture.GetScaledDemensions();
+            (float width, float height) = texture.GetScaledDimensions();
 
             (float x, float y) = sprite.Location;
 

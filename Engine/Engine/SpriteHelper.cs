@@ -410,7 +410,7 @@ namespace RenderingEngine.Engine
 
             static float CalculateDistance(RenderableBasicSprite sprite)
             {
-                (float textureWidth, _) = sprite.Texture.GetScaledDemensions();
+                (float textureWidth, _) = sprite.Texture.GetScaledDimensions();
 
                 float ry = sprite.Rotated.Y;
 
@@ -705,7 +705,7 @@ namespace RenderingEngine.Engine
                     s.Flipped = selectedAngle.Flipped;
                     s.Sprite.Texture.Texture = selectedAngle.Texture;
 
-                    (float width, _) = texture.GetScaledDemensions();
+                    (float width, _) = texture.GetScaledDimensions();
 
                     Sprite sprite = s.Sprite;
 
