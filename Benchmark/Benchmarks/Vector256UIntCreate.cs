@@ -37,6 +37,21 @@ public unsafe class Vector256UIntCreate
         return Vector256.Load(stackValues);
     }
 
+    [Benchmark]
+    public Vector256<uint> VCreate()
+    {
+        return Vector256.Create(
+            values[0],
+            values[1],
+            values[2],
+            values[3],
+            values[4],
+            values[5],
+            values[6],
+            values[7]
+        );
+    }
+
 
     [Benchmark]
     public Vector256<uint> ZeroWithElement2()
@@ -77,6 +92,21 @@ public unsafe class Vector256UIntCreate
             result = result.WithElement(i, values[i]);
         }
         */
+
+        return result;
+    }
+
+
+    [Benchmark]
+    public Vector256<uint> ZeroWithElement3()
+    {
+        Vector256<uint> result = Vector256<uint>.Zero;
+
+        for (int i = 0; i < Vector256<uint>.Count; i++)
+        {
+            result = result.WithElement(i, values[i]);
+
+        }
 
         return result;
     }

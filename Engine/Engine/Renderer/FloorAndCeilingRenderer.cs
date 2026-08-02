@@ -2,7 +2,7 @@
 using SoftwareRendererModels;
 using System.Numerics;
 using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
+using Tooling;
 
 namespace RenderingEngine.Engine
 {
@@ -49,8 +49,6 @@ namespace RenderingEngine.Engine
             int* ceilingStart = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.CeilingStart);
             int* wallStartSloped = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.WallStartClamped);
             int* floorEnd = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.FloorEnd);
-            // AI Assisted: ceiling rendering keeps Temp/Temp2 while floor rendering (which may run
-            // concurrently) uses Temp3/Temp4
             int* wallStartClampedPtr = memoryPool.GetBucketPtr<int>(temp1 ? MemoryPoolBucket.Temp : MemoryPoolBucket.Temp3);
             wallStartClampedPtr += sectorFromX;
 
@@ -367,20 +365,8 @@ namespace RenderingEngine.Engine
                     uint* screenTexPtr = screenPtr + screenIndex;
 
                     Vector<int> textureIndex = GetXyFromScreenSpace(Vector.Create(*(incrCachePtr + y)), xMapPosMultiplierCacheV);
-
-                    if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
-                    {
-                        Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndex.AsVector256(), scale: sizeof(int));
-
-                        gathered.Store(screenTexPtr);
-                    }
-                    else
-                    {
-                        for (int i = 0; i < Vector<int>.Count; i++)
-                        {
-                            screenTexPtr[i] = texturePtr[textureIndex[i]];
-                        }
-                    }
+                    Vector<uint> gathered = Vector.Gather(texturePtr, textureIndex);
+                    gathered.Store(screenTexPtr);
                 }
 
                 // render bottoms where there is no shared window
@@ -404,32 +390,10 @@ namespace RenderingEngine.Engine
                     Vector<float> incrementVector = Vector.Create(*(incrCachePtr + y));
                     Vector<int> textureIndexV = GetXyFromScreenSpace(incrementVector, xMapPosMultV);
 
-                    if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
-                    {
-                        Vector256<int> yV = Vector256.Create(y);
-                        Vector256<int> mask = Vector256.GreaterThan(toV.AsVector256(), yV);
-
-                        Vector256<int> gathered = Avx2.GatherMaskVector256(
-                            yV,
-                            (int*)texturePtr,
-                            textureIndexV.AsVector256(),
-                            mask,
-                            scale: sizeof(int)
-                        );
-
-                        Avx2.MaskStore((int*)screenTexPtr, mask, gathered);
-                    }
-                    else
-                    {
-                        for (int i = 0; i < Vector<uint>.Count; i++)
-                        {
-                            if (toV[i] > y)
-                            {
-                                int textureIndex = textureIndexV[i];
-                                screenTexPtr[i] = texturePtr[textureIndex];
-                            }
-                        }
-                    }
+                    Vector<int> yV = Vector.Create(y);
+                    Vector<int> mask = Vector.GreaterThan(toV, yV);
+                    Vector<int> gathered = Vector.Gather((int*)texturePtr, textureIndexV);
+                    Vector.MaskStore((int*)screenTexPtr, mask, gathered);
 
                     screenTexPtr += width;
                 }
@@ -449,34 +413,10 @@ namespace RenderingEngine.Engine
                     Vector<float> incrementVector = Vector.Create(*(incrCachePtr + y));
                     Vector<int> textureIndexV = GetXyFromScreenSpace(incrementVector, xMapPosMultV);
 
-                    if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
-                    {
-                        Vector<int> yV = Vector.Create(y);
-                        Vector<int> mask = Vector.LessThan(fromV, yV);
-
-                        Vector256<int> gathered = Avx2.GatherMaskVector256(
-                            yV.AsVector256(),
-                            (int*)texturePtr,
-                            textureIndexV.AsVector256(),
-                            mask.AsVector256(),
-                            scale: sizeof(int)
-                        );
-
-                        Avx2.MaskStore((int*)screenTexPtr, mask.AsVector256(), gathered);
-                    }
-                    else
-                    {
-                        for (int i = 0; i < Vector<uint>.Count; i++)
-                        {
-                            if (fromV[i] >= y)
-                            {
-                                continue;
-                            }
-
-                            int textureIndex = textureIndexV[i];
-                            screenTexPtr[i] = texturePtr[textureIndex];
-                        }
-                    }
+                    Vector<int> yV = Vector.Create(y);
+                    Vector<int> mask = Vector.LessThan(fromV, yV);
+                    Vector<int> gathered = Vector.Gather((int*)texturePtr, textureIndexV);
+                    Vector.MaskStore((int*)screenTexPtr, mask, gathered);
 
                     screenTexPtr += width;
                 }
@@ -507,23 +447,12 @@ namespace RenderingEngine.Engine
                     {
                         Vector<int> textureIndex = GetXyFromScreenSpace(incrementVector, xMapPosMultiplierV);
 
-                        if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
-                        {
-                            Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndex.AsVector256(), scale: sizeof(uint));
+                        Vector<uint> gathered = Vector.Gather(texturePtr, textureIndex);
 
-                            for (int i = 0; i < Vector<int>.Count; i++)
-                            {
-                                *cur = gathered[i];
-                                cur += width;
-                            }
-                        }
-                        else
+                        for (int i = 0; i < Vector<int>.Count; i++)
                         {
-                            for (int i = 0; i < Vector<int>.Count; i++)
-                            {
-                                *cur = texturePtr[textureIndex[i]];
-                                cur += width;
-                            }
+                            *cur = gathered[i];
+                            cur += width;
                         }
 
                         floorFromY += Vector<float>.Count;

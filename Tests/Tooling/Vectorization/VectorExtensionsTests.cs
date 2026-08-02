@@ -259,7 +259,7 @@ public unsafe class VectorExtensionsTests
 
         fixed (uint* basePtr = source)
         {
-            Vector<uint> gathered = Vector<uint>.Gather(basePtr, index);
+            Vector<uint> gathered = Vector.Gather(basePtr, index);
 
             for (int i = 0; i < count; i++)
             {
@@ -285,7 +285,7 @@ public unsafe class VectorExtensionsTests
 
         fixed (uint* basePtr = source)
         {
-            Vector<uint> gathered = Vector<uint>.GatherMask(basePtr, index, mask);
+            Vector<uint> gathered = Vector.GatherMask(basePtr, index, mask);
 
             for (int i = 0; i < count; i++)
             {
@@ -308,7 +308,7 @@ public unsafe class VectorExtensionsTests
 
         fixed (uint* basePtr = source)
         {
-            Vector<uint> gathered = Vector<uint>.GatherMask(basePtr, index, Vector<uint>.Zero);
+            Vector<uint> gathered = Vector.GatherMask(basePtr, index, Vector<uint>.Zero);
 
             Assert.Equal(Vector<uint>.Zero, gathered);
         }

@@ -1,92 +1,141 @@
-﻿using System.Numerics;
+﻿#pragma warning disable SYSLIB5003 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+
+using System.Numerics;
 using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
+using System.Runtime.Intrinsics.Arm;
 
 namespace Tooling;
 
 [SkipLocalsInit]
 public static unsafe class VectorExtensions
 {
-    extension(Vector<uint>)
+    extension<T>(Vector)
+        where T : unmanaged
     {
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Vector<uint> Gather(uint* baseAddress, Vector<int> index)
+        public static void MaskStore(T* address, Vector<int> mask, Vector<T> source)
         {
-            if (Avx2.IsSupported)
+            // TODO: ARM equivalent ?
+
+            if (Vector<T>.Count == Vector512<T>.Count)
             {
-                if (Vector<uint>.Count == Vector512<uint>.Count)
-                {
-                    Vector512<int> indexV = index.AsVector512();
+                Vector512<T> indexV = source.AsVector512();
+                Vector512<int> maskV = mask.AsVector512();
 
-                    Vector256<uint> low = Avx2.GatherVector256(baseAddress, indexV.GetLower(), scale: sizeof(uint));
-                    Vector256<uint> high = Avx2.GatherVector256(baseAddress, indexV.GetUpper(), scale: sizeof(uint));
+                Vector256.MaskStore(address, maskV.GetLower(), indexV.GetLower());
+                Vector256.MaskStore(address + Vector256<T>.Count, maskV.GetUpper(), indexV.GetUpper());
 
-                    return Vector512.Create(low, high).AsVector();
-                }
-
-                if (Vector<uint>.Count == Vector256<uint>.Count)
-                {
-                    return Avx2.GatherVector256(baseAddress, index.AsVector256(), scale: sizeof(uint)).AsVector();
-                }
-
-                if (Vector<uint>.Count == Vector128<uint>.Count)
-                {
-                    return Avx2.GatherVector128(baseAddress, index.AsVector128(), scale: sizeof(uint)).AsVector();
-                }
+                return;
             }
 
-            scoped Span<uint> gather = stackalloc uint[Vector<uint>.Count];
-
-            for (int i = 0; i < Vector<int>.Count; i++)
+            if (Vector<T>.Count == Vector256<T>.Count)
             {
-                uint value = *(baseAddress + index[i]);
-                gather[i] = value;
+                Vector256.MaskStore(address, mask.AsVector256(), source.AsVector256());
+                return;
             }
 
-            return Vector.Create(gather);
+            if (Vector<T>.Count == Vector128<T>.Count)
+            {
+                Vector128.MaskStore(address, mask.AsVector128(), source.AsVector128());
+                return;
+            }
+
+            for (int i = 0; i < Vector<T>.Count; i++)
+            {
+                if (mask[i] == 0)
+                {
+                    continue;
+                }
+
+                address[i] = source[i];
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static Vector<uint> GatherMask(uint* baseAddress, Vector<int> index, Vector<uint> mask)
+        public static Vector<T> Gather(T* baseAddress, Vector<int> index)
         {
-            if (Avx2.IsSupported)
+            if (Sve.IsSupported && sizeof(T) == sizeof(int))
             {
-                if (Vector<uint>.Count == Vector512<uint>.Count)
-                {
-                    Vector512<int> indexV = index.AsVector512();
-                    Vector512<uint> maskV = mask.AsVector512();
-
-                    Vector256<uint> low = Avx2.GatherMaskVector256(Vector256<uint>.Zero, baseAddress, indexV.GetLower(), maskV.GetLower(), scale: sizeof(uint));
-                    Vector256<uint> high = Avx2.GatherMaskVector256(Vector256<uint>.Zero, baseAddress, indexV.GetUpper(), maskV.GetUpper(), scale: sizeof(uint));
-
-                    return Vector512.Create(low, high).AsVector();
-                }
-
-                if (Vector<uint>.Count == Vector256<uint>.Count)
-                {
-                    return Avx2.GatherMaskVector256(Vector256<uint>.Zero, baseAddress, index.AsVector256(), mask.AsVector256(), scale: sizeof(uint)).AsVector();
-                }
-
-                if (Vector<uint>.Count == Vector128<uint>.Count)
-                {
-                    return Avx2.GatherMaskVector128(Vector128<uint>.Zero, baseAddress, index.AsVector128(), mask.AsVector128(), scale: sizeof(uint)).AsVector();
-                }
+                return Sve.GatherVector(Vector<int>.AllBitsSet, (int*)baseAddress, index)
+                    .As<int, T>();
             }
 
-            scoped Span<uint> gather = stackalloc uint[Vector<uint>.Count];
-            gather.Clear();
-
-            for (int i = 0; i < Vector<int>.Count; i++)
+            if (Vector<T>.Count == Vector512<T>.Count)
             {
-                if (mask[i] == 0)
-                    continue;
+                Vector512<int> indexV = index.AsVector512();
 
-                uint value = *(baseAddress + index[i]);
+                Vector256<T> low = Vector256.Gather(baseAddress, indexV.GetLower());
+                Vector256<T> high = Vector256.Gather(baseAddress, indexV.GetUpper());
+
+                return Vector512.Create(low, high).AsVector();
+            }
+
+            if (Vector<T>.Count == Vector256<T>.Count)
+            {
+                return Vector256.Gather(baseAddress, index.AsVector256()).AsVector();
+            }
+
+            if (Vector<T>.Count == Vector128<T>.Count)
+            {
+                return Vector128.Gather(baseAddress, index.AsVector128()).AsVector();
+            }
+
+            Vector<T> gatherV = default;
+            T* gather = (T*)Unsafe.AsPointer(ref gatherV);
+
+            for (int i = 0; i < Vector<T>.Count; i++)
+            {
+                T value = *(baseAddress + index[i]);
                 gather[i] = value;
             }
 
-            return Vector.Create(gather);
+            return gatherV;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector<T> GatherMask(T* baseAddress, Vector<int> index, Vector<uint> mask)
+        {
+            if (Sve.IsSupported && sizeof(T) == sizeof(int))
+            {
+                return Sve.GatherVector(mask.As<uint, int>(), (int*)baseAddress, index)
+                    .As<int, T>();
+            }
+
+            if (Vector<T>.Count == Vector512<T>.Count)
+            {
+                Vector512<int> indexV = index.AsVector512();
+                Vector512<uint> maskV = mask.AsVector512();
+
+                Vector256<T> low = Vector256.GatherMask(baseAddress, indexV.GetLower(), maskV.GetLower().As<uint, int>());
+                Vector256<T> high = Vector256.GatherMask(baseAddress, indexV.GetUpper(), maskV.GetUpper().As<uint, int>());
+
+                return Vector512.Create(low, high).AsVector();
+            }
+
+            if (Vector<T>.Count == Vector256<T>.Count)
+            {
+                return Vector256.GatherMask(baseAddress, index.AsVector256(), mask.AsVector256().As<uint, int>()).AsVector();
+            }
+
+            if (Vector<T>.Count == Vector128<T>.Count)
+            {
+                return Vector128.GatherMask(baseAddress, index.AsVector128(), mask.AsVector128().As<uint, int>()).AsVector();
+            }
+
+            Vector<T> gatherV = default;
+            T* gather = (T*)Unsafe.AsPointer(ref gatherV);
+
+            for (int i = 0; i < Vector<T>.Count; i++)
+            {
+                T value = *(baseAddress + index[i]);
+
+                if (mask[i] == 0)
+                    continue;
+
+                gather[i] = value;
+            }
+
+            return gatherV;
         }
     }
 }

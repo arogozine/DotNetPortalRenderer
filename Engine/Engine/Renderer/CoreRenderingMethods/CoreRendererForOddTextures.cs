@@ -129,32 +129,14 @@ internal static unsafe class CoreRendererForOddTextures<T>
 
             uint* fromPtr = screenPtr + max_t * width + x;
 
-            if (Avx2.IsSupported && Vector<uint>.Count == Vector256<uint>.Count)
+            for (int y = max_t; y <= min_b; y++)
             {
-                for (int y = max_t; y <= min_b; y++)
-                {
-                    Vector<int> textureIndex = texXV + textureWidth * Vector.ConvertToInt32Native(vScreenV);
-                    Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndex.AsVector256(), scale: sizeof(int));
-                    gathered.Store(fromPtr);
+                Vector<int> textureIndex = texXV + textureWidth * Vector.ConvertToInt32Native(vScreenV);
+                Vector<uint> gathered = Vector.Gather(texturePtr, textureIndex);
+                gathered.Store(fromPtr);
 
-                    fromPtr += width;
-                    vScreenV += yTextureIncrV;
-                }
-            }
-            else
-            {
-                for (int y = max_t; y <= min_b; y++)
-                {
-                    Vector<int> textureIndex = texXV + textureWidth * Vector.ConvertToInt32Native(vScreenV);
-
-                    for (int i = 0; i < Vector<float>.Count; i++)
-                    {
-                        *(fromPtr + i) = *(texturePtr + textureIndex[i]);
-                    }
-
-                    fromPtr += width;
-                    vScreenV += yTextureIncrV;
-                }
+                fromPtr += width;
+                vScreenV += yTextureIncrV;
             }
 
             // render bottoms where there is no shared window

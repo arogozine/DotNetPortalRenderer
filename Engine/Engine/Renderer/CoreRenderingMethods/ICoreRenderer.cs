@@ -115,18 +115,8 @@ internal unsafe interface ICoreRenderer<T>
 
                 uint* screenTexPtr = screenPtr + screenIndex;
 
-                if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
-                {
-                    Vector256<uint> gathered = Avx2.GatherVector256(texturePtr, textureIndex.AsVector256(), scale: sizeof(int));
-                    T.DrawLine(screenTexPtr, gathered);
-                }
-                else
-                {
-                    for (int i = 0; i < Vector<int>.Count; i++)
-                    {
-                        T.Draw(screenTexPtr + i, texturePtr[textureIndex[i]]);
-                    }
-                }
+                Vector<uint> gathered = Vector.Gather(texturePtr, textureIndex);
+                T.DrawLine(screenTexPtr, gathered);
             }
 
             // render bottoms where there is no shared window
@@ -152,28 +142,12 @@ internal unsafe interface ICoreRenderer<T>
                 Vector<float> incrementVector = Vector.Create(*(incrCachePtr + y));
                 Vector<int> textureIndexV = GetXyFromScreenSpace(incrementVector, xMapPosMultiplierCacheV);
 
-                if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
-                {
-                    Vector256<uint> gathered = Avx2.GatherMaskVector256(
-                        incrementVector.AsVector256().AsUInt32(),
-                        texturePtr,
-                        textureIndexV.AsVector256(),
-                        maskV.AsVector256(),
-                        scale: sizeof(int));
+                Vector<uint> gathered = Vector.GatherMask(
+                    texturePtr,
+                    textureIndexV,
+                    maskV);
 
-                    T.DrawLine(screenTexPtr, gathered, maskV.AsVector256());
-                }
-                else
-                {
-                    for (int i = 0; i < Vector<uint>.Count; i++)
-                    {
-                        if (maskV[i] != 0U)
-                        {
-                            int textureIndex = textureIndexV[i];
-                            T.Draw(screenTexPtr + i, texturePtr[textureIndex]);
-                        }
-                    }
-                }
+                T.DrawLine(screenTexPtr, gathered, maskV);
 
                 screenTexPtr += width;
             }
@@ -194,29 +168,12 @@ internal unsafe interface ICoreRenderer<T>
                 Vector<uint> maskV = Vector.GreaterThan(Vector.Create((uint)y), fromV.As<int, uint>());
                 Vector<float> incrementVector = Vector.Create(*(incrCachePtr + y));
                 Vector<int> textureIndexV = GetXyFromScreenSpace(incrementVector, xMapPosMultiplierCacheV);
+                Vector<uint> gathered = Vector.GatherMask(
+                    texturePtr,
+                    textureIndexV,
+                    maskV);
 
-                if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
-                {
-                    Vector256<uint> gathered = Avx2.GatherMaskVector256(
-                        incrementVector.AsVector256().AsUInt32(),
-                        texturePtr,
-                        textureIndexV.AsVector256(),
-                        maskV.AsVector256(),
-                        scale: sizeof(int));
-
-                    T.DrawLine(screenTexPtr, gathered, maskV.AsVector256());
-                }
-                else
-                {
-                    for (int i = 0; i < Vector<uint>.Count; i++)
-                    {
-                        if (maskV[i] != 0U)
-                        {
-                            int textureIndex = textureIndexV[i];
-                            T.Draw(screenTexPtr + i, texturePtr[textureIndex]);
-                        }
-                    }
-                }
+                T.DrawLine(screenTexPtr, gathered, maskV);
             }
         }
 
@@ -235,29 +192,12 @@ internal unsafe interface ICoreRenderer<T>
             while (screenTex != toScalePtr)
             {
                 textureIndex = GetXyFromScreenSpace(incrementVector, xMapPosMultiplierV);
+                Vector<uint> gathered = Vector.Gather(texturePtr, textureIndex);
 
-                if (Avx2.IsSupported && Vector<int>.Count == Vector256<int>.Count)
+                for (int i = 0; i < Vector<int>.Count; i++, screenTex += width)
                 {
-                    Vector256<uint> gathered = Avx2.GatherVector256(
-                        texturePtr,
-                        textureIndex.AsVector256(),
-                        scale: sizeof(uint)
-                    );
-
-                    for (int i = 0; i < Vector256<int>.Count; i++, screenTex += width)
-                    {
-                        uint tex = gathered[i];
-                        T.Draw(screenTex, tex);
-                    }
-                }
-                else
-                {
-                    for (int i = 0; i < Vector<int>.Count; i++, screenTex += width)
-                    {
-                        uint tex = *(texturePtr + textureIndex[i]);
-
-                        T.Draw(screenTex, tex);
-                    }
+                    uint tex = gathered[i];
+                    T.Draw(screenTex, tex);
                 }
 
                 floorFromY += Vector<float>.Count;
@@ -352,25 +292,8 @@ internal unsafe interface ICoreRenderer<T>
                     Vector<uint> textureYPosV = I.Load(textureYPos);
                     Vector<uint> texturePosV = I.Load(texturePos + i);
                     Vector<uint> texelIndexV = (textureYPosV >> 16) + texturePosV;
-
-                    if (Avx2.IsSupported && Vector<uint>.Count == Vector256<uint>.Count)
-                    {
-                        Vector256<uint> gathered = Avx2.GatherVector256(
-                            textureBuffer,
-                            texelIndexV.AsVector256().AsInt32(),
-                            scale: sizeof(uint)
-                        );
-
-                        T.DrawLine(screenIndexPtr, gathered);
-                    }
-                    else
-                    {
-                        for (int j = 0; j < Vector<uint>.Count; j++)
-                        {
-                            uint pixel = *(textureBuffer + texelIndexV[j]);
-                            T.Draw(screenIndexPtr + j, pixel);
-                        }
-                    }
+                    Vector<uint> gathered = Vector.Gather(textureBuffer, texelIndexV.As<uint, int>());
+                    T.DrawLine(screenIndexPtr, gathered);
 
                     textureYPosV += I.Load(textureYIncr_u + i);
                     I.Store(textureYPos, textureYPosV);

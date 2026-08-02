@@ -10,6 +10,32 @@ public static unsafe class Vector256Extensions
         where T : unmanaged
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void MaskStore(T* address, Vector256<int> mask, Vector256<T> source)
+        {
+            if (sizeof(T) != sizeof(int))
+            {
+                throw new NotSupportedException();
+            }
+
+            if (Avx2.IsSupported)
+            {
+                Avx2.MaskStore((int*)address, mask, source.As<T, int>());
+                return;
+            }
+
+            for (int i = 0; i < Vector256<T>.Count; i++)
+            {
+                if (mask[i] == 0)
+                {
+                    continue;
+                }
+
+                T textureIndex = source[i];
+                address[i] = source[i];
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector256<T> Gather(T* baseAddress, Vector256<int> index)
         {
             if (typeof(T) != typeof(int) && typeof(T) != typeof(uint) && typeof(T) != typeof(float))
