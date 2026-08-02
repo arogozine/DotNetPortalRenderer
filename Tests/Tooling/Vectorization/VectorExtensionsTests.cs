@@ -245,4 +245,72 @@ public unsafe class VectorExtensionsTests
             Assert.Equal(vector, loadedAligned);
         });
     }
+
+    [Fact]
+    public void Gather_ReturnsValuesAtEachIndex()
+    {
+        int count = Vector<uint>.Count;
+        uint[] source = new uint[count * 2];
+        for (int i = 0; i < source.Length; i++) source[i] = (uint)(i * 10 + 1);
+
+        int[] indexValues = new int[count];
+        for (int i = 0; i < count; i++) indexValues[i] = (count - 1 - i) * 2;
+        var index = new Vector<int>(indexValues);
+
+        fixed (uint* basePtr = source)
+        {
+            Vector<uint> gathered = Vector<uint>.Gather(basePtr, index);
+
+            for (int i = 0; i < count; i++)
+            {
+                Assert.Equal(source[indexValues[i]], gathered[i]);
+            }
+        }
+    }
+
+    [Fact]
+    public void GatherMask_ReturnsValuesForSetLanesAndZeroForMaskedLanes()
+    {
+        int count = Vector<uint>.Count;
+        uint[] source = new uint[count];
+        for (int i = 0; i < count; i++) source[i] = (uint)(i + 1);
+
+        int[] indexValues = new int[count];
+        for (int i = 0; i < count; i++) indexValues[i] = i;
+        var index = new Vector<int>(indexValues);
+
+        uint[] maskValues = new uint[count];
+        for (int i = 0; i < count; i++) maskValues[i] = i % 2 == 0 ? uint.MaxValue : 0u;
+        var mask = new Vector<uint>(maskValues);
+
+        fixed (uint* basePtr = source)
+        {
+            Vector<uint> gathered = Vector<uint>.GatherMask(basePtr, index, mask);
+
+            for (int i = 0; i < count; i++)
+            {
+                uint expected = maskValues[i] != 0 ? source[indexValues[i]] : 0u;
+                Assert.Equal(expected, gathered[i]);
+            }
+        }
+    }
+
+    [Fact]
+    public void GatherMask_AllLanesMasked_ReturnsZeroVector()
+    {
+        int count = Vector<uint>.Count;
+        uint[] source = new uint[count];
+        for (int i = 0; i < count; i++) source[i] = (uint)(i + 1);
+
+        int[] indexValues = new int[count];
+        for (int i = 0; i < count; i++) indexValues[i] = i;
+        var index = new Vector<int>(indexValues);
+
+        fixed (uint* basePtr = source)
+        {
+            Vector<uint> gathered = Vector<uint>.GatherMask(basePtr, index, Vector<uint>.Zero);
+
+            Assert.Equal(Vector<uint>.Zero, gathered);
+        }
+    }
 }
