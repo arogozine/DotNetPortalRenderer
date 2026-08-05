@@ -191,7 +191,7 @@ internal static class GrpReader
                 continue;
             }
 
-            if (TryGet(actor, out CActor? cActor) && actors.TryGetValue(cActor.Name, out BaseActorCommand? command))
+            if (TryGet(actor, out CActorCommand? cActor) && actors.TryGetValue(cActor.Name, out BaseActorCommand? command))
             {
                 cActorPicNum = command.PicNum;
             }
@@ -419,7 +419,7 @@ internal static class GrpReader
                                 actor.Body.Add(actionCommand);
                             }
 
-                            if (TryGetCActor(i, out CActor? cActor))
+                            if (TryGetCActor(i, out CActorCommand? cActor))
                             {
                                 actor.Body.Add(cActor);
                             }
@@ -452,7 +452,7 @@ internal static class GrpReader
                                 userActor.Body.Add(actionCommand);
                             }
 
-                            if (TryGetCActor(i, out CActor? cActor))
+                            if (TryGetCActor(i, out CActorCommand? cActor))
                             {
                                 userActor.Body.Add(cActor);
                             }
@@ -581,7 +581,7 @@ internal static class GrpReader
             return false;
         }
 
-        bool TryGetCActor(int i, [NotNullWhen(true)] out CActor? cActor)
+        bool TryGetCActor(int i, [NotNullWhen(true)] out CActorCommand? cActor)
         {
             int depth = 0;
 
@@ -618,7 +618,7 @@ internal static class GrpReader
                     {
                         if (GetNextIf(ref i, out ValueToken? name))
                         {
-                            cActor = new CActor(name.Value);
+                            cActor = new CActorCommand(name.Value);
                             return true;
                         }
                     }
@@ -774,7 +774,8 @@ internal static class GrpReader
                     nextWall = ref walls[wall.NextWall];
                 }
 
-                var line = new Line {
+                var line = new Line
+                {
                     Id = ij,
                     PointA = new LineVector(j, GetPoint(in wall)),
                     PointB = new LineVector(wall.Point2, GetPoint(in point2Wall)),
@@ -1343,7 +1344,7 @@ internal static class GrpReader
 
         return (x, y);
     }
-    
+
     private static (int XOffset, int YOffset) CalculateFloorOffset(in SectorType sector, string textureName)
     {
         // XPanning
@@ -1670,7 +1671,7 @@ internal static class GrpReader
         {
             // Calling "new BGRA" is extremely slow
             const uint Alpha = (uint)byte.MaxValue << 24;
-            uint b = color.B;   
+            uint b = color.B;
             uint g = (uint)color.G << 8;
             uint r = (uint)color.R << 16;
 

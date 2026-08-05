@@ -36,7 +36,7 @@ namespace RenderingEngine.Engine
             {
                 int scalar = Vector<float>.Count - wallFromX & (Vector<float>.Count - 1);
 
-                Scalar(wallFromX, wallFromX + scalar);
+                Scalar(wallFromX, wallFromX + scalar - 1);
                 wallFromX += scalar;
 
                 length = wallToX - wallFromX;
@@ -254,7 +254,7 @@ namespace RenderingEngine.Engine
             {
                 int scalar = Vector<float>.Count - wallFromX & (Vector<float>.Count - 1);
 
-                Scalar(wallFromX, wallFromX + scalar);
+                Scalar(wallFromX, wallFromX + scalar - 1);
 
                 wallFromX += scalar;
 
@@ -367,9 +367,10 @@ namespace RenderingEngine.Engine
 
                 int scalar = Vector<float>.Count - wallFromX & (Vector<float>.Count - 1);
 
-                Scalar(wallFromX, wallFromX + scalar);
+                Scalar(wallFromX, wallFromX + scalar - 1);
                 wallFromX += scalar;
 
+                length = wallToX - wallFromX;
                 int rem = length & (Vector<float>.Count - 1);
                 wallToX -= rem;
 
@@ -705,7 +706,7 @@ namespace RenderingEngine.Engine
 
                 int scalar = Vector<float>.Count - wallFromX & (Vector<float>.Count - 1);
 
-                Scalar(wallFromX, wallFromX + scalar);
+                Scalar(wallFromX, wallFromX + scalar - 1);
                 wallFromX += scalar;
 
                 length = wallToX - wallFromX;
