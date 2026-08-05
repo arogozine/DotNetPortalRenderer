@@ -131,13 +131,13 @@ namespace BuildAssetLoader.Con
 
         // ===== Structures (actor/useractor, onevent/appendevent, state family) =====
 
-        private static Command ParseActorStructure(ConTreeCursor cursor)
+        private static BaseActorCommand ParseActorStructure(ConTreeCursor cursor)
         {
             CommandList start = cursor.ExpectCommand();
             int n = cursor.CountContiguousValues();
             string[] args = cursor.ReadValues(n);
 
-            List<Command> body = ParseStatements(cursor, insideBody: true, c => c.IsCommand(CommandList.enda));
+            List<Command> body = ParseStatements(cursor, insideBody: true, static (c) => c.IsCommand(CommandList.enda));
             cursor.ExpectCommand(CommandList.enda);
 
             BaseActorCommand actorCommand;
@@ -171,7 +171,7 @@ namespace BuildAssetLoader.Con
             return actorCommand;
         }
 
-        private static Command ParseEventStructure(ConTreeCursor cursor)
+        private static BaseEventCommand ParseEventStructure(ConTreeCursor cursor)
         {
             CommandList start = cursor.ExpectCommand();
             string eventName = cursor.ReadValue();
@@ -229,7 +229,7 @@ namespace BuildAssetLoader.Con
 
         // ===== Switch =====
 
-        private static Command ParseSwitch(ConTreeCursor cursor)
+        private static SwitchCommand ParseSwitch(ConTreeCursor cursor)
         {
             cursor.ExpectCommand(CommandList.switch_);
             string gamevar = cursor.ReadValue();
@@ -288,7 +288,7 @@ namespace BuildAssetLoader.Con
             if (cursor.IsBlockStart)
             {
                 cursor.ExpectBlockStart();
-                List<Command> body = ParseStatements(cursor, insideBody: true, c => c.IsBlockEnd);
+                List<Command> body = ParseStatements(cursor, insideBody: true, static (c) => c.IsBlockEnd);
                 cursor.ExpectBlockEnd();
                 return body;
             }
@@ -309,14 +309,14 @@ namespace BuildAssetLoader.Con
 
         // ===== Loops (whilevar*) =====
 
-        private static Command ParseWhileLoop(ConTreeCursor cursor)
+        private static LoopStructure ParseWhileLoop(ConTreeCursor cursor)
         {
             CommandList command = cursor.ExpectCommand();
             string gamevar = cursor.ReadValue();
             string operand = cursor.ReadValue();
 
             cursor.ExpectBlockStart();
-            List<Command> body = ParseStatements(cursor, insideBody: true, c => c.IsBlockEnd);
+            List<Command> body = ParseStatements(cursor, insideBody: true, static (c) => c.IsBlockEnd);
             cursor.ExpectBlockEnd();
 
             LoopStructure loop = command switch
@@ -352,7 +352,7 @@ namespace BuildAssetLoader.Con
             return new MoveInvokeCommand(name, flags);
         }
 
-        private static Command ParseAiDeclare(ConTreeCursor cursor)
+        private static AiCommand ParseAiDeclare(ConTreeCursor cursor)
         {
             cursor.ExpectCommand(CommandList.ai);
             int n = cursor.CountContiguousValues();
@@ -364,13 +364,13 @@ namespace BuildAssetLoader.Con
             return new AiCommand(name, action, move, moveFlags);
         }
 
-        private static Command ParseAiInvoke(ConTreeCursor cursor)
+        private static AiInvokeCommand ParseAiInvoke(ConTreeCursor cursor)
         {
             cursor.ExpectCommand(CommandList.ai);
             return new AiInvokeCommand(cursor.ReadValue());
         }
 
-        private static Command ParseAction(ConTreeCursor cursor)
+        private static ActionCommand ParseAction(ConTreeCursor cursor)
         {
             cursor.ExpectCommand(CommandList.action);
             int n = cursor.CountContiguousValues();
