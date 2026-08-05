@@ -6,6 +6,42 @@ namespace Tooling;
 [SkipLocalsInit]
 public static unsafe class Vector256Extensions
 {
+    extension(Vector256<int>)
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector256<int> operator %(Vector256<int> left, int right)
+        {
+            return Vector256.Create(
+                left[0] % right,
+                left[1] % right,
+                left[2] % right,
+                left[3] % right,
+                left[4] % right,
+                left[5] % right,
+                left[6] % right,
+                left[7] % right
+            );
+        }
+    }
+
+    extension(Vector256<uint>)
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector256<uint> operator %(Vector256<uint> left, uint right)
+        {
+            return Vector256.Create(
+                left[0] % right,
+                left[1] % right,
+                left[2] % right,
+                left[3] % right,
+                left[4] % right,
+                left[5] % right,
+                left[6] % right,
+                left[7] % right
+            );
+        }
+    }
+
     extension<T>(Vector256)
         where T : unmanaged
     {

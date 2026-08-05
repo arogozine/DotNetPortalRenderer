@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace Tooling;
 
-public static class Extensions
+public static class Vector2Extensions
 {
     extension (Vector2 vector)
     {

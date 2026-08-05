@@ -7,6 +7,34 @@ namespace Tooling;
 [SkipLocalsInit]
 public static unsafe class Vector128Extensions
 {
+    extension(Vector128<int>)
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector128<int> operator % (Vector128<int> left, int right)
+        {
+            return Vector128.Create(
+                left[0] % right,
+                left[1] % right,
+                left[2] % right,
+                left[3] % right
+            );
+        }
+    }
+
+    extension(Vector128<uint>)
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector128<uint> operator %(Vector128<uint> left, uint right)
+        {
+            return Vector128.Create(
+                left[0] % right,
+                left[1] % right,
+                left[2] % right,
+                left[3] % right
+            );
+        }
+    }
+
     extension<T>(Vector128)
         where T : unmanaged
     {
