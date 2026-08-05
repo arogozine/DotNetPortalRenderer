@@ -36,6 +36,7 @@ public enum CommandList
 	undefinevolume,
 	undefinelevel,
 	undefineskill,
+	gamestartup,
 
 	// Meta-Settings - If
 

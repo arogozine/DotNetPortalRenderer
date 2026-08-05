@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BuildAssetLoader\BuildAssetLoader.csproj" />
     <ProjectReference Include="..\Engine\RenderingEngine.csproj" />
     <ProjectReference Include="..\SoftwareRendererModels\SoftwareRendererModels.csproj" />
     <ProjectReference Include="..\Tooling\Tooling.csproj" />

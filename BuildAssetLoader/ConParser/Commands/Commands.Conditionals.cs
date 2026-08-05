@@ -75,8 +75,9 @@ namespace BuildAssetLoader.Con
     // ifgotweaponce <number> — number is a weapon id define.
     public sealed record IfgotweaponceCommand(string Number) : ConditionalStructure(CommandList.ifgotweaponce);
 
-    // ifp <condition> — condition is one of the predefined p* flag names (pstanding, pwalking, ...).
-    public sealed record IfpCommand(string Condition) : ConditionalStructure(CommandList.ifp);
+    // ifp <condition1> [<condition2> ...] — each condition is one of the predefined p* flag names
+    // (pstanding, pwalking, ...); true if any of them match (logical OR).
+    public sealed record IfpCommand(string[] Conditions) : ConditionalStructure(CommandList.ifp);
 
     // <number> is frequently a define (e.g. SQUISHABLEDISTANCE, FROZENQUICKKICKDIST).
     public sealed record IfpdistgCommand(string Number) : ConditionalStructure(CommandList.ifpdistg);

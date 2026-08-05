@@ -206,12 +206,15 @@ internal static class GrpReader
                 continue;
             }
 
-            Debug.Assert(TextureCache.HasTexture(ToTile(defineCommand.Number)));
-            Debug.Assert(TextureCache.HasTexture(ToTile(cActorDefineCommand.Number)));
+            int defineNumber = int.Parse(defineCommand.Value);
+            int cActorDefineNumber = int.Parse(cActorDefineCommand.Value);
 
-            if (DetermineSpriteAngles(cActorDefineCommand.Number, actionCommand, out SpriteAngleRotation[]? spriteAngleInfo))
+            Debug.Assert(TextureCache.HasTexture(ToTile(defineNumber)));
+            Debug.Assert(TextureCache.HasTexture(ToTile(cActorDefineNumber)));
+
+            if (DetermineSpriteAngles(cActorDefineNumber, actionCommand, out SpriteAngleRotation[]? spriteAngleInfo))
             {
-                spriteToActions.Add(defineCommand.Number, spriteAngleInfo);
+                spriteToActions.Add(defineNumber, spriteAngleInfo);
             }
         }
 
@@ -399,7 +402,7 @@ internal static class GrpReader
                         {
                             string name = ((ValueToken)tokens[++i]).Value;
                             string number = ((ValueToken)tokens[++i]).Value;
-                            commands.Add(new DefineCommand(name, int.Parse(number)));
+                            commands.Add(new DefineCommand(name, number));
                         }
                         break;
                     case CommandList.actor:

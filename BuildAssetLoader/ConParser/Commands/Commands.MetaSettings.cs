@@ -42,7 +42,8 @@ namespace BuildAssetLoader.Con
     public sealed record DefinevolumeflagsCommand(int Volume, int Flags) : Command(CommandList.definevolumeflags);
 
     // definelevelname <episode> <levelnum> <mapname> <partime> <3dr> <levname>
-    public sealed record DefinelevelnameCommand(int Episode, int LevelNum, string MapName, int ParTime, int DesignerTime, string LevelName)
+    // partime/3dr are MM:SS-formatted clock strings (e.g. "01:45"), not integers.
+    public sealed record DefinelevelnameCommand(int Episode, int LevelNum, string MapName, string ParTime, string DesignerTime, string LevelName)
         : Command(CommandList.definelevelname);
 
     // defineskillname <skill> <name>
@@ -56,6 +57,9 @@ namespace BuildAssetLoader.Con
 
     // undefineskill <skill>
     public sealed record UndefineskillCommand(int Skill) : Command(CommandList.undefineskill);
+
+    // gamestartup <param1> <param2> ... <paramN> — 26 (v1.3D) or 30 (v1.5) startup parameters.
+    public sealed record GamestartupCommand(string[] Parameters) : Command(CommandList.gamestartup);
 
     // ===== Meta-Settings - If (ConditionalStructure, no args) =====
 
