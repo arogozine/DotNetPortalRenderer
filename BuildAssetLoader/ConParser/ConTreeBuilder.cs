@@ -214,12 +214,12 @@ namespace BuildAssetLoader.Con
         }
 
         // eventloadactor <name/tilenum> { ... } enda (Commands.Screen.cs; deprecated but still a Structure).
-        private static Command ParseEventloadactorStructure(ConTreeCursor cursor)
+        private static EventloadactorCommand ParseEventloadactorStructure(ConTreeCursor cursor)
         {
             cursor.ExpectCommand(CommandList.eventloadactor);
             string actorName = cursor.ReadValue();
 
-            List<Command> body = ParseStatements(cursor, insideBody: true, c => c.IsCommand(CommandList.enda));
+            List<Command> body = ParseStatements(cursor, insideBody: true, static (c) => c.IsCommand(CommandList.enda));
             cursor.ExpectCommand(CommandList.enda);
 
             EventloadactorCommand eventloadactor = new(actorName);
@@ -262,7 +262,7 @@ namespace BuildAssetLoader.Con
             if (cursor.IsBlockStart)
             {
                 cursor.ExpectBlockStart();
-                List<Command> braced = ParseStatements(cursor, insideBody: true, c => c.IsBlockEnd);
+                List<Command> braced = ParseStatements(cursor, insideBody: true, static (c) => c.IsBlockEnd);
                 cursor.ExpectBlockEnd();
                 return braced;
             }
@@ -275,7 +275,7 @@ namespace BuildAssetLoader.Con
 
         // Trailing-else attachment is handled uniformly by ParseStatements/ParseBranch (see FindPendingTail);
         // this only builds the leaf and true-branch.
-        private static Command ParseConditional(ConTreeCursor cursor)
+        private static ConditionalStructure ParseConditional(ConTreeCursor cursor)
         {
             CommandList command = cursor.ExpectCommand();
             ConditionalStructure structure = ParseConditionalLeaf(command, cursor);
@@ -334,7 +334,7 @@ namespace BuildAssetLoader.Con
 
         // ===== move / ai / action (declaration vs. invocation is context-sensitive) =====
 
-        private static Command ParseMoveDeclare(ConTreeCursor cursor)
+        private static MoveCommand ParseMoveDeclare(ConTreeCursor cursor)
         {
             cursor.ExpectCommand(CommandList.move);
             string name = cursor.ReadValue();
@@ -343,7 +343,7 @@ namespace BuildAssetLoader.Con
             return new MoveCommand(name, horizontal, vertical);
         }
 
-        private static Command ParseMoveInvoke(ConTreeCursor cursor)
+        private static MoveInvokeCommand ParseMoveInvoke(ConTreeCursor cursor)
         {
             cursor.ExpectCommand(CommandList.move);
             string name = cursor.ReadValue();
