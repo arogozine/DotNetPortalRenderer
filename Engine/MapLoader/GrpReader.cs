@@ -246,7 +246,7 @@ internal static class GrpReader
             return false;
         }
 
-        if (actionCommand.Startframe is { } startFrame)
+        if (actionCommand.StartFrame is { } startFrame)
         {
             startSprite += startFrame;
         }
@@ -385,7 +385,7 @@ internal static class GrpReader
             {
                 switch (commandToken.Command)
                 {
-                    case CommandList.ai:
+                    case CommandList.Ai:
                         {
                             string name = ((ValueToken)tokens[++i]).Value;
                             ValueToken? action, move = null;
@@ -398,14 +398,14 @@ internal static class GrpReader
                             commands.Add(new AiCommand(name, action?.Value, move?.Value, []));
                         }
                         break;
-                    case CommandList.define:
+                    case CommandList.Define:
                         {
                             string name = ((ValueToken)tokens[++i]).Value;
                             string number = ((ValueToken)tokens[++i]).Value;
                             commands.Add(new DefineCommand(name, number));
                         }
                         break;
-                    case CommandList.actor:
+                    case CommandList.Actor:
                         {
                             string picNum = ((ValueToken)tokens[++i]).Value;
 
@@ -434,10 +434,10 @@ internal static class GrpReader
 
                             commands.Add(actor);
 
-                            SkipUntil(ref i, CommandList.enda);
+                            SkipUntil(ref i, CommandList.Enda);
                         }
                         break;
-                    case CommandList.useractor:
+                    case CommandList.UserActor:
                         {
                             string type = ((ValueToken)tokens[++i]).Value;
                             string picNum = ((ValueToken)tokens[++i]).Value;
@@ -467,10 +467,10 @@ internal static class GrpReader
 
                             commands.Add(userActor);
 
-                            SkipUntil(ref i, CommandList.enda);
+                            SkipUntil(ref i, CommandList.Enda);
                         }
                         break;
-                    case CommandList.action:
+                    case CommandList.Action:
                         {
                             string name = ((ValueToken)tokens[++i]).Value;
 
@@ -485,9 +485,9 @@ internal static class GrpReader
                             commands.Add(new ActionCommand(name, startFrame, frames, viewType, incValue, delay));
                         }
                         break;
-                    case CommandList.state:
+                    case CommandList.State:
                         {
-                            SkipUntil(ref i, CommandList.ends);
+                            SkipUntil(ref i, CommandList.Ends);
                         }
                         break;
                 }
@@ -563,13 +563,13 @@ internal static class GrpReader
 
                 if (token is CommandToken commandToken)
                 {
-                    if (commandToken.Command == CommandList.enda)
+                    if (commandToken.Command == CommandList.Enda)
                     {
                         actionCommand = null;
                         return false;
                     }
 
-                    if (commandToken.Command == CommandList.action)
+                    if (commandToken.Command == CommandList.Action)
                     {
                         if (GetNextIf(ref i, out ValueToken? name))
                         {
@@ -611,13 +611,13 @@ internal static class GrpReader
 
                 if (token is CommandToken commandToken)
                 {
-                    if (commandToken.Command == CommandList.enda)
+                    if (commandToken.Command == CommandList.Enda)
                     {
                         cActor = null;
                         return false;
                     }
 
-                    if (commandToken.Command == CommandList.cactor)
+                    if (commandToken.Command == CommandList.CActor)
                     {
                         if (GetNextIf(ref i, out ValueToken? name))
                         {
@@ -640,13 +640,13 @@ internal static class GrpReader
 
                 if (token is CommandToken commandToken)
                 {
-                    if (commandToken.Command == CommandList.enda)
+                    if (commandToken.Command == CommandList.Enda)
                     {
                         aiCommand = null;
                         return false;
                     }
 
-                    if (commandToken.Command == CommandList.ai)
+                    if (commandToken.Command == CommandList.Ai)
                     {
                         if (GetNextIf(ref i, out ValueToken? name))
                         {

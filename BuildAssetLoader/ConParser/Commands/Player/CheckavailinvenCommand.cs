@@ -1,6 +1,11 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // checkavailinven <playerID> — selects the first available inventory item, pruning empties.
-    public sealed record CheckavailinvenCommand(string PlayerId) : Command(CommandList.checkavailinven);
+    /// <summary>Selects the first available inventory item for the given player, also pruning empty items from
+    /// the inventory in the process.</summary>
+    [Description("checkavailinven")]
+    public sealed record CheckAvailInvenCommand(
+        string PlayerId) : Command(CommandList.CheckAvailInven);
 }
-

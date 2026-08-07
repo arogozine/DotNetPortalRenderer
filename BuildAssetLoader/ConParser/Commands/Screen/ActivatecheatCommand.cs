@@ -1,8 +1,13 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
     // ===== Game-Changing =====
 
-    // activatecheat <cheat_id> — singleplayer only; also fires EVENT_ACTIVATECHEAT.
-    public sealed record ActivatecheatCommand(string CheatId) : Command(CommandList.activatecheat);
+    /// <summary>Activates the cheat identified by <c>CheatId</c> (see the CHEAT_* defines). Singleplayer only —
+    /// throws an error otherwise — and also fires EVENT_ACTIVATECHEAT.</summary>
+    [Description("activatecheat")]
+    public sealed record ActivateCheatCommand(
+        string CheatId) : Command(CommandList.ActivateCheat);
 }
-

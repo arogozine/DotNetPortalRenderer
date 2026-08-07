@@ -1,6 +1,11 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // qstrlen <gamevar> <quote> — measures a quote's length into a gamevar.
-    public sealed record QstrlenCommand(string Gamevar, int Quote) : Command(CommandList.qstrlen);
+    /// <summary>Measures the length of quote <c>Quote</c> and records it into <c>Gamevar</c>.</summary>
+    [Description("qstrlen")]
+    public sealed record QStrLenCommand(
+        string Gamevar,
+        int Quote) : Command(CommandList.QStrLen);
 }
-

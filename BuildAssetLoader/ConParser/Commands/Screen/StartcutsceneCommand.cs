@@ -1,8 +1,12 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
     // ===== Cutscenes =====
 
-    // startcutscene <cutscene path> — argument is a quote id holding the cutscene path.
-    public sealed record StartcutsceneCommand(int QuoteId) : Command(CommandList.startcutscene);
+    /// <summary>Starts the cutscene whose path is stored in the quote identified by <c>QuoteId</c>.</summary>
+    [Description("startcutscene")]
+    public sealed record StartCutsceneCommand(
+        int QuoteId) : Command(CommandList.StartCutscene);
 }
-

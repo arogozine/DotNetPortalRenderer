@@ -1,6 +1,11 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // addkills <number> — adds to the closest player's kill score; also clears the current actor's stayput flag.
-    public sealed record AddkillsCommand(string Number) : Command(CommandList.addkills);
+    /// <summary>Adds to the closest player's kill score, and also clears the current actor's stayput flag
+    /// (most likely to let corpses fall off ledges in the vanilla game).</summary>
+    [Description("addkills")]
+    public sealed record AddKillsCommand(
+        string Number) : Command(CommandList.AddKills);
 }
-

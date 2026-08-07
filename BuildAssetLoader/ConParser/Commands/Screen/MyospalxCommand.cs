@@ -1,7 +1,16 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // myospalx <x> <y> <tilenum> <shade> <orientation> <pal> — like myospal, but drawn at half size.
-    public sealed record MyospalxCommand(string X, string Y, string TileNum, string Shade, string Orientation, string Pal)
-        : Command(CommandList.myospalx);
+    /// <summary>Deprecated: like <c>myospal</c>, but the tile is drawn at half size.</summary>
+    [Description("myospalx")]
+    public sealed record MyosPalXCommand(
+        string X,
+        string Y,
+        string TileNum,
+        string Shade,
+        string Orientation,
+        string Pal)
+        : Command(CommandList.MyosPalX);
 }
-

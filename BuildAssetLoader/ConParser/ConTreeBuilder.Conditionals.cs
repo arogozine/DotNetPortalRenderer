@@ -7,70 +7,70 @@ namespace BuildAssetLoader.Con
         private static ConditionalStructure ParseConditionalLeaf(CommandList command, ConTreeCursor cursor) => command switch
         {
             // Meta-Settings - If (Commands.MetaSettings.cs)
-            CommandList.ifrespawn => new IfrespawnCommand(),
-            CommandList.ifmultiplayer => new IfmultiplayerCommand(),
-            CommandList.ifclient => new IfclientCommand(),
-            CommandList.ifserver => new IfserverCommand(),
+            CommandList.IfRespawn => new IfRespawnCommand(),
+            CommandList.IfMultiplayer => new IfMultiplayerCommand(),
+            CommandList.IfClient => new IfClientCommand(),
+            CommandList.IfServer => new IfServerCommand(),
 
             // Gamevar Conditions (Commands.cs)
-            CommandList.ifvare or CommandList.ifvarn or CommandList.ifvarg or CommandList.ifvarl
-                or CommandList.ifvarand or CommandList.ifvaror or CommandList.ifvarxor or CommandList.ifvareither =>
+            CommandList.IfVarE or CommandList.IfVarN or CommandList.IfVarG or CommandList.IfVarL
+                or CommandList.IfVarAnd or CommandList.IfVarOr or CommandList.IfVarXor or CommandList.IfVarEither =>
                 new IfVarCommand(command, GamevarConditionLookup.Map[command], cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.ifvarvare or CommandList.ifvarvarn or CommandList.ifvarvarg or CommandList.ifvarvarl
-                or CommandList.ifvarvarand or CommandList.ifvarvaror or CommandList.ifvarvarxor or CommandList.ifvarvareither =>
+            CommandList.IfVarVarE or CommandList.IfVarVarN or CommandList.IfVarVarG or CommandList.IfVarVarL
+                or CommandList.IfVarVarAnd or CommandList.IfVarVarOr or CommandList.IfVarVarXor or CommandList.IfVarVarEither =>
                 new IfVarVarCommand(command, GamevarConditionLookup.Map[command], cursor.ReadValue(), cursor.ReadValue()),
 
             // Actor If (Commands.Conditionals.cs)
-            CommandList.ifactor => new IfactorCommand(cursor.ReadValue()),
-            CommandList.ifaction => new IfactionCommand(cursor.ReadValue()),
-            CommandList.ifactioncount => new IfactioncountCommand(cursor.ReadValue()),
-            CommandList.ifai => new IfaiCommand(cursor.ReadValue()),
-            CommandList.ifcount => new IfcountCommand(cursor.ReadValue()),
-            CommandList.ifmove => new IfmoveCommand(cursor.ReadValue()),
-            CommandList.ifspawnedby => new IfspawnedbyCommand(cursor.ReadValue()),
-            CommandList.ifspritepal => new IfspritepalCommand(cursor.ReadValue()),
-            CommandList.ifstrength => new IfstrengthCommand(cursor.ReadValue()),
-            CommandList.ifhitweapon => new IfhitweaponCommand(),
-            CommandList.ifwasweapon => new IfwasweaponCommand(cursor.ReadValue()),
-            CommandList.ifdead => new IfdeadCommand(),
-            CommandList.ifactornotstayput => new IfactornotstayputCommand(),
+            CommandList.IfActor => new IfActorCommand(cursor.ReadValue()),
+            CommandList.IfAction => new IfActionCommand(cursor.ReadValue()),
+            CommandList.IfActionCount => new IfActionCountCommand(cursor.ReadValue()),
+            CommandList.IfAi => new IfAiCommand(cursor.ReadValue()),
+            CommandList.IfCount => new IfCountCommand(cursor.ReadValue()),
+            CommandList.IfMove => new IfMoveCommand(cursor.ReadValue()),
+            CommandList.IfSpawnedBy => new IfSpawnedByCommand(cursor.ReadValue()),
+            CommandList.IfSpritePal => new IfSpritePalCommand(cursor.ReadValue()),
+            CommandList.IfStrength => new IfStrengthCommand(cursor.ReadValue()),
+            CommandList.IfHitWeapon => new IfHitWeaponCommand(),
+            CommandList.IfWasWeapon => new IfWasWeaponCommand(cursor.ReadValue()),
+            CommandList.IfDead => new IfDeadCommand(),
+            CommandList.IfActorNotStayPut => new IfActorNotStayPutCommand(),
 
             // Surroundings If
-            CommandList.ifawayfromwall => new IfawayfromwallCommand(),
-            CommandList.ifbulletnear => new IfbulletnearCommand(),
-            CommandList.ifceilingdistl => new IfceilingdistlCommand(cursor.ReadValue()),
-            CommandList.iffloordistl => new IffloordistlCommand(cursor.ReadValue()),
-            CommandList.ifgapzl => new IfgapzlCommand(cursor.ReadValue()),
-            CommandList.ifsquished => new IfsquishedCommand(),
-            CommandList.ifnotmoving => new IfnotmovingCommand(),
-            CommandList.ifinwater => new IfinwaterCommand(),
-            CommandList.ifonwater => new IfonwaterCommand(),
-            CommandList.ifoutside => new IfoutsideCommand(),
-            CommandList.ifinspace => new IfinspaceCommand(),
-            CommandList.ifinouterspace => new IfinouterspaceCommand(),
-            CommandList.ifrnd => new IfrndCommand(cursor.ReadValue()),
+            CommandList.IfAwayFromWall => new IfAwayFromWallCommand(),
+            CommandList.IfBulletNear => new IfBulletNearCommand(),
+            CommandList.IfCeilingDistL => new IfCeilingDistLCommand(cursor.ReadValue()),
+            CommandList.IfFloorDistL => new IfFloorDistLCommand(cursor.ReadValue()),
+            CommandList.IfGapZL => new IfGapZLCommand(cursor.ReadValue()),
+            CommandList.IfSquished => new IfSquishedCommand(),
+            CommandList.IfNotMoving => new IfNotMovingCommand(),
+            CommandList.IfInWater => new IfInWaterCommand(),
+            CommandList.IfOnWater => new IfOnWaterCommand(),
+            CommandList.IfOutside => new IfOutsideCommand(),
+            CommandList.IfInSpace => new IfInSpaceCommand(),
+            CommandList.IfInOuterSpace => new IfInOuterSpaceCommand(),
+            CommandList.IfRnd => new IfRndCommand(cursor.ReadValue()),
 
             // Player Interaction If
-            CommandList.ifangdiffl => new IfangdifflCommand(cursor.ReadValue()),
-            CommandList.ifcansee => new IfcanseeCommand(),
-            CommandList.ifcanseetarget => new IfcanseetargetCommand(),
-            CommandList.ifcanshoottarget => new IfcanshoottargetCommand(),
-            CommandList.ifhitspace => new IfhitspaceCommand(),
+            CommandList.IfAngDiffL => new IfAngDiffLCommand(cursor.ReadValue()),
+            CommandList.IfCanSee => new IfCanSeeCommand(),
+            CommandList.IfCanSeeTarget => new IfCanSeeTargetCommand(),
+            CommandList.IfCanShootTarget => new IfCanShootTargetCommand(),
+            CommandList.IfHitSpace => new IfHitSpaceCommand(),
 
             // Player If
-            CommandList.ifgotweaponce => new IfgotweaponceCommand(cursor.ReadValue()),
-            CommandList.ifp => new IfpCommand(cursor.ReadAllContiguousValues()),
-            CommandList.ifpdistg => new IfpdistgCommand(cursor.ReadValue()),
-            CommandList.ifpdistl => new IfpdistlCommand(cursor.ReadValue()),
-            CommandList.ifphealthl => new IfphealthlCommand(cursor.ReadValue()),
-            CommandList.ifpinventory => new IfpinventoryCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.ifplayersl => new IfplayerslCommand(cursor.ReadValue()),
+            CommandList.IfGotWeaponOnce => new IfGotWeaponOnceCommand(cursor.ReadValue()),
+            CommandList.IfP => new IfPCommand(cursor.ReadAllContiguousValues()),
+            CommandList.IfPDistG => new IfPDistGCommand(cursor.ReadValue()),
+            CommandList.IfPDistL => new IfPDistLCommand(cursor.ReadValue()),
+            CommandList.IfPHealthL => new IfPHealthLCommand(cursor.ReadValue()),
+            CommandList.IfPInventory => new IfPInventoryCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.IfPlayersL => new IfPlayersLCommand(cursor.ReadValue()),
 
             // Audio/Cutscene If
-            CommandList.ifsound => new IfsoundCommand(cursor.ReadValue()),
-            CommandList.ifactorsound => new IfactorsoundCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.ifnosounds => new IfnosoundsCommand(),
-            CommandList.ifcutscene => new IfcutsceneCommand(cursor.ReadInt()),
+            CommandList.IfSound => new IfSoundCommand(cursor.ReadValue()),
+            CommandList.IfActorSound => new IfActorSoundCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.IfNoSounds => new IfNoSoundsCommand(),
+            CommandList.IfCutscene => new IfCutsceneCommand(cursor.ReadInt()),
 
             _ => throw new FormatException($"No conditional-command mapping for '{command}'."),
         };

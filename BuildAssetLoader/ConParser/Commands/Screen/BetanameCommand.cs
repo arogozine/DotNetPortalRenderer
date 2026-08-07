@@ -1,8 +1,12 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
     // ===== Deprecated =====
 
-    // betaname <string> — obsolete, never referenced.
-    public sealed record BetanameCommand(string Value) : Command(CommandList.betaname);
+    /// <summary>Obsolete command that stores a string value; never referenced by any current game logic.</summary>
+    [Description("betaname")]
+    public sealed record BetaNameCommand(
+        string Value) : Command(CommandList.BetaName);
 }
-

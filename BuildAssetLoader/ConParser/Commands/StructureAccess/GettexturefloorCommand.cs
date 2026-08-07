@@ -1,6 +1,9 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // gettexturefloor — retrieves the current actor's sector's floor texture into gamevar RETURN.
-    public sealed record GettexturefloorCommand() : Command(CommandList.gettexturefloor);
+    /// <summary>Retrieves the floor texture (tile number) of the current actor's sector into gamevar RETURN.</summary>
+    [Description("gettexturefloor")]
+    public sealed record GetTextureFloorCommand() : Command(CommandList.GetTextureFloor);
 }
-

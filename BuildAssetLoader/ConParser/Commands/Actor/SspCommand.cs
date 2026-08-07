@@ -1,6 +1,13 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // ssp <sprite1> <clipmask> — applies the sprite's own xvel/zvel via movesprite.
-    public sealed record SspCommand(string Sprite1, string Clipmask) : Command(CommandList.ssp);
+    /// <summary>Takes the sprite <c>Sprite1</c>'s own xvel/zvel and issues a <c>movesprite</c> with them, using
+    /// <c>ClipMask</c> to select collision participants. Convenient for moving an object along its own stored
+    /// velocity without recomputing angles.</summary>
+    [Description("ssp")]
+    public sealed record SspCommand(
+        string Sprite1,
+        string ClipMask) : Command(CommandList.Ssp);
 }
-

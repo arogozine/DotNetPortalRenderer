@@ -1,8 +1,9 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // ===== Sectors - Operating =====
-
-    // operate — the current actor opens a nearby door.
-    public sealed record OperateCommand() : Command(CommandList.operate);
+    /// <summary>Causes the current actor to open a nearby door.</summary>
+    [Description("operate")]
+    public sealed record OperateCommand() : Command(CommandList.Operate);
 }
-

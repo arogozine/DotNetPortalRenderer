@@ -1,6 +1,12 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // qstrcpy <quote1> <quote2> — copies quote2's text into quote1.
-    public sealed record QstrcpyCommand(int Quote1, int Quote2) : Command(CommandList.qstrcpy);
+    /// <summary>Copies the text of quote <c>Quote2</c> into quote <c>Quote1</c>, overwriting its previous
+    /// contents.</summary>
+    [Description("qstrcpy")]
+    public sealed record QStrCpyCommand(
+        int Quote1,
+        int Quote2) : Command(CommandList.QStrCpy);
 }
-

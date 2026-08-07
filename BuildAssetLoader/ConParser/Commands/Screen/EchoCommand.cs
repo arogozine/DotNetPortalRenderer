@@ -1,6 +1,10 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // echo <quote number> — prints a quote to the console/log only, not to the screen.
-    public sealed record EchoCommand(int QuoteNumber) : Command(CommandList.echo);
+    /// <summary>Prints the given quote to the console/log only, not to the screen.</summary>
+    [Description("echo")]
+    public sealed record EchoCommand(
+        int QuoteNumber) : Command(CommandList.Echo);
 }
-

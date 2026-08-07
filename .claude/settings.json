@@ -20,6 +20,7 @@
             "Read(./secrets/**)",
             "Bash(rm -rf *)",
             "Bash(git push *)",
+            "Bash(git reset *)",
             "Bash(git force-push *)",
             "Bash(git rebase *)",
             "Read(~/.ssh/**)",

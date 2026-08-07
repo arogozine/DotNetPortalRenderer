@@ -47,9 +47,9 @@ namespace BuildAssetLoader.Con
                     continue;
                 }
 
-                if (pending is not null && cursor.IsCommand(CommandList.else_))
+                if (pending is not null && cursor.IsCommand(CommandList.Else))
                 {
-                    cursor.ExpectCommand(CommandList.else_);
+                    cursor.ExpectCommand(CommandList.Else);
                     List<Command> elseBranch = ParseBranch(cursor);
                     pending.ElseBody = elseBranch;
                     pending = FindPendingTail(elseBranch);
@@ -88,32 +88,32 @@ namespace BuildAssetLoader.Con
 
             switch (peeked)
             {
-                case CommandList.actor or CommandList.useractor:
+                case CommandList.Actor or CommandList.UserActor:
                     return ParseActorStructure(cursor);
 
-                case CommandList.onevent or CommandList.appendevent:
+                case CommandList.OnEvent or CommandList.AppendEvent:
                     return ParseEventStructure(cursor);
 
-                case CommandList.eventloadactor:
+                case CommandList.EventLoadActor:
                     return ParseEventloadactorStructure(cursor);
 
-                case CommandList.state or CommandList.defstate or CommandList.prependstate or CommandList.appendstate:
+                case CommandList.State or CommandList.DefState or CommandList.PrependState or CommandList.AppendState:
                     return ParseStateStructureOrInvoke(cursor, insideBody);
 
-                case CommandList.switch_:
+                case CommandList.Switch:
                     return ParseSwitch(cursor);
 
-                case CommandList.whilevarl or CommandList.whilevare or CommandList.whilevarn
-                    or CommandList.whilevarvarl or CommandList.whilevarvarn:
+                case CommandList.WhileVarL or CommandList.WhileVarE or CommandList.WhileVarN
+                    or CommandList.WhileVarVarL or CommandList.WhileVarVarN:
                     return ParseWhileLoop(cursor);
 
-                case CommandList.move:
+                case CommandList.Move:
                     return insideBody ? ParseMoveInvoke(cursor) : ParseMoveDeclare(cursor);
 
-                case CommandList.ai:
+                case CommandList.Ai:
                     return insideBody ? ParseAiInvoke(cursor) : ParseAiDeclare(cursor);
 
-                case CommandList.action:
+                case CommandList.Action:
                     return ParseAction(cursor);
             }
 
@@ -127,7 +127,7 @@ namespace BuildAssetLoader.Con
         }
 
         private static bool IsConditional(CommandList command) =>
-            command.ToString().StartsWith("if", StringComparison.Ordinal);
+            command.ToString().StartsWith("If", StringComparison.Ordinal);
 
         // ===== Structures (actor/useractor, onevent/appendevent, state family) =====
 
@@ -137,12 +137,12 @@ namespace BuildAssetLoader.Con
             int n = cursor.CountContiguousValues();
             string[] args = cursor.ReadValues(n);
 
-            List<Command> body = ParseStatements(cursor, insideBody: true, static (c) => c.IsCommand(CommandList.enda));
-            cursor.ExpectCommand(CommandList.enda);
+            List<Command> body = ParseStatements(cursor, insideBody: true, static (c) => c.IsCommand(CommandList.Enda));
+            cursor.ExpectCommand(CommandList.Enda);
 
             BaseActorCommand actorCommand;
 
-            if (start == CommandList.actor)
+            if (start == CommandList.Actor)
             {
                 string picNum = args[0];
                 string? strength = n > 1 ? args[1] : null;
@@ -176,12 +176,12 @@ namespace BuildAssetLoader.Con
             CommandList start = cursor.ExpectCommand();
             string eventName = cursor.ReadValue();
 
-            List<Command> body = ParseStatements(cursor, insideBody: true, c => c.IsCommand(CommandList.endevent));
-            cursor.ExpectCommand(CommandList.endevent);
+            List<Command> body = ParseStatements(cursor, insideBody: true, c => c.IsCommand(CommandList.EndEvent));
+            cursor.ExpectCommand(CommandList.EndEvent);
 
-            BaseEventCommand eventCommand = start == CommandList.onevent
-                ? new OneventCommand(eventName)
-                : new AppendeventCommand(eventName);
+            BaseEventCommand eventCommand = start == CommandList.OnEvent
+                ? new OnEventCommand(eventName)
+                : new AppendEventCommand(eventName);
 
             eventCommand.Body.AddRange(body);
             return eventCommand;
@@ -191,21 +191,21 @@ namespace BuildAssetLoader.Con
         {
             CommandList start = cursor.ExpectCommand();
 
-            if (start == CommandList.state && insideBody)
+            if (start == CommandList.State && insideBody)
             {
                 return new StateInvokeCommand(cursor.ReadValue());
             }
 
             string name = cursor.ReadValue();
-            List<Command> body = ParseStatements(cursor, insideBody: true, c => c.IsCommand(CommandList.ends));
-            cursor.ExpectCommand(CommandList.ends);
+            List<Command> body = ParseStatements(cursor, insideBody: true, c => c.IsCommand(CommandList.Ends));
+            cursor.ExpectCommand(CommandList.Ends);
 
             BaseStateCommand stateCommand = start switch
             {
-                CommandList.state => new StateCommand(name),
-                CommandList.defstate => new DefstateCommand(name),
-                CommandList.prependstate => new PrependstateCommand(name),
-                CommandList.appendstate => new AppendstateCommand(name),
+                CommandList.State => new StateCommand(name),
+                CommandList.DefState => new DefStateCommand(name),
+                CommandList.PrependState => new PrependStateCommand(name),
+                CommandList.AppendState => new AppendStateCommand(name),
                 _ => throw new FormatException($"Unexpected state-family command '{start}'."),
             };
 
@@ -214,15 +214,15 @@ namespace BuildAssetLoader.Con
         }
 
         // eventloadactor <name/tilenum> { ... } enda (Commands.Screen.cs; deprecated but still a Structure).
-        private static EventloadactorCommand ParseEventloadactorStructure(ConTreeCursor cursor)
+        private static EventLoadActorCommand ParseEventloadactorStructure(ConTreeCursor cursor)
         {
-            cursor.ExpectCommand(CommandList.eventloadactor);
+            cursor.ExpectCommand(CommandList.EventLoadActor);
             string actorName = cursor.ReadValue();
 
-            List<Command> body = ParseStatements(cursor, insideBody: true, static (c) => c.IsCommand(CommandList.enda));
-            cursor.ExpectCommand(CommandList.enda);
+            List<Command> body = ParseStatements(cursor, insideBody: true, static (c) => c.IsCommand(CommandList.Enda));
+            cursor.ExpectCommand(CommandList.Enda);
 
-            EventloadactorCommand eventloadactor = new(actorName);
+            EventLoadActorCommand eventloadactor = new(actorName);
             eventloadactor.Body.AddRange(body);
             return eventloadactor;
         }
@@ -231,29 +231,29 @@ namespace BuildAssetLoader.Con
 
         private static SwitchCommand ParseSwitch(ConTreeCursor cursor)
         {
-            cursor.ExpectCommand(CommandList.switch_);
+            cursor.ExpectCommand(CommandList.Switch);
             string gamevar = cursor.ReadValue();
             List<CaseBlock> cases = [];
 
-            while (cursor.IsCommand(CommandList.case_) || cursor.IsCommand(CommandList.default_))
+            while (cursor.IsCommand(CommandList.Case) || cursor.IsCommand(CommandList.Default))
             {
-                bool isDefault = cursor.IsCommand(CommandList.default_);
+                bool isDefault = cursor.IsCommand(CommandList.Default);
                 int? constant = null;
 
                 if (isDefault)
                 {
-                    cursor.ExpectCommand(CommandList.default_);
+                    cursor.ExpectCommand(CommandList.Default);
                 }
                 else
                 {
-                    cursor.ExpectCommand(CommandList.case_);
+                    cursor.ExpectCommand(CommandList.Case);
                     constant = cursor.ReadInt();
                 }
 
                 cases.Add(new CaseBlock(constant, isDefault, ParseCaseBody(cursor)));
             }
 
-            cursor.ExpectCommand(CommandList.endswitch);
+            cursor.ExpectCommand(CommandList.EndSwitch);
             return new SwitchCommand(gamevar, cases);
         }
 
@@ -268,7 +268,7 @@ namespace BuildAssetLoader.Con
             }
 
             return ParseStatements(cursor, insideBody: true,
-                c => c.IsCommand(CommandList.case_) || c.IsCommand(CommandList.default_) || c.IsCommand(CommandList.endswitch));
+                c => c.IsCommand(CommandList.Case) || c.IsCommand(CommandList.Default) || c.IsCommand(CommandList.EndSwitch));
         }
 
         // ===== Conditionals (if*) =====
@@ -296,9 +296,9 @@ namespace BuildAssetLoader.Con
             Command statement = ParseCommand(cursor, insideBody: true);
             ConditionalStructure? pending = statement as ConditionalStructure;
 
-            while (pending is not null && cursor.IsCommand(CommandList.else_))
+            while (pending is not null && cursor.IsCommand(CommandList.Else))
             {
-                cursor.ExpectCommand(CommandList.else_);
+                cursor.ExpectCommand(CommandList.Else);
                 List<Command> elseBranch = ParseBranch(cursor);
                 pending.ElseBody = elseBranch;
                 pending = FindPendingTail(elseBranch);
@@ -321,9 +321,9 @@ namespace BuildAssetLoader.Con
 
             LoopStructure loop = command switch
             {
-                CommandList.whilevarl or CommandList.whilevare or CommandList.whilevarn =>
+                CommandList.WhileVarL or CommandList.WhileVarE or CommandList.WhileVarN =>
                     new WhileVarCommand(command, WhileConditionLookup.Map[command], gamevar, operand),
-                CommandList.whilevarvarl or CommandList.whilevarvarn =>
+                CommandList.WhileVarVarL or CommandList.WhileVarVarN =>
                     new WhileVarVarCommand(command, WhileConditionLookup.Map[command], gamevar, operand),
                 _ => throw new FormatException($"Unexpected loop command '{command}'."),
             };
@@ -336,7 +336,7 @@ namespace BuildAssetLoader.Con
 
         private static MoveCommand ParseMoveDeclare(ConTreeCursor cursor)
         {
-            cursor.ExpectCommand(CommandList.move);
+            cursor.ExpectCommand(CommandList.Move);
             string name = cursor.ReadValue();
             int? horizontal = cursor.TryReadInt();
             int? vertical = cursor.TryReadInt();
@@ -345,7 +345,7 @@ namespace BuildAssetLoader.Con
 
         private static MoveInvokeCommand ParseMoveInvoke(ConTreeCursor cursor)
         {
-            cursor.ExpectCommand(CommandList.move);
+            cursor.ExpectCommand(CommandList.Move);
             string name = cursor.ReadValue();
             int n = cursor.CountContiguousValues();
             string[]? flags = n > 0 ? cursor.ReadValues(n) : null;
@@ -354,7 +354,7 @@ namespace BuildAssetLoader.Con
 
         private static AiCommand ParseAiDeclare(ConTreeCursor cursor)
         {
-            cursor.ExpectCommand(CommandList.ai);
+            cursor.ExpectCommand(CommandList.Ai);
             int n = cursor.CountContiguousValues();
             string[] args = cursor.ReadValues(n);
             string name = args[0];
@@ -366,13 +366,13 @@ namespace BuildAssetLoader.Con
 
         private static AiInvokeCommand ParseAiInvoke(ConTreeCursor cursor)
         {
-            cursor.ExpectCommand(CommandList.ai);
+            cursor.ExpectCommand(CommandList.Ai);
             return new AiInvokeCommand(cursor.ReadValue());
         }
 
         private static ActionCommand ParseAction(ConTreeCursor cursor)
         {
-            cursor.ExpectCommand(CommandList.action);
+            cursor.ExpectCommand(CommandList.Action);
             int n = cursor.CountContiguousValues();
             string[] args = cursor.ReadValues(n);
             string name = args[0];
@@ -440,8 +440,8 @@ namespace BuildAssetLoader.Con
                 "setthisprojectile" => new SetThisProjectileCommand(idOrNull, member, operand),
                 "gettspr" => new GetTsprCommand(idOrNull, member, operand),
                 "settspr" => new SetTsprCommand(idOrNull, member, operand),
-                "getuserdef" => new GetUserdefCommand(member, operand),
-                "setuserdef" => new SetUserdefCommand(member, operand),
+                "getuserdef" => new GetUserDefCommand(member, operand),
+                "setuserdef" => new SetUserDefCommand(member, operand),
                 "getwall" => new GetWallCommand(idOrNull, member, operand),
                 "setwall" => new SetWallCommand(idOrNull, member, operand),
                 _ => throw new FormatException($"Unrecognized structure-access token '{raw}'."),

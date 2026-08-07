@@ -1,5 +1,11 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    public sealed record GlobalsoundvarCommand(string Sound) : BaseSoundCommand(CommandList.globalsoundvar, Sound);
+    /// <summary>Gamevar-driven variant of <c>globalsound</c>: plays a sound (by number/defined name) that can be
+    /// heard from anywhere in the map, taking its sound value from a gamevar rather than a constant.</summary>
+    [Description("globalsoundvar")]
+    public sealed record GlobalSoundVarCommand(
+        string Sound) : BaseSoundCommand(CommandList.GlobalSoundVar, Sound);
 }
-

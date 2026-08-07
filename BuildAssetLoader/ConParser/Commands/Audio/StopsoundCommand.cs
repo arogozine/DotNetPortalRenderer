@@ -1,6 +1,10 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // stopsound/stopsoundvar <sound number>
-    public sealed record StopsoundCommand(string SoundNumber) : BaseSoundCommand(CommandList.stopsound, SoundNumber);
+    /// <summary>Stops the playing of sound <c>SoundNumber</c>. See also <c>stopallsounds</c>.</summary>
+    [Description("stopsound")]
+    public sealed record StopSoundCommand(
+        string SoundNumber) : BaseSoundCommand(CommandList.StopSound, SoundNumber);
 }
-

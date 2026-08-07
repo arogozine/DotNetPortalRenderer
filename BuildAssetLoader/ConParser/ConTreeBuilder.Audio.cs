@@ -6,49 +6,49 @@ namespace BuildAssetLoader.Con
     {
         private static Command? TryParseAudio(CommandList command, ConTreeCursor cursor) => command switch
         {
-            CommandList.definesound => new DefinesoundCommand(
+            CommandList.DefineSound => new DefineSoundCommand(
                 cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadInt(), cursor.ReadInt(), cursor.ReadInt(), cursor.ReadInt(), cursor.ReadInt(),
                 cursor.TryReadInt()),
 
-            CommandList.sound => new SoundCommand(cursor.ReadValue()),
-            CommandList.soundvar => new SoundvarCommand(cursor.ReadValue()),
-            CommandList.soundonce => new SoundonceCommand(cursor.ReadValue()),
-            CommandList.soundoncevar => new SoundoncevarCommand(cursor.ReadValue()),
-            CommandList.globalsound => new GlobalsoundCommand(cursor.ReadValue()),
-            CommandList.globalsoundvar => new GlobalsoundvarCommand(cursor.ReadValue()),
-            CommandList.screensound => new ScreensoundCommand(cursor.ReadValue()),
-            CommandList.stopsound => new StopsoundCommand(cursor.ReadValue()),
-            CommandList.stopsoundvar => new StopsoundvarCommand(cursor.ReadValue()),
-            CommandList.stopactorsound => new StopactorsoundCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.stopallsounds => new StopallsoundsCommand(),
-            CommandList.setactorsoundpitch => new SetactorsoundpitchCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.Sound => new SoundCommand(cursor.ReadValue()),
+            CommandList.SoundVar => new SoundVarCommand(cursor.ReadValue()),
+            CommandList.SoundOnce => new SoundOnceCommand(cursor.ReadValue()),
+            CommandList.SoundOnceVar => new SoundOnceVarCommand(cursor.ReadValue()),
+            CommandList.GlobalSound => new GlobalSoundCommand(cursor.ReadValue()),
+            CommandList.GlobalSoundVar => new GlobalSoundVarCommand(cursor.ReadValue()),
+            CommandList.ScreenSound => new ScreenSoundCommand(cursor.ReadValue()),
+            CommandList.StopSound => new StopSoundCommand(cursor.ReadValue()),
+            CommandList.StopSoundVar => new StopSoundVarCommand(cursor.ReadValue()),
+            CommandList.StopActorSound => new StopActorSoundCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.StopAllSounds => new StopAllSoundsCommand(),
+            CommandList.SetActorSoundPitch => new SetActorSoundPitchCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.music => ParseMusic(cursor),
-            CommandList.starttrack => new StarttrackCommand(cursor.ReadValue()),
-            CommandList.starttrackvar => new StarttrackvarCommand(cursor.ReadValue()),
-            CommandList.getmusicposition => new GetmusicpositionCommand(cursor.ReadValue()),
-            CommandList.setmusicposition => new SetmusicpositionCommand(cursor.ReadValue()),
+            CommandList.Music => ParseMusic(cursor),
+            CommandList.StartTrack => new StartTrackCommand(cursor.ReadValue()),
+            CommandList.StartTrackVar => new StartTrackVarCommand(cursor.ReadValue()),
+            CommandList.GetMusicPosition => new GetMusicPositionCommand(cursor.ReadValue()),
+            CommandList.SetMusicPosition => new SetMusicPositionCommand(cursor.ReadValue()),
 
-            CommandList.definequote => new DefinequoteCommand(cursor.ReadInt(), cursor.ReadJoinedRemainder()),
-            CommandList.redefinequote => new RedefinequoteCommand(cursor.ReadInt(), cursor.ReadJoinedRemainder()),
-            CommandList.quote => new QuoteCommand(cursor.ReadInt()),
-            CommandList.userquote => new UserquoteCommand(cursor.ReadInt()),
-            CommandList.qsprintf => ParseQsprintf(cursor),
-            CommandList.qstrcpy => new QstrcpyCommand(cursor.ReadInt(), cursor.ReadInt()),
-            CommandList.qstrcat => new QstrcatCommand(cursor.ReadInt(), cursor.ReadInt()),
-            CommandList.qstrncat => new QstrncatCommand(cursor.ReadInt(), cursor.ReadInt(), cursor.ReadInt()),
-            CommandList.qstrlen => new QstrlenCommand(cursor.ReadValue(), cursor.ReadInt()),
-            CommandList.qsubstr => new QsubstrCommand(cursor.ReadInt(), cursor.ReadInt(), cursor.ReadInt(), cursor.ReadInt()),
-            CommandList.qstrdim => new QstrdimCommand(
+            CommandList.DefineQuote => new DefineQuoteCommand(cursor.ReadInt(), cursor.ReadJoinedRemainder()),
+            CommandList.RedefineQuote => new RedefineQuoteCommand(cursor.ReadInt(), cursor.ReadJoinedRemainder()),
+            CommandList.Quote => new QuoteCommand(cursor.ReadInt()),
+            CommandList.UserQuote => new UserQuoteCommand(cursor.ReadInt()),
+            CommandList.QSprintf => ParseQsprintf(cursor),
+            CommandList.QStrCpy => new QStrCpyCommand(cursor.ReadInt(), cursor.ReadInt()),
+            CommandList.QStrCat => new QStrCatCommand(cursor.ReadInt(), cursor.ReadInt()),
+            CommandList.QStrNCat => new QStrNCatCommand(cursor.ReadInt(), cursor.ReadInt(), cursor.ReadInt()),
+            CommandList.QStrLen => new QStrLenCommand(cursor.ReadValue(), cursor.ReadInt()),
+            CommandList.QSubStr => new QSubStrCommand(cursor.ReadInt(), cursor.ReadInt(), cursor.ReadInt(), cursor.ReadInt()),
+            CommandList.QStrDim => new QStrDimCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(),
                 cursor.ReadInt(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.qgetsysstr => new QgetsysstrCommand(cursor.ReadInt(), cursor.ReadValue()),
-            CommandList.getpname => new GetpnameCommand(cursor.ReadInt(), cursor.ReadValue()),
-            CommandList.getkeyname => new GetkeynameCommand(cursor.ReadInt(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.QGetSysStr => new QGetSysStrCommand(cursor.ReadInt(), cursor.ReadValue()),
+            CommandList.GetPName => new GetPNameCommand(cursor.ReadInt(), cursor.ReadValue()),
+            CommandList.GetKeyName => new GetKeyNameCommand(cursor.ReadInt(), cursor.ReadValue(), cursor.ReadValue()),
 
             _ => null,
         };
@@ -59,11 +59,11 @@ namespace BuildAssetLoader.Con
             return new MusicCommand(volume, cursor.ReadAllContiguousValues());
         }
 
-        private static QsprintfCommand ParseQsprintf(ConTreeCursor cursor)
+        private static QSprintfCommand ParseQsprintf(ConTreeCursor cursor)
         {
             int destination = cursor.ReadInt();
             int source = cursor.ReadInt();
-            return new QsprintfCommand(destination, source, cursor.ReadAllContiguousValues());
+            return new QSprintfCommand(destination, source, cursor.ReadAllContiguousValues());
         }
     }
 }

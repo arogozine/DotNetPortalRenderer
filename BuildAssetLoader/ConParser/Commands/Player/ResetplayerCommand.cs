@@ -1,6 +1,10 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // resetplayer — reloads the map (single player) and clears the player's inventory.
-    public sealed record ResetplayerCommand() : Command(CommandList.resetplayer);
+    /// <summary>Reloads the map (in single player) and clears the player's inventory. In single player, execution
+    /// of subsequent code halts similarly to <c>return</c>.</summary>
+    [Description("resetplayer")]
+    public sealed record ResetPlayerCommand() : Command(CommandList.ResetPlayer);
 }
-

@@ -1,6 +1,9 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // gettextureceiling — retrieves the current actor's sector's ceiling texture into gamevar RETURN.
-    public sealed record GettextureceilingCommand() : Command(CommandList.gettextureceiling);
+    /// <summary>Retrieves the ceiling texture (tile number) of the current actor's sector into gamevar RETURN.</summary>
+    [Description("gettextureceiling")]
+    public sealed record GetTextureCeilingCommand() : Command(CommandList.GetTextureCeiling);
 }
-

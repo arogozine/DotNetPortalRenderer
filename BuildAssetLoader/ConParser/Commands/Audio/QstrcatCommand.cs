@@ -1,6 +1,12 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // qstrcat <quote1> <quote2> — appends quote2's text to quote1.
-    public sealed record QstrcatCommand(int Quote1, int Quote2) : Command(CommandList.qstrcat);
+    /// <summary>Appends the text of quote <c>Quote2</c> to the end of quote <c>Quote1</c>, with no separator
+    /// inserted between them.</summary>
+    [Description("qstrcat")]
+    public sealed record QStrCatCommand(
+        int Quote1,
+        int Quote2) : Command(CommandList.QStrCat);
 }
-

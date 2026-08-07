@@ -1,6 +1,9 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // pstomp — makes the nearest player look down and stomp; place in the code of the actor being stomped.
-    public sealed record PstompCommand() : Command(CommandList.pstomp);
+    /// <summary>Makes the nearest player look down and stomp; placed in the code of the actor being stomped.</summary>
+    [Description("pstomp")]
+    public sealed record PStompCommand() : Command(CommandList.PStomp);
 }
-

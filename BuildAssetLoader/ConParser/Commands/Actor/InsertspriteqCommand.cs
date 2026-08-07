@@ -1,6 +1,10 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // insertspriteq — inserts the current actor into the decal deletion queue.
-    public sealed record InsertspriteqCommand() : Command(CommandList.insertspriteq);
+    /// <summary>Inserts the current actor's sprite into the decal deletion queue. The sprite's statnum must allow
+    /// <c>killit</c> to actually delete queued sprites, or unexpected behavior can result.</summary>
+    [Description("insertspriteq")]
+    public sealed record InsertSpriteQCommand() : Command(CommandList.InsertSpriteQ);
 }
-

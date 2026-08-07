@@ -6,16 +6,16 @@ namespace BuildAssetLoader.Con
     {
         private static Command? TryParseFlow(CommandList command, ConTreeCursor cursor) => command switch
         {
-            CommandList.nullop => new NullopCommand(),
+            CommandList.NullOp => new NullOpCommand(),
 
-            CommandList.break_ => new BreakCommand(),
-            CommandList.continue_ => new ContinueCommand(),
-            CommandList.exit => new ExitCommand(),
-            CommandList.return_ => new ReturnCommand(),
-            CommandList.terminate => new TerminateCommand(),
+            CommandList.Break => new BreakCommand(),
+            CommandList.Continue => new ContinueCommand(),
+            CommandList.Exit => new ExitCommand(),
+            CommandList.Return => new ReturnCommand(),
+            CommandList.Terminate => new TerminateCommand(),
 
-            CommandList.getcurraddress => new GetcurraddressCommand(cursor.ReadValue()),
-            CommandList.jump => new JumpCommand(cursor.ReadValue()),
+            CommandList.GetCurrAddress => new GetCurrAddressCommand(cursor.ReadValue()),
+            CommandList.Jump => new JumpCommand(cursor.ReadValue()),
 
             _ => null,
         };

@@ -1,6 +1,12 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // guts <tilenum> <amount> — tilenum is one of the hardcoded gore tiles (JIBS1..JIBS6, HEADJIB, ...).
-    public sealed record GutsCommand(string TileNum, string Amount) : Command(CommandList.guts);
+    /// <summary>Spawns the hard-coded gore tile (e.g. JIBS1 through JIBS6, HEADJIB, LEGJIB, ARMJIB, LIZMANHEAD1,
+    /// LIZMANARM1, LIZMANLEG1, DUKETORSO, DUKELEG, DUKEGUN) at the current actor.</summary>
+    [Description("guts")]
+    public sealed record GutsCommand(
+        string TileNum,
+        string Amount) : Command(CommandList.Guts);
 }
-

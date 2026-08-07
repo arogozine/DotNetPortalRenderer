@@ -31,7 +31,7 @@ public class ConTreeBuilderTests
             """);
 
         UserActorCommand actor = Assert.IsType<UserActorCommand>(Assert.Single(ConTreeBuilder.Build(tokens)));
-        IfspritepalCommand condition = Assert.IsType<IfspritepalCommand>(Assert.Single(actor.Body));
+        IfSpritePalCommand condition = Assert.IsType<IfSpritePalCommand>(Assert.Single(actor.Body));
 
         StrengthCommand ifBranch = Assert.IsType<StrengthCommand>(Assert.Single(condition.Body));
         Assert.Equal("MYENEMY_NORMAL_STRENGTH", ifBranch.Number);

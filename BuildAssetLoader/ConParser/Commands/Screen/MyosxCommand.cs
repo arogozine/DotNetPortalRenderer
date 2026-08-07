@@ -1,6 +1,14 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // myosx <x> <y> <tilenum> <shade> <orientation> — like myos, but drawn at half size.
-    public sealed record MyosxCommand(string X, string Y, string TileNum, string Shade, string Orientation) : Command(CommandList.myosx);
+    /// <summary>Deprecated: like <c>myos</c>, but the tile is drawn at half size.</summary>
+    [Description("myosx")]
+    public sealed record MyosXCommand(
+        string X,
+        string Y,
+        string TileNum,
+        string Shade,
+        string Orientation) : Command(CommandList.MyosX);
 }
-

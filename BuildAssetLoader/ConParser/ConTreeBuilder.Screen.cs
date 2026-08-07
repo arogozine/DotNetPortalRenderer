@@ -1,120 +1,120 @@
 namespace BuildAssetLoader.Con
 {
-    // Flat commands from Commands.Screen.cs. EventloadactorCommand is a Structure and is built in
+    // Flat commands from Commands.Screen.cs. EventLoadActorCommand is a Structure and is built in
     // ConTreeBuilder.cs (ParseEventloadactorStructure) instead.
     // AI Assisted
     public static partial class ConTreeBuilder
     {
         private static Command? TryParseScreen(CommandList command, ConTreeCursor cursor) => command switch
         {
-            CommandList.startcutscene => new StartcutsceneCommand(cursor.ReadInt()),
+            CommandList.StartCutscene => new StartCutsceneCommand(cursor.ReadInt()),
             CommandList.Screen => new ScreenCommand(),
 
-            CommandList.palfrom => ParsePalfrom(cursor),
-            CommandList.guniqhudid => new GuniqhudidCommand(cursor.ReadValue()),
-            CommandList.setgamepalette => new SetgamepaletteCommand(cursor.ReadValue()),
-            CommandList.setaspect => new SetaspectCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.PalFrom => ParsePalfrom(cursor),
+            CommandList.GUniqHudId => new GUniqHudIdCommand(cursor.ReadValue()),
+            CommandList.SetGamePalette => new SetGamePaletteCommand(cursor.ReadValue()),
+            CommandList.SetAspect => new SetAspectCommand(cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.wackplayer => new WackplayerCommand(),
-            CommandList.quake => new QuakeCommand(cursor.ReadValue()),
-            CommandList.pkick => new PkickCommand(),
-            CommandList.pstomp => new PstompCommand(),
-            CommandList.tip => new TipCommand(),
+            CommandList.WackPlayer => new WackPlayerCommand(),
+            CommandList.Quake => new QuakeCommand(cursor.ReadValue()),
+            CommandList.PKick => new PKickCommand(),
+            CommandList.PStomp => new PStompCommand(),
+            CommandList.Tip => new TipCommand(),
 
-            CommandList.rotatesprite => new RotatespriteCommand(
+            CommandList.RotateSprite => new RotateSpriteCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.rotatesprite16 => new Rotatesprite16Command(
+            CommandList.RotateSprite16 => new RotateSprite16Command(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.rotatespritea => new RotatespriteaCommand(
+            CommandList.RotateSpriteA => new RotateSpriteACommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.screentext => new ScreentextCommand(
+            CommandList.ScreenText => new ScreenTextCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadInt(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.gametext => new GametextCommand(
+            CommandList.GameText => new GameTextCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadInt(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.gametextz => new GametextzCommand(
+            CommandList.GameTextZ => new GameTextZCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadInt(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue()),
-            CommandList.minitext => new MinitextCommand(
+            CommandList.MiniText => new MiniTextCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadInt(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.digitalnumber => new DigitalnumberCommand(
+            CommandList.DigitalNumber => new DigitalNumberCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue()),
-            CommandList.digitalnumberz => new DigitalnumberzCommand(
+            CommandList.DigitalNumberZ => new DigitalNumberZCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.showview => new ShowviewCommand(
+            CommandList.ShowView => new ShowViewCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.showviewunbiased => new ShowviewunbiasedCommand(
+            CommandList.ShowViewUnbiased => new ShowViewUnbiasedCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.displayrand => new DisplayrandCommand(cursor.ReadValue()),
-            CommandList.displayrandvar => new DisplayrandvarCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.displayrandvarvar => new DisplayrandvarvarCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.DisplayRand => new DisplayRandCommand(cursor.ReadValue()),
+            CommandList.DisplayRandVar => new DisplayRandVarCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.DisplayRandVarVar => new DisplayRandVarVarCommand(cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.getticks => new GetticksCommand(cursor.ReadValue()),
-            CommandList.gettimedate => new GettimedateCommand(
+            CommandList.GetTicks => new GetTicksCommand(cursor.ReadValue()),
+            CommandList.GetTimeDate => new GetTimeDateCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.activatecheat => new ActivatecheatCommand(cursor.ReadValue()),
-            CommandList.startlevel => new StartlevelCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.inittimer => new InittimerCommand(cursor.ReadInt()),
-            CommandList.endofgame => new EndofgameCommand(cursor.ReadInt()),
-            CommandList.endoflevel => new EndoflevelCommand(cursor.ReadInt()),
-            CommandList.cmenu => new CmenuCommand(cursor.ReadValue()),
+            CommandList.ActivateCheat => new ActivateCheatCommand(cursor.ReadValue()),
+            CommandList.StartLevel => new StartLevelCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.InitTimer => new InitTimerCommand(cursor.ReadInt()),
+            CommandList.EndOfGame => new EndOfGameCommand(cursor.ReadInt()),
+            CommandList.EndOfLevel => new EndOfLevelCommand(cursor.ReadInt()),
+            CommandList.CMenu => new CMenuCommand(cursor.ReadValue()),
 
-            CommandList.save => new SaveCommand(cursor.ReadValue()),
-            CommandList.savenn => new SavennCommand(cursor.ReadValue()),
+            CommandList.Save => new SaveCommand(cursor.ReadValue()),
+            CommandList.SaveNn => new SaveNnCommand(cursor.ReadValue()),
 
-            CommandList.loadmapstate => new LoadmapstateCommand(),
-            CommandList.savemapstate => new SavemapstateCommand(),
-            CommandList.clearmapstate => new ClearmapstateCommand(cursor.ReadValue()),
+            CommandList.LoadMapState => new LoadMapStateCommand(),
+            CommandList.SaveMapState => new SaveMapStateCommand(),
+            CommandList.ClearMapState => new ClearMapStateCommand(cursor.ReadValue()),
 
-            CommandList.debug => new DebugCommand(cursor.ReadValue()),
-            CommandList.addlog => new AddlogCommand(cursor.ReadValue()),
-            CommandList.addlogvar => new AddlogvarCommand(cursor.ReadValue()),
-            CommandList.echo => new EchoCommand(cursor.ReadInt()),
+            CommandList.Debug => new DebugCommand(cursor.ReadValue()),
+            CommandList.AddLog => new AddLogCommand(cursor.ReadValue()),
+            CommandList.AddLogVar => new AddLogVarCommand(cursor.ReadValue()),
+            CommandList.Echo => new EchoCommand(cursor.ReadInt()),
 
-            CommandList.betaname => new BetanameCommand(cursor.ReadValue()),
-            CommandList.enhanced => new EnhancedCommand(cursor.ReadInt()),
-            CommandList.time => new TimeCommand(cursor.ReadValue()),
-            CommandList.shadeto => new ShadetoCommand(cursor.ReadValue()),
+            CommandList.BetaName => new BetaNameCommand(cursor.ReadValue()),
+            CommandList.Enhanced => new EnhancedCommand(cursor.ReadInt()),
+            CommandList.Time => new TimeCommand(cursor.ReadValue()),
+            CommandList.ShadeTo => new ShadeToCommand(cursor.ReadValue()),
 
-            CommandList.myos => new MyosCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.myosx => new MyosxCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.myospal => new MyospalCommand(
+            CommandList.Myos => new MyosCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.MyosX => new MyosXCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.MyosPal => new MyosPalCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.myospalx => new MyospalxCommand(
+            CommandList.MyosPalX => new MyosPalXCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
 
             _ => null,
         };
 
-        private static PalfromCommand ParsePalfrom(ConTreeCursor cursor)
+        private static PalFromCommand ParsePalfrom(ConTreeCursor cursor)
         {
             int intensity = cursor.ReadInt();
-            return new PalfromCommand(intensity, cursor.TryReadInt(), cursor.TryReadInt(), cursor.TryReadInt());
+            return new PalFromCommand(intensity, cursor.TryReadInt(), cursor.TryReadInt(), cursor.TryReadInt());
         }
     }
 }

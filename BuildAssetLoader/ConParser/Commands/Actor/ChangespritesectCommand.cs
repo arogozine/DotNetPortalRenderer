@@ -1,6 +1,11 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // changespritesect <actorid> <sectnum>
-    public sealed record ChangespritesectCommand(string ActorId, string Sectnum) : Command(CommandList.changespritesect);
+    /// <summary>Changes the current sector of the actor identified by <c>ActorId</c> to <c>Sectnum</c>.</summary>
+    [Description("changespritesect")]
+    public sealed record ChangeSpriteSectCommand(
+        string ActorId,
+        string Sectnum) : Command(CommandList.ChangeSpriteSect);
 }
-

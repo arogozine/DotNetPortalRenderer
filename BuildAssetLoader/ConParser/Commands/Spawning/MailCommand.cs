@@ -1,6 +1,10 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // mail <number> — spawns envelopes at the current actor.
-    public sealed record MailCommand(string Number) : Command(CommandList.mail);
+    /// <summary>Causes the current actor to spawn the given number of envelope pickups.</summary>
+    [Description("mail")]
+    public sealed record MailCommand(
+        string Number) : Command(CommandList.Mail);
 }
-

@@ -1,6 +1,11 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // gamestartup <param1> <param2> ... <paramN> — 26 (v1.3D) or 30 (v1.5) startup parameters.
-    public sealed record GamestartupCommand(string[] Parameters) : Command(CommandList.gamestartup);
+    /// <summary>Sets the game's startup parameters (visibility, damage, ammo caps, blast radii, etc.) as an
+    /// ordered list of values: 26 parameters for v1.3D, 30 for v1.5 Atomic.</summary>
+    [Description("gamestartup")]
+    public sealed record GameStartupCommand(
+        string[] Parameters) : Command(CommandList.GameStartup);
 }
-

@@ -1,6 +1,10 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // shadeto <value> — dummy command in EDuke32, does nothing.
-    public sealed record ShadetoCommand(string Value) : Command(CommandList.shadeto);
+    /// <summary>Dummy command in EDuke32 — compiles but does nothing.</summary>
+    [Description("shadeto")]
+    public sealed record ShadeToCommand(
+        string Value) : Command(CommandList.ShadeTo);
 }
-

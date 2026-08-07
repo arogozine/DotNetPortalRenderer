@@ -6,73 +6,73 @@ namespace BuildAssetLoader.Con
     {
         private static Command? TryParseActor(CommandList command, ConTreeCursor cursor) => command switch
         {
-            CommandList.cactor => new CActorCommand(cursor.ReadValue()),
+            CommandList.CActor => new CActorCommand(cursor.ReadValue()),
 
-            CommandList.count => new CountCommand(cursor.ReadValue()),
-            CommandList.resetactioncount => new ResetactioncountCommand(),
-            CommandList.resetcount => new ResetcountCommand(),
-            CommandList.cstat => new CstatCommand(cursor.ReadValue()),
-            CommandList.cstator => new CstatorCommand(cursor.ReadValue()),
-            CommandList.clipdist => new ClipdistCommand(cursor.ReadValue()),
-            CommandList.sizeat => new SizeatCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.sizeto => new SizetoCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.strength => new StrengthCommand(cursor.ReadValue()),
-            CommandList.addstrength => new AddstrengthCommand(cursor.ReadValue()),
-            CommandList.spritepal => new SpritepalCommand(cursor.ReadValue()),
-            CommandList.getlastpal => new GetlastpalCommand(),
-            CommandList.sleeptime => new SleeptimeCommand(cursor.ReadValue()),
-            CommandList.spriteflags => ParseSpriteflags(cursor),
-            CommandList.angoff => new AngoffCommand(cursor.ReadValue()),
-            CommandList.angoffvar => new AngoffvarCommand(cursor.ReadValue()),
-            CommandList.changespritesect => new ChangespritesectCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.changespritestat => new ChangespritestatCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.setsprite => new SetspriteCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.Count => new CountCommand(cursor.ReadValue()),
+            CommandList.ResetActionCount => new ResetActionCountCommand(),
+            CommandList.ResetCount => new ResetCountCommand(),
+            CommandList.CStat => new CStatCommand(cursor.ReadValue()),
+            CommandList.CStatOr => new CStatOrCommand(cursor.ReadValue()),
+            CommandList.ClipDist => new ClipDistCommand(cursor.ReadValue()),
+            CommandList.SizeAt => new SizeAtCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.SizeTo => new SizeToCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.Strength => new StrengthCommand(cursor.ReadValue()),
+            CommandList.AddStrength => new AddStrengthCommand(cursor.ReadValue()),
+            CommandList.SpritePal => new SpritePalCommand(cursor.ReadValue()),
+            CommandList.GetLastPal => new GetLastPalCommand(),
+            CommandList.SleepTime => new SleepTimeCommand(cursor.ReadValue()),
+            CommandList.SpriteFlags => ParseSpriteflags(cursor),
+            CommandList.AngOff => new AngOffCommand(cursor.ReadValue()),
+            CommandList.AngOffVar => new AngOffVarCommand(cursor.ReadValue()),
+            CommandList.ChangeSpriteSect => new ChangeSpriteSectCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.ChangeSpriteStat => new ChangeSpriteStatCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.SetSprite => new SetSpriteCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.fall => new FallCommand(),
-            CommandList.insertspriteq => new InsertspriteqCommand(),
-            CommandList.killit => new KillitCommand(),
-            CommandList.movesprite => new MovespriteCommand(
+            CommandList.Fall => new FallCommand(),
+            CommandList.InsertSpriteQ => new InsertSpriteQCommand(),
+            CommandList.KillIt => new KillItCommand(),
+            CommandList.MoveSprite => new MoveSpriteCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.ssp => new SspCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.clipmove => new ClipmoveCommand(
+            CommandList.Ssp => new SspCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.ClipMove => new ClipMoveCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.clipmovenoslide => new ClipmovenoslideCommand(
+            CommandList.ClipMoveNoSlide => new ClipMoveNoSlideCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.dist => new DistCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.ldist => new LdistCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.cansee => new CanseeCommand(
+            CommandList.Dist => new DistCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.LDist => new LDistCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.CanSee => new CanSeeCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(),
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.canseespr => new CanseesprCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.CanSeeSpr => new CanSeeSprCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.hitradius => new HitradiusCommand(
+            CommandList.HitRadius => new HitRadiusCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.hitradiusvar => new HitradiusVarCommand(
+            CommandList.HitRadiusVar => new HitRadiusVarCommand(
                 cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.flash => new FlashCommand(),
+            CommandList.Flash => new FlashCommand(),
 
-            CommandList.mikesnd => new MikesndCommand(),
-            CommandList.respawnhitag => new RespawnhitagCommand(),
+            CommandList.MikeSnd => new MikeSndCommand(),
+            CommandList.RespawnHitag => new RespawnHitagCommand(),
 
-            CommandList.getangletotarget => new GetangletotargetCommand(cursor.ReadValue()),
+            CommandList.GetAngleToTarget => new GetAngleToTargetCommand(cursor.ReadValue()),
 
             _ => null,
         };
 
-        private static SpriteflagsCommand ParseSpriteflags(ConTreeCursor cursor)
+        private static SpriteFlagsCommand ParseSpriteflags(ConTreeCursor cursor)
         {
             int n = cursor.CountContiguousValues();
 
             if (n >= 2)
             {
                 string[] args = cursor.ReadValues(2);
-                return new SpriteflagsCommand(args[0], args[1]);
+                return new SpriteFlagsCommand(args[0], args[1]);
             }
 
-            return new SpriteflagsCommand(null, cursor.ReadValue());
+            return new SpriteFlagsCommand(null, cursor.ReadValue());
         }
     }
 }

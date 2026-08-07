@@ -1,6 +1,9 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // pkick — makes the current player kick.
-    public sealed record PkickCommand() : Command(CommandList.pkick);
+    /// <summary>Makes the current player perform a kick.</summary>
+    [Description("pkick")]
+    public sealed record PKickCommand() : Command(CommandList.PKick);
 }
-

@@ -416,3 +416,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Build and Doom files
+*.con
+*.grp
+*.wad
+*.html

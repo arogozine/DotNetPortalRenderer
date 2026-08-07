@@ -9,16 +9,16 @@ namespace BuildAssetLoader.Con
     {
         private static Command? TryParseStructureAccess(CommandList command, ConTreeCursor cursor) => command switch
         {
-            CommandList.getactorangle => new GetactorangleCommand(cursor.ReadValue()),
-            CommandList.getplayerangle => new GetplayerangleCommand(cursor.ReadValue()),
-            CommandList.gettextureceiling => new GettextureceilingCommand(),
-            CommandList.gettexturefloor => new GettexturefloorCommand(),
-            CommandList.sectgethitag => new SectgethitagCommand(),
-            CommandList.sectgetlotag => new SectgetlotagCommand(),
-            CommandList.spgethitag => new SpgethitagCommand(),
-            CommandList.spgetlotag => new SpgetlotagCommand(),
-            CommandList.setactorangle => new SetactorangleCommand(cursor.ReadValue()),
-            CommandList.setplayerangle => new SetplayerangleCommand(cursor.ReadValue()),
+            CommandList.GetActorAngle => new GetActorAngleCommand(cursor.ReadValue()),
+            CommandList.GetPlayerAngle => new GetPlayerAngleCommand(cursor.ReadValue()),
+            CommandList.GetTextureCeiling => new GetTextureCeilingCommand(),
+            CommandList.GetTextureFloor => new GetTextureFloorCommand(),
+            CommandList.SectGetHitag => new SectGetHitagCommand(),
+            CommandList.SectGetLotag => new SectGetLotagCommand(),
+            CommandList.SpGetHitag => new SpGetHitagCommand(),
+            CommandList.SpGetLotag => new SpGetLotagCommand(),
+            CommandList.SetActorAngle => new SetActorAngleCommand(cursor.ReadValue()),
+            CommandList.SetPlayerAngle => new SetPlayerAngleCommand(cursor.ReadValue()),
 
             _ => null,
         };

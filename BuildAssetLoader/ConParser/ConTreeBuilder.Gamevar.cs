@@ -6,39 +6,39 @@ namespace BuildAssetLoader.Con
     {
         private static Command? TryParseGamevar(CommandList command, ConTreeCursor cursor) => command switch
         {
-            CommandList.gamevar => new GamevarCommand(cursor.ReadValue(), cursor.TryReadInt(), cursor.TryReadInt()),
-            CommandList.gamearray => new GamearrayCommand(cursor.ReadValue(), cursor.ReadInt(), cursor.TryReadInt()),
+            CommandList.GameVar => new GameVarCommand(cursor.ReadValue(), cursor.TryReadInt(), cursor.TryReadInt()),
+            CommandList.GameArray => new GameArrayCommand(cursor.ReadValue(), cursor.ReadInt(), cursor.TryReadInt()),
 
-            CommandList.setvar or CommandList.addvar or CommandList.subvar or CommandList.mulvar or CommandList.divvar
-                or CommandList.modvar or CommandList.andvar or CommandList.orvar or CommandList.xorvar or CommandList.randvar =>
+            CommandList.SetVar or CommandList.AddVar or CommandList.SubVar or CommandList.MulVar or CommandList.DivVar
+                or CommandList.ModVar or CommandList.AndVar or CommandList.OrVar or CommandList.XorVar or CommandList.RandVar =>
                 new VarOpCommand(command, GamevarOperatorLookup.Map[command], cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.setvarvar or CommandList.addvarvar or CommandList.subvarvar or CommandList.mulvarvar or CommandList.divvarvar
-                or CommandList.modvarvar or CommandList.andvarvar or CommandList.orvarvar or CommandList.xorvarvar or CommandList.randvarvar =>
+            CommandList.SetVarVar or CommandList.AddVarVar or CommandList.SubVarVar or CommandList.MulVarVar or CommandList.DivVarVar
+                or CommandList.ModVarVar or CommandList.AndVarVar or CommandList.OrVarVar or CommandList.XorVarVar or CommandList.RandVarVar =>
                 new VarVarOpCommand(command, GamevarOperatorLookup.Map[command], cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.setarray => ParseSetArray(cursor),
+            CommandList.SetArray => ParseSetArray(cursor),
 
-            CommandList.sqrt => new SqrtCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.calchypotenuse => new CalchypotenuseCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.sin => new SinCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.cos => new CosCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.shiftvarl => new ShiftvarlCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.shiftvarr => new ShiftvarrCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.mulscale => new MulscaleCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.getangle => new GetangleCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.getincangle => new GetincangleCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.Sqrt => new SqrtCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.CalcHypotenuse => new CalcHypotenuseCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.Sin => new SinCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.Cos => new CosCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.ShiftVarL => new ShiftVarLCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.ShiftVarR => new ShiftVarRCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.MulScale => new MulScaleCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.GetAngle => new GetAngleCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.GetIncAngle => new GetIncAngleCommand(cursor.ReadValue(), cursor.ReadValue(), cursor.ReadValue()),
 
-            CommandList.getarraysize => new GetarraysizeCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.getarraysequence => new GetarraysequenceCommand(cursor.ReadValue(), cursor.ReadAllContiguousValues()),
-            CommandList.resizearray => new ResizearrayCommand(cursor.ReadValue(), cursor.ReadValue()),
-            CommandList.copy => ParseCopy(cursor),
-            CommandList.setarraysequence => new SetarraysequenceCommand(cursor.ReadValue(), cursor.ReadAllContiguousValues()),
+            CommandList.GetArraySize => new GetArraySizeCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.GetArraySequence => new GetArraySequenceCommand(cursor.ReadValue(), cursor.ReadAllContiguousValues()),
+            CommandList.ResizeArray => new ResizeArrayCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.Copy => ParseCopy(cursor),
+            CommandList.SetArraySequence => new SetArraySequenceCommand(cursor.ReadValue(), cursor.ReadAllContiguousValues()),
 
-            CommandList.readgamevar => new ReadgamevarCommand(cursor.ReadValue()),
-            CommandList.savegamevar => new SavegamevarCommand(cursor.ReadValue()),
-            CommandList.readarrayfromfile => new ReadarrayfromfileCommand(cursor.ReadValue(), cursor.ReadInt()),
-            CommandList.writearraytofile => new WritearraytofileCommand(cursor.ReadValue(), cursor.ReadInt()),
+            CommandList.ReadGameVar => new ReadGameVarCommand(cursor.ReadValue()),
+            CommandList.SaveGameVar => new SaveGameVarCommand(cursor.ReadValue()),
+            CommandList.ReadArrayFromFile => new ReadArrayFromFileCommand(cursor.ReadValue(), cursor.ReadInt()),
+            CommandList.WriteArrayToFile => new WriteArrayToFileCommand(cursor.ReadValue(), cursor.ReadInt()),
 
             _ => null,
         };

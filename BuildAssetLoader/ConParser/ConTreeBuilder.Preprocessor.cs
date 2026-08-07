@@ -6,9 +6,9 @@ namespace BuildAssetLoader.Con
     {
         private static Command? TryParsePreprocessor(CommandList command, ConTreeCursor cursor) => command switch
         {
-            CommandList.include => new IncludeCommand(cursor.ReadValue()),
-            CommandList.includedefault => new IncludedefaultCommand(),
-            CommandList.define => new DefineCommand(cursor.ReadValue(), cursor.ReadValue()),
+            CommandList.Include => new IncludeCommand(cursor.ReadValue()),
+            CommandList.IncludeDefault => new IncludeDefaultCommand(),
+            CommandList.Define => new DefineCommand(cursor.ReadValue(), cursor.ReadValue()),
 
             _ => null,
         };

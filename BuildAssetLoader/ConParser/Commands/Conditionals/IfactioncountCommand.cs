@@ -1,5 +1,10 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    public sealed record IfactioncountCommand(string Number) : ConditionalStructure(CommandList.ifactioncount);
+    /// <summary>Conditional returning true if the current actor's actioncount is equal to the given number.</summary>
+    [Description("ifactioncount")]
+    public sealed record IfActionCountCommand(
+        string Number) : ConditionalStructure(CommandList.IfActionCount);
 }
-

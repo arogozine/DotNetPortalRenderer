@@ -1,8 +1,11 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
     // ===== Hub Maps =====
 
-    // loadmapstate — restores the current map to its last savemapstate snapshot.
-    public sealed record LoadmapstateCommand() : Command(CommandList.loadmapstate);
+    /// <summary>Restores the current map to its last <c>savemapstate</c> snapshot.</summary>
+    [Description("loadmapstate")]
+    public sealed record LoadMapStateCommand() : Command(CommandList.LoadMapState);
 }
-

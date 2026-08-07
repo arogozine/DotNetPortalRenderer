@@ -1,6 +1,13 @@
+// See: https://wiki.eduke32.com/wiki/Category:All_commands
+using System.ComponentModel;
+
 namespace BuildAssetLoader.Con
 {
-    // setarraysequence <gamearray> <gamevar 1> [...] <gamevar N> — resizes the array to match the gamevar count.
-    public sealed record SetarraysequenceCommand(string Gamearray, string[] Gamevars) : Command(CommandList.setarraysequence);
+    /// <summary>Saves the values of the given <c>Gamevars</c> (up to 32) into the first N entries of gamearray
+    /// <c>Gamearray</c>, resizing the array to match the number of gamevars provided. See also
+    /// <c>getarraysequence</c>.</summary>
+    [Description("setarraysequence")]
+    public sealed record SetArraySequenceCommand(
+        string Gamearray,
+        string[] Gamevars) : Command(CommandList.SetArraySequence);
 }
-
