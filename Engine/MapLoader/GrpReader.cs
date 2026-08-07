@@ -137,8 +137,8 @@ internal static class GrpReader
         List<ConToken> defsTokens = ConParser.Parse(File.ReadAllText(defsConPath));
         List<ConToken> gameConTokens = ConParser.Parse(File.ReadAllText(gameConPath));
 
-        List<Command> commands = ParseOutCommands(defsTokens);
-        commands.AddRange(ParseOutCommands(gameConTokens));
+        List<Command> commands = ConTreeBuilder.Build(defsTokens);
+        commands.AddRange(ConTreeBuilder.Build(gameConTokens));
 
         Dictionary<string, DefineCommand> defines = commands
             .OfType<DefineCommand>()
@@ -174,7 +174,7 @@ internal static class GrpReader
                 {
                     action = actionCommandBody.Name;
                 }
-                else if (TryGet(actor, out AiCommand? aiCommand) && aiCommandToAction.TryGetValue(aiCommand.Name, out string? actionName))
+                else if (TryGet(actor, out AiInvokeCommand? aiInvoke) && aiCommandToAction.TryGetValue(aiInvoke.Name, out string? actionName))
                 {
                     action = actionName;
                 }
@@ -293,7 +293,7 @@ internal static class GrpReader
                     float angle = 0f;
                     for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 8))
                     {
-                        bool mirrored = i < 4 || (i > 8 && i < 12);
+                        bool mirrored = i is < 4 or >= 8 and < 12;
                         int sprite = spriteNum[i] + startSprite - 1;
 
                         if (!TextureCache.HasTexture(ToTile(sprite)))
@@ -350,7 +350,7 @@ internal static class GrpReader
 
                     for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 6))
                     {
-                        bool mirrored = i > 5;
+                        bool mirrored = i > 6;
                         int sprite = spriteNum[i] + startSprite - 1;
 
                         if (!TextureCache.HasTexture(ToTile(sprite)))
@@ -365,300 +365,110 @@ internal static class GrpReader
 
                     return true;
                 }
+            // The sprite will have 8 angles constructed from 8 art tiles.
+            // A new frame is drawn every 45 degrees in a clockwise pattern beginning with the front of the sprite.
+            case 8:
+                {
+                    Span<byte> spriteNum = [1, 2, 3, 4, 5, 6, 7, 8];
+
+                    angles = new SpriteAngleRotation[spriteNum.Length];
+                    float angle = 0f;
+
+                    for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 4))
+                    {
+                        int sprite = spriteNum[i] + startSprite - 1;
+
+                        if (!TextureCache.HasTexture(ToTile(sprite)))
+                        {
+                            sprite += 8;
+                        }
+
+                        Debug.Assert(TextureCache.HasTexture(ToTile(sprite)));
+
+                        angles[i] = new SpriteAngleRotation(sprite, false, angle);
+                    }
+
+                    return true;
+                }
+            // The sprite will have 16 angles constructed from 9 art tiles, seven of which are mirrored.
+            // A new frame is drawn every 22.5 degrees in a clockwise pattern beginning with the front of the sprite.
+            case 9:
+                {
+                    Span<byte> spriteNum = [1, 2, 3, 4, 5, 6, 7, 8, 9, 8, 7, 6, 5, 4, 3, 2];
+
+                    angles = new SpriteAngleRotation[spriteNum.Length];
+                    float angle = 0f;
+
+                    for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 8))
+                    {
+                        bool mirrored = i > 8;
+                        int sprite = spriteNum[i] + startSprite - 1;
+
+                        if (!TextureCache.HasTexture(ToTile(sprite)))
+                        {
+                            sprite += 9;
+                        }
+
+                        Debug.Assert(TextureCache.HasTexture(ToTile(sprite)));
+
+                        angles[i] = new SpriteAngleRotation(sprite, mirrored, angle);
+                    }
+
+                    return true;
+                }
+            // The sprite will have 12 angles constructed from 12 art tiles.
+            // A new frame is drawn every 30 degrees in a clockwise pattern beginning with the front of the sprite.
+            case 12:
+                {
+                    Span<byte> spriteNum = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+                    angles = new SpriteAngleRotation[spriteNum.Length];
+                    float angle = 0f;
+
+                    for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 6))
+                    {
+                        int sprite = spriteNum[i] + startSprite - 1;
+
+                        if (!TextureCache.HasTexture(ToTile(sprite)))
+                        {
+                            sprite += 12;
+                        }
+
+                        Debug.Assert(TextureCache.HasTexture(ToTile(sprite)));
+
+                        angles[i] = new SpriteAngleRotation(sprite, false, angle);
+                    }
+
+                    return true;
+                }
+            // The sprite will have 16 angles constructed from 16 art tiles.
+            // A new frame is drawn every 22.5 degrees in a clockwise pattern beginning with the front of the sprite.
+            case 16:
+                {
+                    Span<byte> spriteNum = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+
+                    angles = new SpriteAngleRotation[spriteNum.Length];
+                    float angle = 0f;
+
+                    for (int i = 0; i < spriteNum.Length; i++, angle += (MathF.PI / 8))
+                    {
+                        int sprite = spriteNum[i] + startSprite - 1;
+
+                        if (!TextureCache.HasTexture(ToTile(sprite)))
+                        {
+                            sprite += 16;
+                        }
+
+                        Debug.Assert(TextureCache.HasTexture(ToTile(sprite)));
+
+                        angles[i] = new SpriteAngleRotation(sprite, false, angle);
+                    }
+
+                    return true;
+                }
             default:
                 throw new NotImplementedException();
 
-        }
-    }
-
-    private static List<Command> ParseOutCommands(List<ConToken> tokens)
-    {
-        // Dictionary<string, string>
-
-        List<Command> commands = [];
-
-        for (int i = 0; i < tokens.Count; i++)
-        {
-            var token = tokens[i];
-
-            if (token is CommandToken commandToken)
-            {
-                switch (commandToken.Command)
-                {
-                    case CommandList.Ai:
-                        {
-                            string name = ((ValueToken)tokens[++i]).Value;
-                            ValueToken? action, move = null;
-
-                            bool found =
-                                GetNextIf(ref i, out action) &&
-                                GetNextIf(ref i, out move);
-
-                            Debug.Assert(found);
-                            commands.Add(new AiCommand(name, action?.Value, move?.Value, []));
-                        }
-                        break;
-                    case CommandList.Define:
-                        {
-                            string name = ((ValueToken)tokens[++i]).Value;
-                            string number = ((ValueToken)tokens[++i]).Value;
-                            commands.Add(new DefineCommand(name, number));
-                        }
-                        break;
-                    case CommandList.Actor:
-                        {
-                            string picNum = ((ValueToken)tokens[++i]).Value;
-
-                            ValueToken? strength, action = null, move = null;
-
-                            _ = GetNextIf(ref i, out strength) &&
-                                GetNextIf(ref i, out action) &&
-                                GetNextIf(ref i, out move);
-
-                            var actor = new ActorCommand(picNum, strength?.Value, action?.Value, move?.Value, []);
-
-                            if (TryGetAction(i, out ActionCommand? actionCommand))
-                            {
-                                actor.Body.Add(actionCommand);
-                            }
-
-                            if (TryGetCActor(i, out CActorCommand? cActor))
-                            {
-                                actor.Body.Add(cActor);
-                            }
-
-                            if (TryGetAICommandFromBody(i, out AiCommand? ai))
-                            {
-                                actor.Body.Add(ai);
-                            }
-
-                            commands.Add(actor);
-
-                            SkipUntil(ref i, CommandList.Enda);
-                        }
-                        break;
-                    case CommandList.UserActor:
-                        {
-                            string type = ((ValueToken)tokens[++i]).Value;
-                            string picNum = ((ValueToken)tokens[++i]).Value;
-
-                            ValueToken? strength, action = null, move = null;
-
-                            _ = GetNextIf(ref i, out strength) &&
-                                GetNextIf(ref i, out action) &&
-                                GetNextIf(ref i, out move);
-
-                            var userActor = new UserActorCommand(type, picNum, strength?.Value, action?.Value, move?.Value, []);
-
-                            if (TryGetAction(i, out ActionCommand? actionCommand))
-                            {
-                                userActor.Body.Add(actionCommand);
-                            }
-
-                            if (TryGetCActor(i, out CActorCommand? cActor))
-                            {
-                                userActor.Body.Add(cActor);
-                            }
-
-                            if (TryGetAICommandFromBody(i, out AiCommand? ai))
-                            {
-                                userActor.Body.Add(ai);
-                            }
-
-                            commands.Add(userActor);
-
-                            SkipUntil(ref i, CommandList.Enda);
-                        }
-                        break;
-                    case CommandList.Action:
-                        {
-                            string name = ((ValueToken)tokens[++i]).Value;
-
-                            int? startFrame, frames = null, viewType = null, incValue = null, delay = null;
-
-                            _ = GetNext(ref i, out startFrame) &&
-                                GetNext(ref i, out frames) &&
-                                GetNext(ref i, out viewType) &&
-                                GetNext(ref i, out incValue) &&
-                                GetNext(ref i, out delay);
-
-                            commands.Add(new ActionCommand(name, startFrame, frames, viewType, incValue, delay));
-                        }
-                        break;
-                    case CommandList.State:
-                        {
-                            SkipUntil(ref i, CommandList.Ends);
-                        }
-                        break;
-                }
-            }
-        }
-
-        return commands;
-
-        void SkipUntil(ref int i, CommandList command)
-        {
-            ConToken token;
-            do
-            {
-                i++;
-                token = tokens[i];
-            }
-            while (token is not CommandToken commandToken || commandToken.Command != command);
-        }
-
-        bool GetNext<T>(ref int i, [NotNullWhen(true)] out T? value)
-            where T : struct, IParsable<T>
-        {
-            if (GetNextIf(ref i, out ValueToken? valueToken))
-            {
-                value = T.Parse(valueToken.Value, null);
-                return true;
-            }
-
-            value = default!;
-            return false;
-        }
-
-        bool GetNextIf<T>(ref int i, [NotNullWhen(true)] out T? value)
-            where T : ConToken
-        {
-            ConToken token = tokens[i + 1];
-
-            value = token as T;
-
-            if (value != null)
-            {
-                i++;
-                return true;
-            }
-
-            return false;
-        }
-
-        bool TryGetAction(int i, [NotNullWhen(true)] out ActionCommand? actionCommand)
-        {
-            int depth = 0;
-
-            for (i++; i < tokens.Count; i++)
-            {
-                ConToken token = tokens[i];
-
-                if (token.ConTokenType == ConTokenType.BlockStart)
-                {
-                    depth++;
-                    continue;
-                }
-
-                if (token.ConTokenType == ConTokenType.BlockEnd)
-                {
-                    depth--;
-                    continue;
-                }
-
-                if (depth != 0)
-                {
-                    continue;
-                }
-
-                if (token is CommandToken commandToken)
-                {
-                    if (commandToken.Command == CommandList.Enda)
-                    {
-                        actionCommand = null;
-                        return false;
-                    }
-
-                    if (commandToken.Command == CommandList.Action)
-                    {
-                        if (GetNextIf(ref i, out ValueToken? name))
-                        {
-                            actionCommand = new ActionCommand(name.Value, null, null, null, null, null);
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            actionCommand = null;
-            return false;
-        }
-
-        bool TryGetCActor(int i, [NotNullWhen(true)] out CActorCommand? cActor)
-        {
-            int depth = 0;
-
-            for (i++; i < tokens.Count; i++)
-            {
-                ConToken token = tokens[i];
-
-                if (token.ConTokenType == ConTokenType.BlockStart)
-                {
-                    depth++;
-                    continue;
-                }
-
-                if (token.ConTokenType == ConTokenType.BlockEnd)
-                {
-                    depth--;
-                    continue;
-                }
-
-                if (depth != 0)
-                {
-                    continue;
-                }
-
-                if (token is CommandToken commandToken)
-                {
-                    if (commandToken.Command == CommandList.Enda)
-                    {
-                        cActor = null;
-                        return false;
-                    }
-
-                    if (commandToken.Command == CommandList.CActor)
-                    {
-                        if (GetNextIf(ref i, out ValueToken? name))
-                        {
-                            cActor = new CActorCommand(name.Value);
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            cActor = null;
-            return false;
-        }
-
-        bool TryGetAICommandFromBody(int i, [NotNullWhen(true)] out AiCommand? aiCommand)
-        {
-            for (i++; i < tokens.Count; i++)
-            {
-                ConToken token = tokens[i];
-
-                if (token is CommandToken commandToken)
-                {
-                    if (commandToken.Command == CommandList.Enda)
-                    {
-                        aiCommand = null;
-                        return false;
-                    }
-
-                    if (commandToken.Command == CommandList.Ai)
-                    {
-                        if (GetNextIf(ref i, out ValueToken? name))
-                        {
-                            aiCommand = new AiCommand(name.Value, null, null, null);
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            aiCommand = null;
-            return false;
         }
     }
 
