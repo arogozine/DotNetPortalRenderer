@@ -9,6 +9,40 @@ namespace Tooling;
 [SkipLocalsInit]
 public static unsafe class VectorExtensions
 {
+    extension(Vector<int>)
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector<int> operator %(Vector<int> left, int right)
+        {
+            Vector<int> resultV = default;
+            int* result = (int*)Unsafe.AsPointer(ref resultV);
+
+            for (int i = 0; i < Vector<int>.Count; i++)
+            {
+                result[i] = left[i] % right;
+            }
+
+            return resultV;
+        }
+    }
+
+    extension(Vector<uint>)
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector<uint> operator %(Vector<uint> left, uint right)
+        {
+            Vector<uint> resultV = default;
+            uint* result = (uint*)Unsafe.AsPointer(ref resultV);
+
+            for (int i = 0; i < Vector<uint>.Count; i++)
+            {
+                result[i] = left[i] % right;
+            }
+
+            return resultV;
+        }
+    }
+
     extension<T>(Vector)
         where T : unmanaged
     {

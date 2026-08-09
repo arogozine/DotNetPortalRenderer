@@ -12,6 +12,26 @@ public static unsafe class Vector128Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector128<int> operator % (Vector128<int> left, int right)
         {
+            if (Avx.IsSupported)
+            {
+                if (right == 0)
+                {
+                    throw new DivideByZeroException();
+                }
+
+                // CLR div/rem traps on int.MinValue / -1 regardless of checked/unchecked context; the
+                // float64 path below has no such trap (it would silently return the mathematically
+                // correct 0), so this is special-cased to keep behavior identical to the scalar fallback.
+                if (right == -1 && Vector128.EqualsAny(left, Vector128.Create(int.MinValue)))
+                {
+                    throw new OverflowException();
+                }
+
+                Vector256<double> rightD = Vector256.Create((double)right);
+
+                return VectorExtensionsShared.ModuloLaneSigned(Avx.ConvertToVector256Double(left), rightD);
+            }
+
             return Vector128.Create(
                 left[0] % right,
                 left[1] % right,
@@ -26,6 +46,17 @@ public static unsafe class Vector128Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector128<uint> operator %(Vector128<uint> left, uint right)
         {
+            if (Avx.IsSupported)
+            {
+                if (right == 0)
+                {
+                    throw new DivideByZeroException();
+                }
+
+                Vector256<double> rightD = Vector256.Create((double)right);
+                return VectorExtensionsShared.ModuloLaneUnsigned(left, rightD);
+            }
+
             return Vector128.Create(
                 left[0] % right,
                 left[1] % right,

@@ -228,4 +228,38 @@ public unsafe class Vector128ExtensionsTests
             Assert.Equal(Vector128<uint>.Zero, gathered);
         }
     }
+
+    [Fact]
+    public void OperatorModulo_Int_ReturnsPerLaneRemainder()
+    {
+        int count = Vector128<int>.Count;
+        int[] values = new int[count];
+        for (int i = 0; i < count; i++) values[i] = i * 7 + 3;
+        Vector128<int> left = Vector128.Create(values);
+        const int right = 5;
+
+        Vector128<int> result = left % right;
+
+        for (int i = 0; i < count; i++)
+        {
+            Assert.Equal(values[i] % right, result[i]);
+        }
+    }
+
+    [Fact]
+    public void OperatorModulo_UInt_ReturnsPerLaneRemainder()
+    {
+        int count = Vector128<uint>.Count;
+        uint[] values = new uint[count];
+        for (int i = 0; i < count; i++) values[i] = (uint)(i * 7 + 3);
+        Vector128<uint> left = Vector128.Create(values);
+        const uint right = 5u;
+
+        Vector128<uint> result = left % right;
+
+        for (int i = 0; i < count; i++)
+        {
+            Assert.Equal(values[i] % right, result[i]);
+        }
+    }
 }

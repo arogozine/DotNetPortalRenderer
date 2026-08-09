@@ -313,4 +313,38 @@ public unsafe class VectorExtensionsTests
             Assert.Equal(Vector<uint>.Zero, gathered);
         }
     }
+
+    [Fact]
+    public void OperatorModulo_Int_ReturnsPerLaneRemainder()
+    {
+        int count = Vector<int>.Count;
+        int[] values = new int[count];
+        for (int i = 0; i < count; i++) values[i] = i * 7 + 3;
+        var left = new Vector<int>(values);
+        const int right = 5;
+
+        Vector<int> result = left % right;
+
+        for (int i = 0; i < count; i++)
+        {
+            Assert.Equal(values[i] % right, result[i]);
+        }
+    }
+
+    [Fact]
+    public void OperatorModulo_UInt_ReturnsPerLaneRemainder()
+    {
+        int count = Vector<uint>.Count;
+        uint[] values = new uint[count];
+        for (int i = 0; i < count; i++) values[i] = (uint)(i * 7 + 3);
+        var left = new Vector<uint>(values);
+        const uint right = 5u;
+
+        Vector<uint> result = left % right;
+
+        for (int i = 0; i < count; i++)
+        {
+            Assert.Equal(values[i] % right, result[i]);
+        }
+    }
 }

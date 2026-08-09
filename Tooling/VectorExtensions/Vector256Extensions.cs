@@ -11,6 +11,29 @@ public static unsafe class Vector256Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector256<int> operator %(Vector256<int> left, int right)
         {
+            if (Avx.IsSupported)
+            {
+                if (right == 0)
+                {
+                    throw new DivideByZeroException();
+                }
+
+                // CLR div/rem traps on int.MinValue / -1 regardless of checked/unchecked context; the
+                // float64 path below has no such trap (it would silently return the mathematically
+                // correct 0), so this is special-cased to keep behavior identical to the scalar fallback.
+                if (right == -1 && Vector256.EqualsAny(left, Vector256.Create(int.MinValue)))
+                {
+                    throw new OverflowException();
+                }
+
+                Vector256<double> rightD = Vector256.Create((double)right);
+
+                Vector128<int> low = VectorExtensionsShared.ModuloLaneSigned(Avx.ConvertToVector256Double(left.GetLower()), rightD);
+                Vector128<int> high = VectorExtensionsShared.ModuloLaneSigned(Avx.ConvertToVector256Double(left.GetUpper()), rightD);
+
+                return Vector256.Create(low, high);
+            }
+
             return Vector256.Create(
                 left[0] % right,
                 left[1] % right,
@@ -29,6 +52,21 @@ public static unsafe class Vector256Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector256<uint> operator %(Vector256<uint> left, uint right)
         {
+            if (Avx.IsSupported)
+            {
+                if (right == 0)
+                {
+                    throw new DivideByZeroException();
+                }
+
+                Vector256<double> rightD = Vector256.Create((double)right);
+
+                Vector128<uint> low = VectorExtensionsShared.ModuloLaneUnsigned(left.GetLower(), rightD);
+                Vector128<uint> high = VectorExtensionsShared.ModuloLaneUnsigned(left.GetUpper(), rightD);
+
+                return Vector256.Create(low, high);
+            }
+
             return Vector256.Create(
                 left[0] % right,
                 left[1] % right,
