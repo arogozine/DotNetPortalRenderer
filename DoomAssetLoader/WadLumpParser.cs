@@ -1,4 +1,5 @@
-﻿using DoomAssetLoader.Map;
+﻿using DoomAssetLoader.Decorate;
+using DoomAssetLoader.Map;
 using DoomAssetLoader.Texture;
 using DoomAssetLoader.Udmf;
 using DoomAssetLoader.Wad;
@@ -202,6 +203,16 @@ namespace DoomAssetLoader
             string text = Encoding.ASCII.GetString(textLump.Bytes.AsSpan());
 
             return UdmfParser.Parse(text);
+        }
+
+        // AI Assisted
+        public static List<DecorateActor> ReadDecorate([NotNull] WadLump? decorateLump)
+        {
+            WadLumpCheck(decorateLump, LumpType.Decorate);
+
+            string text = Encoding.ASCII.GetString(decorateLump.Bytes.AsSpan());
+
+            return DecorateParser.Parse(text);
         }
 
         public static Span<Sidedef> ReadSideDefs([NotNull] WadLump? sideDefLump)

@@ -84,6 +84,7 @@ namespace DoomAssetLoader
             bool isPatches = false;
             bool isSprites = false;
             bool isMap = false;
+            bool isDecorate = false;
             string? mapName = null;
 
             Span<string> pNames = default;
@@ -208,6 +209,13 @@ namespace DoomAssetLoader
                         isMap = false;
                         mapName = null;
                         break;
+                    case LumpType.Decorate:
+                        isSprites = false;
+                        isMap = false;
+                        mapName = null;
+                        isFlats = false;
+                        isDecorate = true;
+                        break;
                 }
 
                 if (isMap && !LoadMaps)
@@ -229,7 +237,7 @@ namespace DoomAssetLoader
                     continue;
                 }
 
-                if (!isTexture && !isMap && !LoadOther)
+                if (!isTexture && !isMap && !LoadOther && !(isDecorate && LoadTextures))
                 {
                     continue;
                 }

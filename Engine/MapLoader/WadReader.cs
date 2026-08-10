@@ -1,4 +1,5 @@
 ﻿using DoomAssetLoader;
+using DoomAssetLoader.Decorate;
 using DoomAssetLoader.Map;
 using DoomAssetLoader.Texture;
 using DoomAssetLoader.Udmf;
@@ -38,7 +39,7 @@ internal static class WadReader
     {
         if (wad.GetMapLump(mapName, LumpType.TextMap) is { } textMap)
         {
-            return ExtractDoomMap(textMap, mapName);
+            return ExtractDoomMap(wad, textMap, mapName);
         }
         else
         {
@@ -785,9 +786,12 @@ internal static class WadReader
         }
     }
 
-    private static List<Sprite> ExtractSprites(ReadOnlySpan<UdmfThing> things)
+    private static List<Sprite> ExtractSprites(ReadOnlySpan<UdmfThing> things, List<DecorateActor>? decorateActors)
     {
         var spriteLookup = GetMultiAngleSprites();
+        Dictionary<int, GameSpriteAnimation> decorateSpriteLookup = decorateActors is { Count: > 0 }
+            ? GetDecorateSprites(decorateActors)
+            : [];
 
         List<Sprite> sprites = new(things.Length);
 
@@ -804,7 +808,8 @@ internal static class WadReader
                     continue;
             }
 
-            if (!spriteLookup.TryGetValue((ThingType)thing.Type, out GameSpriteAnimation? spriteAnimationAngle))
+            if (!spriteLookup.TryGetValue((ThingType)thing.Type, out GameSpriteAnimation? spriteAnimationAngle)
+                && !decorateSpriteLookup.TryGetValue(thing.Type, out spriteAnimationAngle))
             {
                 _ = spriteLookup.TryGetValue(ThingType.RadiationSuit, out spriteAnimationAngle);
                 Debug.Assert(spriteAnimationAngle != null);
@@ -845,7 +850,7 @@ internal static class WadReader
     {
         // https://doomwiki.org/wiki/Sprite
 
-        string[] textures = TextureCache.TextureNames.Where(Valid).ToArray();
+        string[] textures = TextureCache.TextureNames.Where(IsValidSpriteTextureName).ToArray();
         (ThingType Val, string Code)[] thingCodes = GetThingCodes();
         var multiAngleTextures = new Dictionary<ThingType, GameSpriteAnimation>(119);
 
@@ -853,100 +858,13 @@ internal static class WadReader
         {
             (ThingType Thing, string Code) = thingCodes[i];
 
-            var foundTextures = textures.Where(x => x.StartsWith(Code))
-                .ToList();
-
-            // "NONE"
-            if (foundTextures.Count == 0)
+            if (BuildSpriteAnimation(textures, Code) is { } animation)
             {
-                continue;
+                multiAngleTextures[Thing] = animation;
             }
-
-            var animationFrames = foundTextures
-                .SelectMany(GetAnimFrameAndAngle)
-                .GroupBy(static x => x.AnimationFrame)
-                .OrderBy(static g => g.Key)
-                .ToArray();
-
-            TextureAngle[][] animationFramesA = new TextureAngle[animationFrames.Length][];
-
-            for (int a = 0; a < animationFrames.Length; a++)
-            {
-                DoomTextureInfo[] frames = animationFrames[a]
-                    .OrderBy(static x => x.Angle)
-                    .ToArray();
-
-                animationFramesA[a] = new TextureAngle[frames.Length];
-
-                for (int t = 0; t < frames.Length; t++)
-                {
-                    DoomTextureInfo frame = frames[t];
-                    animationFramesA[a][t] = new TextureAngle(frame.Angle, TextureCache.GetTexture(frame.Name), frame.Flipped);
-                }
-            }
-
-            multiAngleTextures[Thing] = new GameSpriteAnimation
-            {
-                AnimationToAngleToTexture = animationFramesA
-            };
         }
 
         return multiAngleTextures;
-
-        static bool Valid(string texture)
-        {
-            switch (texture.Length)
-            {
-                case 4:
-                    return true;
-                case 6:
-                    return !char.IsDigit(texture[4]) && char.IsDigit(texture[5]);
-                case 8:
-                    return !char.IsDigit(texture[4]) && char.IsDigit(texture[5])
-                        && !char.IsDigit(texture[6]) && char.IsDigit(texture[7]);
-            }
-
-            return false;
-        }
-
-        static DoomTextureInfo[] GetAnimFrameAndAngle(string texture)
-        {
-            if (texture.Length == 4)
-            {
-                return [new(texture, 'A', 0f, false)];
-            }
-
-            if (texture.Length == 6)
-            {
-                return [
-                    new (texture, texture[4], DetermineAngle(texture[5]), false)
-                ];
-            }
-
-            if (texture.Length == 8)
-            {
-                return [
-                    new (texture, texture[4], DetermineAngle(texture[5]), false),
-                    new (texture, texture[6], DetermineAngle(texture[7]), true),
-                ];
-            }
-
-            throw new NotImplementedException();
-        }
-
-        static float DetermineAngle(char angleChar)
-        {
-            Debug.Assert(char.IsDigit(angleChar));
-
-            if (angleChar == '0')
-            {
-                return 0f;
-            }
-
-            int angle = (angleChar - '1') * 45;
-            Debug.Assert(angle >= 0 && angle <= (360 - 45));
-            return DetermineAngleInRadians(angle);
-        }
 
         static (ThingType Val, string Code)[] GetThingCodes()
         {
@@ -967,6 +885,146 @@ internal static class WadReader
 
             return valToCode;
         }
+    }
+
+    // AI Assisted
+    private static Dictionary<int, GameSpriteAnimation> GetDecorateSprites(List<DecorateActor> actors)
+    {
+        string[] textures = TextureCache.TextureNames.Where(IsValidSpriteTextureName).ToArray();
+        var decorateSprites = new Dictionary<int, GameSpriteAnimation>(actors.Count);
+
+        foreach (DecorateActor actor in actors)
+        {
+            if (actor.DoomEdNum is not { } doomEdNum)
+            {
+                continue;
+            }
+
+            if (GetSpawnSpriteCode(actor) is not { } code)
+            {
+                continue;
+            }
+
+            if (BuildSpriteAnimation(textures, code) is { } animation)
+            {
+                decorateSprites[doomEdNum] = animation;
+            }
+        }
+
+        return decorateSprites;
+
+        static string? GetSpawnSpriteCode(DecorateActor actor)
+        {
+            bool inSpawnLabel = false;
+
+            foreach (DecorateStateEntry entry in actor.States)
+            {
+                switch (entry)
+                {
+                    case DecorateStateLabel label:
+                        inSpawnLabel = label.Name.Equals("Spawn", StringComparison.OrdinalIgnoreCase);
+                        break;
+                    case DecorateStateDefinition state when inSpawnLabel:
+                        return state.Sprite;
+                }
+            }
+
+            return null;
+        }
+    }
+
+    private static GameSpriteAnimation? BuildSpriteAnimation(string[] textures, string code)
+    {
+        List<string> foundTextures = textures.Where(x => x.StartsWith(code)).ToList();
+
+        // "NONE"
+        if (foundTextures.Count == 0)
+        {
+            return null;
+        }
+
+        var animationFrames = foundTextures
+            .SelectMany(GetAnimFrameAndAngle)
+            .GroupBy(static x => x.AnimationFrame)
+            .OrderBy(static g => g.Key)
+            .ToArray();
+
+        TextureAngle[][] animationFramesA = new TextureAngle[animationFrames.Length][];
+
+        for (int a = 0; a < animationFrames.Length; a++)
+        {
+            DoomTextureInfo[] frames = animationFrames[a]
+                .OrderBy(static x => x.Angle)
+                .ToArray();
+
+            animationFramesA[a] = new TextureAngle[frames.Length];
+
+            for (int t = 0; t < frames.Length; t++)
+            {
+                DoomTextureInfo frame = frames[t];
+                animationFramesA[a][t] = new TextureAngle(frame.Angle, TextureCache.GetTexture(frame.Name), frame.Flipped);
+            }
+        }
+
+        return new GameSpriteAnimation
+        {
+            AnimationToAngleToTexture = animationFramesA
+        };
+    }
+
+    private static bool IsValidSpriteTextureName(string texture)
+    {
+        switch (texture.Length)
+        {
+            case 4:
+                return true;
+            case 6:
+                return !char.IsDigit(texture[4]) && char.IsDigit(texture[5]);
+            case 8:
+                return !char.IsDigit(texture[4]) && char.IsDigit(texture[5])
+                    && !char.IsDigit(texture[6]) && char.IsDigit(texture[7]);
+        }
+
+        return false;
+    }
+
+    private static DoomTextureInfo[] GetAnimFrameAndAngle(string texture)
+    {
+        if (texture.Length == 4)
+        {
+            return [new(texture, 'A', 0f, false)];
+        }
+
+        if (texture.Length == 6)
+        {
+            return [
+                new (texture, texture[4], DetermineAngle(texture[5]), false)
+            ];
+        }
+
+        if (texture.Length == 8)
+        {
+            return [
+                new (texture, texture[4], DetermineAngle(texture[5]), false),
+                new (texture, texture[6], DetermineAngle(texture[7]), true),
+            ];
+        }
+
+        throw new NotImplementedException();
+    }
+
+    private static float DetermineAngle(char angleChar)
+    {
+        Debug.Assert(char.IsDigit(angleChar));
+
+        if (angleChar == '0')
+        {
+            return 0f;
+        }
+
+        int angle = (angleChar - '1') * 45;
+        Debug.Assert(angle >= 0 && angle <= (360 - 45));
+        return DetermineAngleInRadians(angle);
     }
 
     private static List<Sprite> ExtractSprites(Span<Thing> things)
@@ -1019,7 +1077,7 @@ internal static class WadReader
         return sprites;
     }
 
-    private static Map ExtractDoomMap(WadLump textLump, string mapName)
+    private static Map ExtractDoomMap(WadFile wad, WadLump textLump, string mapName)
     {
         var map = WadLumpParser.ReadTextMap(textLump);
 
@@ -1027,7 +1085,10 @@ internal static class WadReader
         ReadOnlySpan<UdmfLinedef> lineDefs = CollectionsMarshal.AsSpan(map.Linedefs);
         ReadOnlySpan<UdmfVertex> verticies = CollectionsMarshal.AsSpan(map.Vertices);
         ReadOnlySpan<UdmfThing> things = CollectionsMarshal.AsSpan(map.Things);
-        List<Sprite> sprites = ExtractSprites(things);
+        List<DecorateActor>? decorateActors = wad[LumpType.Decorate] is { } decorateLump
+            ? WadLumpParser.ReadDecorate(decorateLump)
+            : null;
+        List<Sprite> sprites = ExtractSprites(things, decorateActors);
 
         UdmfThing? player1Start = null;
         for (int i = 0; i < things.Length; i++)

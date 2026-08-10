@@ -28,6 +28,10 @@
 
         public const string EnDoom = "ENDOOM";
         /// <summary>
+        /// ZDoom-family actor definition script (AI Assisted)
+        /// </summary>
+        public const string Decorate = "DECORATE";
+        /// <summary>
         /// Patch names
         /// </summary>
         public const string PNames = "PNAMES";
