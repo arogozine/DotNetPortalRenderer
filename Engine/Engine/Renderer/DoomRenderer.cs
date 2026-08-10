@@ -79,6 +79,7 @@ internal unsafe sealed class DoomRenderer : PortalRenderer
         {
             textureHeight--;
         }
+        int textureHeightShifted = (int)texture.Height << 16;
 
         int xOffset = SharedHelpers.EnsureOffsetIsPositive(textureInfo.Width, textureInfo.XOffset);
         int yOffset = textureInfo.YOffset > sectorHeight ? textureInfo.YOffset - 65536 : textureInfo.YOffset;
@@ -171,7 +172,7 @@ internal unsafe sealed class DoomRenderer : PortalRenderer
             portalToClampedPtr[x] = textureEndYClamped;
 
             textureXLocationPtr[x] = textureXPos;
-            textureYLocationPtr[x] = float.ConvertToIntegerNative<uint>(textureYPos);
+            textureYLocationPtr[x] = (uint)SharedHelpers.EnsureOffsetIsPositive(textureHeightShifted, float.ConvertToIntegerNative<int>(textureYPos));
             textureYIncrementPtr[x] = float.ConvertToIntegerNative<uint>(textureYIncr);
             repeatedCountPtr[x - wallFromX] = (ushort)length;
         }

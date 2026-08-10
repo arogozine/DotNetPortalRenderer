@@ -90,7 +90,6 @@ public static unsafe class Vector128Extensions
                     continue;
                 }
 
-                T textureIndex = source[i];
                 address[i] = source[i];
             }
         }
