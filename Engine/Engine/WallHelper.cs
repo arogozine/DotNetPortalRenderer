@@ -702,32 +702,14 @@ namespace RenderingEngine.Engine
             Debug.Assert(wall.Flipped || wall.R1 == wall.PointA);
             Debug.Assert(wall.Flipped || wall.R2 == wall.PointB);
 
-            // Vertex Points (Wall)
-            // point 1 (vx1, vy1), point 2 (vx2, vy2)
-            float vx1 = wall.R1.X;
-            float vy1 = wall.R1.Y;
-            float vx2 = wall.R2.X;
-            float vy2 = wall.R2.Y;
+            Vector2 p1 = wall.R1;
+            Vector2 p2 = wall.R2;
 
-            // offset by player coordinates for easier calculations
-            float tx1 = vx1 - px;
-            float ty1 = vy1 - py;
-            float tx2 = vx2 - px;
-            float ty2 = vy2 - py;
+            wall.Length = Vector2.Distance(p1, p2);
 
             // rotate vertex points to face 'up' from player at (0, 0)
-            float rx1 = tx1 * psin - ty1 * pcos;
-            float ry1 = tx1 * pcos + ty1 * psin;
-            float rx2 = tx2 * psin - ty2 * pcos;
-            float ry2 = tx2 * pcos + ty2 * psin;
-
-            float dx = vx1 - vx2;
-            float dy = vy1 - vy2;
-            float length = MathF.Sqrt((dx * dx) + (dy * dy));
-
-            wall.R1 = new Vector2(rx1, ry1);
-            wall.R2 = new Vector2(rx2, ry2);
-            wall.Length = length;
+            wall.R1 = SharedHelpers.RotateVertex(p1, psin, pcos, px, py);
+            wall.R2 = SharedHelpers.RotateVertex(p2, psin, pcos, px, py);
 
             return wall;
         }

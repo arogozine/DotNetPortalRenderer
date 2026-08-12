@@ -638,10 +638,9 @@ namespace RenderingEngine.Engine
             Vector2 pointA = firstWall.R1;
             Vector2 pointB = firstWall.R2;
 
-            float dx = pointB.X - pointA.X;
-            float dy = pointB.Y - pointA.Y;
+            Vector2 dist = pointB - pointA;
 
-            float distance = MathF.Sqrt(dx * dx + dy * dy);
+            float distance = dist.Length();
 
             if (distance == 0f)
             {
@@ -649,8 +648,8 @@ namespace RenderingEngine.Engine
             }
 
             // compute signed perpendicular from the reference line
-            (float x, float y) = point;
-            float offset = dx * (y - pointA.Y) - dy * (x - pointA.X);
+            Vector2 offsetVec = point - pointA;
+            float offset = dist.X * offsetVec.Y - dist.Y * offsetVec.X;
 
             if (sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling))
             {

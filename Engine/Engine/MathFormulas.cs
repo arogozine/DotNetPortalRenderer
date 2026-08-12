@@ -276,19 +276,14 @@ namespace RenderingEngine.Engine
 
         public static Vector2 ReflectPoint(Vector2 point, Vector2 mirrorP1, Vector2 mirrorP2)
         {
-            float dx = mirrorP2.X - mirrorP1.X;
-            float dy = mirrorP2.Y - mirrorP1.Y;
-            float lenSq = dx * dx + dy * dy;
+            Vector2 d = mirrorP2 - mirrorP1;
+            float lenSq = Vector2.Dot(d, d);
 
-            float t = ((point.X - mirrorP1.X) * dx + (point.Y - mirrorP1.Y) * dy) / lenSq;
+            float t = Vector2.Dot(point - mirrorP1, d) / lenSq;
 
-            float footX = mirrorP1.X + t * dx;
-            float footY = mirrorP1.Y + t * dy;
+            Vector2 foot = mirrorP1 + t * d;
 
-            float x = 2 * footX - point.X;
-            float y = 2 * footY - point.Y;
-
-            return new Vector2(x, y);
+            return 2 * foot - point;
         }
 
         internal static (Vector3 Point1, Vector3 Normal) CalculatePlaneNormalCeil(RenderableSector sector)
@@ -503,10 +498,7 @@ namespace RenderingEngine.Engine
 
             Vector2 dist = pointB - pointA;
 
-            float dx = dist.X;
-            float dy = dist.Y;
-
-            float distance = MathF.Sqrt(dx * dx + dy * dy);
+            float distance = dist.Length();
 
             if (distance == 0f)
             {
@@ -514,8 +506,8 @@ namespace RenderingEngine.Engine
             }
 
             // compute signed perpendicular from the reference line
-            (float x, float y) = point;
-            float offset = dx * (y - pointA.Y) - dy * (x - pointA.X);
+            Vector2 offsetVec = point - pointA;
+            float offset = dist.X * offsetVec.Y - dist.Y * offsetVec.X;
 
             if (sector.Settings.HasFlag(MapSectorSettings.SlopeCeiling))
             {
