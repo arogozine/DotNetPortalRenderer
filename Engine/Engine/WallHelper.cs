@@ -115,10 +115,10 @@ namespace RenderingEngine.Engine
                 int xRightExclusive = Math.Min(xRight + 1, width);
                 Span<bool> subspan = visibility[xLeft..xRightExclusive];
                 bool visible = subspan.Contains(true);
-                subspan.Clear();
-
+                
                 if (visible)
                 {
+                    subspan.Clear();
                     orderedWalls[j] = wall;
                     j++;
                 }

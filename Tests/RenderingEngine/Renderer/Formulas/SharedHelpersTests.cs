@@ -212,5 +212,31 @@ namespace Tests.RenderingEngine.Renderer.Formulas
             Assert.True(SharedHelpers.IsPowerOfTwo(16));
             Assert.False(SharedHelpers.IsPowerOfTwo(-32));
         }
+
+        // AI Assisted
+        [Fact]
+        public void EnsureOffsetIsPositive_PowerOfTwoLength()
+        {
+            Assert.Equal(0, SharedHelpers.EnsureOffsetIsPositive(16, 0));
+            Assert.Equal(5, SharedHelpers.EnsureOffsetIsPositive(16, 5));
+            Assert.Equal(0, SharedHelpers.EnsureOffsetIsPositive(16, 16));
+            Assert.Equal(1, SharedHelpers.EnsureOffsetIsPositive(16, 17));
+            Assert.Equal(15, SharedHelpers.EnsureOffsetIsPositive(16, -1));
+            Assert.Equal(11, SharedHelpers.EnsureOffsetIsPositive(16, -5));
+            Assert.Equal(0, SharedHelpers.EnsureOffsetIsPositive(16, -16));
+        }
+
+        // AI Assisted
+        [Fact]
+        public void EnsureOffsetIsPositive_NonPowerOfTwoLength()
+        {
+            Assert.Equal(0, SharedHelpers.EnsureOffsetIsPositive(12, 0));
+            Assert.Equal(5, SharedHelpers.EnsureOffsetIsPositive(12, 5));
+            Assert.Equal(0, SharedHelpers.EnsureOffsetIsPositive(12, 12));
+            Assert.Equal(1, SharedHelpers.EnsureOffsetIsPositive(12, 13));
+            Assert.Equal(11, SharedHelpers.EnsureOffsetIsPositive(12, -1));
+            Assert.Equal(7, SharedHelpers.EnsureOffsetIsPositive(12, -5));
+            Assert.Equal(0, SharedHelpers.EnsureOffsetIsPositive(12, -12));
+        }
     }
 }
