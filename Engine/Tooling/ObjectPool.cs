@@ -43,7 +43,7 @@ internal static class ObjectPool
         NeighborsToRender.Reset();
         RotatedWallArrayPool.ClearAndOptimize();
         RenderablePortalWall.ClearAndOptimize();
-        RenderablePortalWallPool.Clear();
+        RenderablePortalWallPool.Reset();
     }
 
     private static void ClearSnapshot(FloorSpriteWallInfo floorSpriteWallInfo)
