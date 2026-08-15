@@ -11,6 +11,27 @@ public static unsafe class Vector256Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector256<int> operator %(Vector256<int> left, int right)
         {
+            if (Avx512F.IsSupported)
+            {
+                if (right == 0)
+                {
+                    throw new DivideByZeroException();
+                }
+
+                if (right == -1 && Vector256.EqualsAny(left, Vector256.Create(int.MinValue)))
+                {
+                    throw new OverflowException();
+                }
+
+                Vector512<double> leftD = Avx512F.ConvertToVector512Double(left);
+                Vector512<double> rightD = Vector512.Create((double)right);
+
+                Vector512<double> quotient = Avx512F.RoundScale(Avx512F.Divide(leftD, rightD), 0x03);
+                Vector512<double> remainder = Avx512F.Subtract(leftD, Avx512F.Multiply(quotient, rightD));
+
+                return Avx512F.ConvertToVector256Int32(remainder);
+            }
+
             if (Avx.IsSupported)
             {
                 if (right == 0)
@@ -34,6 +55,24 @@ public static unsafe class Vector256Extensions
                 return Vector256.Create(low, high);
             }
 
+            if (Sse41.IsSupported)
+            {
+                Vector128<int> lower = Vector128<int>.Zero;
+                Vector128<int> upper = Vector128<int>.Zero;
+
+                lower = Sse41.Insert(lower, left[0] % right, 0);
+                lower = Sse41.Insert(lower, left[1] % right, 1);
+                lower = Sse41.Insert(lower, left[2] % right, 2);
+                lower = Sse41.Insert(lower, left[3] % right, 3);
+
+                upper = Sse41.Insert(upper, left[4] % right, 0);
+                upper = Sse41.Insert(upper, left[5] % right, 1);
+                upper = Sse41.Insert(upper, left[6] % right, 2);
+                upper = Sse41.Insert(upper, left[7] % right, 3);
+
+                return Vector256.Create(lower, upper);
+            }
+
             return Vector256.Create(
                 left[0] % right,
                 left[1] % right,
@@ -52,6 +91,22 @@ public static unsafe class Vector256Extensions
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector256<uint> operator %(Vector256<uint> left, uint right)
         {
+            if (Avx512F.IsSupported)
+            {
+                if (right == 0)
+                {
+                    throw new DivideByZeroException();
+                }
+
+                Vector512<double> leftD = Avx512F.ConvertToVector512Double(left);
+                Vector512<double> rightD = Vector512.Create((double)right);
+
+                Vector512<double> quotient = Avx512F.RoundScale(Avx512F.Divide(leftD, rightD), 0x03);
+                Vector512<double> remainder = Avx512F.Subtract(leftD, Avx512F.Multiply(quotient, rightD));
+
+                return Avx512F.ConvertToVector256UInt32(remainder);
+            }
+
             if (Avx.IsSupported)
             {
                 if (right == 0)
@@ -65,6 +120,24 @@ public static unsafe class Vector256Extensions
                 Vector128<uint> high = VectorExtensionsShared.ModuloLaneUnsigned(left.GetUpper(), rightD);
 
                 return Vector256.Create(low, high);
+            }
+
+            if (Sse41.IsSupported)
+            {
+                Vector128<uint> lower = Vector128<uint>.Zero;
+                Vector128<uint> upper = Vector128<uint>.Zero;
+
+                lower = Sse41.Insert(lower, left[0] % right, 0);
+                lower = Sse41.Insert(lower, left[1] % right, 1);
+                lower = Sse41.Insert(lower, left[2] % right, 2);
+                lower = Sse41.Insert(lower, left[3] % right, 3);
+
+                upper = Sse41.Insert(upper, left[4] % right, 0);
+                upper = Sse41.Insert(upper, left[5] % right, 1);
+                upper = Sse41.Insert(upper, left[6] % right, 2);
+                upper = Sse41.Insert(upper, left[7] % right, 3);
+
+                return Vector256.Create(lower, upper);
             }
 
             return Vector256.Create(

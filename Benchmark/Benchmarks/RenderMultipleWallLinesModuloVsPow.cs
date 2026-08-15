@@ -8,6 +8,7 @@ namespace Benchmark.Benchmarks;
 
 // AI Assisted
 [DisassemblyDiagnoser]
+[Config(typeof(BenchmarkSimdSupport))]
 public unsafe class RenderMultipleWallLinesModuloVsPow
 {
     private const uint Width = 1024;

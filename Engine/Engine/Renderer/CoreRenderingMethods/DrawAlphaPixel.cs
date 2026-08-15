@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using Tooling;
 
 namespace RenderingEngine.Engine
 {
@@ -95,15 +96,7 @@ namespace RenderingEngine.Engine
             Vector<uint> dstLoaded = Vector.Load(surface);
             Vector<uint> blendedFull = BlendBGRA(dstLoaded, pixels);
 
-            for (int i = 0; i < Vector<uint>.Count; i++)
-            {
-                if (mask[i] != 0U)
-                {
-                    *surface = blendedFull[i];
-                }
-
-                surface++;
-            }
+            Vector.MaskStore(surface, mask.As<uint, int>(), blendedFull);
         }
 
         static uint BlendBGRA(uint bgraDstU, uint bgraSrcU)
@@ -201,6 +194,16 @@ namespace RenderingEngine.Engine
 
         static Vector<uint> BlendBGRA(Vector<uint> bgraDst, Vector<uint> bgraSrc)
         {
+            if (Vector<uint>.Count == Vector128<uint>.Count)
+            {
+                return BlendBGRA(bgraDst.AsVector128(), bgraSrc.AsVector128()).AsVector();
+            }
+
+            if (Vector<uint>.Count == Vector256<uint>.Count)
+            {
+                return BlendBGRA(bgraDst.AsVector256(), bgraSrc.AsVector256()).AsVector();
+            }
+
             // AI Assisted: Match Avx2.Average behavior with proper rounding
             Vector<uint> byteMask = Vector.Create((uint)0xFF);
             Vector<uint> alpha = Vector.Create((uint)byte.MaxValue << 24);

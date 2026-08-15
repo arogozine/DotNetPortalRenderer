@@ -32,6 +32,18 @@ public static unsafe class Vector128Extensions
                 return VectorExtensionsShared.ModuloLaneSigned(Avx.ConvertToVector256Double(left), rightD);
             }
 
+            if (Sse41.IsSupported)
+            {
+                Vector128<int> result = Vector128<int>.Zero;
+
+                result = Sse41.Insert(result, left[0] % right, 0);
+                result = Sse41.Insert(result, left[1] % right, 1);
+                result = Sse41.Insert(result, left[2] % right, 2);
+                result = Sse41.Insert(result, left[3] % right, 3);
+
+                return result;
+            }
+
             return Vector128.Create(
                 left[0] % right,
                 left[1] % right,
@@ -55,6 +67,18 @@ public static unsafe class Vector128Extensions
 
                 Vector256<double> rightD = Vector256.Create((double)right);
                 return VectorExtensionsShared.ModuloLaneUnsigned(left, rightD);
+            }
+
+            if (Sse41.IsSupported)
+            {
+                Vector128<uint> result = Vector128<uint>.Zero;
+
+                result = Sse41.Insert(result, left[0] % right, 0);
+                result = Sse41.Insert(result, left[1] % right, 1);
+                result = Sse41.Insert(result, left[2] % right, 2);
+                result = Sse41.Insert(result, left[3] % right, 3);
+
+                return result;
             }
 
             return Vector128.Create(

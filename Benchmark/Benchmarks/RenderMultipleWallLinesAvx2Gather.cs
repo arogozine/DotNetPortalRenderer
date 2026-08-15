@@ -8,7 +8,7 @@ using Tooling;
 namespace Benchmark.Benchmarks;
 
 [DisassemblyDiagnoser]
-[Config(typeof(BenchmarkWithWithoutAvx2))]
+[Config(typeof(BenchmarkSimdSupport))]
 public unsafe partial class RenderMultipleWallLinesAvx2Gather
 {
 

@@ -166,6 +166,18 @@ namespace RenderingEngine.Engine
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe void DrawLine(uint* surface, Vector<uint> pixels, Vector<uint> mask)
         {
+            if (Vector<uint>.Count == Vector256<uint>.Count)
+            {
+                DrawLine(surface, pixels.AsVector256(), mask.AsVector256());
+                return;
+            }
+
+            if (Vector<uint>.Count == Vector128<uint>.Count)
+            {
+                DrawLine(surface, pixels.AsVector128(), mask.AsVector128());
+                return;
+            }
+
             if (pixels == Vector<uint>.Zero)
             {
                 return;
@@ -184,10 +196,5 @@ namespace RenderingEngine.Engine
                 surface++;
             }
         }
-        
-        
-        
-        
-        
     }
 }

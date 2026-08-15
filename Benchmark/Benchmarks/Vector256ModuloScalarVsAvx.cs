@@ -8,6 +8,7 @@ using Tooling;
 namespace Benchmark.Benchmarks;
 
 [DisassemblyDiagnoser]
+[Config(typeof(BenchmarkSimdSupport))]
 public class Vector256ModuloScalarVsAvx
 {
     private const int RightInt = 7;
