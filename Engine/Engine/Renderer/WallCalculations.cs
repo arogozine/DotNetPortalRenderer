@@ -1,6 +1,7 @@
 ﻿using RenderingEngine.Tooling;
 using SoftwareRendererModels;
 using System.Numerics;
+using System.Runtime.Intrinsics.X86;
 
 namespace RenderingEngine.Engine
 {
@@ -601,6 +602,185 @@ namespace RenderingEngine.Engine
                     Debug.Assert(xLocation[x] >= 0);
 
                     distance[x] = fromToYdist;
+                }
+            }
+        }
+
+        private void CalculateTextureXPositionFromDistance(RenderablePortalWall renderableWall, GameTextureInfo textureInfo)
+        {
+            float* cameraRaySpan = stackalloc float[Vector<float>.Count];
+            int* xLocation = memoryPool.GetBucketPtr<int>(MemoryPoolBucket.TextureXLocation);
+            float* distance = memoryPool.GetBucketPtr<float>(MemoryPoolBucket.Distance);
+
+            int width = PixelWidth;
+
+            RenderableWall wall = renderableWall.Wall;
+
+            int wallFromX = renderableWall.XLeft;
+            int wallToX = renderableWall.XRight;
+
+
+            int textureHeight = textureInfo.Height;
+            int textureWidth = textureInfo.Width;
+            float xOffset = SharedHelpers.EnsureOffsetIsPositive(textureInfo.Width, textureInfo.XOffset);
+
+            if (textureInfo.XScale is { } xScale)
+            {
+                float wallLength = wall.Length;
+                xScale = xScale / wallLength * textureWidth;
+            }
+            else
+            {
+                xScale = 1f;
+            }
+
+            (float cameraRay, float cameraWidthIncr, _, _, _) = MathFormulas.CalculateCameraRay(wall, width, wallFromX);
+
+            bool flipX = wall.Flipped;
+
+            if (textureInfo.RenderingOptions.HasFlag(TextureRenderingOptions.MirrorX))
+            {
+                flipX = !flipX;
+            }
+
+            float rX = flipX ? wall.R2.X : wall.R1.X;
+            float rY = flipX ? wall.R2.Y : wall.R1.Y;
+
+            if (SharedHelpers.IsPowerOfTwo(textureWidth))
+            {
+                PowerOfTwo();
+            }
+            else
+            {
+                OddTextureWidth();
+            }
+
+            return;
+
+            void PowerOfTwo()
+            {
+                int textureWidthMask = textureWidth - 1;
+                int length = wallToX - wallFromX;
+
+                if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
+                {
+                    int vCount = Vector<float>.Count;
+                    int rem = length & (vCount - 1);
+                    wallToX -= rem;
+
+                    Vector<float> rXV = Vector.Create(rX);
+                    Vector<float> rYV = Vector.Create(rY);
+                    Vector<float> xScaleV = Vector.Create(xScale);
+                    Vector<float> xOffsetV = Vector.Create(xOffset);
+                    Vector<int> textureWidthMaskV = Vector.Create(textureWidthMask);
+                    Vector<int> textureHeightV = Vector.Create(textureHeight);
+
+                    for (int x = wallFromX; x < wallToX; x += vCount)
+                    {
+                        // precision seems critical here
+                        // so we fall back to scalar math here
+                        // Vector.CreateSequence and cameraRayV + strideV produce
+                        // a slightly different result
+                        for (int i = 0; i < Vector<float>.Count; i++)
+                        {
+                            cameraRaySpan[i] = cameraRay;
+                            cameraRay += cameraWidthIncr;
+                        }
+                        Vector<float> cameraRayV = Vector.Load(cameraRaySpan);
+
+                        Vector<float> fromToYdistV = Vector.Load(distance + x);
+                        Vector<float> fromToXdistV = fromToYdistV * cameraRayV;
+
+                        Vector<float> distXV = rXV - fromToXdistV;
+                        Vector<float> distYV = rYV - fromToYdistV;
+
+                        Vector<float> textureDistV = Vector.SquareRoot(distXV * distXV + distYV * distYV);
+                        Vector<int> textureDistIntV = Vector.ConvertToInt32Native(Vector.FusedMultiplyAdd(textureDistV, xScaleV, xOffsetV));
+                        Vector<int> xLocationV = (textureDistIntV & textureWidthMaskV) * textureHeightV;
+
+                        Vector.Store(xLocationV, xLocation + x);
+                    }
+
+                    wallFromX = wallToX;
+                    wallToX += rem;
+                }
+
+                for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
+                {
+                    float fromToYdist = distance[x];
+                    float fromToXdist = fromToYdist * cameraRay;
+
+                    float distX = rX - fromToXdist;
+                    float distY = rY - fromToYdist;
+
+                    float textureDist = MathF.Sqrt(distX * distX + distY * distY);
+                    int textureDistInt = float.ConvertToIntegerNative<int>(MathF.FusedMultiplyAdd(textureDist, xScale, xOffset));
+                    xLocation[x] = (textureDistInt & textureWidthMask) * textureHeight;
+
+                    Debug.Assert(xLocation[x] >= 0);
+                }
+            }
+
+            void OddTextureWidth()
+            {
+                int length = wallToX - wallFromX;
+
+                if (Vector.IsHardwareAccelerated && length > Vector<float>.Count)
+                {
+                    int vCount = Vector<float>.Count;
+                    int rem = length & (vCount - 1);
+                    wallToX -= rem;
+
+                    Vector<float> rXV = Vector.Create(rX);
+                    Vector<float> rYV = Vector.Create(rY);
+                    Vector<float> xScaleV = Vector.Create(xScale);
+                    Vector<float> xOffsetV = Vector.Create(xOffset);
+
+                    for (int x = wallFromX; x < wallToX; x += vCount)
+                    {
+                        // precision seems critical here
+                        // so we fall back to scalar math here
+                        // Vector.CreateSequence and cameraRayV + strideV produce
+                        // a slightly different result
+                        for (int i = 0; i < Vector<float>.Count; i++)
+                        {
+                            cameraRaySpan[i] = cameraRay;
+                            cameraRay += cameraWidthIncr;
+                        }
+                        Vector<float> cameraRayV = Vector.Load(cameraRaySpan);
+
+                        Vector<float> fromToYdistV = Vector.Load(distance + x);
+                        Vector<float> fromToXdistV = fromToYdistV * cameraRayV;
+
+                        Vector<float> distXV = rXV - fromToXdistV;
+                        Vector<float> distYV = rYV - fromToYdistV;
+
+                        Vector<float> textureDistV = Vector.SquareRoot(distXV * distXV + distYV * distYV);
+                        Vector<int> textureDistIntV = Vector.ConvertToInt32Native(Vector.FusedMultiplyAdd(textureDistV, xScaleV, xOffsetV));
+
+                        for (int i = 0; i < Vector<float>.Count; i++)
+                        {
+                            xLocation[x + i] = (textureDistIntV[i] % textureWidth) * textureHeight;
+                        }
+                    }
+
+                    wallFromX = wallToX;
+                    wallToX += rem;
+                }
+
+                for (int x = wallFromX; x <= wallToX; x++, cameraRay += cameraWidthIncr)
+                {
+                    float fromToYdist = distance[x];
+                    float fromToXdist = fromToYdist * cameraRay;
+
+                    float distX = rX - fromToXdist;
+                    float distY = rY - fromToYdist;
+
+                    float textureDist = MathF.Sqrt(distX * distX + distY * distY);
+                    int textureDistInt = float.ConvertToIntegerNative<int>(MathF.FusedMultiplyAdd(textureDist, xScale, xOffset));
+                    xLocation[x] = (textureDistInt % textureWidth) * textureHeight;
+
+                    Debug.Assert(xLocation[x] >= 0);
                 }
             }
         }

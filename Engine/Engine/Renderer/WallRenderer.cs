@@ -186,7 +186,16 @@ namespace RenderingEngine.Engine
                 else
                 {
                     CalculateUpperTextureYIncrement(renderableWall, upperTexture);
-                    CalculateTextureDistanceAndXPosition(renderableWall, upperTexture);
+
+                    if (renderLower)
+                    {
+                        CalculateTextureXPositionFromDistance(renderableWall, upperTexture);
+                    }
+                    else
+                    {
+                        CalculateTextureDistanceAndXPosition(renderableWall, upperTexture);
+                    }
+
                     DrawUpperPortalWall(renderableWall, usePrimaryTempBuckets);
                 }
             }

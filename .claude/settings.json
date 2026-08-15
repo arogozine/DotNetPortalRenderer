@@ -76,6 +76,12 @@
     },
     "sandbox": {
         "enabled": true,
+        "network": {
+            "allowedDomains": [
+                "registry.npmjs.org",
+                "*.nuget.org"
+            ]
+        },
         "credentials": {
             "files": [
                 { "path": "~/.ssh/**", "mode": "deny" },
