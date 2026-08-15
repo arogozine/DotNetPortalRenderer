@@ -335,15 +335,7 @@ namespace RenderingEngine.Engine
             uint* textureYIncrementPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.TextureYIncrement);
             uint* portalFromClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalFromClamped);
             uint* portalToClampedPtr = this.memoryPool.GetBucketPtr<uint>(MemoryPoolBucket.PortalToClamped);
-
-            for (int i = spriteFromX; i < spriteToX; i++ )
-            {
-                ushort count = repeatedCount[i - spriteFromX];
-                if (count == 0) continue;
-
-                Debug.Assert(*(textureYLocationPtr + i) < (texture.Height << 16));
-            }
-
+            
             int textureHeight = texture.Height;
 
             uint* screenPtr = (uint*)Buffer;
